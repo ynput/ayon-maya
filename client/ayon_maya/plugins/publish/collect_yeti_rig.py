@@ -1,6 +1,6 @@
 import os
-import re
 
+import re
 import pyblish.api
 from ayon_core.pipeline.publish import KnownPublishError
 from ayon_maya.api import lib
@@ -150,11 +150,11 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
             if os.path.isabs(texture):
                 self.log.debug("Texture is absolute path, ignoring "
                                "image search paths for: %s" % texture)
-                files = self.search_textures(texture)
+                files = lib.search_textures(texture)
             else:
                 for root in image_search_paths:
                     filepath = os.path.join(root, texture)
-                    files = self.search_textures(filepath)
+                    files = lib.search_textures(filepath)
                     if files:
                         # Break out on first match in search paths..
                         break
@@ -201,7 +201,7 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
 
             ref_file_name = os.path.basename(ref_file)
             if "%04d" in ref_file_name:
-                item["files"] = self.get_sequence(ref_file)
+                item["files"] = lib.get_sequence(ref_file)
             else:
                 if os.path.exists(ref_file) and os.path.isfile(ref_file):
                     item["files"] = [ref_file]
@@ -215,78 +215,6 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
             resources.append(item)
 
         return resources
-
-    def search_textures(self, filepath):
-        """Search all texture files on disk.
-
-        This also parses to full sequences for those with dynamic patterns
-        like <UDIM> and %04d in the filename.
-
-        Args:
-            filepath (str): The full path to the file, including any
-                dynamic patterns like <UDIM> or %04d
-
-        Returns:
-            list: The files found on disk
-
-        """
-        filename = os.path.basename(filepath)
-
-        # Collect full sequence if it matches a sequence pattern
-        if len(filename.split(".")) > 2:
-
-            # For UDIM based textures (tiles)
-            if "<UDIM>" in filename:
-                sequences = self.get_sequence(filepath,
-                                              pattern="<UDIM>")
-                if sequences:
-                    return sequences
-
-            # Frame/time - Based textures (animated masks f.e)
-            elif "%04d" in filename:
-                sequences = self.get_sequence(filepath,
-                                              pattern="%04d")
-                if sequences:
-                    return sequences
-
-        # Assuming it is a fixed name (single file)
-        if os.path.exists(filepath):
-            return [filepath]
-
-        return []
-
-    def get_sequence(self, filepath, pattern="%04d"):
-        """Get sequence from filename.
-
-        This will only return files if they exist on disk as it tries
-        to collect the sequence using the filename pattern and searching
-        for them on disk.
-
-        Supports negative frame ranges like -001, 0000, 0001 and -0001,
-        0000, 0001.
-
-        Arguments:
-            filepath (str): The full path to filename containing the given
-            pattern.
-            pattern (str): The pattern to swap with the variable frame number.
-
-        Returns:
-            list: file sequence.
-
-        """
-        import clique
-
-        escaped = re.escape(filepath)
-        re_pattern = escaped.replace(pattern, "-?[0-9]+")
-
-        source_dir = os.path.dirname(filepath)
-        files = [f for f in os.listdir(source_dir)
-                 if re.match(re_pattern, f)]
-
-        pattern = [clique.PATTERNS["frames"]]
-        collection, remainder = clique.assemble(files, patterns=pattern)
-
-        return collection
 
     def _replace_tokens(self, strings):
         env_re = re.compile(r"\$\{(\w+)\}")
