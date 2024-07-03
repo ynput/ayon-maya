@@ -13,7 +13,7 @@ class OxCacheLoader(plugin.Loader):
     product_types = {"oxcache", "oxrig"}
     representations = {"abc"}
 
-    label = "Load Ornatrix Cache"
+    label = "Load Ornatrix Cache with Hair Guide"
     order = -9
     icon = "code-fork"
     color = "orange"
