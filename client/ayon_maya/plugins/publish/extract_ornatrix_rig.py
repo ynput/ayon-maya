@@ -84,7 +84,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
 
         with lib.maintained_selection():
                 cmds.select(source_nodes, noExpand=True)
-                mel.eval(f'OxSaveGroom -path "{ox_groom_path}"')
+                mel.eval(f'OxSaveGroom -path "{ox_groom_path}" -optional;')
                 self.log.debug(f"{ox_groom_path}")
 
         # Ensure files can be stored
