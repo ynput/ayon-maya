@@ -1,6 +1,7 @@
 import pyblish.api
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
+from ayon_maya.api.lib import get_namespace, strip_namespace
 from maya import cmds
 
 
@@ -25,6 +26,11 @@ class CollectOxCache(plugin.MayaInstancePlugin):
             if not ox_cache_nodes:
                 continue
             # transfer cache file
+            if instance.data["productType"] == "oxcache":
+                # stripe the namespace
+                namespace = get_namespace(ox_shape)
+                ox_shape = strip_namespace(ox_shape, namespace)
+                self.log.debug(ox_shape)
             nodes.append({
                 "name": ox_shape,
                 "cbId": ox_shape_id,
