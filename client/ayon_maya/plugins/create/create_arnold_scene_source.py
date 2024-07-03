@@ -110,3 +110,5 @@ class CreateArnoldSceneSourceProxy(CreateArnoldSceneSource):
 
         proxy = cmds.sets(name=instance_node + "_proxy_SET", empty=True)
         cmds.sets([proxy], forceElement=instance_node)
+
+        return instance

@@ -1,2 +1,4 @@
-# Maya addon
-Maya integration for AYON.
+Maya Integration Addon
+======================
+
+WIP

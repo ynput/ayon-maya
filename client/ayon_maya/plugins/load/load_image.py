@@ -84,7 +84,7 @@ def create_stencil():
 class FileNodeLoader(plugin.Loader):
     """File node loader."""
 
-    product_types = {"image", "plate", "render"}
+    product_types = {"image", "plate", "render", "review"}
     label = "Load file node"
     representations = {"exr", "tif", "png", "jpg"}
     icon = "image"
