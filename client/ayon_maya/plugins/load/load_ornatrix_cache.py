@@ -115,6 +115,7 @@ class OxCacheLoader(plugin.Loader):
         nodes = []
         orig_guide_name = node_settings["name"]
         guide_name = "{}:{}".format(namespace, orig_guide_name)
+        print(guide_name)
         hair_guide_node = cmds.createNode("HairFromGuidesNode", name=guide_name)
         lib.set_id(hair_guide_node, node_settings["cbId"])
         cmds.setAttr(f"{hair_guide_node}.cacheFilePath", filepath, type="string")

@@ -33,7 +33,6 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
                       exportSelected=True,
                       type="Ornatrix Alembic",
                       options=ox_export_option)
-
         settings = instance.data["cachesettings"]
         self.log.debug("Writing metadata file")
         cachesettings_path = os.path.join(dirname, "ornatrix.cachesettings")

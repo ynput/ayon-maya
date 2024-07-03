@@ -15,7 +15,7 @@ class CollectOxCache(plugin.MayaInstancePlugin):
     def process(self, instance):
 
         nodes = []
-        ox_shapes = cmds.ls(instance[:], shapes=True, long=True)
+        ox_shapes = cmds.ls(instance[:], shapes=True)
         for ox_shape in ox_shapes:
             ox_shape_id = lib.get_id(ox_shape)
             if not ox_shape_id:
