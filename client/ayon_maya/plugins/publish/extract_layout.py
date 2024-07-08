@@ -114,8 +114,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             t = om.MVector(t.x, t.z, -t.y)
             transform.setTranslation(t, om.MSpace.kWorld)
             transform.rotateBy(
-                om.MEulerRotation(math.radians(-90), 0, 0), om.MSpace.kWorld)
-            transform.scaleBy([1.0, -1.0, 1.0], om.MSpace.kObject)
+                om.MEulerRotation(0, 0, 0), om.MSpace.kWorld)
+            transform.scaleBy([1.0, 1.0, 1.0], om.MSpace.kObject)
 
             t_matrix_list = list(transform.asMatrix())
 
