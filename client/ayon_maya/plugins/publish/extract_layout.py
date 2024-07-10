@@ -94,8 +94,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 },
                 "rotation": {
                     "x": math.radians(rot[0]),
-                    "y": math.cos(rot[1]),
-                    "z": -math.sin(rot[2])
+                    "y": math.radians(rot[1]),
+                    "z": math.radians(rot[2])
                 },
                 "scale": {
                     "x": scl[0],
@@ -103,7 +103,6 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                     "z": scl[2]
                 }
             }
-            self.log.debug("{}".format(json_element["transform"]))
             row_length = 4
             t_matrix_list = cmds.xform(asset, query=True, matrix=True)
 
@@ -111,11 +110,13 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             transform = om.MTransformationMatrix(transform_mm)
 
             t = transform.translation(om.MSpace.kWorld)
-            t = om.MVector(t.x, t.z, -t.y)
+            t = om.MVector(t.x, t.y, t.z)
+            s = transform.scale(om.MSpace.kObject)
+            s = [s[0], s[2], s[1]]
             transform.setTranslation(t, om.MSpace.kWorld)
             transform.rotateBy(
-                om.MEulerRotation(0, 0, 0), om.MSpace.kWorld)
-            transform.scaleBy([1.0, 1.0, 1.0], om.MSpace.kObject)
+                om.MEulerRotation(0 ,0, 0, om.MEulerRotation.kXZY), om.MSpace.kObject)
+            transform.setScale(s, om.MSpace.kObject)
 
             t_matrix_list = list(transform.asMatrix())
 
