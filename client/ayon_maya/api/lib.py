@@ -4283,6 +4283,7 @@ def search_textures(filepath):
 
     return []
 
+
 def get_sequence(filepath, pattern="%04d"):
     """Get sequence from filename.
 
