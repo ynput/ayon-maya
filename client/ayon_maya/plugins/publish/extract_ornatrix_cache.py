@@ -2,7 +2,7 @@ import os
 import json
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
-from maya import cmds
+from maya import cmds, mel
 
 
 class ExtractOxCache(plugin.MayaExtractorPlugin):
@@ -25,14 +25,9 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
         # Start writing the files for snap shot
         ox_abc_path = os.path.join(dirname, "{}ornatrix.abc".format(
             instance.name))
-        ox_export_option = self.ox_option(attr_values)
         with lib.maintained_selection():
             cmds.select(ox_shape_nodes)
-            cmds.file(ox_abc_path,
-                      force=True,
-                      exportSelected=True,
-                      type="Ornatrix Alembic",
-                      options=ox_export_option)
+            self._extract(ox_abc_path, attr_values)
         settings = instance.data["cachesettings"]
         self.log.debug("Writing metadata file")
         cachesettings_path = os.path.join(dirname, "ornatrix.cachesettings")
@@ -63,26 +58,35 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
 
         self.log.debug("Extracted {} to {}".format(instance, dirname))
 
-    def ox_option(self, attr_values):
-        """Get Ornatrix export options
+    def _extract(self, filepath, attr_values):
+        """Export Ornatrix Alembic by Mel Script
 
         Args:
-            instance (pyblish.api.Instance): Instance
-
-        Returns:
-            str: export options command
+            filepath (str): output filepath
+            attr_values (dict): creator attributes data
         """
         ox_export_options = []
-        for key, value in attr_values.items():
-            export_option = None
-            if key == "frameStart":
-                export_option = "fromTime={}".format(int(value))
-            elif key == "frameEnd":
-                export_option = "toTime={}".format(int(value))
-            elif isinstance(key, bool):
-                export_option = "{}={}".format(key, int(value))
-            else:
-                export_option = "{}={}".format(key, value)
-            ox_export_options.append(export_option)
-        ox_export_option = ";".join(ox_export_options)
-        return ox_export_option
+        filepath = filepath.replace("\\", "/")
+        frameStart = attr_values.get("frameStart")
+        frameEnd = attr_values.get("frameEnd")
+        frameStep = attr_values.get("step")
+        exp_format = attr_values.get("format")
+        ox_base_command = f'OxAlembicExport "{filepath}" -ft "{frameStart}" -tt "{frameEnd}" -s {frameStep} -f {exp_format}'        # noqa
+        ox_export_options.append(ox_base_command)
+        if attr_values.get("renderVersion"):
+            ox_export_options.append("-r")
+        up_axis_command = "-up {upDirection}".format(
+            upDirection=attr_values.get("upDirection"))
+        ox_export_options.append(up_axis_command)
+        if attr_values.get("exportVelocities"):
+            ox_export_options.append("-v")
+        interval_velocity_cmd = "-vic {int_center} -vil {int_len}".format(
+            int_center=attr_values.get("velocityIntervalCenter"),
+            int_len=attr_values.get("velocityIntervalLength")
+        )
+        ox_export_options.append(interval_velocity_cmd)
+        self.log.debug(ox_export_options)
+        ox_export_cmd = " ".join(ox_export_options)
+        self.log.debug(ox_export_cmd)
+        print("{};".format(ox_export_cmd))
+        return mel.eval("{};".format(ox_export_cmd))
