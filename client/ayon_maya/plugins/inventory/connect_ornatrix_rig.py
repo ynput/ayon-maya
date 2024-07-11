@@ -96,7 +96,6 @@ class ConnectOrnatrixRig(InventoryAction):
             else:
                 grooms_file = maya_file.replace(ext, ".oxg.zip")
             grooms_file = grooms_file.replace("\\", "/")
-            print("grroms_file", grooms_file)
             # Compare loaded connections to scene.
             for node in source_nodes:
                 node_name = node.get("node").replace("|", "")
