@@ -68,15 +68,15 @@ class OxRigLoader(plugin.ReferenceLoader):
         return nodes
 
     def _create_ox_cache_instance(self, nodes: List[str], variant: str):
-        """Create a onratrixcache product type instance to publish the output.
+        """Create an ornatrixcache product type instance to publish the output.
 
         This is similar to how loading animation rig will automatically create
         an animation instance for publishing any loaded character rigs, but
-        then for Onratrix rigs.
+        then for Ornatrix rigs.
 
         Args:
             nodes (List[str]): Nodes generated on load.
-            variant (str): Variant for the onratrix cache instance to create.
+            variant (str): Variant for the ornatrix cache instance to create.
 
         """
 
@@ -93,7 +93,7 @@ class OxRigLoader(plugin.ReferenceLoader):
 
         self.log.info("Creating variant: {}".format(variant))
 
-        creator_identifier = "io.openpype.creators.maya.oxcache"
+        creator_identifier = "io.ayon.creators.maya.oxcache"
 
         host = registered_host()
         create_context = CreateContext(host)

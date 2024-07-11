@@ -4265,15 +4265,15 @@ def search_textures(filepath):
 
         # For UDIM based textures (tiles)
         if "<UDIM>" in filename:
-            sequences = self.get_sequence(filepath,
-                                          pattern="<UDIM>")
+            sequences = get_sequence(filepath,
+                                     pattern="<UDIM>")
             if sequences:
                 return sequences
 
         # Frame/time - Based textures (animated masks f.e)
         elif "%04d" in filename:
-            sequences = self.get_sequence(filepath,
-                                          pattern="%04d")
+            sequences = get_sequence(filepath,
+                                     pattern="%04d")
             if sequences:
                 return sequences
 
@@ -4300,17 +4300,31 @@ def get_sequence(filepath, pattern="%04d"):
         pattern (str): The pattern to swap with the variable frame number.
 
     Returns:
-        list: file sequence.
+        Optional[list[str]]: file sequence.
 
     """
-    escaped = re.escape(filepath)
-    re_pattern = escaped.replace(pattern, "-?[0-9]+")
-
+    filename = os.path.basename(filepath)
+    re_pattern = re.escape(filename)
+    re_pattern = re_pattern.replace(re.escape(pattern), "-?[0-9]+")
     source_dir = os.path.dirname(filepath)
-    files = [f for f in os.listdir(source_dir)
-                if re.match(re_pattern, f)]
+    files = [f for f in os.listdir(source_dir) if re.match(re_pattern, f)]
+    if not files:
+        # Files do not exist, this may not be a problem if e.g. the
+        # textures were relative paths and we're searching across
+        # multiple image search paths.
+        return
 
-    pattern = [clique.PATTERNS["frames"]]
-    collection, remainder = clique.assemble(files, patterns=pattern)
+    collections, _remainder = clique.assemble(
+        files,
+        patterns=[clique.PATTERNS["frames"]],
+        minimum_items=1)
 
-    return collection
+    if len(collections) > 1:
+        raise ValueError(
+            f"Multiple collections found for {collections}. "
+            "This is a bug.")
+
+    return [
+        os.path.join(source_dir, filename)
+        for filename in collections[0]
+    ]

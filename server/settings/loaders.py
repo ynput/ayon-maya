@@ -122,7 +122,7 @@ class OxRigLoaderModel(LoaderEnabledModel):
     create_cache_instance_on_load: bool = SettingsField(
         title="Create Ornatrix Cache instance on load",
         description=(
-            "When enabled, upon loading a Ornatrix Rig product a new Ornatrix cache "
+            "When enabled, upon loading an Ornatrix Rig product a new Ornatrix cache "
             "instance is automatically created as preparation to publishing "
             "the output directly."
         )

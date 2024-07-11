@@ -1,4 +1,3 @@
-
 import inspect
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
@@ -15,6 +14,8 @@ ORNATRIX_NODES = {
     "HairFromGuidesNode", "GuidesFromMeshNode",
     "MeshFromStrandsNode", "SurfaceCombNode"
 }
+
+
 
 class ValidateOrnatrixContent(plugin.MayaInstancePlugin,
                               OptionalPyblishPluginMixin):

@@ -36,7 +36,6 @@ class OxAlembicLoader(plugin.Loader):
 
     def load(self, context, name, namespace, options):
         cmds.loadPlugin("Ornatrix", quiet=True)
-        product_type = context["product"]["productType"]
         # Build namespace
         folder_name = context["folder"]["name"]
         if namespace is None:
@@ -68,6 +67,7 @@ class OxAlembicLoader(plugin.Loader):
         group_node = cmds.group(new_nodes, name=group_name)
 
         settings = get_project_settings(project_name)
+        product_type = context["product"]["productType"]
         color = get_load_color_for_product_type(product_type, settings)
         if color is not None:
             red, green, blue = color
@@ -106,12 +106,7 @@ class OxAlembicLoader(plugin.Loader):
         self.log.info("Removing '%s' from Maya.." % container["name"])
 
         nodes = cmds.ls(nodes, long=True)
-
-        try:
-            cmds.delete(nodes)
-        except ValueError:
-            # Already implicitly deleted by Maya upon removing reference
-            pass
+        cmds.delete(nodes)
 
         cmds.namespace(removeNamespace=namespace, deleteNamespaceContent=True)
 

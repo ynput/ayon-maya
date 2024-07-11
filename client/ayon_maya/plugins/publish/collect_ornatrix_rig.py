@@ -23,8 +23,7 @@ class CollectOxRig(plugin.MayaInstancePlugin):
     def process(self, instance):
         ornatrix_nodes = cmds.ls(instance.data["setMembers"], long=True)
         self.log.debug(f"Getting ornatrix nodes: {ornatrix_nodes}")
-        # Force frame range for yeti cache export for the rig
-        # Collect any textures if used
+
         ornatrix_resources = []
         for node in ornatrix_nodes:
             # Get Yeti resources (textures)
@@ -35,7 +34,7 @@ class CollectOxRig(plugin.MayaInstancePlugin):
             i for n, i in enumerate(ornatrix_resources)
             if i not in ornatrix_resources[n + 1:]
         ]
-        self.log.debug("{}".format(instance.data["resources"]))
+        self.log.debug(instance.data["resources"])
 
     def get_texture_resources(self, node: str) -> List[Dict[str, Any]]:
         resources = []
