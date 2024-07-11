@@ -23,8 +23,7 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
         dirname = self.staging_dir(instance)
         attr_values = instance.data["creator_attributes"]
         # Start writing the files for snap shot
-        ox_abc_path = os.path.join(dirname, "{}ornatrix.abc".format(
-            instance.name))
+        ox_abc_path = os.path.join(dirname, f"{instance.name}ornatrix.abc")
         with lib.maintained_selection():
             cmds.select(ox_shape_nodes)
             self._extract(ox_abc_path, attr_values)
