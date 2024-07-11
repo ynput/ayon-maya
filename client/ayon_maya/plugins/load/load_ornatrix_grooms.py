@@ -34,7 +34,6 @@ class OxOrnatrixGrooms(plugin.Loader):
         if namespace is None:
             namespace = self.create_namespace(folder_name)
 
-
         path = self.filepath_from_context(context)
         path = path.replace("\\", "/")
 
@@ -63,7 +62,6 @@ class OxOrnatrixGrooms(plugin.Loader):
             loader=self.__class__.__name__
         )
 
-
     def remove(self, container):
 
         namespace = container["namespace"]
@@ -72,20 +70,17 @@ class OxOrnatrixGrooms(plugin.Loader):
         self.log.info("Removing '%s' from Maya.." % container["name"])
 
         nodes = cmds.ls(nodes, long=True)
-
-        try:
-            cmds.delete(nodes)
-        except ValueError:
-            # Already implicitly deleted by Maya upon removing reference
-            pass
+        cmds.delete(nodes)
 
         cmds.namespace(removeNamespace=namespace, deleteNamespaceContent=True)
 
     def create_namespace(self, folder_name):
         """Create a unique namespace
         Args:
-            asset (dict): asset information
+            folder_name (str): Folder name
 
+        Returns:
+            str: The unique namespace for the folder.
         """
 
         asset_name = "{}_".format(folder_name)

@@ -58,7 +58,7 @@ class CollectOxRig(plugin.MayaInstancePlugin):
                                "image search paths for: %s" % texture)
                 files = lib.search_textures(texture)
             else:
-                root = os.environ["AYON_WORKDIR"]
+                root = cmds.workspace(query=True, rootDirectory=True)
                 filepath = os.path.join(root, texture)
                 files = lib.search_textures(filepath)
                 if files:
@@ -66,8 +66,7 @@ class CollectOxRig(plugin.MayaInstancePlugin):
 
             if not files:
                 raise KnownPublishError(
-                    "No texture found for: %s "
-                    "(searched: %s)" % (texture))
+                    f"No texture found for: {texture}")
 
             item = {
                 "node": node,

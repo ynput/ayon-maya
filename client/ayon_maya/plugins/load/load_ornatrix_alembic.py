@@ -88,8 +88,7 @@ class OxAlembicLoader(plugin.Loader):
 
 
     def update(self, container, context):
-        repre_entity = context["representation"]
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         members = cmds.sets(container['objectName'], query=True)
         ox_nodes = cmds.ls(members, type="BakedHairNode", long=True)
         for node in ox_nodes:
@@ -113,8 +112,10 @@ class OxAlembicLoader(plugin.Loader):
     def create_namespace(self, folder_name):
         """Create a unique namespace
         Args:
-            asset (dict): asset information
+            folder_name (str): Folder name
 
+        Returns:
+            str: The unique namespace for the folder.
         """
 
         asset_name = "{}_".format(folder_name)

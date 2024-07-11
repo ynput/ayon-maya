@@ -22,7 +22,7 @@ class CollectOxCache(plugin.MayaInstancePlugin):
                 continue
             ox_cache_nodes = cmds.listConnections(
                 ox_shape, destination=True, type="HairFromGuidesNode") or []
-            self.log.debug(f"{ox_shape}")
+
             if not ox_cache_nodes:
                 continue
             # transfer cache file
@@ -39,4 +39,4 @@ class CollectOxCache(plugin.MayaInstancePlugin):
                                           for ox_node in ox_cache_nodes]
             })
         instance.data["cachesettings"] = {"nodes": nodes}
-        self.log.debug(f"{nodes}")
+        self.log.debug(f"Found Ornatrix HairFromGuidesNodes: {nodes}")

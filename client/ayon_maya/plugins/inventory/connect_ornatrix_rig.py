@@ -3,7 +3,7 @@ import json
 from collections import defaultdict
 
 from maya import cmds, mel
-
+from typing import List, Dict, Any
 from ayon_core.pipeline import (
     InventoryAction,
     get_repres_contexts,
@@ -67,13 +67,12 @@ class ConnectOrnatrixRig(InventoryAction):
             return
 
         ox_rig_containers = containers_by_product_type.get("oxrig")
-        print("containers", ox_rig_containers)
         if not ox_rig_containers:
             self.display_warning(
                 "Select at least one oxrig container"
             )
             return
-        source_nodes = []
+        source_nodes: List[Dict[str, Any]] = []
         for container in ox_rig_containers:
             repre_id = container["representation"]
             maya_file = get_representation_path(
@@ -83,7 +82,6 @@ class ConnectOrnatrixRig(InventoryAction):
             settings_file = None
             if ext == ".zip":
                 settings_file = maya_file.replace(".oxg.zip", ".rigsettings")
-                print(settings_file)
             else:
                 settings_file = maya_file.replace(ext, ".rigsettings")
             if not os.path.exists(settings_file):
@@ -96,7 +94,7 @@ class ConnectOrnatrixRig(InventoryAction):
             else:
                 grooms_file = maya_file.replace(ext, ".oxg.zip")
             grooms_file = grooms_file.replace("\\", "/")
-            # Compare loaded connections to scene.
+
             for node in source_nodes:
                 node_name = node.get("node").replace("|", "")
                 target_node = cmds.ls(f"{source_namespace}:{node_name}")

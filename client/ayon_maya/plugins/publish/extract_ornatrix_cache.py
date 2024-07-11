@@ -59,18 +59,18 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
 
     def _extract(self, filepath, attr_values):
         """Export Ornatrix Alembic by Mel Script.
+
         Args:
             filepath (str): output filepath
             attr_values (dict): creator attributes data
         """
         filepath = filepath.replace("\\", "/")
-        frameStart = attr_values.get("frameStart")
-        frameEnd = attr_values.get("frameEnd")
-        frameStep = attr_values.get("step")
-        exp_format = attr_values.get("format")
+        frameStart = attr_values.get("frameStart", 1)
+        frameEnd = attr_values.get("frameEnd", 1)
+        frameStep = attr_values.get("step", 1.0)
+        exp_format = attr_values.get("format", 0)
         ox_base_command = f'OxAlembicExport "{filepath}" -ft "{frameStart}" -tt "{frameEnd}" -s {frameStep} -f {exp_format}'        # noqa
         ox_export_options = [ox_base_command]
-        ox_export_options.append(ox_base_command)
         if attr_values.get("renderVersion"):
             ox_export_options.append("-r")
         up_axis_command = "-up {upDirection}".format(

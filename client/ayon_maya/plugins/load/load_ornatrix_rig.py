@@ -100,12 +100,8 @@ class OxRigLoader(plugin.ReferenceLoader):
 
         with lib.maintained_selection():
             cmds.select(ox_geo_nodes, noExpand=True)
-            try:
-                create_context.create(
-                    creator_identifier=creator_identifier,
-                    variant=variant,
-                    pre_create_data={"use_selection": True}
-                )
-            except CreatorError:
-                self.log.debug(
-                    "Ornatrix Cache has been turned off. Skip creating instance.")
+            create_context.create(
+                creator_identifier=creator_identifier,
+                variant=variant,
+                pre_create_data={"use_selection": True}
+            )

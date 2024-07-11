@@ -67,10 +67,8 @@ class OxCacheLoader(plugin.Loader):
         cmds.namespace(removeNamespace=namespace, deleteNamespaceContent=True)
 
     def update(self, container, context):
-        repre_entity = context["representation"]
+        path = self.filepath_from_context(context)
         nodes = container["nodes"]
-
-        path = get_representation_path(repre_entity)
         for node in nodes:
             if cmds.ls(node, type="HairFromGuidesNode"):
                 cmds.setAttr(f"{node}.cacheFilePath", path)
@@ -82,8 +80,10 @@ class OxCacheLoader(plugin.Loader):
     def create_namespace(self, folder_name):
         """Create a unique namespace
         Args:
-            asset (dict): asset information
+            folder_name (str): Folder name
 
+        Returns:
+            str: The unique namespace for the folder.
         """
 
         asset_name = "{}_".format(folder_name)
@@ -111,10 +111,10 @@ class OxCacheLoader(plugin.Loader):
         nodes = []
         orig_guide_name = node_settings["name"]
         guide_name = "{}:{}".format(namespace, orig_guide_name)
-        print(guide_name)
         hair_guide_node = cmds.createNode("HairFromGuidesNode", name=guide_name)
         lib.set_id(hair_guide_node, node_settings.get("cbId", ""))
         cmds.setAttr(f"{hair_guide_node}.cacheFilePath", filepath, type="string")
+        # locate the guide nodes by showing the Ornatrix stack dialog
         mel.eval("OxShowHairStackDialog();")
         nodes.extend([hair_guide_node])
         return nodes
