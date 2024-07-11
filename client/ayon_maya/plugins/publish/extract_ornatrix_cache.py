@@ -3,6 +3,7 @@ import json
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from maya import cmds, mel
+from ayon_maya.api.lib import get_frame_range
 
 
 class ExtractOxCache(plugin.MayaExtractorPlugin):
@@ -21,12 +22,11 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
         ox_shape_nodes = cmds.ls(ox_nodes, type="HairShape")
         self.log.debug(f"{ox_shape_nodes}")
         dirname = self.staging_dir(instance)
-        attr_values = instance.data["creator_attributes"]
         # Start writing the files for snap shot
         ox_abc_path = os.path.join(dirname, f"{instance.name}ornatrix.abc")
         with lib.maintained_selection():
             cmds.select(ox_shape_nodes)
-            self._extract(ox_abc_path, attr_values)
+            self._extract(instance, ox_abc_path)
         settings = instance.data["cachesettings"]
         self.log.debug("Writing metadata file")
         cachesettings_path = os.path.join(dirname, "ornatrix.cachesettings")
@@ -57,31 +57,34 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
 
         self.log.debug("Extracted {} to {}".format(instance, dirname))
 
-    def _extract(self, filepath, attr_values):
+    def _extract(self, instance, filepath):
         """Export Ornatrix Alembic by Mel Script.
 
         Args:
             filepath (str): output filepath
             attr_values (dict): creator attributes data
         """
+        attr_values = instance.data["creator_attributes"]
         filepath = filepath.replace("\\", "/")
-        frameStart = attr_values.get("frameStart", 1)
-        frameEnd = attr_values.get("frameEnd", 1)
+        frame_range = get_frame_range(instance.data["taskEntity"])
+        frameStart = attr_values.get("frameStart", frame_range["frameStart"])
+        frameEnd = attr_values.get("frameEnd", frame_range["frameEnd"])
         frameStep = attr_values.get("step", 1.0)
         exp_format = attr_values.get("format", 0)
         ox_base_command = f'OxAlembicExport "{filepath}" -ft "{frameStart}" -tt "{frameEnd}" -s {frameStep} -f {exp_format}'        # noqa
+        self.log.debug(ox_base_command)
         ox_export_options = [ox_base_command]
-        if attr_values.get("renderVersion"):
+        if attr_values.get("renderVersion", False):
             ox_export_options.append("-r")
         up_axis_command = "-up {upDirection}".format(
-            upDirection=attr_values.get("upDirection"))
+            upDirection=attr_values.get("upDirection", 0))
         ox_export_options.append(up_axis_command)
-        if attr_values.get("exportVelocities"):
+        if attr_values.get("exportVelocities", False):
             ox_export_options.append("-v")
         interval_velocity_cmd = "-vic {int_center} -vil {int_len}".format(
-            int_center=attr_values.get("velocityIntervalCenter"),
-            int_len=attr_values.get("velocityIntervalLength")
+            int_center=attr_values.get("velocityIntervalCenter", 0.0),
+            int_len=attr_values.get("velocityIntervalLength", 0.5)
         )
         ox_export_options.append(interval_velocity_cmd)
         ox_export_cmd = " ".join(ox_export_options)
-        return mel.eval("{0};".format(ox_export_cmd))
+        return mel.eval(f"{ox_export_cmd};")

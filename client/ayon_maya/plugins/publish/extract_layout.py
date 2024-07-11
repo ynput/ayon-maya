@@ -105,19 +105,15 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             }
 
             row_length = 4
-            t_matrix_list = cmds.xform(asset, query=True, matrix=True)
+            t_matrix_list = cmds.xform(asset, query=True, worldSpace=True, matrix=True)
 
             transform_mm = om.MMatrix(t_matrix_list)
-            transform = om.MTransformationMatrix(transform_mm)
+            transform = om.MTransformationMatrix()
+            transform.setRotation(om.MEulerRotation(math.radians(-90), 0, 0))
 
-            t = transform.translation(om.MSpace.kWorld)
-            t = om.MVector(t.x, t.z, -t.y)
-            transform.setTranslation(t, om.MSpace.kWorld)
-            transform.rotateBy(
-                om.MEulerRotation(math.radians(-90), 0, 0), om.MSpace.kWorld)
-            transform.scaleBy([1.0, 1.0, -1.0], om.MSpace.kObject)
-
-            t_matrix_list = list(transform.asMatrix())
+            conversion_matrix = transform.asMatrix()
+            transform_mm *= conversion_matrix
+            t_matrix_list = list(transform_mm)
 
             t_matrix = []
             for i in range(0, len(t_matrix_list), row_length):
@@ -130,8 +126,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
             basis_list = [
                 1, 0, 0, 0,
+                0, 0, 1, 0,
                 0, 1, 0, 0,
-                0, 0, -1, 0,
                 0, 0, 0, 1
             ]
 
