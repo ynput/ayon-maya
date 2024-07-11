@@ -8,7 +8,7 @@ from ayon_core.lib import BoolDef, NumberDef, EnumDef
 class CreateOxCache(plugin.MayaCreator):
     """Output for procedural plugin nodes of Ornatrix """
 
-    identifier = "io.openpype.creators.maya.oxcache"
+    identifier = "io.ayon.creators.maya.oxcache"
     label = "Ornatrix Cache"
     product_type = "oxcache"
     icon = "pagelines"
