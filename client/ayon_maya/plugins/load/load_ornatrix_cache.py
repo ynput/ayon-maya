@@ -1,6 +1,5 @@
 import json
 import os
-from ayon_core.pipeline import get_representation_path
 from ayon_maya.api import lib
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin

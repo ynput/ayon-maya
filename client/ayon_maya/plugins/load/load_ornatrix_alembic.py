@@ -1,7 +1,6 @@
 from maya import cmds
 
 from ayon_core.settings import get_project_settings
-from ayon_core.pipeline import get_representation_path
 from ayon_maya.api import plugin
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api.lib import maintained_selection, unique_namespace
