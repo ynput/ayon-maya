@@ -67,6 +67,7 @@ class ConnectOrnatrixRig(InventoryAction):
             return
 
         ox_rig_containers = containers_by_product_type.get("oxrig")
+        print("containers", ox_rig_containers)
         if not ox_rig_containers:
             self.display_warning(
                 "Select at least one oxrig container"
@@ -79,15 +80,23 @@ class ConnectOrnatrixRig(InventoryAction):
                 repre_contexts_by_id[repre_id]["representation"]
             )
             _, ext = os.path.splitext(maya_file)
-            settings_file = maya_file.replace(
-                ext, ".rigsettings")
+            settings_file = None
+            if ext == ".zip":
+                settings_file = maya_file.replace(".oxg.zip", ".rigsettings")
+                print(settings_file)
+            else:
+                settings_file = maya_file.replace(ext, ".rigsettings")
             if not os.path.exists(settings_file):
                 continue
             with open(settings_file, "r") as fp:
                 source_nodes = json.load(fp)
-
-            grooms_file = maya_file.replace(ext, ".oxg.zip")
+            grooms_file = None
+            if ext == ".zip":
+                grooms_file = maya_file
+            else:
+                grooms_file = maya_file.replace(ext, ".oxg.zip")
             grooms_file = grooms_file.replace("\\", "/")
+            print("grroms_file", grooms_file)
             # Compare loaded connections to scene.
             for node in source_nodes:
                 node_name = node.get("node").replace("|", "")
@@ -98,6 +107,7 @@ class ConnectOrnatrixRig(InventoryAction):
                         "in \"animation\" or \"pointcache\"."
                     )
                     return
+                cmds.select(target_node)
                 mel.eval(f'OxLoadGroom -path "{grooms_file}";')
 
     def display_warning(self, message, show_cancel=False):
