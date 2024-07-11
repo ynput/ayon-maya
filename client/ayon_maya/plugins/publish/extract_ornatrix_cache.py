@@ -72,7 +72,6 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
         frameStep = attr_values.get("step", 1.0)
         exp_format = attr_values.get("format", 0)
         ox_base_command = f'OxAlembicExport "{filepath}" -ft "{frameStart}" -tt "{frameEnd}" -s {frameStep} -f {exp_format}'        # noqa
-        self.log.debug(ox_base_command)
         ox_export_options = [ox_base_command]
         if attr_values.get("renderVersion", False):
             ox_export_options.append("-r")
