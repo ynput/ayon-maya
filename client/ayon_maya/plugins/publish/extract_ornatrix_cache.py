@@ -84,4 +84,4 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
         )
         ox_export_options.append(interval_velocity_cmd)
         ox_export_cmd = " ".join(ox_export_options)
-        return mel.eval(f"{ox_export_cmd};")
+        return mel.eval("{0};".format(ox_export_cmd))
