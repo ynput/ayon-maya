@@ -1,3 +1,5 @@
+import inspect
+
 import ayon_maya.api.action
 from ayon_maya.api import lib
 from ayon_core.pipeline.publish import (
@@ -10,18 +12,16 @@ from ayon_maya.api import plugin
 class ValidateLookSets(plugin.MayaInstancePlugin):
     """Validate if any sets relationships are not being collected.
 
-    A shader can be assigned to a node that is missing a Colorbleed ID.
-    Because it is missing the ID it has not been collected in the instance.
-    This validator ensures those relationships and thus considers it invalid
-    if a relationship was not collected.
+    Usually this collection fails if either the geometry or the shader are
+    lacking a valid `cbId` attribute.
 
-    When the relationship needs to be maintained the artist might need to
-    create a different* relationship or ensure the node has the Colorbleed ID.
+    If the relationship needs to be maintained you may need to
+    create a *different** relationship or ensure the node has the `cbId`.
 
-    *The relationship might be too broad (assigned to top node of hierarchy).
+    **The relationship might be too broad (assigned to top node of hierarchy).
     This can be countered by creating the relationship on the shape or its
-    transform. In essence, ensure item the shader is assigned to has the
-    Colorbleed ID!
+    transform. In essence, ensure the node the shader is assigned to has a
+    `cbId`.*
 
     Examples:
 
@@ -29,8 +29,8 @@ class ValidateLookSets(plugin.MayaInstancePlugin):
 
         It is best practice to add the transform of the shape to the
         displacement objectSet. Any parent groups will not work as groups
-        do not receive a Colorbleed Id. As such the assignments need to be
-        made to the shapes and their transform.
+        do not receive a `cbId`. As such the assignments need to be
+        made to the shapes or their transform.
 
         Example content:
             [asset_GRP|geometry_GRP|body_GES,
@@ -50,8 +50,9 @@ class ValidateLookSets(plugin.MayaInstancePlugin):
 
         invalid = self.get_invalid(instance)
         if invalid:
-            raise PublishValidationError("'{}' has invalid look "
-                               "content".format(instance.name))
+            raise PublishValidationError(
+                f"'{instance.name}' has invalid look ",
+                description=self.get_description())
 
     @classmethod
     def get_invalid(cls, instance):
@@ -68,18 +69,21 @@ class ValidateLookSets(plugin.MayaInstancePlugin):
                 if not sets:
                     continue
 
-                # check if any objectSets are not present ion the relationships
+                # check if any objectSets are not present in the relationships
                 missing_sets = [s for s in sets if s not in relationships]
+                # We ignore sets with `_SET` for legacy reasons but unclear why
+                # TODO: should we remove this exclusion?
+                missing_sets = [s for s in missing_sets if '_SET' not in s]
                 if missing_sets:
                     for missing_set in missing_sets:
                         cls.log.debug(missing_set)
 
-                        if '_SET' not in missing_set:
-                            # A set of this node is not coming along, this is wrong!
-                            cls.log.error("Missing sets '{}' for node "
-                                          "'{}'".format(missing_sets, node))
-                            invalid.append(node)
-                            continue
+                    # A set of this node is not coming along.
+                    cls.log.error("Missing sets for node '{}':\n - {}".format(
+                        node, "\n - ".join(missing_sets)
+                    ))
+                    invalid.append(node)
+                    continue
 
                 # Ensure the node is in the sets that are collected
                 for shader_set, data in relationships.items():
@@ -96,7 +100,10 @@ class ValidateLookSets(plugin.MayaInstancePlugin):
                         cls.log.error("Missing '{}' in collected set node "
                                       "'{}'".format(node, shader_set))
                         invalid.append(node)
-
                         continue
 
         return invalid
+
+    @classmethod
+    def get_description(cls):
+        return """## Missing look sets\n""" + inspect.getdoc(cls)
