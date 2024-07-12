@@ -99,11 +99,13 @@ class ConnectOrnatrixRig(InventoryAction):
                 node_name = node.get("node").replace("|", "")
                 target_node = cmds.ls(f"{source_namespace}:{node_name}")
                 if not target_node:
-                    self.display_warning(
-                        "No target node found "
-                        "in \"animation\" or \"pointcache\"."
-                    )
-                    return
+                    target_node = cmds.ls(f"{node_name}")
+                    if not target_node:
+                        self.display_warning(
+                            "No target node found "
+                            "in \"animation\" or \"pointcache\"."
+                        )
+                        return
                 cmds.select(target_node)
                 mel.eval(f'OxLoadGroom -path "{grooms_file}";')
 
