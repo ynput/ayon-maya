@@ -97,8 +97,10 @@ class ConnectOrnatrixRig(InventoryAction):
 
             for node in source_nodes:
                 node_name = node.get("node").replace("|", "")
+                current_selection_node = cmds.ls(selection=True)
                 target_node = cmds.ls(f"{source_namespace}:{node_name}")
                 target_node.extend(cmds.ls(f"{node_name}"))
+                target_node.extend(current_selection_node)
                 if not target_node:
                     self.display_warning(
                         "No target node found "
