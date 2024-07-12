@@ -9,6 +9,7 @@ from ayon_core.pipeline import (
     get_repres_contexts,
     get_representation_path,
 )
+from ayon_maya.api.lib import namespaced
 
 
 class ConnectOrnatrixRig(InventoryAction):
@@ -97,18 +98,16 @@ class ConnectOrnatrixRig(InventoryAction):
 
             for node in source_nodes:
                 node_name = node.get("node").replace("|", "")
-                current_selection_node = cmds.ls(selection=True)
-                target_node = cmds.ls(f"{source_namespace}:{node_name}")
-                target_node.extend(cmds.ls(f"{node_name}"))
-                target_node.extend(current_selection_node)
-                if not target_node:
-                    self.display_warning(
-                        "No target node found "
-                        "in \"animation\" or \"pointcache\"."
-                    )
-                    return
-                cmds.select(target_node)
-                mel.eval(f'OxLoadGroom -path "{grooms_file}";')
+                with namespaced(":" + source_namespace, new=False, relative_names=True):
+                    target_node = cmds.ls(f"{node_name}")
+                    if not target_node:
+                        self.display_warning(
+                            "No target node found "
+                            "in \"animation\" or \"pointcache\"."
+                        )
+                        return
+                    cmds.select(target_node)
+                    mel.eval(f'OxLoadGroom -path "{grooms_file}";')
 
     def display_warning(self, message, show_cancel=False):
         """Show feedback to user.
