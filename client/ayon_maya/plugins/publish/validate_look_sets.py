@@ -23,20 +23,14 @@ class ValidateLookSets(plugin.MayaInstancePlugin):
     transform. In essence, ensure the node the shader is assigned to has a
     `cbId`.*
 
-    Examples:
+    ### For example:
 
-    - Displacement objectSets (like V-Ray):
+    Displacement objectSets (like V-Ray):
 
-        It is best practice to add the transform of the shape to the
-        displacement objectSet. Any parent groups will not work as groups
-        do not receive a `cbId`. As such the assignments need to be
-        made to the shapes or their transform.
-
-        Example content:
-            [asset_GRP|geometry_GRP|body_GES,
-             asset_GRP|geometry_GRP|L_eye_GES,
-             asset_GRP|geometry_GRP|R_eye_GES,
-             asset_GRP|geometry_GRP|wings_GEO]
+    It is best practice to add the transform of the shape to the
+    displacement objectSet. Any parent groups will not work as groups
+    do not receive a `cbId`. As such the assignments need to be
+    made to the shapes or their transform.
 
     """
 
@@ -51,7 +45,9 @@ class ValidateLookSets(plugin.MayaInstancePlugin):
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError(
-                f"'{instance.name}' has invalid look ",
+                f"'{instance.name}' has relationships that could not be "
+                f"collected, likely due to lack of a `cbId` on the relevant "
+                f"nodes or sets.",
                 description=self.get_description())
 
     @classmethod
