@@ -1406,7 +1406,12 @@ def get_id_required_nodes(referenced_nodes=False,
     def _add_to_result_if_valid(obj):
         """Add to `result` if the object should be included"""
         fn_dep.setObject(obj)
-        if not existing_ids and fn_dep.hasAttribute("cbId"):
+        if (
+                not existing_ids
+                and fn_dep.hasAttribute("cbId")
+                # May not be an empty value
+                and fn_dep.findPlug("cbId", True).asString()
+        ):
             return
 
         if not referenced_nodes and fn_dep.isFromReferencedFile:
