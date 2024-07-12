@@ -2,7 +2,7 @@
 <root>
 <error id="main">
 <title>Missing node ids</title>
-<description>## Nodes found with missing `cbId`
+<description>## Nodes found with missing cbId
 
 Nodes were detected in your scene which are missing required `cbId`
 attributes for identification further in the pipeline.
