@@ -82,9 +82,9 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
                           shader=False)
 
         with lib.maintained_selection():
-                cmds.select(instance.data["ornatrix_nodes"], noExpand=True)
-                mel.eval(f'OxSaveGroom -path "{ox_groom_path}" -optional;')
-                self.log.debug(f"{ox_groom_path}")
+            cmds.select(instance.data["ornatrix_nodes"], noExpand=True)
+            mel.eval(f'OxSaveGroom -path "{ox_groom_path}" -optional;')
+            self.log.debug(f"{ox_groom_path}")
 
         # Ensure files can be stored
         # build representations
