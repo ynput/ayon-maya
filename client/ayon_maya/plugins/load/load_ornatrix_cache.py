@@ -54,21 +54,25 @@ class OxCacheLoader(plugin.Loader):
     def remove(self, container):
 
         namespace = container["namespace"]
-        nodes = container["nodes"]
 
         self.log.info("Removing '%s' from Maya.." % container["name"])
-
-        nodes = cmds.ls(nodes, long=True)
+        nodes = lib.get_container_members(container)
         cmds.delete(nodes)
 
         cmds.namespace(removeNamespace=namespace, deleteNamespaceContent=True)
 
     def update(self, container, context):
         path = self.filepath_from_context(context)
-        nodes = container["nodes"]
-        for node in nodes:
-            if cmds.ls(node, type="HairFromGuidesNode"):
-                cmds.setAttr(f"{node}.cacheFilePath", path)
+        nodes = lib.get_container_members(container)
+        for node in cmds.ls(nodes, type="HairFromGuidesNode"):
+            cmds.setAttr(f"{node}.cacheFilePath", path, type="string")
+
+        # Update the representation
+        cmds.setAttr(
+            container["objectName"] + ".representation",
+            context["representation"]["id"],
+            type="string"
+        )
 
     def switch(self, container, context):
         self.update(container, context)
