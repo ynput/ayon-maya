@@ -82,40 +82,22 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 "version": str(version_id)
             }
 
-            loc = cmds.xform(asset, query=True, translation=True)
-            rot = cmds.xform(asset, query=True, rotation=True, euler=True)
-            scl = cmds.xform(asset, query=True, relative=True, scale=True)
 
-            json_element["transform"] = {
-                "translation": {
-                    "x": loc[0],
-                    "y": loc[1],
-                    "z": loc[2]
-                },
-                "rotation": {
-                    "x": math.radians(rot[0]),
-                    "y": math.radians(rot[1]),
-                    "z": math.radians(rot[2])
-                },
-                "scale": {
-                    "x": scl[0],
-                    "y": scl[1],
-                    "z": scl[2]
-                }
-            }
             row_length = 4
             t_matrix_list = cmds.xform(asset, query=True, matrix=True)
 
             transform_mm = om.MMatrix(t_matrix_list)
             transform = om.MTransformationMatrix(transform_mm)
 
+            rot = cmds.xform(asset, query=True, rotation=True, euler=True)
             t = transform.translation(om.MSpace.kWorld)
             t = om.MVector(t.x, t.z, -t.y)
             s = transform.scale(om.MSpace.kObject)
             s = [s[0], s[2], s[1]]
             r = transform.rotation()
             transform.setTranslation(t, om.MSpace.kWorld)
-            transform.setRotation(om.MEulerRotation(r.x, r.z, r.y))
+            new_rotation = om.MEulerRotation(math.radians(rot[0]), math.radians(rot[2]), math.radians(rot[1]))
+            transform.setRotation(new_rotation)
             transform.setScale(s, om.MSpace.kObject)
 
             t_matrix_list = list(transform.asMatrix())
