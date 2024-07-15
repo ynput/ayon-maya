@@ -12,6 +12,11 @@ from ayon_core.pipeline import (
 from ayon_maya.api.lib import namespaced
 
 
+def get_node_name(path: str):
+    """Return node name without namespace or parents"""
+    return path.rsplit("|", 1)[-1].rsplit(":", 1)[-1]
+
+
 class ConnectOrnatrixRig(InventoryAction):
     """Connect Ornatrix Rig with an animation or pointcache."""
 
@@ -108,9 +113,12 @@ class ConnectOrnatrixRig(InventoryAction):
             with namespaced(":" + source_namespace,
                             new=False, relative_names=True):
                 for node in source_nodes:
-                    node_name = node.get("node").replace("|", "")
+                    node_name = get_node_name(node["node"])
                     target_node = cmds.ls(node_name)
                     if not target_node:
+                        self.log.warning(
+                            "No target node found for '%s' searching in "
+                            "namespace: %s", node_name, source_namespace)
                         self.display_warning(
                             "No target node found "
                             "in \"animation\" or \"pointcache\"."
