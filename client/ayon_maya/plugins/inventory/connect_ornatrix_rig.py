@@ -32,8 +32,6 @@ class ConnectOrnatrixRig(InventoryAction):
             repre_context = repre_contexts_by_id[repre_id]
 
             product_type = repre_context["product"]["productType"]
-
-            containers_by_product_type.setdefault(product_type, [])
             containers_by_product_type[product_type].append(container)
 
         # Validate to only 1 source container.
@@ -73,33 +71,45 @@ class ConnectOrnatrixRig(InventoryAction):
                 "Select at least one oxrig container"
             )
             return
-        source_nodes: List[Dict[str, Any]] = []
+
         for container in ox_rig_containers:
             repre_id = container["representation"]
             maya_file = get_representation_path(
                 repre_contexts_by_id[repre_id]["representation"]
             )
-            _, ext = os.path.splitext(maya_file)
-            settings_file = None
-            if ext == ".zip":
-                settings_file = maya_file.replace(".oxg.zip", ".rigsettings")
+
+            # Get base filename without extension
+            # TODO: We should actually get the actual representation paths
+            #   through the parent version entity so that we get the
+            #   representation's paths supporting the template system instead
+            #   of assuming the files live next to the loaded rig file directly
+            # of the `.oxg.zip` and the `.rigsettings` instead of computing the
+            # relative paths
+            if maya_file.endswith(".oxg.zip"):
+                base = maya_file[-len(".oxg.zip")]  # strip off multi-dot ext
             else:
-                settings_file = maya_file.replace(ext, ".rigsettings")
+                base = os.path.splitext(maya_file)[0]
+
+            settings_file = base + ".rigsettings"
             if not os.path.exists(settings_file):
                 continue
+
             with open(settings_file, "r") as fp:
-                source_nodes = json.load(fp)
-            grooms_file = None
-            if ext == ".zip":
-                grooms_file = maya_file
-            else:
-                grooms_file = maya_file.replace(ext, ".oxg.zip")
+                source_nodes: List[Dict[str, Any]] = json.load(fp)
+            if not source_nodes:
+                self.log.warning(
+                    f"No source nodes in the .rigsettings file "
+                    f"to process: {settings_file}")
+                continue
+
+            grooms_file = base + ".oxg.zip"
             grooms_file = grooms_file.replace("\\", "/")
 
-            for node in source_nodes:
-                node_name = node.get("node").replace("|", "")
-                with namespaced(":" + source_namespace, new=False, relative_names=True):
-                    target_node = cmds.ls(f"{node_name}")
+            with namespaced(":" + source_namespace,
+                            new=False, relative_names=True):
+                for node in source_nodes:
+                    node_name = node.get("node").replace("|", "")
+                    target_node = cmds.ls(node_name)
                     if not target_node:
                         self.display_warning(
                             "No target node found "
