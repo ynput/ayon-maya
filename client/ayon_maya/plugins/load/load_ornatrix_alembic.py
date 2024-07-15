@@ -24,14 +24,14 @@ class OxAlembicLoader(plugin.Loader):
         return [
             EnumDef(
                 "import_options",
-            label="Import Options for Ornatrix Cache",
-            items={
-                0: "Hair",
-                1: "Guide"
-            },
-            default=0,
-        )
-    ]
+                label="Import Options for Ornatrix Cache",
+                items={
+                    0: "Hair",
+                    1: "Guide"
+                },
+                default=0
+            )
+        ]
 
     def load(self, context, name, namespace, options):
         cmds.loadPlugin("Ornatrix", quiet=True)
@@ -84,7 +84,6 @@ class OxAlembicLoader(plugin.Loader):
             context=context,
             loader=self.__class__.__name__
         )
-
 
     def update(self, container, context):
         path = self.filepath_from_context(context)

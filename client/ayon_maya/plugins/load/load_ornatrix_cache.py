@@ -34,7 +34,6 @@ class OxCacheLoader(plugin.Loader):
         if namespace is None:
             namespace = self.create_namespace(folder_name)
 
-
         path = self.filepath_from_context(context)
         settings = self.read_settings(path)
         # read the fursettings
@@ -61,7 +60,6 @@ class OxCacheLoader(plugin.Loader):
 
         nodes = cmds.ls(nodes, long=True)
         cmds.delete(nodes)
-
 
         cmds.namespace(removeNamespace=namespace, deleteNamespaceContent=True)
 

@@ -1,4 +1,3 @@
-
 from ayon_core.settings import get_project_settings
 from ayon_maya.api import lib
 from ayon_maya.api.pipeline import containerise
