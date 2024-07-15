@@ -2,7 +2,7 @@ from ayon_core.settings import get_project_settings
 from ayon_maya.api import lib, plugin
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api.plugin import get_load_color_for_product_type
-from maya import cmds, mel
+from maya import cmds
 
 
 class OxOrnatrixGrooms(plugin.Loader):
@@ -30,7 +30,8 @@ class OxOrnatrixGrooms(plugin.Loader):
         path = self.filepath_from_context(context)
         path = path.replace("\\", "/")
 
-        nodes = [mel.eval(f'OxLoadGroom -path "{path}";')]
+        hair_shape = cmds.OxLoadGroom(path=path)
+        nodes = [hair_shape]
 
         group_name = "{}:{}".format(namespace, name)
         group_node = cmds.group(nodes, name=group_name)
