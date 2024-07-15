@@ -7,7 +7,7 @@ from ayon_maya.api import lib, plugin
 
 
 class OxRigLoader(plugin.ReferenceLoader):
-    """This loader will load Ornatix rig."""
+    """This loader will load Ornatrix rig."""
 
     product_types = {"oxrig"}
     representations = {"ma"}
