@@ -71,6 +71,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
         ox_groom_path = ox_groom_path.replace("\\", "/")
         nodes = instance.data["setMembers"]
         with lib.maintained_selection():
+            # Export ornatrix_rig.ma (or .mb)
             with lib.attribute_values(texture_attributes):
                 cmds.select(nodes, noExpand=True)
                 cmds.file(maya_path,
@@ -81,7 +82,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
                           constructionHistory=True,
                           shader=False)
 
-        with lib.maintained_selection():
+            # Export ornatrix_rig.oxg.zip
             cmds.select(instance.data["ornatrix_nodes"], noExpand=True)
             mel.eval(f'OxSaveGroom -path "{ox_groom_path}" -optional;')
             self.log.debug(f"{ox_groom_path}")
