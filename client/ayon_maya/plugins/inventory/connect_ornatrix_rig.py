@@ -12,8 +12,17 @@ from ayon_core.pipeline import (
 from ayon_maya.api.lib import namespaced
 
 
-def get_node_name(path: str):
-    """Return node name without namespace or parents"""
+def get_node_name(path: str) -> str:
+    """Return maya node name without namespace or parents
+
+    Examples:
+        >>> get_node_name("|grp|node")
+        "node"
+        >>> get_node_name("|foobar:grp|foobar:child")
+        "child"
+        >>> get_node_name("|foobar:grp|lala:bar|foobar:test:hello_world")
+        "hello_world"
+    """
     return path.rsplit("|", 1)[-1].rsplit(":", 1)[-1]
 
 
