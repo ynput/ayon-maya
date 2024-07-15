@@ -1,7 +1,6 @@
 from ayon_core.settings import get_project_settings
-from ayon_maya.api import lib
+from ayon_maya.api import lib, plugin
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api import plugin
 from ayon_maya.api.plugin import get_load_color_for_product_type
 from maya import cmds, mel
 
