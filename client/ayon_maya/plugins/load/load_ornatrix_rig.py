@@ -23,14 +23,7 @@ class OxRigLoader(plugin.ReferenceLoader):
     def process_reference(
         self, context, name=None, namespace=None, options=None
     ):
-        path = self.filepath_from_context(context)
-
-        # Check if the plugin for Ornatrix is available on the pc
-        try:
-            cmds.loadPlugin("Ornatrix", quiet=True)
-        except Exception as exc:
-            self.log.error("Encountered exception:\n%s" % exc)
-            return
+        cmds.loadPlugin("Ornatrix", quiet=True)
 
         attach_to_root = options.get("attach_to_root", True)
         group_name = options["group_name"]
@@ -39,10 +32,9 @@ class OxRigLoader(plugin.ReferenceLoader):
         if not attach_to_root:
             group_name = namespace
 
+        path = self.filepath_from_context(context)
+        file_url = self.prepare_root_value(path, context["project"]["name"])
         with lib.maintained_selection():
-            file_url = self.prepare_root_value(
-                path, context["project"]["name"]
-            )
             nodes = cmds.file(
                 file_url,
                 namespace=namespace,

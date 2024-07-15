@@ -17,12 +17,7 @@ class OxOrnatrixGrooms(plugin.Loader):
     icon = "code-fork"
 
     def load(self, context, name=None, namespace=None, data=None):
-        # Check if the plugin for Ornatrix is available on the pc
-        try:
-            cmds.loadPlugin("Ornatrix", quiet=True)
-        except Exception as exc:
-            self.log.error("Encountered exception:\n%s" % exc)
-            return
+        cmds.loadPlugin("Ornatrix", quiet=True)
 
         # prevent loading the presets with the selected meshes
         cmds.select(deselect=True)
