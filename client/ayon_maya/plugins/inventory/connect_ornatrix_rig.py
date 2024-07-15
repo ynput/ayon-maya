@@ -2,7 +2,7 @@ import os
 import json
 from collections import defaultdict
 
-from maya import cmds, mel
+from maya import cmds
 from typing import List, Dict, Any
 from ayon_core.pipeline import (
     InventoryAction,
@@ -117,7 +117,6 @@ class ConnectOrnatrixRig(InventoryAction):
                 continue
 
             grooms_file = base + ".oxg.zip"
-            grooms_file = grooms_file.replace("\\", "/")
 
             with namespaced(":" + source_namespace,
                             new=False, relative_names=True):
@@ -134,7 +133,7 @@ class ConnectOrnatrixRig(InventoryAction):
                         )
                         return
                     cmds.select(target_node)
-                    mel.eval(f'OxLoadGroom -path "{grooms_file}";')
+                    cmds.OxLoadGroom(path=grooms_file)
 
     def display_warning(self, message, show_cancel=False):
         """Show feedback to user.
