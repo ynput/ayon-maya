@@ -20,12 +20,13 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
         # Define extract output file path
         ox_nodes = cmds.ls(instance[:], shapes=True, long=True)
         ox_shape_nodes = cmds.ls(ox_nodes, type="HairShape")
-        self.log.debug(f"{ox_shape_nodes}")
+        self.log.debug(
+            f"Ornatrix HairShape nodes to extract: {ox_shape_nodes}")
         dirname = self.staging_dir(instance)
         # Start writing the files for snap shot
-        ox_abc_path = os.path.join(dirname, f"{instance.name}ornatrix.abc")
+        ox_abc_path = os.path.join(dirname, f"{instance.name}_ornatrix.abc")
         with lib.maintained_selection():
-            cmds.select(ox_shape_nodes)
+            cmds.select(ox_shape_nodes, replace=True, noExpand=True)
             self._extract(instance, ox_abc_path)
         settings = instance.data["cachesettings"]
         self.log.debug("Writing metadata file")
@@ -58,20 +59,24 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
         self.log.debug("Extracted {} to {}".format(instance, dirname))
 
     def _extract(self, instance, filepath):
-        """Export Ornatrix Alembic by Mel Script.
+        """Export Ornatrix Alembic by using `OxAlembicExport` command.
 
         Args:
+            instance (pyblish.api.Instance): Publish instance.
             filepath (str): output filepath
-            attr_values (dict): creator attributes data
         """
         attr_values = instance.data["creator_attributes"]
         filepath = filepath.replace("\\", "/")
         frame_range = get_frame_range(instance.data["taskEntity"])
-        frameStart = attr_values.get("frameStart", frame_range["frameStart"])
-        frameEnd = attr_values.get("frameEnd", frame_range["frameEnd"])
-        frameStep = attr_values.get("step", 1.0)
-        exp_format = attr_values.get("format", 0)
-        ox_base_command = f'OxAlembicExport "{filepath}" -ft "{frameStart}" -tt "{frameEnd}" -s {frameStep} -f {exp_format}'        # noqa
+        frame_start = attr_values.get("frameStart", frame_range["frameStart"])
+        frame_end = attr_values.get("frameEnd", frame_range["frameEnd"])
+        frame_step = attr_values.get("step", 1.0)
+        export_format = attr_values.get("format", 0)
+        ox_base_command = (
+            f'OxAlembicExport "{filepath}" '
+            f'-ft "{frame_start}" -tt "{frame_end}" '
+            f'-s {frame_step} -f {export_format}'
+        )
         ox_export_options = [ox_base_command]
         if attr_values.get("renderVersion", False):
             ox_export_options.append("-r")
@@ -86,4 +91,4 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
         )
         ox_export_options.append(interval_velocity_cmd)
         ox_export_cmd = " ".join(ox_export_options)
-        return mel.eval(f"{ox_export_cmd};")
+        return mel.eval(ox_export_cmd)

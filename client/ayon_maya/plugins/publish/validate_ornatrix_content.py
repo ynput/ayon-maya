@@ -9,12 +9,10 @@ from ayon_core.pipeline.publish import (
 from ayon_maya.api import plugin
 from maya import cmds
 
-
 ORNATRIX_NODES = {
     "HairFromGuidesNode", "GuidesFromMeshNode",
     "MeshFromStrandsNode", "SurfaceCombNode"
 }
-
 
 
 class ValidateOrnatrixContent(plugin.MayaInstancePlugin,
@@ -59,7 +57,8 @@ class ValidateOrnatrixContent(plugin.MayaInstancePlugin,
         if invalid:
             raise PublishValidationError(
                 title="Ornatrix content is invalid",
-                message="Ornatrix content is invalid. See log for more details.",
+                message="Ornatrix content is invalid. "
+                        "See log for more details.",
                 description=self.get_description()
             )
 
