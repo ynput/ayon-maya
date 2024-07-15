@@ -1,7 +1,7 @@
 from maya import cmds
 
 from ayon_core.settings import get_project_settings
-from ayon_maya.api import plugin
+from ayon_maya.api import plugin, lib
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api.lib import maintained_selection, unique_namespace
 from ayon_maya.api.plugin import get_load_color_for_product_type
@@ -96,15 +96,12 @@ class OxAlembicLoader(plugin.Loader):
         self.update(container, context)
 
     def remove(self, container):
-
-        namespace = container["namespace"]
-        nodes = container["nodes"]
-
         self.log.info("Removing '%s' from Maya.." % container["name"])
 
-        nodes = cmds.ls(nodes, long=True)
+        nodes = lib.get_container_members(container)
         cmds.delete(nodes)
 
+        namespace = container["namespace"]
         cmds.namespace(removeNamespace=namespace, deleteNamespaceContent=True)
 
     def create_namespace(self, folder_name):

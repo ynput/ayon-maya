@@ -52,13 +52,12 @@ class OxCacheLoader(plugin.Loader):
         )
 
     def remove(self, container):
-
-        namespace = container["namespace"]
-
         self.log.info("Removing '%s' from Maya.." % container["name"])
+
         nodes = lib.get_container_members(container)
         cmds.delete(nodes)
 
+        namespace = container["namespace"]
         cmds.namespace(removeNamespace=namespace, deleteNamespaceContent=True)
 
     def update(self, container, context):
