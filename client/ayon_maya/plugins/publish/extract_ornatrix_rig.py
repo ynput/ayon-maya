@@ -91,7 +91,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
-        self.log.debug("rig file: {}".format(maya_path))
+        self.log.debug(f"Ornatrix rig file: {maya_path}")
         instance.data["representations"].append(
             {
                 'name': self.scene_type,
@@ -101,7 +101,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
             }
         )
 
-        self.log.debug("OxGroom file: {}".format(ox_groom_path))
+        self.log.debug(f"OxGroom file: {ox_groom_path}")
         instance.data["representations"].append(
             {
                 'name': "oxg.zip",
@@ -111,7 +111,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
             }
         )
 
-        self.log.debug("settings file: {}".format(settings_path))
+        self.log.debug(f"Ornatrix rigsettings file: {settings_path}")
         instance.data["representations"].append(
             {
                 'name': "rigsettings",
