@@ -3,7 +3,7 @@ import os
 from ayon_maya.api import lib
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
-from maya import cmds, mel
+from maya import cmds
 
 
 class OxCacheLoader(plugin.Loader):
