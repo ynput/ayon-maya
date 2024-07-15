@@ -6,7 +6,7 @@ import json
 
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
-from maya import cmds, mel
+from maya import cmds
 
 
 class ExtractOxRig(plugin.MayaExtractorPlugin):
@@ -92,7 +92,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
 
             # Export ornatrix_rig.oxg.zip
             cmds.select(instance.data["ornatrix_nodes"], noExpand=True)
-            mel.eval(f'OxSaveGroom -path "{ox_groom_path}" -optional;')
+            cmds.OxSaveGroom(path=ox_groom_path, optional=True)
 
         # Ensure files can be stored
         # build representations
