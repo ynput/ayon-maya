@@ -85,7 +85,6 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
             # Export ornatrix_rig.oxg.zip
             cmds.select(instance.data["ornatrix_nodes"], noExpand=True)
             mel.eval(f'OxSaveGroom -path "{ox_groom_path}" -optional;')
-            self.log.debug(f"{ox_groom_path}")
 
         # Ensure files can be stored
         # build representations
