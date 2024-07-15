@@ -94,7 +94,6 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             t = om.MVector(t.x, t.z, -t.y)
             s = transform.scale(om.MSpace.kObject)
             s = [s[0], s[2], s[1]]
-            r = transform.rotation()
             transform.setTranslation(t, om.MSpace.kWorld)
             new_rotation = om.MEulerRotation(math.radians(rot[0]), math.radians(rot[2]), math.radians(rot[1]))
             transform.setRotation(new_rotation)
