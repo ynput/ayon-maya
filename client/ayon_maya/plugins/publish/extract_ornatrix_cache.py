@@ -2,7 +2,7 @@ import os
 import json
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
-from maya import cmds, mel
+from maya import cmds
 from ayon_maya.api.lib import get_frame_range
 
 
@@ -66,29 +66,20 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
             filepath (str): output filepath
         """
         attr_values = instance.data["creator_attributes"]
-        filepath = filepath.replace("\\", "/")
         frame_range = get_frame_range(instance.data["taskEntity"])
         frame_start = attr_values.get("frameStart", frame_range["frameStart"])
         frame_end = attr_values.get("frameEnd", frame_range["frameEnd"])
-        frame_step = attr_values.get("step", 1.0)
-        export_format = attr_values.get("format", 0)
-        ox_base_command = (
-            f'OxAlembicExport "{filepath}" '
-            f'-ft "{frame_start}" -tt "{frame_end}" '
-            f'-s {frame_step} -f {export_format}'
+        return cmds.OxAlembicExport(
+            filepath,
+            format=attr_values.get("format", 0),
+            fromTime=frame_start,
+            toTime=frame_end,
+            step=attr_values.get("step", 1.0),
+            renderVersion=attr_values.get("renderVersion", False),
+            upDirection=attr_values.get("upDirection", 0),
+            exportVelocities=attr_values.get("exportVelocities", False),
+            velocityIntervalCenter=attr_values.get("velocityIntervalCenter",
+                                                   0.0),
+            velocityIntervalLength=attr_values.get("velocityIntervalLength",
+                                                   0.5),
         )
-        ox_export_options = [ox_base_command]
-        if attr_values.get("renderVersion", False):
-            ox_export_options.append("-r")
-        up_axis_command = "-up {upDirection}".format(
-            upDirection=attr_values.get("upDirection", 0))
-        ox_export_options.append(up_axis_command)
-        if attr_values.get("exportVelocities", False):
-            ox_export_options.append("-v")
-        interval_velocity_cmd = "-vic {int_center} -vil {int_len}".format(
-            int_center=attr_values.get("velocityIntervalCenter", 0.0),
-            int_len=attr_values.get("velocityIntervalLength", 0.5)
-        )
-        ox_export_options.append(interval_velocity_cmd)
-        ox_export_cmd = " ".join(ox_export_options)
-        return mel.eval(ox_export_cmd)
