@@ -57,8 +57,16 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
                 self.log.debug("adding transfer {} -> {}". format(src, dst))
 
         self.log.debug("Writing metadata file: {}".format(settings_path))
+
+        # The rigsettings contains a list of {"node": node_path} entries.
+        settings = []
+        for node in instance.data["ornatrix_nodes"]:
+            settings.append({
+                "node": node
+            })
+
         with open(settings_path, "w") as fp:
-            json.dump(resources, fp, ensure_ascii=False)
+            json.dump(settings, fp, ensure_ascii=False)
 
         texture_attributes = {
             resource["texture_attribute"]: resource["destination_file"]
