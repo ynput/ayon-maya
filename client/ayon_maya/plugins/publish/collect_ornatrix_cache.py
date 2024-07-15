@@ -27,7 +27,7 @@ class CollectOxCache(plugin.MayaInstancePlugin):
                 continue
             # transfer cache file
             if instance.data["productType"] == "oxcache":
-                # stripe the namespace
+                # strip the namespace
                 namespace = get_namespace(ox_shape)
                 ox_shape = strip_namespace(ox_shape, namespace)
                 self.log.debug(ox_shape)
