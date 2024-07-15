@@ -25,6 +25,7 @@ class CollectOxRig(plugin.MayaInstancePlugin):
         self.log.debug(f"Getting ornatrix nodes: {ornatrix_nodes}")
 
         ornatrix_resources = []
+        ornatrix_nodes_list = []
         for node in ornatrix_nodes:
             # Get Yeti resources (textures)
             resources = self.get_texture_resources(node)
@@ -35,6 +36,25 @@ class CollectOxRig(plugin.MayaInstancePlugin):
             if i not in ornatrix_resources[n + 1:]
         ]
         self.log.debug(instance.data["resources"])
+        for node in ornatrix_nodes:
+            ox_node_list = self.get_ox_nodes(node)
+            ornatrix_nodes_list.extend(ox_node_list)
+
+        instance.data["ornatrix_nodes"] = ornatrix_nodes_list
+        self.log.debug(instance.data["ornatrix_nodes"])
+
+    def get_ox_nodes(self, node: str) -> List[Dict[str, Any]]:
+        all_ox_nodes = []
+        node_shape = cmds.listRelatives(node, shapes=True)
+        if not node_shape:
+            return []
+
+        ox_nodes = cmds.ls(
+            cmds.listConnections(node_shape, destination=True) or [],
+            type=ORNATRIX_NODES)
+        if ox_nodes:
+            all_ox_nodes.append(node)
+        return all_ox_nodes
 
     def get_texture_resources(self, node: str) -> List[Dict[str, Any]]:
         resources = []

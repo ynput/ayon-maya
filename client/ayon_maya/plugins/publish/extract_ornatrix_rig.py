@@ -64,7 +64,6 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
             resource["texture_attribute"]: resource["destination_file"]
             for resource in resources
         }
-        source_nodes = [resource["node"] for resource in resources]
         # Ornatrix related staging dirs
         maya_path = os.path.join(dirname,
                                  "ornatrix_rig.{}".format(self.scene_type))
@@ -83,7 +82,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
                           shader=False)
 
         with lib.maintained_selection():
-                cmds.select(source_nodes, noExpand=True)
+                cmds.select(instance.data["ornatrix_nodes"], noExpand=True)
                 mel.eval(f'OxSaveGroom -path "{ox_groom_path}" -optional;')
                 self.log.debug(f"{ox_groom_path}")
 
