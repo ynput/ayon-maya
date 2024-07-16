@@ -50,6 +50,8 @@ def get_sibling_representation(project_name: str,
 
 
 def connect_mesh(source, target):
+    # TODO: Should we hide the destination mesh to avoid meshes appearing
+    #  directly on top of each other?
     connect(f"{source}.worldMesh[0]", f"{target}.inMesh")
     connect(f"{source}.worldMatrix[0]",
             f"{target}.offsetParentMatrix")
