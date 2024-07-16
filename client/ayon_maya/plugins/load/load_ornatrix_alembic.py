@@ -48,7 +48,6 @@ class OxAlembicLoader(plugin.Loader):
         group_name = "{}:{}".format(namespace, name)
         project_name = context["project"]["name"]
 
-        new_nodes = []
         with maintained_selection():
             nodes = cmds.file(
                 path,
@@ -62,7 +61,7 @@ class OxAlembicLoader(plugin.Loader):
             nodes = cmds.ls(nodes)
             shapes = cmds.ls(nodes, shapes=True)
             ox_node = cmds.ls(nodes, type="BakedHairNode")
-            new_nodes = (list(set(nodes) - set(shapes)- set(ox_node)))
+            new_nodes = (list(set(nodes) - set(shapes) - set(ox_node)))
         group_node = cmds.group(new_nodes, name=group_name)
 
         settings = get_project_settings(project_name)
