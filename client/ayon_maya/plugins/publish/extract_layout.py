@@ -38,7 +38,7 @@ def rotate_coordinates_system_for_unreal(matrix: om.MMatrix) -> om.MMatrix:
     See: https://github.com/Autodesk/LiveLink/blob/98f230e7333aae5a70c281ddbfe13ac090692f86/Source/Programs/MayaUnrealLiveLinkPlugin/MayaUnrealLiveLinkUtils.cpp#L107-L115  # noqa
     """
     if om.MGlobal.isYAxisUp():
-        rot_offset = om.MQuaternion
+        rot_offset = om.MQuaternion()
         rot_offset.setToXAxis(math.radians(90.0))
         return matrix * rot_offset
     return matrix
