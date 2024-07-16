@@ -80,7 +80,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             t_matrix_list = cmds.xform(asset, query=True, matrix=True)
             maya_transform_mm = om.MMatrix(t_matrix_list)
             convert_transform_mm = om.MMatrix()
-            for i in range(0, row_length):
+            for i in range(row_length):
                 first_row = maya_transform_mm.getElement(i, 0)
                 second_row = maya_transform_mm.getElement(i, 1)
                 third_row = maya_transform_mm.getElement(i, 2)
