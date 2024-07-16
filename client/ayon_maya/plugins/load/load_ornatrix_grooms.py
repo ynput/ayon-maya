@@ -33,6 +33,8 @@ class OxOrnatrixGrooms(plugin.Loader):
     order = -9
     icon = "code-fork"
 
+    # TODO: Implement 'update' method
+
     def load(self, context, name=None, namespace=None, data=None):
         cmds.loadPlugin("Ornatrix", quiet=True)
 
