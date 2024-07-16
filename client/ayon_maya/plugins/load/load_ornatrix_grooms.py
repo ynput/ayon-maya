@@ -1,8 +1,26 @@
+import os
+import json
+from typing import Any, Dict, List
+
 from ayon_core.settings import get_project_settings
 from ayon_maya.api import lib, plugin
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api.plugin import get_load_color_for_product_type
 from maya import cmds
+
+
+def get_node_name(path: str) -> str:
+    """Return maya node name without namespace or parents
+
+    Examples:
+        >>> get_node_name("|grp|node")
+        "node"
+        >>> get_node_name("|foobar:grp|foobar:child")
+        "child"
+        >>> get_node_name("|foobar:grp|lala:bar|foobar:test:hello_world")
+        "hello_world"
+    """
+    return path.rsplit("|", 1)[-1].rsplit(":", 1)[-1]
 
 
 class OxOrnatrixGrooms(plugin.Loader):
@@ -49,7 +67,7 @@ class OxOrnatrixGrooms(plugin.Loader):
                                         type="mesh",
                                         fullPath=True)
             if meshes:
-                cmds.rename(mesh_transform, f"{group_name}_MESH")
+                self.rename_mesh(meshes, context, namespace)
 
         product_type = context["product"]["productType"]
         settings = get_project_settings(project_name)
@@ -69,6 +87,26 @@ class OxOrnatrixGrooms(plugin.Loader):
             context=context,
             loader=self.__class__.__name__
         )
+
+    def rename_mesh(self, nodes, context, namespace):
+        """Rename mesh based on node name in rigsettings file."""
+
+        # Get .cachesettings file
+        path = self.filepath_from_context(context)
+        if path.endswith(".oxg.zip"):
+            base = path[:-len(".oxg.zip")]  # strip off multi-dot ext
+        else:
+            base = os.path.splitext(path)[0]
+        rigsettings_path = base + ".rigsettings"
+        with open(rigsettings_path, "r") as f:
+            rigsettings: List[Dict[str, Any]] = json.load(f)
+
+        # Assume only ever one node, get its nice name
+        name = get_node_name(rigsettings[0]["node"])
+
+        for mesh in cmds.ls(nodes, type="mesh"):
+            transform = cmds.listRelatives(mesh, parent=True, fullPath=True)[0]
+            cmds.rename(transform, f"{namespace}:{name}")
 
     def remove(self, container):
         self.log.info("Removing '%s' from Maya.." % container["name"])
