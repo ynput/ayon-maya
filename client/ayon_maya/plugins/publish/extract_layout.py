@@ -1,10 +1,34 @@
 import json
 import os
+from typing import List
 
 from ayon_api import get_representation_by_id
-from ayon_maya.api import plugin, lib
+from ayon_maya.api import plugin
 from maya import cmds
 from maya.api import OpenMaya as om
+
+
+def convert_matrix_to_4x4_list(
+        value) -> List[List[float]]:
+    """Convert matrix or flat list to 4x4 matrix list
+
+    Example:
+        >>> convert_matrix_to_4x4_list(om.MMatrix())
+        [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+
+        >>> convert_matrix_to_4x4_list(
+        ... [1, 0, 0, 0,
+        ...  0, 1, 0, 0,
+        ...  0, 0, 1, 0,
+        ...  0, 0, 0, 1]
+        ... )
+        [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+
+    """
+    result = []
+    for i in range(0, len(value), 4):
+        result.append(list(value[i:i + 4]))
+    return result
 
 
 class ExtractLayout(plugin.MayaExtractorPlugin):
@@ -96,25 +120,9 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                     convert_transform_mm.setElement(i, 2, third_row)
                     convert_transform_mm.setElement(i, 3, fourth_row)
 
-            t_matrix = []
-            with lib.maintained_selection():
-                cmds.select(asset, noExpand=True)
-                sel = om.MGlobal.getActiveSelectionList()
-                dagpath = sel.getDependNode(0)
-                ue_transform = om.MFnTransform(dagpath)
-                with lib.maintained_transformation(ue_transform):
-                    # make sure the data doesn't change during context
-                    convert_transform = om.MTransformationMatrix(convert_transform_mm)
-                    final_ue_transform = ue_transform.setTransformation(convert_transform)
-                    t_matrix_list = list(final_ue_transform.transformation().asMatrix())
-
-                    for i in range(0, len(t_matrix_list), row_length):
-                        t_matrix.append(t_matrix_list[i:i + row_length])
-
-            json_element["transform_matrix"] = [
-                list(row)
-                for row in t_matrix
-            ]
+            json_element["transform_matrix"] = convert_matrix_to_4x4_list(
+                convert_transform_mm
+            )
 
             json_element["basis"] = [
                 [1, 0, 0, 0],
