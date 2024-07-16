@@ -106,7 +106,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             json_path = os.path.join(stagingdir, json_filename)
             t_matrix = []
             with lib.maintained_selection():
-                cmds.ls(asset, dagObjects=True)
+                cmds.select(asset, noExpand=True)
                 sel = om.MGlobal.getActiveSelectionList()
                 dagpath = sel.getDependNode(0)
                 ue_transform = om.MFnTransform(dagpath)
@@ -125,9 +125,9 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             ]
 
             basis_list = [
-                1, 0, 0, 0,
+                -1, 0, 0, 0,
                 0, 1, 0, 0,
-                0, 0, -1, 0,
+                0, 0, 1, 0,
                 0, 0, 0, 1
             ]
 
