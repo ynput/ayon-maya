@@ -26,6 +26,7 @@ def convert_matrix_to_4x4_list(
 
     """
     result = []
+    value = list(value)
     for i in range(0, len(value), 4):
         result.append(list(value[i:i + 4]))
     return result
