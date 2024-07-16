@@ -124,25 +124,12 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 for row in t_matrix
             ]
 
-            basis_list = [
-                -1, 0, 0, 0,
-                0, 1, 0, 0,
-                0, 0, 1, 0,
-                0, 0, 0, 1
+            json_element["basis"] = [
+                [1, 0, 0, 0],
+                [0, 0, 1, 0],
+                [0, 1, 0, 0],
+                [0, 0, 0, 1]
             ]
-
-            basis_mm = om.MMatrix(basis_list)
-            basis = om.MTransformationMatrix(basis_mm)
-
-            b_matrix_list = list(basis.asMatrix())
-            b_matrix = []
-
-            for i in range(0, len(b_matrix_list), row_length):
-                b_matrix.append(b_matrix_list[i:i + row_length])
-
-            json_element["basis"] = []
-            for row in b_matrix:
-                json_element["basis"].append(list(row))
 
             json_data.append(json_element)
 
