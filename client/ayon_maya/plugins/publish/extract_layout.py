@@ -133,8 +133,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
             json_data.append(json_element)
 
-            with open(json_path, "w+") as file:
-                json.dump(json_data, fp=file, indent=2)
+        with open(json_path, "w+") as file:
+            json.dump(json_data, fp=file, indent=2)
 
         json_representation = {
             'name': 'json',
