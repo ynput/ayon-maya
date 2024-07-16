@@ -22,9 +22,6 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         # Perform extraction
         self.log.debug("Performing extraction..")
 
-        if "representations" not in instance.data:
-            instance.data["representations"] = []
-
         json_data = []
         # TODO representation queries can be refactored to be faster
         project_name = instance.context.data["projectName"]
@@ -139,6 +136,9 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             'files': json_filename,
             "stagingDir": stagingdir,
         }
+
+        if "representations" not in instance.data:
+            instance.data["representations"] = []
         instance.data["representations"].append(json_representation)
 
         self.log.debug("Extracted instance '%s' to: %s",
