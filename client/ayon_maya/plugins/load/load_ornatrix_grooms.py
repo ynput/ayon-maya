@@ -18,10 +18,6 @@ class OxOrnatrixGrooms(plugin.Loader):
     def load(self, context, name=None, namespace=None, data=None):
         cmds.loadPlugin("Ornatrix", quiet=True)
 
-        # prevent loading the presets with the selected meshes
-        cmds.select(deselect=True)
-
-        product_type = context["product"]["productType"]
         # Build namespace
         folder_name = context["folder"]["name"]
         if namespace is None:
@@ -30,6 +26,8 @@ class OxOrnatrixGrooms(plugin.Loader):
         path = self.filepath_from_context(context)
         path = path.replace("\\", "/")
 
+        # prevent loading the presets with the selected meshes
+        cmds.select(deselect=True)
         hair_shape = cmds.OxLoadGroom(path=path)
         nodes = [hair_shape]
 
@@ -37,6 +35,7 @@ class OxOrnatrixGrooms(plugin.Loader):
         group_node = cmds.group(nodes, name=group_name)
         project_name = context["project"]["name"]
 
+        product_type = context["product"]["productType"]
         settings = get_project_settings(project_name)
         color = get_load_color_for_product_type(product_type, settings)
         if color is not None:
