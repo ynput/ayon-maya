@@ -33,6 +33,10 @@ def convert_matrix_to_4x4_list(
 
 
 def build_ue_transform_from_maya_transform(matrix: om.MMatrix) -> om.MMatrix:
+    """Build Unreal Engine Transformation from Maya Matrix.
+
+    See: https://github.com/Autodesk/LiveLink/blob/98f230e7333aae5a70c281ddbfe13ac090692f86/Source/Programs/MayaUnrealLiveLinkPlugin/MayaUnrealLiveLinkUtils.cpp#L121-L139  # noqa
+    """
     maya_transform_mm = om.MMatrix(matrix)
     convert_transform_mm = om.MMatrix()
     for i in range(4):
