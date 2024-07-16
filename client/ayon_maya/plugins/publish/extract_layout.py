@@ -99,8 +99,6 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                     convert_transform_mm.setElement(i, 2, third_row)
                     convert_transform_mm.setElement(i, 3, fourth_row)
 
-            json_filename = "{}.json".format(instance.name)
-            json_path = os.path.join(stagingdir, json_filename)
             t_matrix = []
             with lib.maintained_selection():
                 cmds.select(asset, noExpand=True)
@@ -130,6 +128,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
             json_data.append(json_element)
 
+        json_filename = "{}.json".format(instance.name)
+        json_path = os.path.join(stagingdir, json_filename)
         with open(json_path, "w+") as file:
             json.dump(json_data, fp=file, indent=2)
 
