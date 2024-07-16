@@ -118,7 +118,7 @@ class ConnectOrnatrixRig(InventoryAction):
             # of the `.oxg.zip` and the `.rigsettings` instead of computing the
             # relative paths
             if maya_file.endswith(".oxg.zip"):
-                base = maya_file[-len(".oxg.zip")]  # strip off multi-dot ext
+                base = maya_file[:-len(".oxg.zip")]  # strip off multi-dot ext
             else:
                 base = os.path.splitext(maya_file)[0]
 
