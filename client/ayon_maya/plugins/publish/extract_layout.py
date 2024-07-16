@@ -40,7 +40,7 @@ def rotate_coordinates_system_for_unreal(matrix: om.MMatrix) -> om.MMatrix:
     if om.MGlobal.isYAxisUp():
         rot_offset = om.MQuaternion()
         rot_offset.setToXAxis(math.radians(90.0))
-        return matrix * rot_offset
+        return matrix * rot_offset.asMatrix()
     return matrix
 
 
