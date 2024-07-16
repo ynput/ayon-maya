@@ -108,6 +108,7 @@ class CreateAssModel(BasicCreatorModel):
     maskFilter: bool = SettingsField(title="Mask Filter")
     maskColor_manager: bool = SettingsField(title="Mask Color Manager")
     maskOperator: bool = SettingsField(title="Mask Operator")
+    maskImager: bool = SettingsField(title="Mask Imager")
 
 
 class CreateReviewModel(BasicCreatorModel):
@@ -355,7 +356,8 @@ DEFAULT_CREATORS_SETTINGS = {
         "maskDriver": False,
         "maskFilter": False,
         "maskColor_manager": False,
-        "maskOperator": False
+        "maskOperator": False,
+        "maskImager": False
     },
     "CreateAssembly": {
         "enabled": True,
