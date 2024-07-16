@@ -31,9 +31,26 @@ class OxOrnatrixGrooms(plugin.Loader):
         hair_shape = cmds.OxLoadGroom(path=path)
         nodes = [hair_shape]
 
+        # Add the root to the group
+        parents = list(lib.iter_parents(cmds.ls(hair_shape, long=True)[0]))
+        root = parents[-1]
         group_name = "{}:{}".format(namespace, name)
-        group_node = cmds.group(nodes, name=group_name)
+        group_node = cmds.group(root,
+                                name=group_name)
+
         project_name = context["project"]["name"]
+
+        # The load may generate a shape node which is not returned by the
+        # `OxLoadGroom` command so we find it. It's usually the parent.
+        # And we rename the loaded mesh transform.
+        hair_transform = lib.get_node_parent(hair_shape)
+        mesh_transform = lib.get_node_parent(hair_transform)
+        if mesh_transform:
+            meshes = cmds.listRelatives(mesh_transform,
+                                        type="mesh",
+                                        fullPath=True)
+            if meshes:
+                cmds.rename(mesh_transform, f"{group_name}_MESH")
 
         product_type = context["product"]["productType"]
         settings = get_project_settings(project_name)
@@ -43,8 +60,7 @@ class OxOrnatrixGrooms(plugin.Loader):
             cmds.setAttr(group_node + ".useOutlinerColor", 1)
             cmds.setAttr(group_node + ".outlinerColor", red, green, blue)
 
-        nodes.append(group_node)
-
+        nodes = cmds.ls(group_node, long=True, dag=True)
         self[:] = nodes
 
         return containerise(
