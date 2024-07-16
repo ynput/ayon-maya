@@ -3,7 +3,7 @@ import json
 from collections import defaultdict
 
 from maya import cmds
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from ayon_core.pipeline import (
     InventoryAction,
     get_repres_contexts,
@@ -39,7 +39,9 @@ def connect(src, dest):
 
 def get_sibling_representation(project_name: str,
                                representation_id: str,
-                               representation_name: str):
+                               representation_name: str) -> Optional[dict]:
+    """Return sibling representation entity under parent version from
+    representation id."""
     repre_entity = get_representation_by_id(project_name, representation_id,
                                             fields={"versionId"})
     version_id = repre_entity["versionId"]
@@ -51,13 +53,6 @@ def connect_mesh(source, target):
     connect(f"{source}.worldMesh[0]", f"{target}.inMesh")
     connect(f"{source}.worldMatrix[0]",
             f"{target}.offsetParentMatrix")
-
-
-def get_transform(mesh: str) -> str:
-    return cmds.listRelatives(mesh,
-                              type="transform",
-                              parent=True,
-                              fullPath=True)[0]
 
 
 class ConnectOrnatrixRig(InventoryAction):
