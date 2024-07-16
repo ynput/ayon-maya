@@ -1,9 +1,8 @@
 import json
-import math
 import os
 
 from ayon_api import get_representation_by_id
-from ayon_maya.api import plugin
+from ayon_maya.api import plugin, lib
 from maya import cmds
 from maya.api import OpenMaya as om
 
@@ -85,25 +84,40 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
             row_length = 4
             t_matrix_list = cmds.xform(asset, query=True, matrix=True)
+            maya_transform_mm = om.MMatrix(t_matrix_list)
+            convert_transform_mm = om.MMatrix()
+            for i in range(0, row_length):
+                first_row = maya_transform_mm.getElement(i, 0)
+                second_row = maya_transform_mm.getElement(i, 1)
+                third_row = maya_transform_mm.getElement(i, 2)
+                fourth_row = maya_transform_mm.getElement(i, 3)
+                if i == 1:
+                    convert_transform_mm.setElement(i, 0, -first_row)
+                    convert_transform_mm.setElement(i, 1, second_row)
+                    convert_transform_mm.setElement(i, 2, -third_row)
+                    convert_transform_mm.setElement(i, 3, -fourth_row)
+                else:
+                    convert_transform_mm.setElement(i, 0, first_row)
+                    convert_transform_mm.setElement(i, 1, -second_row)
+                    convert_transform_mm.setElement(i, 2, third_row)
+                    convert_transform_mm.setElement(i, 3, fourth_row)
 
-            transform_mm = om.MMatrix(t_matrix_list)
-            transform = om.MTransformationMatrix(transform_mm)
-
-            rot = cmds.xform(asset, query=True, rotation=True, euler=True)
-            t = transform.translation(om.MSpace.kWorld)
-            t = om.MVector(t.x, t.z, -t.y)
-            s = transform.scale(om.MSpace.kObject)
-            s = [s[0], s[2], s[1]]
-            transform.setTranslation(t, om.MSpace.kWorld)
-            new_rotation = om.MEulerRotation(math.radians(rot[0]), math.radians(rot[2]), math.radians(rot[1]))
-            transform.setRotation(new_rotation)
-            transform.setScale(s, om.MSpace.kObject)
-
-            t_matrix_list = list(transform.asMatrix())
-
+            json_filename = "{}.json".format(instance.name)
+            json_path = os.path.join(stagingdir, json_filename)
             t_matrix = []
-            for i in range(0, len(t_matrix_list), row_length):
-                t_matrix.append(t_matrix_list[i:i + row_length])
+            with lib.maintained_selection():
+                cmds.ls(asset, dagObjects=True)
+                sel = om.MGlobal.getActiveSelectionList()
+                dagpath = sel.getDependNode(0)
+                ue_transform = om.MFnTransform(dagpath)
+                with lib.maintained_transformation(ue_transform):
+                    # make sure the data doesn't change during context
+                    convert_transform = om.MTransformationMatrix(convert_transform_mm)
+                    final_ue_transform = ue_transform.setTransformation(convert_transform)
+                    t_matrix_list = list(final_ue_transform.transformation().asMatrix())
+
+                    for i in range(0, len(t_matrix_list), row_length):
+                        t_matrix.append(t_matrix_list[i:i + row_length])
 
             json_element["transform_matrix"] = [
                 list(row)
@@ -132,11 +146,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
             json_data.append(json_element)
 
-        json_filename = "{}.json".format(instance.name)
-        json_path = os.path.join(stagingdir, json_filename)
-
-        with open(json_path, "w+") as file:
-            json.dump(json_data, fp=file, indent=2)
+            with open(json_path, "w+") as file:
+                json.dump(json_data, fp=file, indent=2)
 
         json_representation = {
             'name': 'json',
