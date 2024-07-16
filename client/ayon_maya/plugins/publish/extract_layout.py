@@ -1,83 +1,11 @@
 import json
 import math
 import os
-from typing import Union, List
 
 from ayon_api import get_representation_by_id
 from ayon_maya.api import plugin
 from maya import cmds
 from maya.api import OpenMaya as om
-
-
-def convert_matrix_to_4x4_list(
-        value) -> List[List[float]]:
-    """Convert matrix or flat list to 4x4 matrix list
-
-    Example:
-        >>> convert_matrix_to_4x4_list(om.MMatrix())
-        [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
-
-        >>> convert_matrix_to_4x4_list(
-        ... [1, 0, 0, 0,
-        ...  0, 1, 0, 0,
-        ...  0, 0, 1, 0,
-        ...  0, 0, 0, 1]
-        ... )
-        [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
-
-    """
-    result = []
-    value = list(value)
-    for i in range(0, len(value), 4):
-        result.append(list(value[i:i + 4]))
-    return result
-
-
-def rotate_coordinates_system_for_unreal(matrix: om.MMatrix) -> om.MMatrix:
-    """
-    See: https://github.com/Autodesk/LiveLink/blob/98f230e7333aae5a70c281ddbfe13ac090692f86/Source/Programs/MayaUnrealLiveLinkPlugin/MayaUnrealLiveLinkUtils.cpp#L107-L115  # noqa
-    """
-    if om.MGlobal.isYAxisUp():
-        rot_offset = om.MQuaternion()
-        rot_offset.setToXAxis(math.radians(90.0))
-        return matrix * rot_offset.asMatrix()
-    return matrix
-
-
-def build_ue_transform_from_maya_transform(matrix: om.MMatrix) -> om.MMatrix:
-    """Build Unreal Engine Transformation from Maya Matrix.
-
-    See: https://github.com/Autodesk/LiveLink/blob/98f230e7333aae5a70c281ddbfe13ac090692f86/Source/Programs/MayaUnrealLiveLinkPlugin/MayaUnrealLiveLinkUtils.cpp#L121-L139  # noqa
-    """
-    matrix = convert_matrix_to_4x4_list(matrix)
-    convert_matrix = om.MMatrix()
-    for i in range(4):
-        row = matrix[i]
-        if i == 1:
-            convert_matrix.setElement(i, 0, -row[0])
-            convert_matrix.setElement(i, 1, row[1])
-            convert_matrix.setElement(i, 2, -row[2])
-            convert_matrix.setElement(i, 3, -row[3])
-        else:
-            convert_matrix.setElement(i, 0, row[0])
-            convert_matrix.setElement(i, 1, -row[1])
-            convert_matrix.setElement(i, 2, row[2])
-            convert_matrix.setElement(i, 3, row[3])
-    return convert_matrix
-
-
-def get_converted_matrix(matrix: Union[om.MMatrix, list]) -> om.MMatrix:
-    """Get Maya transform converted to Unreal Engine transform.
-    Perform all conversion steps similar to:
-        https://github.com/Autodesk/LiveLink/blob/main/Source/Programs/MayaUnrealLiveLinkPlugin/Subjects/MLiveLinkPropSubject.cpp#L122-L129  # noqa
-    """
-    matrix = om.MMatrix(matrix)
-    matrix = rotate_coordinates_system_for_unreal(matrix)
-    matrix = build_ue_transform_from_maya_transform(matrix)
-    if om.MGlobal.isYAxisUp():
-        rot = om.MEulerRotation(0, 0, math.radians(90)).asMatrix()
-        matrix *= rot
-    return matrix
 
 
 class ExtractLayout(plugin.MayaExtractorPlugin):
@@ -94,6 +22,9 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
         # Perform extraction
         self.log.debug("Performing extraction..")
+
+        if "representations" not in instance.data:
+            instance.data["representations"] = []
 
         json_data = []
         # TODO representation queries can be refactored to be faster
@@ -133,6 +64,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 fields={"versionId", "context"}
             )
 
+            self.log.debug(representation)
+
             version_id = representation["versionId"]
             # TODO use product entity to get product type rather than
             #    data in representation 'context'
@@ -149,16 +82,54 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 "version": str(version_id)
             }
 
-            local_matrix = cmds.xform(asset, query=True, matrix=True)
-            ue_matrix = get_converted_matrix(local_matrix)
-            json_element["transform_matrix"] = convert_matrix_to_4x4_list(ue_matrix)  # noqa
 
-            json_element["basis"] = [
-                [1, 0, 0, 0],
-                [0, 1, 0, 0],
-                [0, 0, 1, 0],
-                [0, 0, 0, 1]
+            row_length = 4
+            t_matrix_list = cmds.xform(asset, query=True, matrix=True)
+
+            transform_mm = om.MMatrix(t_matrix_list)
+            transform = om.MTransformationMatrix(transform_mm)
+
+            rot = cmds.xform(asset, query=True, rotation=True, euler=True)
+            t = transform.translation(om.MSpace.kWorld)
+            t = om.MVector(t.x, t.z, -t.y)
+            s = transform.scale(om.MSpace.kObject)
+            s = [s[0], s[2], s[1]]
+            r = transform.rotation()
+            transform.setTranslation(t, om.MSpace.kWorld)
+            new_rotation = om.MEulerRotation(math.radians(rot[0]), math.radians(rot[2]), math.radians(rot[1]))
+            transform.setRotation(new_rotation)
+            transform.setScale(s, om.MSpace.kObject)
+
+            t_matrix_list = list(transform.asMatrix())
+
+            t_matrix = []
+            for i in range(0, len(t_matrix_list), row_length):
+                t_matrix.append(t_matrix_list[i:i + row_length])
+
+            json_element["transform_matrix"] = [
+                list(row)
+                for row in t_matrix
             ]
+
+            basis_list = [
+                1, 0, 0, 0,
+                0, 1, 0, 0,
+                0, 0, -1, 0,
+                0, 0, 0, 1
+            ]
+
+            basis_mm = om.MMatrix(basis_list)
+            basis = om.MTransformationMatrix(basis_mm)
+
+            b_matrix_list = list(basis.asMatrix())
+            b_matrix = []
+
+            for i in range(0, len(b_matrix_list), row_length):
+                b_matrix.append(b_matrix_list[i:i + row_length])
+
+            json_element["basis"] = []
+            for row in b_matrix:
+                json_element["basis"].append(list(row))
 
             json_data.append(json_element)
 
@@ -175,8 +146,6 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             "stagingDir": stagingdir,
         }
 
-        if "representations" not in instance.data:
-            instance.data["representations"] = []
         instance.data["representations"].append(json_representation)
 
         self.log.debug("Extracted instance '%s' to: %s",
