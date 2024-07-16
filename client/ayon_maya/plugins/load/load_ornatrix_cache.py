@@ -112,7 +112,6 @@ class OxCacheLoader(plugin.Loader):
         Returns:
             list: loaded nodes
         """
-        nodes = []
         orig_guide_name = node_settings["name"]
         guide_name = "{}:{}".format(namespace, orig_guide_name)
         hair_guide_node = cmds.createNode("HairFromGuidesNode",
@@ -120,8 +119,8 @@ class OxCacheLoader(plugin.Loader):
         lib.set_id(hair_guide_node, node_settings.get("cbId", ""))
         cmds.setAttr(f"{hair_guide_node}.cacheFilePath",
                      filepath, type="string")
-        nodes.extend([hair_guide_node])
-        return nodes
+
+        return [hair_guide_node]
 
     def read_settings(self, path):
         """Read the ornatrix-related parameters from the cachesettings.
