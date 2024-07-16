@@ -135,6 +135,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
         json_filename = "{}.json".format(instance.name)
         json_path = os.path.join(stagingdir, json_filename)
+
         with open(json_path, "w+") as file:
             json.dump(json_data, fp=file, indent=2)
 
