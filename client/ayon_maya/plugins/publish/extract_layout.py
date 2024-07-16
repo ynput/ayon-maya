@@ -75,7 +75,7 @@ def get_converted_matrix(matrix: Union[om.MMatrix, list]) -> om.MMatrix:
     matrix = rotate_coordinates_system_for_unreal(matrix)
     matrix = build_ue_transform_from_maya_transform(matrix)
     if om.MGlobal.isYAxisUp():
-        rot = om.EulerRotation(0, 0, 90).asMatrix()
+        rot = om.EulerRotation(0, 0, math.radians(90)).asMatrix()
         matrix *= rot
     return matrix
 
