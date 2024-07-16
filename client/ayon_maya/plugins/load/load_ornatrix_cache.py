@@ -41,6 +41,10 @@ class OxCacheLoader(plugin.Loader):
         for setting in settings["nodes"]:
             nodes.extend(self.create_node(namespace, path, setting))
 
+        # Show dialog so the user can directly start working with the
+        # newly created nodes.
+        cmds.OxShowHairStackDialog()
+
         self[:] = nodes
 
         return containerise(
