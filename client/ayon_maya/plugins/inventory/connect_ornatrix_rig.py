@@ -26,6 +26,23 @@ def get_node_name(path: str) -> str:
     return path.rsplit("|", 1)[-1].rsplit(":", 1)[-1]
 
 
+def connect_ornatrix_nodes(target_node: str, namespace: str):
+    node = cmds.listRelatives(f"{namespace}:*", children=True)
+    node_shape = cmds.listRelatives(node, shapes=True)
+    ox_nodes = cmds.ls(cmds.listConnections(node_shape, destination=True) or [], type={
+        "HairFromGuidesNode", "GuidesFromMeshNode",
+        "MeshFromStrandsNode", "SurfaceCombNode"
+    })
+    for ox_node in ox_nodes:
+        if cmds.nodeType("GuidesFromMeshNode"):
+            cmds.connectAttr(f"{target_node}.outMesh", f"{ox_node}.inMesh")
+        elif cmds.nodeType("HairFromGuidesNode"):
+            cmds.connectAttr(f"{target_node}.outMesh", f"{ox_node}.distributionMesh")
+            cmds.connectAttr(f"{target_node}.worldMatrix[0]", f"{ox_node}.distributionMeshMatrix")
+        else:
+            cmds.connectAttr(f"{target_node}.outMesh", f"{ox_node}.distributionMesh")
+
+
 class ConnectOrnatrixRig(InventoryAction):
     """Connect Ornatrix Rig with an animation or pointcache."""
 
@@ -87,6 +104,7 @@ class ConnectOrnatrixRig(InventoryAction):
             return
 
         for container in ox_rig_containers:
+            rig_namespace = container["namespace"]
             repre_id = container["representation"]
             maya_file = get_representation_path(
                 repre_contexts_by_id[repre_id]["representation"]
@@ -132,8 +150,7 @@ class ConnectOrnatrixRig(InventoryAction):
                             "in \"animation\" or \"pointcache\"."
                         )
                         return
-                    cmds.select(target_node)
-                    cmds.OxLoadGroom(path=grooms_file)
+                    connect_ornatrix_nodes(target_node, rig_namespace)
 
     def display_warning(self, message, show_cancel=False):
         """Show feedback to user.
