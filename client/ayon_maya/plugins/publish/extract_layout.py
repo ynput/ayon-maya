@@ -69,7 +69,7 @@ def build_ue_transform_from_maya_transform(matrix: om.MMatrix) -> om.MMatrix:
 def get_converted_matrix(matrix: Union[om.MMatrix, list]) -> om.MMatrix:
     """Get Maya transform converted to Unreal Engine transform.
     Perform all conversion steps similar to:
-        https://github.com/Autodesk/LiveLink/blob/main/Source/Programs/MayaUnrealLiveLinkPlugin/Subjects/MLiveLinkPropSubject.cpp#L122-L129
+        https://github.com/Autodesk/LiveLink/blob/main/Source/Programs/MayaUnrealLiveLinkPlugin/Subjects/MLiveLinkPropSubject.cpp#L122-L129  # noqa
     """
     matrix = om.MMatrix(matrix)
     matrix = rotate_coordinates_system_for_unreal(matrix)
