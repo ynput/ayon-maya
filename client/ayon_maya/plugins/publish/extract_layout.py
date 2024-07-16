@@ -1,4 +1,5 @@
 import json
+import math
 import os
 from typing import List
 
@@ -30,6 +31,17 @@ def convert_matrix_to_4x4_list(
     for i in range(0, len(value), 4):
         result.append(list(value[i:i + 4]))
     return result
+
+
+def rotate_coordinates_system_for_unreal(matrix: om.MMatrix) -> om.MMatrix:
+    """
+    See: https://github.com/Autodesk/LiveLink/blob/98f230e7333aae5a70c281ddbfe13ac090692f86/Source/Programs/MayaUnrealLiveLinkPlugin/MayaUnrealLiveLinkUtils.cpp#L107-L115  # noqa
+    """
+    if om.MGlobal.isYAxisUp():
+        rot_offset = om.MQuaternion
+        rot_offset.setToXAxis(math.radians(90.0))
+        return matrix * rot_offset
+    return matrix
 
 
 def build_ue_transform_from_maya_transform(matrix: om.MMatrix) -> om.MMatrix:
@@ -125,6 +137,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
             local_matrix = om.MMatrix(
                 cmds.xform(asset, query=True, matrix=True))
+            local_matrix = rotate_coordinates_system_for_unreal(local_matrix)
             ue_matrix = build_ue_transform_from_maya_transform(local_matrix)
             json_element["transform_matrix"] = convert_matrix_to_4x4_list(ue_matrix)  # noqa
 
