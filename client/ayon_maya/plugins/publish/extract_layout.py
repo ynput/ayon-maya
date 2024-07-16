@@ -1,7 +1,7 @@
 import json
 import math
 import os
-from typing import List
+from typing import Union, List
 
 from ayon_api import get_representation_by_id
 from ayon_maya.api import plugin
@@ -64,6 +64,20 @@ def build_ue_transform_from_maya_transform(matrix: om.MMatrix) -> om.MMatrix:
             convert_matrix.setElement(i, 2, row[2])
             convert_matrix.setElement(i, 3, row[3])
     return convert_matrix
+
+
+def get_converted_matrix(matrix: Union[om.MMatrix, list]) -> om.MMatrix:
+    """Get Maya transform converted to Unreal Engine transform.
+    Perform all conversion steps similar to:
+        https://github.com/Autodesk/LiveLink/blob/main/Source/Programs/MayaUnrealLiveLinkPlugin/Subjects/MLiveLinkPropSubject.cpp#L122-L129
+    """
+    matrix = om.MMatrix(matrix)
+    matrix = rotate_coordinates_system_for_unreal(matrix)
+    matrix = build_ue_transform_from_maya_transform(matrix)
+    if om.MGlobal.isYAxisUp():
+        rot = om.EulerRotation(0, 0, 90).asMatrix()
+        matrix *= rot
+    return matrix
 
 
 class ExtractLayout(plugin.MayaExtractorPlugin):
@@ -135,10 +149,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 "version": str(version_id)
             }
 
-            local_matrix = om.MMatrix(
-                cmds.xform(asset, query=True, matrix=True))
-            local_matrix = rotate_coordinates_system_for_unreal(local_matrix)
-            ue_matrix = build_ue_transform_from_maya_transform(local_matrix)
+            local_matrix = cmds.xform(asset, query=True, matrix=True)
+            ue_matrix = get_converted_matrix(local_matrix)
             json_element["transform_matrix"] = convert_matrix_to_4x4_list(ue_matrix)  # noqa
 
             json_element["basis"] = [
