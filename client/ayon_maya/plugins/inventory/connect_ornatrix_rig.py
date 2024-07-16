@@ -34,13 +34,18 @@ def connect_ornatrix_nodes(target_node: str, namespace: str):
         "MeshFromStrandsNode", "SurfaceCombNode"
     })
     for ox_node in ox_nodes:
-        if cmds.nodeType("GuidesFromMeshNode"):
-            cmds.connectAttr(f"{target_node}.outMesh", f"{ox_node}.inMesh")
-        elif cmds.nodeType("HairFromGuidesNode"):
-            cmds.connectAttr(f"{target_node}.outMesh", f"{ox_node}.distributionMesh")
-            cmds.connectAttr(f"{target_node}.worldMatrix[0]", f"{ox_node}.distributionMeshMatrix")
+        node_type = cmds.nodeType(ox_node)
+        if node_type == "GuidesFromMeshNode":
+            cmds.connectAttr(f"{target_node}.outMesh",
+                             f"{ox_node}.inMesh")
+        elif node_type == "HairFromGuidesNode":
+            cmds.connectAttr(f"{target_node}.outMesh",
+                             f"{ox_node}.distributionMesh")
+            cmds.connectAttr(f"{target_node}.worldMatrix[0]",
+                             f"{ox_node}.distributionMeshMatrix")
         else:
-            cmds.connectAttr(f"{target_node}.outMesh", f"{ox_node}.distributionMesh")
+            cmds.connectAttr(f"{target_node}.outMesh",
+                             f"{ox_node}.distributionMesh")
 
 
 class ConnectOrnatrixRig(InventoryAction):
