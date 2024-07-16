@@ -109,6 +109,8 @@ class CreateAssModel(BasicCreatorModel):
     maskColor_manager: bool = SettingsField(title="Mask Color Manager")
     maskOperator: bool = SettingsField(title="Mask Operator")
     maskImager: bool = SettingsField(title="Mask Imager")
+    boundingBox: bool = SettingsField(title="Export Bounding Box")
+    compressed: bool = SettingsField(title="Use gzip Compression (.ass.gz)")
 
 
 class CreateReviewModel(BasicCreatorModel):
@@ -357,7 +359,9 @@ DEFAULT_CREATORS_SETTINGS = {
         "maskFilter": False,
         "maskColor_manager": False,
         "maskOperator": False,
-        "maskImager": False
+        "maskImager": False,
+        "boundingBox": True,
+        "compressed": False
     },
     "CreateAssembly": {
         "enabled": True,

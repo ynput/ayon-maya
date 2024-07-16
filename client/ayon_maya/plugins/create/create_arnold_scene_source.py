@@ -19,6 +19,11 @@ class CreateArnoldSceneSource(plugin.MayaCreator):
     icon = "cube"
     settings_name = "CreateAss"
 
+    # File Type Specific Options
+    compressed = False
+    boundingBox = True
+
+    # Export
     expandProcedurals = False
     motionBlur = True
     motionBlurKeys = 2
@@ -89,6 +94,12 @@ class CreateArnoldSceneSource(plugin.MayaCreator):
             BoolDef("maskImager",
                     label="Export Imagers",
                     default=self.maskImager),
+            BoolDef("boundingBox",
+                    label="Export Bounding Box",
+                    default=self.boundingBox),
+            BoolDef("compressed",
+                    label="Use gzip Compression (.ass.gz)",
+                    default=self.compressed),
         ])
 
         return defs
