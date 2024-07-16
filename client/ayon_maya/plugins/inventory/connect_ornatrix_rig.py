@@ -8,8 +8,13 @@ from ayon_core.pipeline import (
     InventoryAction,
     get_repres_contexts,
     get_representation_path,
+    get_current_project_name
 )
-from ayon_maya.api.lib import namespaced
+from ayon_maya.api.lib import get_container_members
+from ayon_api import (
+    get_representation_by_id,
+    get_representation_by_name
+)
 
 
 def get_node_name(path: str) -> str:
@@ -26,30 +31,41 @@ def get_node_name(path: str) -> str:
     return path.rsplit("|", 1)[-1].rsplit(":", 1)[-1]
 
 
-def connect_ornatrix_nodes(target_node: str, namespace: str):
-    node = cmds.listRelatives(f"{namespace}:*", children=True)
-    node_shape = cmds.listRelatives(node, shapes=True)
-    ox_nodes = cmds.ls(cmds.listConnections(node_shape, destination=True) or [], type={
-        "HairFromGuidesNode", "GuidesFromMeshNode",
-        "MeshFromStrandsNode", "SurfaceCombNode"
-    })
-    for ox_node in ox_nodes:
-        node_type = cmds.nodeType(ox_node)
-        if node_type == "GuidesFromMeshNode":
-            cmds.connectAttr(f"{target_node}.outMesh",
-                             f"{ox_node}.inMesh")
-        elif node_type == "HairFromGuidesNode":
-            cmds.connectAttr(f"{target_node}.outMesh",
-                             f"{ox_node}.distributionMesh")
-            cmds.connectAttr(f"{target_node}.worldMatrix[0]",
-                             f"{ox_node}.distributionMeshMatrix")
-        else:
-            cmds.connectAttr(f"{target_node}.outMesh",
-                             f"{ox_node}.distributionMesh")
+def connect(src, dest):
+    """Connect attribute but ignore warnings on existing connections"""
+    if not cmds.isConnected(src, dest):
+        cmds.connectAttr(src, dest, force=True)
+
+
+def get_sibling_representation(project_name: str,
+                               representation_id: str,
+                               representation_name: str):
+    repre_entity = get_representation_by_id(project_name, representation_id,
+                                            fields={"versionId"})
+    version_id = repre_entity["versionId"]
+    return get_representation_by_name(
+        project_name, representation_name, version_id=version_id)
+
+
+def connect_mesh(source, target):
+    connect(f"{source}.worldMesh[0]", f"{target}.inMesh")
+    connect(f"{source}.worldMatrix[0]",
+            f"{target}.offsetParentMatrix")
+
+
+def get_transform(mesh: str) -> str:
+    return cmds.listRelatives(mesh,
+                              type="transform",
+                              parent=True,
+                              fullPath=True)[0]
 
 
 class ConnectOrnatrixRig(InventoryAction):
-    """Connect Ornatrix Rig with an animation or pointcache."""
+    """Connect Ornatrix Rig with an animation or pointcache.
+
+    Connect one animation or pointcache instance to one or multiple ornatrix
+    rig instances.
+    """
 
     label = "Connect Ornatrix Rig"
     icon = "link"
@@ -108,53 +124,62 @@ class ConnectOrnatrixRig(InventoryAction):
             )
             return
 
+        # Define a mapping to quickly search among the members
+        source_nodes = get_container_members(source_container)
+        source_nodes_by_name = {
+            get_node_name(node_path): node_path
+            for node_path in source_nodes
+        }
+
+        project_name = get_current_project_name()
         for container in ox_rig_containers:
-            rig_namespace = container["namespace"]
+            # Get relevant ornatrix rig .rigsettings representation path
             repre_id = container["representation"]
-            maya_file = get_representation_path(
-                repre_contexts_by_id[repre_id]["representation"]
-            )
-
-            # Get base filename without extension
-            # TODO: We should actually get the actual representation paths
-            #   through the parent version entity so that we get the
-            #   representation's paths supporting the template system instead
-            #   of assuming the files live next to the loaded rig file directly
-            # of the `.oxg.zip` and the `.rigsettings` instead of computing the
-            # relative paths
-            if maya_file.endswith(".oxg.zip"):
-                base = maya_file[:-len(".oxg.zip")]  # strip off multi-dot ext
-            else:
-                base = os.path.splitext(maya_file)[0]
-
-            settings_file = base + ".rigsettings"
+            settings_repre = get_sibling_representation(
+                project_name,
+                repre_id,
+                representation_name="rigsettings")
+            if not settings_repre:
+                continue
+            settings_file = get_representation_path(settings_repre)
             if not os.path.exists(settings_file):
                 continue
 
             with open(settings_file, "r") as fp:
-                source_nodes: List[Dict[str, Any]] = json.load(fp)
-            if not source_nodes:
+                rig_source_nodes: List[Dict[str, Any]] = json.load(fp)
+            if not rig_source_nodes:
                 self.log.warning(
                     f"No source nodes in the .rigsettings file "
                     f"to process: {settings_file}")
                 continue
 
-            with namespaced(":" + source_namespace,
-                            new=False, relative_names=True):
-                for node in source_nodes:
-                    node_name = get_node_name(node["node"])
-                    target_node = cmds.ls(node_name)
-                    if not target_node:
-                        self.log.warning(
-                            "No target node found for '%s' searching in "
-                            "namespace: %s", node_name, source_namespace)
-                        self.display_warning(
-                            "No target node found "
-                            "in \"animation\" or \"pointcache\"."
-                        )
-                        return
-                    connect_ornatrix_nodes(target_node, rig_namespace)
-                    # TODO: find the way to parent target_node to the transform node of the fur
+            rig_nodes = get_container_members(container)
+
+            # Find the node in the source
+            for node in rig_source_nodes:
+                node_name = get_node_name(node["node"])
+
+                # Find the source node we want to connect to the target rig
+                source_node = source_nodes_by_name.get(node_name)
+                if not source_node:
+                    self.log.warning(
+                        "No source node found for '%s' searching in "
+                        "namespace: %s", node_name, source_namespace)
+                    self.display_warning(
+                        "No source node found "
+                        "in \"animation\" or \"pointcache\"."
+                    )
+                    return
+
+                # Find matching target node
+                for target_node in rig_nodes:
+                    if get_node_name(target_node) != node_name:
+                        continue
+
+                    # Connect source mesh to target mesh
+                    self.log.info("Connecting mesh %s -> %s",
+                                  source_node, target_node)
+                    connect_mesh(source_node, target_node)
 
     def display_warning(self, message, show_cancel=False):
         """Show feedback to user.
