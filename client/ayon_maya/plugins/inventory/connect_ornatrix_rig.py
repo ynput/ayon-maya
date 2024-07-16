@@ -134,8 +134,6 @@ class ConnectOrnatrixRig(InventoryAction):
                     f"to process: {settings_file}")
                 continue
 
-            grooms_file = base + ".oxg.zip"
-
             with namespaced(":" + source_namespace,
                             new=False, relative_names=True):
                 for node in source_nodes:
@@ -151,6 +149,7 @@ class ConnectOrnatrixRig(InventoryAction):
                         )
                         return
                     connect_ornatrix_nodes(target_node, rig_namespace)
+                    # TODO: find the way to parent target_node to the transform node of the fur
 
     def display_warning(self, message, show_cancel=False):
         """Show feedback to user.
