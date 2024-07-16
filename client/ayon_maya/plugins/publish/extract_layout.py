@@ -37,24 +37,21 @@ def build_ue_transform_from_maya_transform(matrix: om.MMatrix) -> om.MMatrix:
 
     See: https://github.com/Autodesk/LiveLink/blob/98f230e7333aae5a70c281ddbfe13ac090692f86/Source/Programs/MayaUnrealLiveLinkPlugin/MayaUnrealLiveLinkUtils.cpp#L121-L139  # noqa
     """
-    maya_transform_mm = om.MMatrix(matrix)
-    convert_transform_mm = om.MMatrix()
+    matrix = convert_matrix_to_4x4_list(matrix)
+    convert_matrix = om.MMatrix()
     for i in range(4):
-        first_row = maya_transform_mm.getElement(i, 0)
-        second_row = maya_transform_mm.getElement(i, 1)
-        third_row = maya_transform_mm.getElement(i, 2)
-        fourth_row = maya_transform_mm.getElement(i, 3)
+        row = matrix[i]
         if i == 1:
-            convert_transform_mm.setElement(i, 0, -first_row)
-            convert_transform_mm.setElement(i, 1, second_row)
-            convert_transform_mm.setElement(i, 2, -third_row)
-            convert_transform_mm.setElement(i, 3, -fourth_row)
+            convert_matrix.setElement(i, 0, -row[0])
+            convert_matrix.setElement(i, 1, row[1])
+            convert_matrix.setElement(i, 2, -row[2])
+            convert_matrix.setElement(i, 3, -row[3])
         else:
-            convert_transform_mm.setElement(i, 0, first_row)
-            convert_transform_mm.setElement(i, 1, -second_row)
-            convert_transform_mm.setElement(i, 2, third_row)
-            convert_transform_mm.setElement(i, 3, fourth_row)
-    return convert_transform_mm
+            convert_matrix.setElement(i, 0, row[0])
+            convert_matrix.setElement(i, 1, -row[1])
+            convert_matrix.setElement(i, 2, row[2])
+            convert_matrix.setElement(i, 3, row[3])
+    return convert_matrix
 
 
 class ExtractLayout(plugin.MayaExtractorPlugin):
