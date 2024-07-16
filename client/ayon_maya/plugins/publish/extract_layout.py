@@ -32,6 +32,27 @@ def convert_matrix_to_4x4_list(
     return result
 
 
+def build_ue_transform_from_maya_transform(matrix: om.MMatrix) -> om.MMatrix:
+    maya_transform_mm = om.MMatrix(matrix)
+    convert_transform_mm = om.MMatrix()
+    for i in range(4):
+        first_row = maya_transform_mm.getElement(i, 0)
+        second_row = maya_transform_mm.getElement(i, 1)
+        third_row = maya_transform_mm.getElement(i, 2)
+        fourth_row = maya_transform_mm.getElement(i, 3)
+        if i == 1:
+            convert_transform_mm.setElement(i, 0, -first_row)
+            convert_transform_mm.setElement(i, 1, second_row)
+            convert_transform_mm.setElement(i, 2, -third_row)
+            convert_transform_mm.setElement(i, 3, -fourth_row)
+        else:
+            convert_transform_mm.setElement(i, 0, first_row)
+            convert_transform_mm.setElement(i, 1, -second_row)
+            convert_transform_mm.setElement(i, 2, third_row)
+            convert_transform_mm.setElement(i, 3, fourth_row)
+    return convert_transform_mm
+
+
 class ExtractLayout(plugin.MayaExtractorPlugin):
     """Extract a layout."""
 
@@ -101,29 +122,10 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 "version": str(version_id)
             }
 
-            row_length = 4
-            t_matrix_list = cmds.xform(asset, query=True, matrix=True)
-            maya_transform_mm = om.MMatrix(t_matrix_list)
-            convert_transform_mm = om.MMatrix()
-            for i in range(row_length):
-                first_row = maya_transform_mm.getElement(i, 0)
-                second_row = maya_transform_mm.getElement(i, 1)
-                third_row = maya_transform_mm.getElement(i, 2)
-                fourth_row = maya_transform_mm.getElement(i, 3)
-                if i == 1:
-                    convert_transform_mm.setElement(i, 0, -first_row)
-                    convert_transform_mm.setElement(i, 1, second_row)
-                    convert_transform_mm.setElement(i, 2, -third_row)
-                    convert_transform_mm.setElement(i, 3, -fourth_row)
-                else:
-                    convert_transform_mm.setElement(i, 0, first_row)
-                    convert_transform_mm.setElement(i, 1, -second_row)
-                    convert_transform_mm.setElement(i, 2, third_row)
-                    convert_transform_mm.setElement(i, 3, fourth_row)
-
-            json_element["transform_matrix"] = convert_matrix_to_4x4_list(
-                convert_transform_mm
-            )
+            local_matrix = om.MMatrix(
+                cmds.xform(asset, query=True, matrix=True))
+            ue_matrix = build_ue_transform_from_maya_transform(local_matrix)
+            json_element["transform_matrix"] = convert_matrix_to_4x4_list(ue_matrix)  # noqa
 
             json_element["basis"] = [
                 [1, 0, 0, 0],
