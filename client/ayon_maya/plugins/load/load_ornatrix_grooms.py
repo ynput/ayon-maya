@@ -29,7 +29,6 @@ class OxOrnatrixGrooms(plugin.Loader):
         # prevent loading the presets with the selected meshes
         cmds.select(deselect=True)
         hair_shape = cmds.OxLoadGroom(path=path)
-        nodes = [hair_shape]
 
         # Add the root to the group
         parents = list(lib.iter_parents(cmds.ls(hair_shape, long=True)[0]))
