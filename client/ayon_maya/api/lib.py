@@ -143,20 +143,6 @@ def maintained_selection():
             cmds.select(clear=True)
 
 
-@contextlib.contextmanager
-def maintained_transformation(transform):
-    """Maintain object transform during context
-
-    Args:
-        transform (OpenMaya.MFnTransform): object transfrom
-    """
-    original_transform = transform.transformation()
-    try:
-        yield
-    finally:
-        transform.setTransformation(original_transform)
-
-
 def reload_all_udim_tile_previews():
     """Regenerate all UDIM tile preview in texture file"""
     for texture_file in cmds.ls(type="file"):
