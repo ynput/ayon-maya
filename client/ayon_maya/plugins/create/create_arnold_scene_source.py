@@ -33,6 +33,7 @@ class CreateArnoldSceneSource(plugin.MayaCreator):
     maskFilter = False
     maskColor_manager = False
     maskOperator = False
+    maskImager = False
 
     def get_instance_attr_defs(self):
 
@@ -85,6 +86,9 @@ class CreateArnoldSceneSource(plugin.MayaCreator):
             BoolDef("maskColor_manager",
                     label="Export Color Managers",
                     default=self.maskColor_manager),
+            BoolDef("maskImager",
+                    label="Export Imagers",
+                    default=self.maskImager),
         ])
 
         return defs

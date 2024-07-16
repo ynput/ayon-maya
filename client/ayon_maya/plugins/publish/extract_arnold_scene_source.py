@@ -30,8 +30,11 @@ class ExtractArnoldSceneSource(plugin.MayaExtractorPlugin):
             "driver": arnold.AI_NODE_DRIVER,
             "filter": arnold.AI_NODE_FILTER,
             "color_manager": arnold.AI_NODE_COLOR_MANAGER,
-            "operator": arnold.AI_NODE_OPERATOR
+            "operator": arnold.AI_NODE_OPERATOR,
         }
+        if hasattr(arnold, "AI_IMAGER_OPERATOR"):
+            # Added in Arnold 6.1.0.0 with MtoA 4.1.0 (Oct. 2020)
+            node_types["imager"] = arnold.AI_NODE_IMAGER
 
         for key in node_types.keys():
             if instance.data.get("mask" + key.title()):
