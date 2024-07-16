@@ -63,8 +63,6 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 fields={"versionId", "context"}
             )
 
-            self.log.debug(representation)
-
             version_id = representation["versionId"]
             # TODO use product entity to get product type rather than
             #    data in representation 'context'
@@ -80,7 +78,6 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 "representation": str(representation_id),
                 "version": str(version_id)
             }
-
 
             row_length = 4
             t_matrix_list = cmds.xform(asset, query=True, matrix=True)
