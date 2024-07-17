@@ -10,25 +10,11 @@ from ayon_core.pipeline import (
     get_representation_path,
     get_current_project_name
 )
-from ayon_maya.api.lib import get_container_members
+from ayon_maya.api.lib import get_container_members, get_node_name
 from ayon_api import (
     get_representation_by_id,
     get_representation_by_name
 )
-
-
-def get_node_name(path: str) -> str:
-    """Return maya node name without namespace or parents
-
-    Examples:
-        >>> get_node_name("|grp|node")
-        "node"
-        >>> get_node_name("|foobar:grp|foobar:child")
-        "child"
-        >>> get_node_name("|foobar:grp|lala:bar|foobar:test:hello_world")
-        "hello_world"
-    """
-    return path.rsplit("|", 1)[-1].rsplit(":", 1)[-1]
 
 
 def connect(src, dest):

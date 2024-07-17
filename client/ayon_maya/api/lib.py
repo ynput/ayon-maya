@@ -492,6 +492,20 @@ def unique_namespace(namespace, format="%02d", prefix="", suffix=""):
         iteration += 1
 
 
+def get_node_name(path: str) -> str:
+    """Return maya node name without namespace or parents
+
+    Examples:
+        >>> get_node_name("|grp|node")
+        "node"
+        >>> get_node_name("|foobar:grp|foobar:child")
+        "child"
+        >>> get_node_name("|foobar:grp|lala:bar|foobar:test:hello_world")
+        "hello_world"
+    """
+    return path.rsplit("|", 1)[-1].rsplit(":", 1)[-1]
+
+
 def read(node):
     """Return user-defined attributes from `node`"""
 

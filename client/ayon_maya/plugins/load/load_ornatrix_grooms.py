@@ -9,20 +9,6 @@ from ayon_maya.api.plugin import get_load_color_for_product_type
 from maya import cmds
 
 
-def get_node_name(path: str) -> str:
-    """Return maya node name without namespace or parents
-
-    Examples:
-        >>> get_node_name("|grp|node")
-        "node"
-        >>> get_node_name("|foobar:grp|foobar:child")
-        "child"
-        >>> get_node_name("|foobar:grp|lala:bar|foobar:test:hello_world")
-        "hello_world"
-    """
-    return path.rsplit("|", 1)[-1].rsplit(":", 1)[-1]
-
-
 class OxOrnatrixGrooms(plugin.Loader):
     """Load Ornatrix Grooms"""
 
@@ -104,7 +90,7 @@ class OxOrnatrixGrooms(plugin.Loader):
             rigsettings: List[Dict[str, Any]] = json.load(f)
 
         # Assume only ever one node, get its nice name
-        name = get_node_name(rigsettings[0]["node"])
+        name = lib.get_node_name(rigsettings[0]["node"])
 
         for mesh in cmds.ls(nodes, type="mesh"):
             transform = cmds.listRelatives(mesh, parent=True, fullPath=True)[0]
