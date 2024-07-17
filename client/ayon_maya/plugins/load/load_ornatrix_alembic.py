@@ -86,7 +86,7 @@ class OxAlembicLoader(plugin.Loader):
 
     def update(self, container, context):
         path = self.filepath_from_context(context)
-        members = cmds.sets(container['objectName'], query=True)
+        members = lib.get_container_members(container)
         ox_nodes = cmds.ls(members, type="BakedHairNode", long=True)
         for node in ox_nodes:
             cmds.setAttr(f"{node}.sourceFilePath1", path, type="string")
