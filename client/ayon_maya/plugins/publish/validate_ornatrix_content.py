@@ -66,8 +66,13 @@ class ValidateOrnatrixContent(plugin.MayaInstancePlugin,
         return inspect.cleandoc("""
             ### Ornatrix content is invalid
 
-            Your oxrig instance does not adhere to the rules of a
+            Your oxrig instance does not adhere to the rules of an
             oxrig product type:
+
             - Must have the Ornatrix nodes connected to the shape
             of the mesh
+            - May only have members that have shapes.
+            
+            Using the *Select Invalid* action will select all nodes that do
+            not adhere to these rules.
         """)
