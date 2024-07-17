@@ -79,7 +79,7 @@ class OxOrnatrixGrooms(plugin.Loader):
     def rename_mesh(self, nodes, context, namespace):
         """Rename mesh based on node name in rigsettings file."""
 
-        # Get .cachesettings file
+        # Get .rigsettings file
         path = self.filepath_from_context(context)
         if path.endswith(".oxg.zip"):
             base = path[:-len(".oxg.zip")]  # strip off multi-dot ext
