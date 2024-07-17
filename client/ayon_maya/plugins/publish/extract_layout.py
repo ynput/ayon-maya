@@ -53,6 +53,7 @@ def convert_transformation_matrix(transform_mm: om.MMatrix, rotation: list) -> o
 
     return convert_transform.asMatrix()
 
+
 class ExtractLayout(plugin.MayaExtractorPlugin):
     """Extract a layout."""
 
