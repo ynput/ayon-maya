@@ -59,10 +59,7 @@ class OxAlembicLoader(plugin.Loader):
                 options=ox_import_options
             )
             nodes = cmds.ls(nodes)
-            shapes = cmds.ls(nodes, shapes=True)
-            ox_node = cmds.ls(nodes, type="BakedHairNode")
-            new_nodes = (list(set(nodes) - set(shapes) - set(ox_node)))
-        group_node = cmds.group(new_nodes, name=group_name)
+        group_node = cmds.group(nodes, name=group_name)
 
         settings = get_project_settings(project_name)
         product_type = context["product"]["productType"]
@@ -72,14 +69,14 @@ class OxAlembicLoader(plugin.Loader):
             cmds.setAttr(group_node + ".useOutlinerColor", 1)
             cmds.setAttr(group_node + ".outlinerColor", red, green, blue)
 
-        new_nodes.append(group_node)
+        nodes.append(group_node)
 
-        self[:] = new_nodes
+        self[:] = nodes
 
         return containerise(
             name=name,
             namespace=namespace,
-            nodes=new_nodes,
+            nodes=nodes,
             context=context,
             loader=self.__class__.__name__
         )
