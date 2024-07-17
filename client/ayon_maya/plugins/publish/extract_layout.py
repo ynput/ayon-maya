@@ -1,12 +1,57 @@
 import json
 import math
 import os
-
+from typing import List
 from ayon_api import get_representation_by_id
 from ayon_maya.api import plugin
 from maya import cmds
 from maya.api import OpenMaya as om
 
+
+def convert_matrix_to_4x4_list(
+        value) -> List[List[float]]:
+    """Convert matrix or flat list to 4x4 matrix list
+    Example:
+        >>> convert_matrix_to_4x4_list(om.MMatrix())
+        [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+        >>> convert_matrix_to_4x4_list(
+        ... [1, 0, 0, 0,
+        ...  0, 1, 0, 0,
+        ...  0, 0, 1, 0,
+        ...  0, 0, 0, 1]
+        ... )
+        [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+    """
+    result = []
+    value = list(value)
+    for i in range(0, len(value), 4):
+        result.append(list(value[i:i + 4]))
+    return result
+
+
+def convert_transformation_matrix(transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
+    """Convert matrix to list of transformation matrix for Unreal Engine import.
+
+    Args:
+        transform_mm (om.MMatrix): World Matrix for the asset
+        rotation (list): Rotations of the asset
+
+    Returns:
+        List[om.MMatrix]: List of transformation matrix of the asset
+    """
+    convert_transform = om.MTransformationMatrix(transform_mm)
+
+    convert_tanslation = convert_transform.translation(om.MSpace.kWorld)
+    convert_tanslation = om.MVector(convert_tanslation.x, convert_tanslation.z, -convert_tanslation.y)
+    convert_scale = convert_transform.scale(om.MSpace.kObject)
+    convert_transform.setTranslation(convert_tanslation, om.MSpace.kWorld)
+    converted_rotation = om.MEulerRotation(
+        math.radians(rotation[0]), math.radians(rotation[2]), math.radians(rotation[1])
+    )
+    convert_transform.setRotation(converted_rotation)
+    convert_transform.setScale([convert_scale[0], convert_scale[2], convert_scale[1]], om.MSpace.kObject)
+
+    return convert_transform.asMatrix()
 
 class ExtractLayout(plugin.MayaExtractorPlugin):
     """Extract a layout."""
@@ -83,28 +128,12 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             }
 
 
-            row_length = 4
-            t_matrix_list = cmds.xform(asset, query=True, matrix=True)
+            local_matrix = cmds.xform(asset, query=True, matrix=True)
+            local_rotation = cmds.xform(asset, query=True, rotation=True, euler=True)
 
-            transform_mm = om.MMatrix(t_matrix_list)
-            transform = om.MTransformationMatrix(transform_mm)
-
-            rot = cmds.xform(asset, query=True, rotation=True, euler=True)
-            t = transform.translation(om.MSpace.kWorld)
-            t = om.MVector(t.x, t.z, -t.y)
-            s = transform.scale(om.MSpace.kObject)
-            s = [s[0], s[2], s[1]]
-            r = transform.rotation()
-            transform.setTranslation(t, om.MSpace.kWorld)
-            new_rotation = om.MEulerRotation(math.radians(rot[0]), math.radians(rot[2]), math.radians(rot[1]))
-            transform.setRotation(new_rotation)
-            transform.setScale(s, om.MSpace.kObject)
-
-            t_matrix_list = list(transform.asMatrix())
-
-            t_matrix = []
-            for i in range(0, len(t_matrix_list), row_length):
-                t_matrix.append(t_matrix_list[i:i + row_length])
+            matrix = om.MMatrix(local_matrix)
+            matrix = convert_transformation_matrix(matrix, local_rotation)
+            t_matrix = convert_matrix_to_4x4_list(matrix)
 
             json_element["transform_matrix"] = [
                 list(row)
@@ -119,13 +148,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             ]
 
             basis_mm = om.MMatrix(basis_list)
-            basis = om.MTransformationMatrix(basis_mm)
-
-            b_matrix_list = list(basis.asMatrix())
-            b_matrix = []
-
-            for i in range(0, len(b_matrix_list), row_length):
-                b_matrix.append(b_matrix_list[i:i + row_length])
+            b_matrix = convert_matrix_to_4x4_list(basis_mm)
 
             json_element["basis"] = []
             for row in b_matrix:
