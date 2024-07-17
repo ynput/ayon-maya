@@ -60,7 +60,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
 
         # The rigsettings contains a list of {"node": node_path} entries.
         settings = []
-        for node in instance.data["ornatrix_nodes"]:
+        for node in instance.data["setMembers"]:
             settings.append({
                 "node": node
             })
@@ -91,7 +91,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
                           shader=False)
 
             # Export ornatrix_rig.oxg.zip
-            cmds.select(instance.data["ornatrix_nodes"], noExpand=True)
+            cmds.select(nodes, noExpand=True)
             cmds.OxSaveGroom(path=ox_groom_path, optional=True)
 
         # Ensure files can be stored
