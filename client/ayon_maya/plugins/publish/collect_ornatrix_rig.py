@@ -26,15 +26,13 @@ class CollectOxRig(plugin.MayaInstancePlugin):
 
         ornatrix_resources = []
         ornatrix_nodes_list = []
-        for node in ornatrix_nodes:
+
+        # Use `set` to avoid duplicate resource data
+        for node in set(ornatrix_nodes):
             # Get Yeti resources (textures)
             resources = self.get_texture_resources(node)
             ornatrix_resources.extend(resources)
-        # avoid duplicate dictionary data
-        instance.data["resources"] = [
-            i for n, i in enumerate(ornatrix_resources)
-            if i not in ornatrix_resources[n + 1:]
-        ]
+
         self.log.debug(instance.data["resources"])
         for node in ornatrix_nodes:
             ox_node_list = self.get_ox_nodes(node)
@@ -66,7 +64,9 @@ class CollectOxRig(plugin.MayaInstancePlugin):
             cmds.listConnections(node_shape, destination=True) or [],
             type=ORNATRIX_NODES)
 
-        ox_file_nodes = cmds.listConnections(ox_nodes, destination=False, type="file") or []
+        ox_file_nodes = cmds.listConnections(ox_nodes,
+                                             destination=False,
+                                             type="file") or []
         if not ox_file_nodes:
             return []
         for file_node in ox_file_nodes:
