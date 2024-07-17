@@ -36,13 +36,13 @@ class OxCacheLoader(plugin.Loader):
 
         path = self.filepath_from_context(context)
         settings = self.read_settings(path)
-        # read the fursettings
         nodes = []
         for setting in settings["nodes"]:
             nodes.extend(self.create_node(namespace, path, setting))
 
-        # Show dialog so the user can directly start working with the
-        # newly created nodes.
+        # Select the node and show dialog so the user can directly
+        # start working with the newly created nodes.
+        cmds.select(nodes)
         cmds.OxShowHairStackDialog()
 
         self[:] = nodes
@@ -70,6 +70,7 @@ class OxCacheLoader(plugin.Loader):
         for node in cmds.ls(nodes, type="HairFromGuidesNode"):
             cmds.setAttr(f"{node}.cacheFilePath", path, type="string")
 
+        cmds.select(nodes)
         # Update the representation
         cmds.setAttr(
             container["objectName"] + ".representation",
