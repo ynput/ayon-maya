@@ -264,11 +264,11 @@ class ReferenceLoader(plugin.ReferenceLoader):
         """Enable display handle and move select handle to object center"""
         cmds.setAttr(f"{group_name}.displayHandle", True)
         # get bounding box
-        # Bugfix: We force a refresh here because there is a
-        # reproducable case with Advanced Skeleton rig where the
-        # call to `exactWorldBoundingBox` directly after the
-        # reference without it breaks the behavior of the rigs
-        # making it appear as if parts of the mesh are static.
+        # Bugfix: We force a refresh here because there is a reproducable case
+        # with Advanced Skeleton rig where the call to `exactWorldBoundingBox`
+        # directly after the reference without it breaks the behavior of the
+        # rigs making it appear as if parts of the mesh are static.
+        # TODO: Preferably we have a better fix than requiring refresh on loads
         cmds.refresh()
         bbox = cmds.exactWorldBoundingBox(group_name)
         # get pivot position on world space
