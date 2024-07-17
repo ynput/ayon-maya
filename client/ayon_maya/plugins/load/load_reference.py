@@ -214,11 +214,11 @@ class ReferenceLoader(plugin.ReferenceLoader):
                         green,
                         blue
                     )
-
                 cmds.setAttr(
                     "{}.displayHandle".format(group_name), display_handle
                 )
                 # get bounding box
+                cmds.refresh()
                 bbox = cmds.exactWorldBoundingBox(group_name)
                 # get pivot position on world space
                 pivot = cmds.xform(group_name, q=True, sp=True, ws=True)
@@ -246,7 +246,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
                         group_name = root_nodes[0]
                     cmds.setAttr("{}.translate".format(group_name),
                                  *options["translate"])
-            return new_nodes
+            return
 
     def switch(self, container, context):
         self.update(container, context)
