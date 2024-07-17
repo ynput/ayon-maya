@@ -211,29 +211,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
                     'reference_loader', {}
                 ).get('display_handle', True)
                 if display_handle:
-                    cmds.setAttr(f"{group_name}.displayHandle", display_handle)
-                    # get bounding box
-                    # Bugfix: We force a refresh here because there is a
-                    # reproducable case with Advanced Skeleton rig where the
-                    # call to `exactWorldBoundingBox` directly after the
-                    # reference without it breaks the behavior of the rigs
-                    # making it appear as if parts of the mesh are static.
-                    cmds.refresh()
-                    bbox = cmds.exactWorldBoundingBox(group_name)
-                    # get pivot position on world space
-                    pivot = cmds.xform(group_name, q=True, sp=True, ws=True)
-                    # center of bounding box
-                    cx = (bbox[0] + bbox[3]) / 2
-                    cy = (bbox[1] + bbox[4]) / 2
-                    cz = (bbox[2] + bbox[5]) / 2
-                    # add pivot position to calculate offset
-                    cx = cx + pivot[0]
-                    cy = cy + pivot[1]
-                    cz = cz + pivot[2]
-                    # set selection handle offset to center of bounding box
-                    cmds.setAttr("{}.selectHandleX".format(group_name), cx)
-                    cmds.setAttr("{}.selectHandleY".format(group_name), cy)
-                    cmds.setAttr("{}.selectHandleZ".format(group_name), cz)
+                    self._set_display_handle(group_name)
 
             if product_type == "rig":
                 self._post_process_rig(namespace, context, options)
@@ -281,6 +259,32 @@ class ReferenceLoader(plugin.ReferenceLoader):
         else:
             self.log.warning("This version of Maya does not support locking of"
                              " transforms of cameras.")
+
+    def _set_display_handle(self, group_name: str):
+        """Enable display handle """
+        cmds.setAttr(f"{group_name}.displayHandle", True)
+        # get bounding box
+        # Bugfix: We force a refresh here because there is a
+        # reproducable case with Advanced Skeleton rig where the
+        # call to `exactWorldBoundingBox` directly after the
+        # reference without it breaks the behavior of the rigs
+        # making it appear as if parts of the mesh are static.
+        cmds.refresh()
+        bbox = cmds.exactWorldBoundingBox(group_name)
+        # get pivot position on world space
+        pivot = cmds.xform(group_name, q=True, sp=True, ws=True)
+        # center of bounding box
+        cx = (bbox[0] + bbox[3]) / 2
+        cy = (bbox[1] + bbox[4]) / 2
+        cz = (bbox[2] + bbox[5]) / 2
+        # add pivot position to calculate offset
+        cx += pivot[0]
+        cy += pivot[1]
+        cz += pivot[2]
+        # set selection handle offset to center of bounding box
+        cmds.setAttr(f"{group_name}.selectHandleX", cx)
+        cmds.setAttr(f"{group_name}.selectHandleY", cy)
+        cmds.setAttr(f"{group_name}.selectHandleZ", cz)
 
 
 class MayaUSDReferenceLoader(ReferenceLoader):
