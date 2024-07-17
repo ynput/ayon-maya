@@ -194,14 +194,6 @@ class ReferenceLoader(plugin.ReferenceLoader):
                         cmds.xform(group_name, zeroTransformPivots=True)
 
                 settings = get_project_settings(project_name)
-
-                display_handle = settings['maya']['load'].get(
-                    'reference_loader', {}
-                ).get('display_handle', True)
-                cmds.setAttr(
-                    "{}.displayHandle".format(group_name), display_handle
-                )
-
                 color = plugin.get_load_color_for_product_type(
                     product_type, settings
                 )
@@ -214,26 +206,30 @@ class ReferenceLoader(plugin.ReferenceLoader):
                         green,
                         blue
                     )
-                cmds.setAttr(
-                    "{}.displayHandle".format(group_name), display_handle
-                )
-                # get bounding box
-                cmds.refresh()
-                bbox = cmds.exactWorldBoundingBox(group_name)
-                # get pivot position on world space
-                pivot = cmds.xform(group_name, q=True, sp=True, ws=True)
-                # center of bounding box
-                cx = (bbox[0] + bbox[3]) / 2
-                cy = (bbox[1] + bbox[4]) / 2
-                cz = (bbox[2] + bbox[5]) / 2
-                # add pivot position to calculate offset
-                cx = cx + pivot[0]
-                cy = cy + pivot[1]
-                cz = cz + pivot[2]
-                # set selection handle offset to center of bounding box
-                cmds.setAttr("{}.selectHandleX".format(group_name), cx)
-                cmds.setAttr("{}.selectHandleY".format(group_name), cy)
-                cmds.setAttr("{}.selectHandleZ".format(group_name), cz)
+
+                display_handle = settings['maya']['load'].get(
+                    'reference_loader', {}
+                ).get('display_handle', True)
+                if display_handle:
+                    cmds.setAttr(f"{group_name}.displayHandle", display_handle)
+                    
+                    # get bounding box
+                    cmds.refresh()
+                    bbox = cmds.exactWorldBoundingBox(group_name)
+                    # get pivot position on world space
+                    pivot = cmds.xform(group_name, q=True, sp=True, ws=True)
+                    # center of bounding box
+                    cx = (bbox[0] + bbox[3]) / 2
+                    cy = (bbox[1] + bbox[4]) / 2
+                    cz = (bbox[2] + bbox[5]) / 2
+                    # add pivot position to calculate offset
+                    cx = cx + pivot[0]
+                    cy = cy + pivot[1]
+                    cz = cz + pivot[2]
+                    # set selection handle offset to center of bounding box
+                    cmds.setAttr("{}.selectHandleX".format(group_name), cx)
+                    cmds.setAttr("{}.selectHandleY".format(group_name), cy)
+                    cmds.setAttr("{}.selectHandleZ".format(group_name), cz)
 
             if product_type == "rig":
                 self._post_process_rig(namespace, context, options)
