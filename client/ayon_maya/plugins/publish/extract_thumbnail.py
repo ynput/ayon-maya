@@ -2,6 +2,8 @@ import glob
 import os
 import tempfile
 
+import pyblish.api
+
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 
