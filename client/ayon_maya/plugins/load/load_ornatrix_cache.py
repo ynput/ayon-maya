@@ -70,7 +70,6 @@ class OxCacheLoader(plugin.Loader):
         for node in cmds.ls(nodes, type="HairFromGuidesNode"):
             cmds.setAttr(f"{node}.cacheFilePath", path, type="string")
 
-        cmds.select(nodes)
         # Update the representation
         cmds.setAttr(
             container["objectName"] + ".representation",
