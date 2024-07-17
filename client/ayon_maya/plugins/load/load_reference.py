@@ -224,7 +224,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
                         group_name = root_nodes[0]
                     cmds.setAttr("{}.translate".format(group_name),
                                  *options["translate"])
-            return
+            return new_nodes
 
     def switch(self, container, context):
         self.update(container, context)
