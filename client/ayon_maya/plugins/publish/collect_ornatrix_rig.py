@@ -33,6 +33,7 @@ class CollectOxRig(plugin.MayaInstancePlugin):
             resources = self.get_texture_resources(node)
             ornatrix_resources.extend(resources)
 
+        instance.data["resources"] = ornatrix_resources
         self.log.debug(instance.data["resources"])
         for node in ornatrix_nodes:
             ox_node_list = self.get_ox_nodes(node)
