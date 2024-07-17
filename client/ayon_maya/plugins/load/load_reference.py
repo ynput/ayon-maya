@@ -212,8 +212,12 @@ class ReferenceLoader(plugin.ReferenceLoader):
                 ).get('display_handle', True)
                 if display_handle:
                     cmds.setAttr(f"{group_name}.displayHandle", display_handle)
-                    
                     # get bounding box
+                    # Bugfix: We force a refresh here because there is a
+                    # reproducable case with Advanced Skeleton rig where the
+                    # call to `exactWorldBoundingBox` directly after the
+                    # reference without it breaks the behavior of the rigs
+                    # making it appear as if parts of the mesh are static.
                     cmds.refresh()
                     bbox = cmds.exactWorldBoundingBox(group_name)
                     # get pivot position on world space
