@@ -42,7 +42,7 @@ class CollectOxRig(plugin.MayaInstancePlugin):
         instance.data["ornatrix_nodes"] = ornatrix_nodes_list
         self.log.debug(instance.data["ornatrix_nodes"])
 
-    def get_ox_nodes(self, node: str) -> List[Dict[str, Any]]:
+    def get_ox_nodes(self, node: str) -> List[str]:
         all_ox_nodes = []
         node_shape = cmds.listRelatives(node, shapes=True)
         if not node_shape:
