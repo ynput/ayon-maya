@@ -261,7 +261,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
                              " transforms of cameras.")
 
     def _set_display_handle(self, group_name: str):
-        """Enable display handle """
+        """Enable display handle and move select handle to object center"""
         cmds.setAttr(f"{group_name}.displayHandle", True)
         # get bounding box
         # Bugfix: We force a refresh here because there is a
