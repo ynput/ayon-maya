@@ -36,7 +36,7 @@ class ValidateOrnatrixContent(plugin.MayaInstancePlugin,
         nodes = instance.data["setMembers"]
         nodes_with_ornatrix = []
         for node in nodes:
-            node_shape = cmds.listRelatives(node, shapes=True)
+            node_shape = cmds.listRelatives(node, shapes=True, fullPath=True)
             if not node_shape:
                 invalid.append(node)
             ox_nodes = cmds.ls(cmds.listConnections(
