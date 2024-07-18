@@ -193,13 +193,21 @@ def vray_aov_list_enum():
     ]
 
 
-def redshift_engine_enum():
+def redshift_primary_gi_engine_enum():
     """Get Redshift engine type enumerator."""
     return [
         {"value": "0", "label": "None"},
-        {"value": "1", "label": "Photon Map"},
-        {"value": "2", "label": "Irradiance Cache"},
-        {"value": "3", "label": "Brute Force"}
+        {"value": "3", "label": "Irradiance Cache"},
+        {"value": "4", "label": "Brute Force"}
+    ]
+
+
+def redshift_secondary_gi_engine_enum():
+    """Get Redshift engine type enumerator."""
+    return [
+        {"value": "0", "label": "None"},
+        {"value": "2", "label": "Irradiance Point Cloud"},
+        {"value": "4", "label": "Brute Force"}
     ]
 
 
@@ -335,11 +343,11 @@ class RedshiftSettingsModel(BaseSettingsModel):
     # both engines are using the same enumerator,
     #   both were originally str because of JSON limitation.
     primary_gi_engine: str = SettingsField(
-        enum_resolver=redshift_engine_enum,
+        enum_resolver=redshift_primary_gi_engine_enum,
         title="Primary GI Engine"
     )
     secondary_gi_engine: str = SettingsField(
-        enum_resolver=redshift_engine_enum,
+        enum_resolver=redshift_secondary_gi_engine_enum,
         title="Secondary GI Engine"
     )
     image_format: str = SettingsField(
