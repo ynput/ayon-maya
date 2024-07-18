@@ -97,8 +97,8 @@ class CreateOxCache(plugin.MayaCreator):
         return inspect.cleandoc("""
             ### Ornatrix Cache
             
-            The Ornatrix cache creator allows you to cache a single Ornatrix
-            hair shape to an Ornatrix Alembic.
+            The Ornatrix cache creator allows you to cache Ornatrix
+            hair shapes to an Ornatrix Alembic.
             
             For more details, see the [AYON Maya Ornatrix Artist documentation](https://ayon.ynput.io/docs/addon_maya_ornatrix_artist/).
         """  # noqa
