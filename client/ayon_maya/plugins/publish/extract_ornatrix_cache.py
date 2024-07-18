@@ -17,17 +17,20 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
 
     def process(self, instance):
         cmds.loadPlugin("Ornatrix", quiet=True)
-        # Define extract output file path
+        dirname = self.staging_dir(instance)
+
         ox_nodes = cmds.ls(instance[:], shapes=True, long=True)
         ox_shape_nodes = cmds.ls(ox_nodes, type="HairShape")
         self.log.debug(
             f"Ornatrix HairShape nodes to extract: {ox_shape_nodes}")
-        dirname = self.staging_dir(instance)
-        # Start writing the files for snap shot
+
+        # Export the Alembic
         ox_abc_path = os.path.join(dirname, f"{instance.name}_ornatrix.abc")
         with lib.maintained_selection():
             cmds.select(ox_shape_nodes, replace=True, noExpand=True)
             self._extract(instance, ox_abc_path)
+
+        # Export the .cachesettings
         settings = instance.data["cachesettings"]
         self.log.debug("Writing metadata file")
         cachesettings_path = os.path.join(dirname, "ornatrix.cachesettings")
