@@ -26,9 +26,7 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
 
         # Export the Alembic
         ox_abc_path = os.path.join(dirname, f"{instance.name}_ornatrix.abc")
-        with lib.maintained_selection():
-            cmds.select(ox_shape_nodes, replace=True, noExpand=True)
-            self._extract(instance, ox_abc_path)
+        self._extract(instance, ox_shape_nodes, ox_abc_path)
 
         # Export the .cachesettings
         settings = instance.data["cachesettings"]
@@ -61,7 +59,7 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
 
         self.log.debug("Extracted {} to {}".format(instance, dirname))
 
-    def _extract(self, instance, filepath):
+    def _extract(self, instance, ox_shape_nodes, filepath):
         """Export Ornatrix Alembic by using `OxAlembicExport` command.
 
         Args:
@@ -74,6 +72,7 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
         frame_end = attr_values.get("frameEnd", frame_range["frameEnd"])
         return cmds.OxAlembicExport(
             filepath,
+            ox_shape_nodes,
             format=attr_values.get("format", 0),
             fromTime=frame_start,
             toTime=frame_end,
