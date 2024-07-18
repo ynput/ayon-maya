@@ -88,7 +88,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
                           type="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
                           preserveReferences=False,
                           constructionHistory=True,
-                          shader=False)
+                          shader=True)
 
             # Export ornatrix_rig.oxg.zip
             cmds.select(nodes, noExpand=True)
