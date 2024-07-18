@@ -1,3 +1,4 @@
+import inspect
 from ayon_maya.api import (
     lib,
     plugin
@@ -57,3 +58,14 @@ class CreateOxCache(plugin.MayaCreator):
         )
 
         return defs
+
+    def get_detail_description(self):
+        return inspect.cleandoc("""
+            ### Ornatrix Cache
+            
+            The Ornatrix cache creator allows you to cache a single Ornatrix
+            hair setup to an Ornatrix Alembic.
+            
+            For more details, see the [AYON Maya Ornatrix Artist documentation](https://ayon.ynput.io/docs/addon_maya_ornatrix_artist/).
+        """  # noqa
+        )
