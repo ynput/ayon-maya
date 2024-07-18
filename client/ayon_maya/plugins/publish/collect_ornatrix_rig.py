@@ -1,7 +1,6 @@
 import os
 from typing import List, Dict, Any
 import pyblish.api
-from ayon_core.pipeline.publish import KnownPublishError
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from maya import cmds
@@ -66,8 +65,8 @@ class CollectOxRig(plugin.MayaInstancePlugin):
                     continue
 
             if not files:
-                raise KnownPublishError(
-                    f"No texture found for: {texture}")
+                self.log.warning(f"No texture found for: {texture}")
+                continue
 
             item = {
                 "node": node,
