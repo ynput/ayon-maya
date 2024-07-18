@@ -70,18 +70,49 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
         frame_range = get_frame_range(instance.data["taskEntity"])
         frame_start = attr_values.get("frameStart", frame_range["frameStart"])
         frame_end = attr_values.get("frameEnd", frame_range["frameEnd"])
-        return cmds.OxAlembicExport(
-            filepath,
-            ox_shape_nodes,
+
+        options = dict(
             format=attr_values.get("format", 0),
             fromTime=frame_start,
             toTime=frame_end,
             step=attr_values.get("step", 1.0),
             renderVersion=attr_values.get("renderVersion", False),
             upDirection=attr_values.get("upDirection", 0),
+            # TODO: Expose these to settings
+            useWorldCoordinates=True,
+            exportSurfacePositions=True,
+            exportStrandData=True,
+            exportStrandIds=True,
+            exportStrandGroups=True,
+            exportWidths=True,
+            exportTextureCoordinates=True,
+            exportNormals=False,
             exportVelocities=attr_values.get("exportVelocities", False),
             velocityIntervalCenter=attr_values.get("velocityIntervalCenter",
                                                    0.0),
             velocityIntervalLength=attr_values.get("velocityIntervalLength",
                                                    0.5),
+            oneObjectPerFile=False,
+            unrealEngineExport=False,
+            exportEachStrandAsSeparateObject=False
         )
+        for key, value in options.items():
+            # Pass bool as int
+            if isinstance(value, bool):
+                options[key] = int(value)
+
+        options_str = ";".join(
+            f"{key}={value}" for key, value in options.items()
+        )
+        self.log.debug("Extracting Ornatrix Alembic with options: %s",
+                       options_str)
+        with lib.maintained_selection():
+            cmds.select(ox_shape_nodes, noExpand=True)
+            cmds.file(
+                filepath,
+                options=options_str,
+                type="Ornatrix Alembic",
+                exportSelected=True,
+                # preserveReferences=True,
+                force=True
+            )
