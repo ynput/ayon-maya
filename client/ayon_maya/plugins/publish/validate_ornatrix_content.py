@@ -15,8 +15,8 @@ ORNATRIX_NODES = {
 }
 
 
-class ValidateOrnatrixContent(plugin.MayaInstancePlugin,
-                              OptionalPyblishPluginMixin):
+class ValidateOrnatrixRigContent(plugin.MayaInstancePlugin,
+                                 OptionalPyblishPluginMixin):
     """Adheres to the content of 'oxrig' product type
 
     See `get_description` for more details.

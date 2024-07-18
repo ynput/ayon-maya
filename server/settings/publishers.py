@@ -704,7 +704,7 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate GLSL Plugin"
     )
-    ValidateOrnatrixContent: BasicValidateModel = SettingsField(
+    ValidateOrnatrixRigContent: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Ornatrix Content"
     )
@@ -1194,7 +1194,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": False,
         "active": True
     },
-    "ValidateOrnatrixContent": {
+    "ValidateOrnatrixRigContent": {
         "enabled": True,
         "optional": False,
         "active": True
