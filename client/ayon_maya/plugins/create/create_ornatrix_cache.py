@@ -52,8 +52,8 @@ class CreateOxCache(plugin.MayaCreator):
                           label="Velocity Interval Center",
                           default=0.0),
                 NumberDef("velocityIntervalLength",
-                        label="Velocity Interval Length",
-                        default=0.5)
+                          label="Velocity Interval Length",
+                          default=0.5)
             ]
         )
 
