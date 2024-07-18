@@ -228,7 +228,7 @@ class RenderSettings(object):
         self._set_global_output_settings()
         cmds.setAttr("redshiftOptions.imageFormat", img_ext)
         cmds.setAttr("redshiftOptions.exrMultipart",
-                     redshift_render_presets["multilayer_exr"])
+                     redshift_render_presets.get("multipart_exr", True))
         cmds.setAttr("redshiftOptions.exrForceMultilayer",
                      redshift_render_presets["force_combine"])
         cmds.setAttr("defaultResolution.width", width)

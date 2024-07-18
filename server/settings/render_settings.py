@@ -346,7 +346,7 @@ class RedshiftSettingsModel(BaseSettingsModel):
         enum_resolver=redshift_image_output_enum,
         title="Output Image Format"
     )
-    multilayer_exr: bool = SettingsField(title="Multilayer (exr)")
+    multipart_exr: bool = SettingsField(title="Multipart (exr)")
     force_combine: bool = SettingsField(title="Force combine beauty and AOVs")
     aov_list: list[str] = SettingsField(
         default_factory=list,
@@ -481,7 +481,7 @@ DEFAULT_RENDER_SETTINGS = {
         "primary_gi_engine": "0",
         "secondary_gi_engine": "0",
         "image_format": "exr",
-        "multilayer_exr": True,
+        "multipart_exr": True,
         "force_combine": True,
         "aov_list": [],
         "additional_options": []
