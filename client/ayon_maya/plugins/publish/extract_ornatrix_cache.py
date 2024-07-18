@@ -66,32 +66,30 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
             instance (pyblish.api.Instance): Publish instance.
             filepath (str): output filepath
         """
-        attr_values = instance.data["creator_attributes"]
+        attrs = instance.data["creator_attributes"]
         frame_range = get_frame_range(instance.data["taskEntity"])
-        frame_start = attr_values.get("frameStart", frame_range["frameStart"])
-        frame_end = attr_values.get("frameEnd", frame_range["frameEnd"])
+        frame_start = attrs.get("frameStart", frame_range["frameStart"])
+        frame_end = attrs.get("frameEnd", frame_range["frameEnd"])
 
         options = dict(
-            format=attr_values.get("format", 0),
+            format=attrs.get("format", 0),
             fromTime=frame_start,
             toTime=frame_end,
-            step=attr_values.get("step", 1.0),
-            renderVersion=attr_values.get("renderVersion", False),
-            upDirection=attr_values.get("upDirection", 0),
-            # TODO: Expose these to settings
-            useWorldCoordinates=True,
-            exportSurfacePositions=True,
-            exportStrandData=True,
-            exportStrandIds=True,
-            exportStrandGroups=True,
-            exportWidths=True,
-            exportTextureCoordinates=True,
-            exportNormals=False,
-            exportVelocities=attr_values.get("exportVelocities", False),
-            velocityIntervalCenter=attr_values.get("velocityIntervalCenter",
-                                                   0.0),
-            velocityIntervalLength=attr_values.get("velocityIntervalLength",
-                                                   0.5),
+            step=attrs.get("step", 1.0),
+            renderVersion=attrs.get("renderVersion", False),
+            upDirection=attrs.get("upDirection", 0),
+            useWorldCoordinates=attrs.get("useWorldCoordinates", True),
+            exportSurfacePositions=attrs.get("exportSurfacePositions", True),
+            exportStrandData=attrs.get("exportStrandData", True),
+            exportStrandIds=attrs.get("exportStrandIds", True),
+            exportStrandGroups=attrs.get("exportStrandGroups", True),
+            exportWidths=attrs.get("exportWidths", True),
+            exportTextureCoordinates=attrs.get("exportTextureCoordinates",
+                                               True),
+            exportNormals=attrs.get("exportNormals", False),
+            exportVelocities=attrs.get("exportVelocities", False),
+            velocityIntervalCenter=attrs.get("velocityIntervalCenter", 0.0),
+            velocityIntervalLength=attrs.get("velocityIntervalLength", 0.5),
             oneObjectPerFile=False,
             unrealEngineExport=False,
             exportEachStrandAsSeparateObject=False
