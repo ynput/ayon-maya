@@ -54,9 +54,10 @@ class CreateOxCache(plugin.MayaCreator):
                 BoolDef("exportSurfacePositions",
                         label="Export Surface Positions",
                         default=False),
-                BoolDef("oneObjectPerFile",
-                        label="One Object Per File",
-                        default=False),
+                # TODO: Should we support this?
+                # BoolDef("oneObjectPerFile",
+                #         label="One Object Per File",
+                #         default=False),
                 BoolDef("exportStrandIds",
                         label="Export Strand Ids",
                         default=True),
