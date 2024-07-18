@@ -113,6 +113,5 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
                 options=options_str,
                 type="Ornatrix Alembic",
                 exportSelected=True,
-                # preserveReferences=True,
                 force=True
             )
