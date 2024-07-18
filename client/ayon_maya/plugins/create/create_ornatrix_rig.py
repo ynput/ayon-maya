@@ -22,7 +22,8 @@ class CreateOxRig(plugin.MayaCreator):
             
             The Ornatrix Rig instance object set should include a single mesh
             that contains the connected Ornatrix hairs, usually the `HairShape`
-            with the `EditGuidesShape`.
+            with the `EditGuidesShape`. It supports only one `HairShape`. If
+            you need multiple, you will need to create an instance each.
             
             For more details, see the [AYON Maya Ornatrix Artist documentation](https://ayon.ynput.io/docs/addon_maya_ornatrix_artist/).
         """  # noqa

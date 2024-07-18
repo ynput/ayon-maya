@@ -64,7 +64,7 @@ class CreateOxCache(plugin.MayaCreator):
             ### Ornatrix Cache
             
             The Ornatrix cache creator allows you to cache a single Ornatrix
-            hair setup to an Ornatrix Alembic.
+            hair shape to an Ornatrix Alembic.
             
             For more details, see the [AYON Maya Ornatrix Artist documentation](https://ayon.ynput.io/docs/addon_maya_ornatrix_artist/).
         """  # noqa
