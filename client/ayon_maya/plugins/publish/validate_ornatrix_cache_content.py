@@ -35,22 +35,6 @@ class ValidateOrnatrixCacheContent(plugin.MayaInstancePlugin,
             cls.log.warning("No Ornatrix Hair shapes found to cache from.")
             invalid.append(nodes)
 
-        if len(ox_hair_shapes) > 1:
-            # For artist-friendliness we'll report the parent transform as
-            # the invalid node because artists don't usually like dealing with
-            # the shapes directly
-            transforms = cmds.listRelatives(ox_hair_shapes,
-                                            parent=True,
-                                            fullPath=True)
-            transforms = cmds.ls(transforms)  # use the short unique names
-            names = "\n".join(f"- {name}" for name in transforms)
-            cls.log.warning(
-                "More than one Ornatrix Hair shapes found to cache "
-                "from. Only one is supported per Ornatrix cache. "
-                f"Found:\n{names}"
-            )
-            invalid.extend(transforms)
-
         return invalid
 
     def process(self, instance):
@@ -74,7 +58,7 @@ class ValidateOrnatrixCacheContent(plugin.MayaInstancePlugin,
             Your oxrig or oxcache instance does not adhere to the rules of an
             oxcache product type:
 
-            - Must have a single Ornatrix `HairShape` node to cache.
+            - Must have a Ornatrix `HairShape` nodes to cache.
 
             Using the *Select Invalid* action will select all nodes that do
             not adhere to these rules.
