@@ -13,7 +13,7 @@ class OxRigLoader(plugin.ReferenceLoader):
     representations = {"ma"}
 
     label = "Load Ornatrix Rig"
-    order = -9
+    order = -11
     icon = "code-fork"
     color = "orange"
 
