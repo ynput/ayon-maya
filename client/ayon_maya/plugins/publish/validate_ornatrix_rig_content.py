@@ -25,7 +25,7 @@ class ValidateOrnatrixRigContent(plugin.MayaInstancePlugin,
 
     order = ValidateContentsOrder
     families = ["oxrig"]
-    label = "Validate Ornatrix Content"
+    label = "Validate Ornatrix Rig Content"
     actions = [ayon_maya.api.action.SelectInvalidAction]
 
     optional = False
@@ -55,8 +55,8 @@ class ValidateOrnatrixRigContent(plugin.MayaInstancePlugin,
 
         if invalid:
             raise PublishValidationError(
-                title="Ornatrix content is invalid",
-                message="Ornatrix content is invalid. "
+                title="Ornatrix rig content is invalid",
+                message="Ornatrix rig content is invalid. "
                         "See log for more details.",
                 description=self.get_description()
             )

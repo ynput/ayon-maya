@@ -706,7 +706,11 @@ class PublishersModel(BaseSettingsModel):
     )
     ValidateOrnatrixRigContent: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
-        title="Validate Ornatrix Content"
+        title="Validate Ornatrix Rig Content"
+    )
+    ValidateOrnatrixCacheContent: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Ornatrix Cache Content"
     )
     ValidateRenderImageRule: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -1195,6 +1199,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "active": True
     },
     "ValidateOrnatrixRigContent": {
+        "enabled": True,
+        "optional": False,
+        "active": True
+    },
+    "ValidateOrnatrixCacheContent": {
         "enabled": True,
         "optional": False,
         "active": True
