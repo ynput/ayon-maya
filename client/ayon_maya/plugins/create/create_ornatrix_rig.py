@@ -8,3 +8,4 @@ class CreateOxRig(plugin.MayaCreator):
     label = "Ornatrix Rig"
     product_type = "oxrig"
     icon = "usb"
+    description = "Ornatrix Rig"

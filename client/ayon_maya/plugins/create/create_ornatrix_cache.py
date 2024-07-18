@@ -12,6 +12,7 @@ class CreateOxCache(plugin.MayaCreator):
     label = "Ornatrix Cache"
     product_type = "oxcache"
     icon = "pagelines"
+    description = "Ornatrix Cache"
 
     def get_instance_attr_defs(self):
 
