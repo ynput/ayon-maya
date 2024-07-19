@@ -7,9 +7,7 @@ from maya import cmds, mel
 
 
 class CollectReview(plugin.MayaInstancePlugin):
-    """Collect Review data
-
-    """
+    """Collect Review data"""
 
     order = pyblish.api.CollectorOrder + 0.3
     label = 'Collect Review Data'
@@ -109,9 +107,6 @@ class CollectReview(plugin.MayaInstancePlugin):
             for key, value in instance.data["publish_attributes"].items():
                 data["publish_attributes"][key] = value
 
-            # The review instance must be active
-            cmds.setAttr(str(instance) + '.active', 1)
-
             instance.data['remove'] = True
 
         else:
@@ -145,8 +140,6 @@ class CollectReview(plugin.MayaInstancePlugin):
 
             # make ftrack publishable
             instance.data.setdefault("families", []).append('ftrack')
-
-            cmds.setAttr(str(instance) + '.active', 1)
 
             # Collect audio
             playback_slider = mel.eval('$tmpVar=$gPlayBackSlider')
