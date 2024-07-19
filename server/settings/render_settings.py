@@ -224,59 +224,58 @@ def redshift_image_output_enum():
 
 
 def redshift_aov_list_enum():
-    """Return enumerator for Vray AOVs.
+    """Return enumerator for Redshift AOVs.
 
-        Note: Key is value, Value in this case is Label. This
-            was taken from v3 settings.
-        """
+    *Tested in Redshift 3.6.03
+    """
     return [
-        {"value": "empty", "label": "< none >"},
-        {"value": "AO", "label": "Ambient Occlusion"},
+        {"value": "Ambient Occlusion", "label": "Ambient Occlusion"},
         {"value": "Background", "label": "Background"},
         {"value": "Beauty", "label": "Beauty"},
-        {"value": "BumpNormals", "label": "Bump Normals"},
+        {"value": "Bump Normals", "label": "Bump Normals"},
         {"value": "Caustics", "label": "Caustics"},
-        {"value": "CausticsRaw", "label": "Caustics Raw"},
+        {"value": "Caustics Raw", "label": "Caustics Raw"},
         {"value": "Cryptomatte", "label": "Cryptomatte"},
         {"value": "Custom", "label": "Custom"},
-        {"value": "Z", "label": "Depth"},
-        {"value": "DiffuseFilter", "label": "Diffuse Filter"},
-        {"value": "DiffuseLighting", "label": "Diffuse Lighting"},
-        {"value": "DiffuseLightingRaw", "label": "Diffuse Lighting Raw"},
+        {"value": "Depth", "label": "Depth"},
+        {"value": "Diffuse Filter", "label": "Diffuse Filter"},
+        {"value": "Diffuse Lighting", "label": "Diffuse Lighting"},
+        {"value": "Diffuse Lighting Raw", "label": "Diffuse Lighting Raw"},
         {"value": "Emission", "label": "Emission"},
-        {"value": "GI", "label": "Global Illumination"},
-        {"value": "GIRaw", "label": "Global Illumination Raw"},
+        {"value": "Global Illumination", "label": "Global Illumination"},
+        {"value": "Global Illumination Raw",
+         "label": "Global Illumination Raw"},
         {"value": "Matte", "label": "Matte"},
-        {"value": "MotionVectors", "label": "Ambient Occlusion"},
-        {"value": "N", "label": "Normals"},
-        {"value": "ID", "label": "ObjectID"},
-        {"value": "ObjectBumpNormal", "label": "Object-Space Bump Normals"},
-        {"value": "ObjectPosition", "label": "Object-Space Positions"},
-        {"value": "PuzzleMatte", "label": "Puzzle Matte"},
+        {"value": "Motion Vectors", "label": "Motion Vectors"},
+        {"value": "Normals", "label": "Normals"},
+        {"value": "ObjectID", "label": "ObjectID"},
+        {"value": "Object-Space Bump Normals",
+         "label": "Object-Space Bump Normals"},
+        {"value": "Object-Space Positions",
+         "label": "Object-Space Positions"},
+        {"value": "Puzzle Matte", "label": "Puzzle Matte"},
         {"value": "Reflections", "label": "Reflections"},
-        {"value": "ReflectionsFilter", "label": "Reflections Filter"},
-        {"value": "ReflectionsRaw", "label": "Reflections Raw"},
+        {"value": "Reflections Filter", "label": "Reflections Filter"},
+        {"value": "Reflections Raw", "label": "Reflections Raw"},
         {"value": "Refractions", "label": "Refractions"},
-        {"value": "RefractionsFilter", "label": "Refractions Filter"},
-        {"value": "RefractionsRaw", "label": "Refractions Filter"},
+        {"value": "Refractions Filter", "label": "Refractions Filter"},
+        {"value": "Refractions Raw", "label": "Refractions Raw"},
         {"value": "Shadows", "label": "Shadows"},
-        {"value": "SpecularLighting", "label": "Specular Lighting"},
-        {"value": "SSS", "label": "Sub Surface Scatter"},
-        {"value": "SSSRaw", "label": "Sub Surface Scatter Raw"},
-        {
-            "value": "TotalDiffuseLightingRaw",
-            "label": "Total Diffuse Lighting Raw"
-        },
-        {
-            "value": "TotalTransLightingRaw",
-            "label": "Total Translucency Filter"
-        },
-        {"value": "TransTint", "label": "Translucency Filter"},
-        {"value": "TransGIRaw", "label": "Translucency Lighting Raw"},
-        {"value": "VolumeFogEmission", "label": "Volume Fog Emission"},
-        {"value": "VolumeFogTint", "label": "Volume Fog Tint"},
-        {"value": "VolumeLighting", "label": "Volume Lighting"},
-        {"value": "P", "label": "World Position"},
+        {"value": "Specular Lighting", "label": "Specular Lighting"},
+        {"value": "Sub Surface Scatter", "label": "Sub Surface Scatter"},
+        {"value": "Sub Surface Scatter Raw",
+         "label": "Sub Surface Scatter Raw"},
+        {"value": "Total Diffuse Lighting Raw",
+         "label": "Total Diffuse Lighting Raw"},
+        {"value": "Total Translucency Lighting Raw",
+         "label": "Total Translucency Lighting Raw"},
+        {"value": "Translucency Filter", "label": "Translucency Filter"},
+        {"value": "Translucency Lighting Raw",
+         "label": "Translucency Lighting Raw"},
+        {"value": "Volume Fog Emission", "label": "Volume Fog Emission"},
+        {"value": "Volume Fog Tint", "label": "Volume Fog Tint"},
+        {"value": "Volume Lighting", "label": "Volume Lighting"},
+        {"value": "World Position", "label": "World Position"},
     ]
 
 
