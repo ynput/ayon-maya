@@ -46,7 +46,7 @@ class CreateArnoldSceneSource(plugin.MayaCreator):
 
         defs.extend([
             BoolDef("expandProcedural",
-                    label="Expand Procedural",
+                    label="Expand Procedurals",
                     default=self.expandProcedurals),
             BoolDef("motionBlur",
                     label="Motion Blur",
