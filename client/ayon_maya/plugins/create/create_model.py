@@ -15,7 +15,7 @@ class CreateModel(plugin.MayaCreator):
     default_variants = ["Main", "Proxy", "_MD", "_HD", "_LD"]
 
     write_color_sets = False
-    write_face_sets = False
+    write_face_sets = True
 
     def get_instance_attr_defs(self):
 
