@@ -7,6 +7,7 @@ import sys
 import uuid
 import re
 
+from typing import List
 import json
 import logging
 import contextlib
@@ -4343,3 +4344,69 @@ def get_sequence(filepath, pattern="%04d"):
         os.path.join(source_dir, filename)
         for filename in collections[0]
     ]
+
+
+@contextlib.contextmanager
+def write_face_sets_for_materials(shapes):
+    all_write_face_sets = create_face_sets_for_materials(shapes)
+    try:
+        yield
+    finally:
+        for write_face_sets in all_write_face_sets:
+            cmds.delete(write_face_sets)
+
+
+def create_face_sets_for_materials(shapes: List[str],
+                                   suffix: str = "_FACE_SET"):
+    """Create an objectSet for each face assignment of the given shapes.
+
+    If multiple shapes share the same shader they are both added into the same
+    object set.
+
+    Arguments:
+        shapes (List[str]): The shapes to add into face sets for any component
+            assignments of shading engines.
+        suffix (str): The suffix to add to the face set object sets to be
+            created.
+
+    Returns:
+        List[str]: The created face sets (objectSet) with the faces as members.
+
+    """
+    shapes = cmds.ls(shapes, shapes=True, long=True)
+    all_render_sets = set()
+    for shape in shapes:
+        render_sets = cmds.listSets(object=shape, t=1, extendToShape=False)
+        if render_sets:
+            all_render_sets.update(render_sets)
+
+    # Maya has the tendency to return component members by their parent
+    # transform like `pCube1.f[0]` instead of the shape `pCube1Shape.f[0]`
+    # so we will also need to match against the transform
+    def get_parent(shape):
+        return cmds.listRelatives(shape, parent=True, fullPath=True)[0]
+
+    shapes_component_prefix = [f"{shape}" for shape in shapes]
+    shapes_component_prefix.extend(
+        f"{get_parent(shape)}." for shape in shapes
+    )
+    shapes_component_prefix = tuple(
+        shapes_component_prefix)  # to support .startswith
+
+    shader_to_components = defaultdict(list)
+    for shading_engine in cmds.ls(list(all_render_sets), type="shadingEngine"):
+        members = cmds.sets(shading_engine, query=True)
+        if not members:
+            continue
+
+        members = cmds.ls(members, long=True)
+        for member in members:
+            if member.startswith(shapes_component_prefix):
+                # Found face assignment to one of the members
+                shader_to_components[shading_engine].append(member)
+
+    created_sets: List[str] = []
+    for shading_engine, components in shader_to_components.items():
+        created_set = cmds.sets(components, name=f"{shading_engine}{suffix}")
+        created_sets.append(created_set)
+    return created_sets

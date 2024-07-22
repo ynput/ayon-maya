@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Extract model as Maya Scene."""
 import os
+import contextlib
 
 from ayon_core.pipeline import publish
 from ayon_maya.api import lib
@@ -76,9 +77,12 @@ class ExtractModel(plugin.MayaExtractorPlugin,
                                        pointsWire=4,
                                        pointsShaded=1,
                                        polygonObject=1):
-                with lib.shader(members,
-                                shadingEngine="initialShadingGroup"):
-                    with lib.maintained_selection():
+                with lib.maintained_selection():
+                    with contextlib.ExitStack() as stack:
+                        if instance.data.get("writeFaceSets", True):
+                            stack.enter_context(
+                                lib.write_face_sets_for_materials(members)
+                            )
                         cmds.select(members, noExpand=True)
                         cmds.file(path,
                                   force=True,
