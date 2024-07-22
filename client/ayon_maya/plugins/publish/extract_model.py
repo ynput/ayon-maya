@@ -69,32 +69,29 @@ class ExtractModel(plugin.MayaExtractorPlugin,
                           type=("mesh", "nurbsCurve"),
                           noIntermediate=True,
                           long=True)
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(lib.no_display_layers(instance))
+            stack.enter_context(
+                lib.displaySmoothness(
+                    members, divisionsU=0, divisionsV=0,
+                    pointsWire=4, pointsShaded=1, polygonObject=1))
+            stack.enter_context(lib.maintained_selection())
+            if instance.data.get("writeFaceSets", True):
+                stack.enter_context(
+                    lib.write_face_sets_for_materials(members)
+                )
+            cmds.select(members, noExpand=True)
+            cmds.file(path,
+                      force=True,
+                      typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
+                      exportSelected=True,
+                      preserveReferences=False,
+                      channels=False,
+                      constraints=False,
+                      expressions=False,
+                      constructionHistory=False)
 
-        with lib.no_display_layers(instance):
-            with lib.displaySmoothness(members,
-                                       divisionsU=0,
-                                       divisionsV=0,
-                                       pointsWire=4,
-                                       pointsShaded=1,
-                                       polygonObject=1):
-                with lib.maintained_selection():
-                    with contextlib.ExitStack() as stack:
-                        if instance.data.get("writeFaceSets", True):
-                            stack.enter_context(
-                                lib.write_face_sets_for_materials(members)
-                            )
-                        cmds.select(members, noExpand=True)
-                        cmds.file(path,
-                                  force=True,
-                                  typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
-                                  exportSelected=True,
-                                  preserveReferences=False,
-                                  channels=False,
-                                  constraints=False,
-                                  expressions=False,
-                                  constructionHistory=False)
-
-                        # Store reference for integration
+            # Store reference for integration
 
         if "representations" not in instance.data:
             instance.data["representations"] = []

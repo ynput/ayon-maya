@@ -10,7 +10,7 @@ from ayon_maya.api import plugin
 
 class ValidateNoFaceSets(plugin.MayaInstancePlugin,
                          OptionalPyblishPluginMixin):
-    """Ensure the nodes don't have a namespace"""
+    """Ensure the meshes don't have face sets """
 
     order = ValidateContentsOrder
     families = ['model']
@@ -40,11 +40,12 @@ class ValidateNoFaceSets(plugin.MayaInstancePlugin,
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError(
-                message="Write Face Sets Disabled",
-                title="No Write Face Sets found in mesh",
+                message="Write face sets is disabled",
+                title="Write face sets is disabled",
                 description=(
                     "## Write Face Sets Disabled\n"
                     "The mesh(es) require to have face sets to "
-                    "generate material with multiple shading entity."
+                    "generate material with multiple shading entities "
+                    "for the Unreal Engine export."
                 )
             )

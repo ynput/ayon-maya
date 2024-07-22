@@ -4348,12 +4348,17 @@ def get_sequence(filepath, pattern="%04d"):
 
 @contextlib.contextmanager
 def write_face_sets_for_materials(shapes):
+    """Write face sets for meterials during context
+
+    Args:
+        shapes (List[str]): The shapes to add into face sets for any component
+            assignments of shading engines.
+    """
     all_write_face_sets = create_face_sets_for_materials(shapes)
     try:
         yield
     finally:
-        for write_face_sets in all_write_face_sets:
-            cmds.delete(write_face_sets)
+        cmds.delete(all_write_face_sets)
 
 
 def create_face_sets_for_materials(shapes: List[str],
