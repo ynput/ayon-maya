@@ -844,10 +844,6 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ValidateNoAnimationModel,
         title="Validate No Animation",
     )
-    ValidateNoFaceSets: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate No Face Sets",
-    )
     ValidateNoNamespace: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate No Namespace",
@@ -1377,11 +1373,6 @@ DEFAULT_PUBLISH_SETTINGS = {
     "ValidateNoAnimation": {
         "enabled": False,
         "optional": True,
-        "active": True
-    },
-    "ValidateNoFaceSets": {
-        "enabled": False,
-        "optional": False,
         "active": True
     },
     "ValidateNoNamespace": {
