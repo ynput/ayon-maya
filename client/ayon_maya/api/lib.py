@@ -4348,7 +4348,8 @@ def get_sequence(filepath, pattern="%04d"):
 
 @contextlib.contextmanager
 def write_face_sets_for_materials(shapes):
-    """Write face sets for meterials during context
+    """Write Material per face sets in the meshes during context
+    Activated only when `writeFaceSets` alembic options enabled.
 
     Args:
         shapes (List[str]): The shapes to add into face sets for any component
