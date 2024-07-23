@@ -3206,8 +3206,8 @@ def update_content_on_context_change():
         "task": create_context.get_current_task_name(),
     }
     creator_attribute_values = {
-        "frameStart": task_entity["attrib"]["frameStart"],
-        "frameEnd": task_entity["attrib"]["frameEnd"],
+        "frameStart": float(task_entity["attrib"]["frameStart"]),
+        "frameEnd": float(task_entity["attrib"]["frameEnd"]),
     }
 
     has_changes = False
