@@ -46,7 +46,7 @@ def convert_transformation_matrix(transform_mm: om.MMatrix, rotation: list) -> o
     convert_scale = convert_transform.scale(om.MSpace.kObject)
     convert_transform.setTranslation(convert_tanslation, om.MSpace.kWorld)
     converted_rotation = om.MEulerRotation(
-        math.radians(rotation[0]), math.radians(rotation[2]), math.radians(rotation[1])
+       math.radians(rotation[0]), math.radians(rotation[2]),  math.radians(-180) + math.radians(rotation[1])
     )
     convert_transform.setRotation(converted_rotation)
     convert_transform.setScale([convert_scale[0], convert_scale[2], convert_scale[1]], om.MSpace.kObject)
@@ -144,7 +144,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             basis_list = [
                 1, 0, 0, 0,
                 0, 1, 0, 0,
-                0, 0, -1, 0,
+                0, 0, 1, 0,
                 0, 0, 0, 1
             ]
 
