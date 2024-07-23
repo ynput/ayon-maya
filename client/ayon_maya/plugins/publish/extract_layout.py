@@ -33,7 +33,7 @@ def convert_transformation_matrix(transform_mm: om.MMatrix, rotation: list) -> o
     """Convert matrix to list of transformation matrix for Unreal Engine import.
 
     Args:
-        transform_mm (om.MMatrix): World Matrix for the asset
+        transform_mm (om.MMatrix): Local Matrix for the asset
         rotation (list): Rotations of the asset
 
     Returns:
@@ -41,11 +41,14 @@ def convert_transformation_matrix(transform_mm: om.MMatrix, rotation: list) -> o
     """
     convert_transform = om.MTransformationMatrix(transform_mm)
 
-    convert_tanslation = convert_transform.translation(om.MSpace.kWorld)
-    convert_tanslation = om.MVector(convert_tanslation.x, convert_tanslation.z, -convert_tanslation.y)
+    convert_translation = convert_transform.translation(om.MSpace.kWorld)
+    convert_translation = om.MVector(convert_translation.x, convert_translation.z, -convert_translation.y)
     convert_scale = convert_transform.scale(om.MSpace.kObject)
-    convert_transform.setTranslation(convert_tanslation, om.MSpace.kWorld)
-    if math.radians(rotation[0]) <= 0 or math.radians(rotation[0]) == 0 and math.radians(rotation[1]) == 0:
+    convert_transform.setTranslation(convert_translation, om.MSpace.kWorld)
+    # If rotation x are less than 0, the z rotation would be flipped
+    # If rotation x are at 0 and rotation x are at 0, the z rotation would be flipped.
+    # If the rotation x ,y ,z have values, the rotations remains same value.
+    if rotation[0] <= 0 or (rotation[0] == 0 and rotation[1] == 0):
         converted_rotation = om.MEulerRotation(
             math.radians(rotation[0]), math.radians(rotation[2]),
             math.radians(-180) + math.radians(rotation[1])
