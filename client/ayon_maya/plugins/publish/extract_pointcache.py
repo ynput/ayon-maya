@@ -268,14 +268,8 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
         return instance[:], instance.data.get("setMembers")
 
     def get_members_shapes(self, instance):
-        members = instance.data("setMembers")
-        members = cmds.ls(members,
-                          dag=True,
-                          shapes=True,
-                          type=("mesh", "nurbsCurve"),
-                          noIntermediate=True,
-                          long=True)
-        return members
+        nodes = list(instance[:])
+        return cmds.ls(nodes, type=("mesh", "nurbsCurve"), long=True)
 
     @classmethod
     def get_attribute_defs(cls):
