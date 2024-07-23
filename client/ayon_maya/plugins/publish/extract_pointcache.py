@@ -18,7 +18,7 @@ from ayon_maya.api.lib import (
     iter_visible_nodes_in_range,
     maintained_selection,
     suspended_refresh,
-    write_face_sets_for_materials
+    force_shader_assignments_to_faces
 )
 from ayon_maya.api import plugin
 from maya import cmds
@@ -214,7 +214,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
             stack.enter_context(suspended_refresh(suspend=suspend))
             stack.enter_context(maintained_selection())
             if instance.data.get("writeFaceSets", True):
-                stack.enter_context(write_face_sets_for_materials(shapes))
+                stack.enter_context(force_shader_assignments_to_faces(shapes))
             cmds.select(nodes, noExpand=True)
             self.log.debug(
                 "Running `extract_alembic` with the keyword arguments: "

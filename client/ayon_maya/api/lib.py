@@ -4346,36 +4346,58 @@ def get_sequence(filepath, pattern="%04d"):
 
 
 @contextlib.contextmanager
-def write_face_sets_for_materials(shapes):
-    """Write material per face sets in the meshes during context
-    Activated only when `writeFaceSets` alembic options enabled.
+def force_shader_assignments_to_faces(shapes):
+    """ Replaces any non-face shader assignments with shader assignments
+    to the faces during the context.
 
     Args:
         shapes (List[str]): The shapes to add into face sets for any component
-            assignments of shading engines.
+            assignments of shading engine
     """
-    original_material_list = {}
+    shapes = cmds.ls(shapes, shapes=True, type="mesh", long=True)
+    if not shapes:
+       # Do nothing
+       yield
+       return
+
+    all_render_sets = set()
     for shape in shapes:
-        shading_engines = cmds.listConnections(shape, destination=True, type="shadingEngine") or []
-        original_material_list.update({shape: shading_engines})
+        render_sets = cmds.listSets(object=shape, t=1, extendToShape=False)
+        if render_sets:
+            all_render_sets.update(render_sets)
 
-        for shading_engine in shading_engines:
-            cmds.hyperShade(objects=shading_engine)
-            #store a list of the selected objects
-            object_with_mat = cmds.ls(selection=True)
-            #assign lambert1 (a material that should always exist) to selection
-            cmds.hyperShade(assign="lambert1")
-            #clear selection
-            cmds.select(deselect=True)
+    shapes_lookup = set(shapes)
+    original_assignments = {}
+    override_assignments = defaultdict(list)
+    for shading_engine in cmds.ls(list(all_render_sets), type="shadingEngine"):
+        members = cmds.sets(shading_engine, query=True)
+        if not members:
+            continue
 
-            for shape in object_with_mat:
-                cmds.select(shape +".f[*]",add=True)
-            cmds.hyperShade(assign=shading_engine)
+        members = cmds.ls(members, long=True)
+
+        # Include ALL originals, even those not among our shapes
+        original_assignments[shading_engine] = members
+
+        for member in members:
+            # Only consider shapes from our inputs
+            if member not in shapes_lookup:
+                continue
+
+            if "." not in member:
+                member = f"{member}.f[*]"
+            override_assignments[shading_engine].append(member )
+
     try:
+        # Apply overrides
+        for shading_engine, members in override_assignments.items():
+            cmds.sets(clear=shading_engine)
+            cmds.sets(members, forceElement=shading_engine)
+
         yield
 
     finally:
-            for original_shape, shading_engines in original_material_list.items():
-                cmds.select(original_shape)
-                for shading_engine in shading_engines:
-                    cmds.hyperShade(assign=shading_engine)
+        # Revert to original assignments
+        for shading_engine, members in original_assignments.items():
+            cmds.sets(clear=shading_engine)
+            cmds.sets(members, forceElement=shading_engine)
