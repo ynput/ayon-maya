@@ -7,7 +7,6 @@ import sys
 import uuid
 import re
 
-from typing import List
 import json
 import logging
 import contextlib
@@ -4348,7 +4347,7 @@ def get_sequence(filepath, pattern="%04d"):
 
 @contextlib.contextmanager
 def write_face_sets_for_materials(shapes):
-    """Write Material per face sets in the meshes during context
+    """Write material per face sets in the meshes during context
     Activated only when `writeFaceSets` alembic options enabled.
 
     Args:
