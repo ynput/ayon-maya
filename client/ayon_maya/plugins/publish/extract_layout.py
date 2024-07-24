@@ -47,12 +47,15 @@ def convert_transformation_matrix(transform_mm: om.MMatrix, rotation: list) -> o
     convert_transform.setTranslation(convert_translation, om.MSpace.kWorld)
     # If rotation x are less than 0, the z rotation would be flipped
     # If rotation x are at 0 and rotation x are at 0, the z rotation would be flipped.
+    # If rotation x, y, z equals to zero, the rotations remains same value.
+    # if rotation y has values, the z rotation would be same.
     # If the rotation x ,y ,z have values, the rotations remains same value.
-    if rotation[0] <= 0 or (rotation[0] == 0 and rotation[1] == 0):
-        converted_rotation = om.MEulerRotation(
-            math.radians(rotation[0]), math.radians(rotation[2]),
-            math.radians(-180) + math.radians(rotation[1])
-        )
+    if rotation[0] <= 0 or rotation[1] == 0 or (rotation[0] == 0 and rotation[1] == 0) or not (
+        rotation[0] == 0 and rotation[1] == 0 and rotation[2] == 0) or not (rotation[1] == 0):
+                converted_rotation = om.MEulerRotation(
+                    math.radians(rotation[0]), math.radians(rotation[2]),
+                    math.radians(-180) + math.radians(rotation[1])
+                )
     else:
         converted_rotation = om.MEulerRotation(
             math.radians(rotation[0]), math.radians(rotation[2]), math.radians(rotation[1])
