@@ -3199,15 +3199,15 @@ def update_content_on_context_change():
 
     host = registered_host()
     create_context = CreateContext(host)
-    folder_entity = get_current_task_entity(fields={"attrib"})
+    task_entity = get_current_task_entity(fields={"attrib"})
 
     instance_values = {
         "folderPath": create_context.get_current_folder_path(),
         "task": create_context.get_current_task_name(),
     }
     creator_attribute_values = {
-        "frameStart": folder_entity["attrib"]["frameStart"],
-        "frameEnd": folder_entity["attrib"]["frameEnd"],
+        "frameStart": float(task_entity["attrib"]["frameStart"]),
+        "frameEnd": float(task_entity["attrib"]["frameEnd"]),
     }
 
     has_changes = False
@@ -3231,7 +3231,7 @@ def update_content_on_context_change():
 
             # Update instance creator attribute value
             print(f"Updating {instance.product_name} {key} to: {value}")
-            instance[key] = value
+            creator_attributes[key] = value
             has_changes = True
 
     if has_changes:
