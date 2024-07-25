@@ -939,6 +939,10 @@ class PublishersModel(BaseSettingsModel):
             title="Validate Rig Controllers (Arnold Attributes)",
         )
     )
+    ValidateSingleAssembly: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Single Assembly",
+    )
     ValidateSkeletalMeshHierarchy: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Skeletal Mesh Top Node",
@@ -1472,6 +1476,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "active": True
     },
     "ValidateRigControllersArnoldAttributes": {
+        "enabled": True,
+        "optional": False,
+        "active": True
+    },
+    "ValidateSingleAssembly": {
         "enabled": True,
         "optional": False,
         "active": True
