@@ -98,16 +98,19 @@ class CreateAssModel(BasicCreatorModel):
     motionBlur: bool = SettingsField(title="Motion Blur")
     motionBlurKeys: int = SettingsField(2, title="Motion Blur Keys")
     motionBlurLength: float = SettingsField(0.5, title="Motion Blur Length")
-    maskOptions: bool = SettingsField(title="Mask Options")
-    maskCamera: bool = SettingsField(title="Mask Camera")
-    maskLight: bool = SettingsField(title="Mask Light")
-    maskShape: bool = SettingsField(title="Mask Shape")
-    maskShader: bool = SettingsField(title="Mask Shader")
-    maskOverride: bool = SettingsField(title="Mask Override")
-    maskDriver: bool = SettingsField(title="Mask Driver")
-    maskFilter: bool = SettingsField(title="Mask Filter")
-    maskColor_manager: bool = SettingsField(title="Mask Color Manager")
-    maskOperator: bool = SettingsField(title="Mask Operator")
+    maskOptions: bool = SettingsField(title="Export Options")
+    maskCamera: bool = SettingsField(title="Export Cameras")
+    maskLight: bool = SettingsField(title="Export Lights")
+    maskShape: bool = SettingsField(title="Export Shapes")
+    maskShader: bool = SettingsField(title="Export Shaders")
+    maskOverride: bool = SettingsField(title="Export Override Nodes")
+    maskDriver: bool = SettingsField(title="Export Drivers")
+    maskFilter: bool = SettingsField(title="Export Filters")
+    maskColor_manager: bool = SettingsField(title="Export Color Managers")
+    maskOperator: bool = SettingsField(title="Export Operators")
+    maskImager: bool = SettingsField(title="Export Imagers")
+    boundingBox: bool = SettingsField(title="Export Bounding Box")
+    compressed: bool = SettingsField(title="Use gzip Compression (.ass.gz)")
 
 
 class CreateReviewModel(BasicCreatorModel):
@@ -212,6 +215,14 @@ class CreatorsModel(BaseSettingsModel):
     CreateMayaScene: BasicCreatorModel = SettingsField(
         default_factory=BasicCreatorModel,
         title="Create Maya Scene"
+    )
+    CreateOxRig: BasicCreatorModel = SettingsField(
+        default_factory=BasicCreatorModel,
+        title="Create Ornatrix Rig"
+    )
+    CreateOxCache: BasicCreatorModel = SettingsField(
+        default_factory=BasicCreatorModel,
+        title="Create Ornatrix Cache"
     )
     CreateRenderSetup: BasicCreatorModel = SettingsField(
         default_factory=BasicCreatorModel,
@@ -355,7 +366,10 @@ DEFAULT_CREATORS_SETTINGS = {
         "maskDriver": False,
         "maskFilter": False,
         "maskColor_manager": False,
-        "maskOperator": False
+        "maskOperator": False,
+        "maskImager": False,
+        "boundingBox": True,
+        "compressed": False
     },
     "CreateAssembly": {
         "enabled": True,
@@ -377,6 +391,18 @@ DEFAULT_CREATORS_SETTINGS = {
     },
     "CreateMayaScene": {
         "enabled": True,
+        "default_variants": [
+            "Main"
+        ]
+    },
+    "CreateOxRig": {
+        "enabled": False,
+        "default_variants": [
+            "Main"
+        ]
+    },
+    "CreateOxCache": {
+        "enabled": False,
         "default_variants": [
             "Main"
         ]

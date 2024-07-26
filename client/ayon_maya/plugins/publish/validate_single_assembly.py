@@ -1,11 +1,13 @@
 from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
+    OptionalPyblishPluginMixin
 )
 from ayon_maya.api import plugin
 
 
-class ValidateSingleAssembly(plugin.MayaInstancePlugin):
+class ValidateSingleAssembly(plugin.MayaInstancePlugin,
+                             OptionalPyblishPluginMixin):
     """Ensure the content of the instance is grouped in a single hierarchy
 
     The instance must have a single root node containing all the content.
@@ -25,6 +27,9 @@ class ValidateSingleAssembly(plugin.MayaInstancePlugin):
     label = 'Single Assembly'
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
+
         from maya import cmds
 
         assemblies = cmds.ls(instance, assemblies=True)

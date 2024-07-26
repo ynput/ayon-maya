@@ -6,7 +6,9 @@ from ayon_maya.api import (
 )
 from ayon_core.lib import (
     NumberDef,
-    BoolDef
+    BoolDef,
+    UISeparatorDef,
+    UILabelDef
 )
 
 
@@ -19,6 +21,11 @@ class CreateArnoldSceneSource(plugin.MayaCreator):
     icon = "cube"
     settings_name = "CreateAss"
 
+    # File Type Specific Options
+    compressed = False
+    boundingBox = True
+
+    # Export
     expandProcedurals = False
     motionBlur = True
     motionBlurKeys = 2
@@ -33,15 +40,13 @@ class CreateArnoldSceneSource(plugin.MayaCreator):
     maskFilter = False
     maskColor_manager = False
     maskOperator = False
+    maskImager = False
 
     def get_instance_attr_defs(self):
 
         defs = lib.collect_animation_defs()
 
         defs.extend([
-            BoolDef("expandProcedural",
-                    label="Expand Procedural",
-                    default=self.expandProcedurals),
             BoolDef("motionBlur",
                     label="Motion Blur",
                     default=self.motionBlur),
@@ -53,38 +58,64 @@ class CreateArnoldSceneSource(plugin.MayaCreator):
                       label="Motion Blur Length",
                       decimals=3,
                       default=self.motionBlurLength),
+            BoolDef("expandProcedural",
+                    label="Expand Procedurals",
+                    default=self.expandProcedurals),
+            BoolDef("compressed",
+                    label="Use gzip Compression (.ass.gz)",
+                    default=self.compressed),
 
             # Masks
+            UISeparatorDef("maskSectionStart"),
+            UILabelDef("<b>Export</b>", key="maskHeaderLabel"),
             BoolDef("maskOptions",
-                    label="Export Options",
+                    label="Options",
+                    tooltip="Export Options",
                     default=self.maskOptions),
             BoolDef("maskCamera",
-                    label="Export Cameras",
+                    label="Cameras",
+                    tooltip="Export Cameras",
                     default=self.maskCamera),
             BoolDef("maskLight",
-                    label="Export Lights",
+                    label="Lights",
+                    tooltip="Export Lights",
                     default=self.maskLight),
             BoolDef("maskShape",
-                    label="Export Shapes",
+                    label="Shapes",
+                    tooltip="Export Shapes",
                     default=self.maskShape),
             BoolDef("maskShader",
-                    label="Export Shaders",
+                    label="Shaders",
+                    tooltip="Export Shaders",
                     default=self.maskShader),
             BoolDef("maskOverride",
-                    label="Export Override Nodes",
+                    label="Override Nodes",
+                    tooltip="Export Override Nodes",
                     default=self.maskOverride),
             BoolDef("maskDriver",
-                    label="Export Drivers",
+                    label="Drivers",
+                    tooltip="Export Drivers",
                     default=self.maskDriver),
             BoolDef("maskFilter",
-                    label="Export Filters",
+                    label="Filters",
+                    tooltip="Export Filters",
                     default=self.maskFilter),
             BoolDef("maskOperator",
-                    label="Export Operators",
+                    label="Operators",
+                    tooltip="Export Operators",
                     default=self.maskOperator),
             BoolDef("maskColor_manager",
-                    label="Export Color Managers",
+                    label="Color Managers",
+                    tooltip="Export Color Managers",
                     default=self.maskColor_manager),
+            BoolDef("maskImager",
+                    label="Imagers",
+                    tooltip="Export Imagers",
+                    default=self.maskImager),
+            BoolDef("boundingBox",
+                    label="Bounding Box",
+                    tooltip="Export Bounding Box",
+                    default=self.boundingBox),
         ])
 
         return defs
