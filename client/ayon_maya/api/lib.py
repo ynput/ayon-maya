@@ -11,6 +11,7 @@ import json
 import logging
 import contextlib
 import capture
+import clique
 from .exitstack import ExitStack
 from collections import OrderedDict, defaultdict
 from math import ceil
@@ -489,6 +490,20 @@ def unique_namespace(namespace, format="%02d", prefix="", suffix=""):
             return start + unique + end
 
         iteration += 1
+
+
+def get_node_name(path: str) -> str:
+    """Return maya node name without namespace or parents
+
+    Examples:
+        >>> get_node_name("|grp|node")
+        "node"
+        >>> get_node_name("|foobar:grp|foobar:child")
+        "child"
+        >>> get_node_name("|foobar:grp|lala:bar|foobar:test:hello_world")
+        "hello_world"
+    """
+    return path.rsplit("|", 1)[-1].rsplit(":", 1)[-1]
 
 
 def read(node):
@@ -3184,15 +3199,15 @@ def update_content_on_context_change():
 
     host = registered_host()
     create_context = CreateContext(host)
-    folder_entity = get_current_task_entity(fields={"attrib"})
+    task_entity = get_current_task_entity(fields={"attrib"})
 
     instance_values = {
         "folderPath": create_context.get_current_folder_path(),
         "task": create_context.get_current_task_name(),
     }
     creator_attribute_values = {
-        "frameStart": folder_entity["attrib"]["frameStart"],
-        "frameEnd": folder_entity["attrib"]["frameEnd"],
+        "frameStart": float(task_entity["attrib"]["frameStart"]),
+        "frameEnd": float(task_entity["attrib"]["frameEnd"]),
     }
 
     has_changes = False
@@ -3216,7 +3231,7 @@ def update_content_on_context_change():
 
             # Update instance creator attribute value
             print(f"Updating {instance.product_name} {key} to: {value}")
-            instance[key] = value
+            creator_attributes[key] = value
             has_changes = True
 
     if has_changes:
@@ -4242,3 +4257,89 @@ def get_node_index_under_parent(node: str) -> int:
         return cmds.listRelatives(parent,
                                   children=True,
                                   fullPath=True).index(node)
+
+
+def search_textures(filepath):
+    """Search all texture files on disk.
+
+    This also parses to full sequences for those with dynamic patterns
+    like <UDIM> and %04d in the filename.
+
+    Args:
+        filepath (str): The full path to the file, including any
+            dynamic patterns like <UDIM> or %04d
+
+    Returns:
+        list: The files found on disk
+
+    """
+    filename = os.path.basename(filepath)
+
+    # Collect full sequence if it matches a sequence pattern
+    if len(filename.split(".")) > 2:
+
+        # For UDIM based textures (tiles)
+        if "<UDIM>" in filename:
+            sequences = get_sequence(filepath,
+                                     pattern="<UDIM>")
+            if sequences:
+                return sequences
+
+        # Frame/time - Based textures (animated masks f.e)
+        elif "%04d" in filename:
+            sequences = get_sequence(filepath,
+                                     pattern="%04d")
+            if sequences:
+                return sequences
+
+    # Assuming it is a fixed name (single file)
+    if os.path.exists(filepath):
+        return [filepath]
+
+    return []
+
+
+def get_sequence(filepath, pattern="%04d"):
+    """Get sequence from filename.
+
+    This will only return files if they exist on disk as it tries
+    to collect the sequence using the filename pattern and searching
+    for them on disk.
+
+    Supports negative frame ranges like -001, 0000, 0001 and -0001,
+    0000, 0001.
+
+    Arguments:
+        filepath (str): The full path to filename containing the given
+        pattern.
+        pattern (str): The pattern to swap with the variable frame number.
+
+    Returns:
+        Optional[list[str]]: file sequence.
+
+    """
+    filename = os.path.basename(filepath)
+    re_pattern = re.escape(filename)
+    re_pattern = re_pattern.replace(re.escape(pattern), "-?[0-9]+")
+    source_dir = os.path.dirname(filepath)
+    files = [f for f in os.listdir(source_dir) if re.match(re_pattern, f)]
+    if not files:
+        # Files do not exist, this may not be a problem if e.g. the
+        # textures were relative paths and we're searching across
+        # multiple image search paths.
+        return
+
+    collections, _remainder = clique.assemble(
+        files,
+        patterns=[clique.PATTERNS["frames"]],
+        minimum_items=1)
+
+    if len(collections) > 1:
+        raise ValueError(
+            f"Multiple collections found for {collections}. "
+            "This is a bug.")
+
+    return [
+        os.path.join(source_dir, filename)
+        for filename in collections[0]
+    ]
