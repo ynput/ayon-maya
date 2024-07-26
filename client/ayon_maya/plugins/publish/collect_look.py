@@ -108,7 +108,11 @@ def get_look_attrs(node):
     if cmds.objectType(node, isAType="shape"):
         attrs = cmds.listAttr(node, changedSinceFileOpen=True) or []
         for attr in attrs:
-            if attr in SHAPE_ATTRS or attr.startswith('ai'):
+            if (
+                    attr in SHAPE_ATTRS       # maya shape render stats
+                    or attr.startswith('ai')  # arnold
+                    or attr.startswith("rs")  # redshift
+            ):
                 result.append(attr)
     return result
 
