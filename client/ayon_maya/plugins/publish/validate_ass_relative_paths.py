@@ -1,4 +1,5 @@
 import os
+import inspect
 import types
 
 import maya.cmds as cmds
@@ -77,7 +78,9 @@ class ValidateAssRelativePaths(plugin.MayaInstancePlugin,
             ).format(paths, procedural_search_path))
 
         if errors:
-            raise PublishValidationError("\n".join(errors))
+            errors = "\n".join(f"- {error}" for error in errors)
+            raise PublishValidationError(errors,
+                                         description=self.get_description())
 
     @classmethod
     def repair(cls, instance):
@@ -135,3 +138,26 @@ class ValidateAssRelativePaths(plugin.MayaInstancePlugin,
             return any(attr_val)
         else:
             return bool(attr_val)
+
+    def get_description(self):
+        return inspect.cleandoc("""
+            ### ASS must have relative texture paths
+            
+            The Arnold Render Settings must be set to:
+            
+            - Texture paths must be relative
+            - Procedural paths must be relative
+            - Texture search path must include the project roots
+            - Procedural search path must include the project roots
+        
+            By enforcing this, the textures can be remapped correctly depending
+            on where the project might be located on another OS or machine like
+            a renderfarm.
+            
+            The settings are in the `Render Settings > System > Search Paths`
+            section.
+            
+            ### Repair
+            
+            Using **Repair** will set the required render settings for you.
+        """)
