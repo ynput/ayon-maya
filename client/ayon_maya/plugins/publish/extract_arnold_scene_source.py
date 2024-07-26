@@ -32,6 +32,9 @@ class ExtractArnoldSceneSource(plugin.MayaExtractorPlugin):
             "color_manager": arnold.AI_NODE_COLOR_MANAGER,
             "operator": arnold.AI_NODE_OPERATOR
         }
+        if hasattr(arnold, "AI_NODE_IMAGER"):
+            # Added in Arnold 6.1.0.0 with MtoA 4.1.0 (Oct. 2020)
+            node_types["imager"] = arnold.AI_NODE_IMAGER
 
         for key in node_types.keys():
             if instance.data.get("mask" + key.title()):
@@ -60,7 +63,8 @@ class ExtractArnoldSceneSource(plugin.MayaExtractorPlugin):
             "asciiAss": self.asciiAss,
             "shadowLinks": True,
             "lightLinks": True,
-            "boundingBox": True,
+            "boundingBox": instance.data.get("boundingBox", True),
+            "compressed": instance.data.get("compressed", False),
             "expandProcedurals": instance.data.get("expandProcedurals", False),
             "camera": instance.data["camera"],
             "mask": mask
@@ -85,9 +89,12 @@ class ExtractArnoldSceneSource(plugin.MayaExtractorPlugin):
 
     def _post_process(self, instance, filenames, staging_dir, frame_start):
         nodes_by_id = self._nodes_by_id(instance[:])
+
+        ext = "ass.gz" if instance.data.get("compressed") else "ass"
+
         representation = {
             "name": "ass",
-            "ext": "ass",
+            "ext": ext,
             "files": filenames if len(filenames) > 1 else filenames[0],
             "stagingDir": staging_dir,
             "frameStart": frame_start
