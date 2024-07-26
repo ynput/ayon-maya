@@ -3678,7 +3678,7 @@ def iter_visible_nodes_in_range(nodes, start, end):
                                                                 None)
                     if dependency_visible is None:
                         mplug = get_visibility_mplug(dependency)
-                        dependency_visible = mplug.asBool(context)
+                        dependency_visible = mplug.asBool()
                         frame_visibilities[dependency] = dependency_visible
 
                     if not dependency_visible:
