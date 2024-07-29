@@ -3,6 +3,7 @@ import inspect
 import pyblish.api
 from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_core.pipeline.publish import PublishValidationError, RepairAction
+from ayon_core.pipeline.create.context import PublishAttributeValues
 from ayon_maya.api import plugin
 
 
@@ -38,6 +39,10 @@ class ValidateAlembicDefaultsPointcache(
 
         settings = self._get_settings(instance.context)
         attributes = self._get_publish_attributes(instance)
+
+        import pprint
+        self.log.info(pprint.pformat(settings))
+        self.log.info(pprint.pformat(attributes))
 
         invalid = {}
         for key, value in attributes.items():
@@ -101,8 +106,10 @@ class ValidateAlembicDefaultsPointcache(
 
         # Set the settings values on the create context then save to workfile.
         settings = cls._get_settings(instance.context)
-        attributes = cls._get_publish_attributes(create_instance)
-        for key in attributes:
+        attributes: PublishAttributeValues = (
+            cls._get_publish_attributes(create_instance)
+        )
+        for key in attributes.keys():
             if key not in settings:
                 # This may occur if attributes have changed over time and an
                 # existing instance has older legacy attributes that do not
