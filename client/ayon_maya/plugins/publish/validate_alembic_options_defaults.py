@@ -40,10 +40,6 @@ class ValidateAlembicDefaultsPointcache(
         settings = self._get_settings(instance.context)
         attributes = self._get_publish_attributes(instance)
 
-        import pprint
-        self.log.info(pprint.pformat(settings))
-        self.log.info(pprint.pformat(attributes))
-
         invalid = {}
         for key, value in attributes.items():
             if key not in settings:
