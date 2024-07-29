@@ -3671,7 +3671,7 @@ def iter_visible_nodes_in_range(nodes, start, end):
         # again if it was checked on this frame and also is a dependency
         # for another node
         frame_visibilities = {}
-        with dgcontext(mtime) as context:
+        with dgcontext(mtime):
             for node, dependencies in list(node_dependencies.items()):
                 for dependency in dependencies:
                     dependency_visible = frame_visibilities.get(dependency,
