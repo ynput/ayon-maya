@@ -11,6 +11,7 @@ import json
 import logging
 import contextlib
 import capture
+import clique
 from .exitstack import ExitStack
 from collections import OrderedDict, defaultdict
 from math import ceil
@@ -489,6 +490,20 @@ def unique_namespace(namespace, format="%02d", prefix="", suffix=""):
             return start + unique + end
 
         iteration += 1
+
+
+def get_node_name(path: str) -> str:
+    """Return maya node name without namespace or parents
+
+    Examples:
+        >>> get_node_name("|grp|node")
+        "node"
+        >>> get_node_name("|foobar:grp|foobar:child")
+        "child"
+        >>> get_node_name("|foobar:grp|lala:bar|foobar:test:hello_world")
+        "hello_world"
+    """
+    return path.rsplit("|", 1)[-1].rsplit(":", 1)[-1]
 
 
 def read(node):
@@ -3188,15 +3203,15 @@ def update_content_on_context_change():
 
     host = registered_host()
     create_context = CreateContext(host)
-    folder_entity = get_current_task_entity(fields={"attrib"})
+    task_entity = get_current_task_entity(fields={"attrib"})
 
     instance_values = {
         "folderPath": create_context.get_current_folder_path(),
         "task": create_context.get_current_task_name(),
     }
     creator_attribute_values = {
-        "frameStart": folder_entity["attrib"]["frameStart"],
-        "frameEnd": folder_entity["attrib"]["frameEnd"],
+        "frameStart": float(task_entity["attrib"]["frameStart"]),
+        "frameEnd": float(task_entity["attrib"]["frameEnd"]),
     }
 
     has_changes = False
@@ -3220,7 +3235,7 @@ def update_content_on_context_change():
 
             # Update instance creator attribute value
             print(f"Updating {instance.product_name} {key} to: {value}")
-            instance[key] = value
+            creator_attributes[key] = value
             has_changes = True
 
     if has_changes:
@@ -3660,14 +3675,14 @@ def iter_visible_nodes_in_range(nodes, start, end):
         # again if it was checked on this frame and also is a dependency
         # for another node
         frame_visibilities = {}
-        with dgcontext(mtime) as context:
+        with dgcontext(mtime):
             for node, dependencies in list(node_dependencies.items()):
                 for dependency in dependencies:
                     dependency_visible = frame_visibilities.get(dependency,
                                                                 None)
                     if dependency_visible is None:
                         mplug = get_visibility_mplug(dependency)
-                        dependency_visible = mplug.asBool(context)
+                        dependency_visible = mplug.asBool()
                         frame_visibilities[dependency] = dependency_visible
 
                     if not dependency_visible:
@@ -4097,7 +4112,8 @@ def get_reference_node(members, log=None):
 
         references.add(ref)
 
-    assert references, "No reference node found in container"
+    if not references:
+        return
 
     # Get highest reference node (least parents)
     highest = min(references,
@@ -4245,3 +4261,172 @@ def get_node_index_under_parent(node: str) -> int:
         return cmds.listRelatives(parent,
                                   children=True,
                                   fullPath=True).index(node)
+
+
+def search_textures(filepath):
+    """Search all texture files on disk.
+
+    This also parses to full sequences for those with dynamic patterns
+    like <UDIM> and %04d in the filename.
+
+    Args:
+        filepath (str): The full path to the file, including any
+            dynamic patterns like <UDIM> or %04d
+
+    Returns:
+        list: The files found on disk
+
+    """
+    filename = os.path.basename(filepath)
+
+    # Collect full sequence if it matches a sequence pattern
+    if len(filename.split(".")) > 2:
+
+        # For UDIM based textures (tiles)
+        if "<UDIM>" in filename:
+            sequences = get_sequence(filepath,
+                                     pattern="<UDIM>")
+            if sequences:
+                return sequences
+
+        # Frame/time - Based textures (animated masks f.e)
+        elif "%04d" in filename:
+            sequences = get_sequence(filepath,
+                                     pattern="%04d")
+            if sequences:
+                return sequences
+
+    # Assuming it is a fixed name (single file)
+    if os.path.exists(filepath):
+        return [filepath]
+
+    return []
+
+
+def get_sequence(filepath, pattern="%04d"):
+    """Get sequence from filename.
+
+    This will only return files if they exist on disk as it tries
+    to collect the sequence using the filename pattern and searching
+    for them on disk.
+
+    Supports negative frame ranges like -001, 0000, 0001 and -0001,
+    0000, 0001.
+
+    Arguments:
+        filepath (str): The full path to filename containing the given
+        pattern.
+        pattern (str): The pattern to swap with the variable frame number.
+
+    Returns:
+        Optional[list[str]]: file sequence.
+
+    """
+    filename = os.path.basename(filepath)
+    re_pattern = re.escape(filename)
+    re_pattern = re_pattern.replace(re.escape(pattern), "-?[0-9]+")
+    source_dir = os.path.dirname(filepath)
+    files = [f for f in os.listdir(source_dir) if re.match(re_pattern, f)]
+    if not files:
+        # Files do not exist, this may not be a problem if e.g. the
+        # textures were relative paths and we're searching across
+        # multiple image search paths.
+        return
+
+    collections, _remainder = clique.assemble(
+        files,
+        patterns=[clique.PATTERNS["frames"]],
+        minimum_items=1)
+
+    if len(collections) > 1:
+        raise ValueError(
+            f"Multiple collections found for {collections}. "
+            "This is a bug.")
+
+    return [
+        os.path.join(source_dir, filename)
+        for filename in collections[0]
+    ]
+
+
+@contextlib.contextmanager
+def force_shader_assignments_to_faces(shapes):
+    """Replaces any non-face shader assignments with shader assignments
+    to the faces during the context.
+
+    Args:
+        shapes (List[str]): The shapes to add into face sets for any component
+            assignments of shading engine
+    """
+    shapes = cmds.ls(shapes, shapes=True, type="mesh", long=True)
+    if not shapes:
+        # Do nothing
+        yield
+        return
+
+    all_render_sets = set()
+    for shape in shapes:
+        render_sets = cmds.listSets(object=shape, t=1, extendToShape=False)
+        if render_sets:
+            all_render_sets.update(render_sets)
+
+    shapes_lookup = set(shapes)
+
+    # Maya has the tendency to return component assignment using the transform
+    # name instead of the shape name, like `pCube1.f[1]` instead of
+    # `pCube1Shape.f[1]` so we need to take those into consideration as members
+    def get_parent(_shape: str) -> str:
+        return _shape.rsplit("|", 1)[0]
+
+    components_lookup = {f"{shape}." for shape in shapes}
+    components_lookup.update(f"{get_parent(shape)}." for shape in shapes)
+    components_lookup = tuple(components_lookup)  # support str.startswith
+
+    original_assignments = {}
+    override_assignments = defaultdict(list)
+    for shading_engine in cmds.ls(list(all_render_sets), type="shadingEngine"):
+        members = cmds.sets(shading_engine, query=True)
+        if not members:
+            continue
+
+        members = cmds.ls(members, long=True)
+
+        # Include ALL originals, even those not among our shapes
+        original_assignments[shading_engine] = members
+
+        has_conversions = False
+        for member in members:
+            # Only consider shapes from our inputs
+            if (
+                    member not in shapes_lookup
+                    and not member.startswith(components_lookup)
+            ):
+                continue
+
+            if "." not in member:
+                # Convert to face assignments
+                member = f"{member}.f[*]"
+                has_conversions = True
+            override_assignments[shading_engine].append(member)
+
+        if not has_conversions:
+            # We can skip this shading engine completely because
+            # we have nothing to override
+            original_assignments.pop(shading_engine, None)
+            override_assignments.pop(shading_engine, None)
+
+    try:
+        # Apply overrides
+        for shading_engine, override_members in override_assignments.items():
+            # We force remove the members because this allows maya to take
+            # out the mesh (also without the components)
+            cmds.sets(clear=shading_engine)
+            cmds.sets(override_members, forceElement=shading_engine)
+
+        yield
+
+    finally:
+        # Revert to original assignments
+        for shading_engine, original_members in original_assignments.items():
+            cmds.sets(clear=shading_engine)
+            cmds.sets(original_members, forceElement=shading_engine)

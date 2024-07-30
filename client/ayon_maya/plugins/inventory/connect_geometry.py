@@ -1,7 +1,7 @@
 from maya import cmds
 
 from ayon_core.pipeline import InventoryAction, get_repres_contexts
-from ayon_maya.api.lib import get_id
+from ayon_maya.api.lib import get_id, get_container_members
 
 
 class ConnectGeometry(InventoryAction):
@@ -117,8 +117,7 @@ class ConnectGeometry(InventoryAction):
                     id.
         """
         data = {"node_types": set(), "ids": {}}
-        ref_node = cmds.sets(container, query=True, nodesOnly=True)[0]
-        for node in cmds.referenceQuery(ref_node, nodes=True):
+        for node in get_container_members(container):
             node_type = cmds.nodeType(node)
             data["node_types"].add(node_type)
 
@@ -127,7 +126,7 @@ class ConnectGeometry(InventoryAction):
             if node_type != "mesh":
                 continue
 
-            transform = cmds.listRelatives(node, parent=True)[0]
+            transform = cmds.listRelatives(node, parent=True, fullPath=True)[0]
             data["ids"][get_id(transform)] = transform
 
         return data
