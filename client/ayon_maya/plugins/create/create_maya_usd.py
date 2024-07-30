@@ -2,9 +2,7 @@ from ayon_maya.api import plugin, lib
 from ayon_core.lib import (
     BoolDef,
     EnumDef,
-    TextDef,
-    UILabelDef,
-    UISeparatorDef,
+    TextDef
 )
 
 from maya import cmds
@@ -121,39 +119,21 @@ class CreateMayaUsd(plugin.MayaCreator):
 
         return defs
 
+    def get_pre_create_attr_defs(self):
+        defs = super().get_pre_create_attr_defs()
+        defs.extend([
+            BoolDef("createAssetTemplateHierarchy",
+                    label="Create asset hierarchy",
+                    tooltip=(
+                        "Create the root hierarchy for '{folder_name}/geo'"
+                        " as per the USD Asset Structure guidelines to"
+                        " add your geometry into."
+                    ),
+                    default=False)
+        ])
+        return defs
 
-class CreateMayaUsdContribution(CreateMayaUsd):
-    """
-
-    When writing a USD as 'contribution' it will be added into what it's
-    contributing to. It will usually contribute to either the main *asset*
-    or *shot* but can be customized.
-
-    Usually the contribution is done into a Department Layer, like e.g.
-    model, rig, look for models and layout, animation, fx, lighting for shots.
-
-    Each department contribution will be 'sublayered' into the departments
-    contribution.
-
-    """
-
-    identifier = "io.openpype.creators.maya.mayausd.assetcontribution"
-    label = "Maya USD Asset Contribution"
-    product_type = "usd"
-    icon = "cubes"
-    description = "Create Maya USD Contribution"
-
-    # default_variants = ["main"]
-    # TODO: Do not include material for model publish
-    # TODO: Do only include material + assignments for material publish
-    #       + attribute overrides onto existing geo? (`over`?)
-    #       Define all in `geo` as `over`?
-
-    bootstrap = "asset"
-
-    contribution_asset_layer = None
-
-    def create_template_hierarchy(self, folder_name, variant):
+    def _create_template_hierarchy(self, folder_name, variant):
         """Create the asset root template to hold the geo for the usd asset.
 
         Args:
@@ -196,10 +176,10 @@ class CreateMayaUsdContribution(CreateMayaUsd):
 
         return [root, geo]
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         # Create template hierarchy
-        if pre_create_data.get("createTemplateHierarchy", True):
+        if pre_create_data.get("createAssetTemplateHierarchy", False):
             members = []
             if pre_create_data.get("use_selection"):
                 members = cmds.ls(selection=True,
@@ -209,7 +189,7 @@ class CreateMayaUsdContribution(CreateMayaUsd):
             folder_path = instance_data["folderPath"]
             folder_name = folder_path.rsplit("/", 1)[-1]
 
-            root, geo = self.create_template_hierarchy(
+            root, geo = self._create_template_hierarchy(
                 folder_name=folder_name,
                 variant=instance_data["variant"]
             )
@@ -220,27 +200,5 @@ class CreateMayaUsdContribution(CreateMayaUsd):
             # Select root and enable selection just so parent class'
             # create adds it to the created instance
             cmds.select(root, replace=True, noExpand=True)
-            pre_create_data["use_selection"] = True
 
-        # Create as if we're the other plug-in so that the instance after
-        # creation thinks it was created by `CreateMayaUsd` and this Creator
-        # here is solely used to apply different default values
-        # TODO: Improve this hack
-        CreateMayaUsd(
-            project_settings=self.project_settings,
-            create_context=self.create_context
-        ).create(
-            subset_name,
-            instance_data,
-            pre_create_data
-        )
-
-    def get_pre_create_attr_defs(self):
-        defs = super(CreateMayaUsdContribution,
-                     self).get_pre_create_attr_defs()
-        defs.extend([
-            BoolDef("createTemplateHierarchy",
-                    label="Create template hierarchy",
-                    default=True)
-        ])
-        return defs
+        super().create(product_name, instance_data, pre_create_data)
