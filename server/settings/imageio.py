@@ -11,17 +11,6 @@ from ayon_server.settings import (
 )
 
 
-class ImageIOConfigModel(BaseSettingsModel):
-    override_global_config: bool = SettingsField(
-        False,
-        title="Override global OCIO config"
-    )
-    filepath: list[str] = SettingsField(
-        default_factory=list,
-        title="Config path"
-    )
-
-
 class ImageIOFileRuleModel(BaseSettingsModel):
     name: str = SettingsField("", title="Rule name")
     pattern: str = SettingsField("", title="Regex pattern")
@@ -81,10 +70,6 @@ class ImageIOSettings(BaseSettingsModel):
     activate_host_color_management: bool = SettingsField(
         True, title="Enable Color Management"
     )
-    ocio_config: ImageIOConfigModel = SettingsField(
-        default_factory=ImageIOConfigModel,
-        title="OCIO config"
-    )
     file_rules: ImageIOFileRulesModel = SettingsField(
         default_factory=ImageIOFileRulesModel,
         title="File Rules"
@@ -108,10 +93,6 @@ class ImageIOSettings(BaseSettingsModel):
 
 DEFAULT_IMAGEIO_SETTINGS = {
     "activate_host_color_management": True,
-    "ocio_config": {
-        "override_global_config": False,
-        "filepath": []
-    },
     "file_rules": {
         "activate_host_rules": False,
         "rules": []
