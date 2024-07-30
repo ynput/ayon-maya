@@ -195,7 +195,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
             ),
         }
 
-        if instance.data.get("visibleOnly", False):
+        if attribute_values.get("visibleOnly", False):
             # If we only want to include nodes that are visible in the frame
             # range then we need to do our own check. Alembic's `visibleOnly`
             # flag does not filter out those that are only hidden on some
