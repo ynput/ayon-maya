@@ -306,7 +306,7 @@ DEFAULT_CREATORS_SETTINGS = {
     "CreateModel": {
         "enabled": True,
         "write_color_sets": False,
-        "write_face_sets": False,
+        "write_face_sets": True,
         "default_variants": [
             "Main",
             "Proxy",

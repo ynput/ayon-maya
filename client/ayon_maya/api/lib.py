@@ -4343,3 +4343,86 @@ def get_sequence(filepath, pattern="%04d"):
         os.path.join(source_dir, filename)
         for filename in collections[0]
     ]
+
+
+@contextlib.contextmanager
+def force_shader_assignments_to_faces(shapes):
+    """Replaces any non-face shader assignments with shader assignments
+    to the faces during the context.
+
+    Args:
+        shapes (List[str]): The shapes to add into face sets for any component
+            assignments of shading engine
+    """
+    shapes = cmds.ls(shapes, shapes=True, type="mesh", long=True)
+    if not shapes:
+        # Do nothing
+        yield
+        return
+
+    all_render_sets = set()
+    for shape in shapes:
+        render_sets = cmds.listSets(object=shape, t=1, extendToShape=False)
+        if render_sets:
+            all_render_sets.update(render_sets)
+
+    shapes_lookup = set(shapes)
+
+    # Maya has the tendency to return component assignment using the transform
+    # name instead of the shape name, like `pCube1.f[1]` instead of
+    # `pCube1Shape.f[1]` so we need to take those into consideration as members
+    def get_parent(_shape: str) -> str:
+        return _shape.rsplit("|", 1)[0]
+
+    components_lookup = {f"{shape}." for shape in shapes}
+    components_lookup.update(f"{get_parent(shape)}." for shape in shapes)
+    components_lookup = tuple(components_lookup)  # support str.startswith
+
+    original_assignments = {}
+    override_assignments = defaultdict(list)
+    for shading_engine in cmds.ls(list(all_render_sets), type="shadingEngine"):
+        members = cmds.sets(shading_engine, query=True)
+        if not members:
+            continue
+
+        members = cmds.ls(members, long=True)
+
+        # Include ALL originals, even those not among our shapes
+        original_assignments[shading_engine] = members
+
+        has_conversions = False
+        for member in members:
+            # Only consider shapes from our inputs
+            if (
+                    member not in shapes_lookup
+                    and not member.startswith(components_lookup)
+            ):
+                continue
+
+            if "." not in member:
+                # Convert to face assignments
+                member = f"{member}.f[*]"
+                has_conversions = True
+            override_assignments[shading_engine].append(member)
+
+        if not has_conversions:
+            # We can skip this shading engine completely because
+            # we have nothing to override
+            original_assignments.pop(shading_engine, None)
+            override_assignments.pop(shading_engine, None)
+
+    try:
+        # Apply overrides
+        for shading_engine, override_members in override_assignments.items():
+            # We force remove the members because this allows maya to take
+            # out the mesh (also without the components)
+            cmds.sets(clear=shading_engine)
+            cmds.sets(override_members, forceElement=shading_engine)
+
+        yield
+
+    finally:
+        # Revert to original assignments
+        for shading_engine, original_members in original_assignments.items():
+            cmds.sets(clear=shading_engine)
+            cmds.sets(original_members, forceElement=shading_engine)
