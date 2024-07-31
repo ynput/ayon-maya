@@ -145,7 +145,7 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
                 continue
 
             set_content = set(cmds.sets(obj_set, query=True))
-            if set_content.intersection(members_with_refs):
+            if set_content and set_content.intersection(members_with_refs):
                 loaded_containers.append(obj_set)
 
         return loaded_containers
