@@ -3,8 +3,9 @@
 import os
 import contextlib
 from ayon_core.lib import BoolDef
+from ayon_core.pipeline import AVALON_CONTAINER_ID, AYON_CONTAINER_ID
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
-from ayon_maya.api.lib import maintained_selection, shader, get_container_members
+from ayon_maya.api.lib import maintained_selection, shader
 from ayon_maya.api import plugin
 from maya import cmds
 
@@ -78,7 +79,7 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
         if set(self.add_for_families).intersection(
                 set(instance.data.get("families", []))) or \
                 instance.data.get("productType") in self.add_for_families:
-            selection += get_container_members(members)
+            selection += self._get_loaded_containers(members)
 
         # Perform extraction
         self.log.debug("Performing extraction ...")
@@ -116,3 +117,35 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
 
         self.log.debug("Extracted instance '%s' to: %s" % (instance.name,
                                                            path))
+
+    @staticmethod
+    def _get_loaded_containers(members):
+        # type: (list) -> list
+        refs_to_include = {
+            cmds.referenceQuery(node, referenceNode=True)
+            for node in members
+            if cmds.referenceQuery(node, isNodeReferenced=True)
+        }
+
+        members_with_refs = refs_to_include.union(members)
+
+        obj_sets = cmds.ls("*.id", long=True, type="objectSet", recursive=True,
+                           objectsOnly=True)
+
+        loaded_containers = []
+        for obj_set in obj_sets:
+
+            if not cmds.attributeQuery("id", node=obj_set, exists=True):
+                continue
+
+            id_attr = "{}.id".format(obj_set)
+            if cmds.getAttr(id_attr) not in {
+                AYON_CONTAINER_ID, AVALON_CONTAINER_ID
+            }:
+                continue
+
+            set_content = set(cmds.sets(obj_set, query=True) or [])
+            if set_content.intersection(members_with_refs):
+                loaded_containers.append(obj_set)
+
+        return loaded_containers
