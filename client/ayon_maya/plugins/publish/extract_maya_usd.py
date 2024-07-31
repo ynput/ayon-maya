@@ -2,7 +2,6 @@ import contextlib
 import json
 import os
 
-import pyblish.api
 import six
 
 from ayon_core.pipeline import publish
