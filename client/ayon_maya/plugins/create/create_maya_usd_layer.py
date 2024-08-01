@@ -7,7 +7,7 @@ class CreateMayaUsdLayer(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.mayausdlayer"
     label = "Maya USD Export Layer"
-    family = "usd"
+    product_type = "usd"
     icon = "cubes"
     description = "Create mayaUsdProxyShape layer export"
 
