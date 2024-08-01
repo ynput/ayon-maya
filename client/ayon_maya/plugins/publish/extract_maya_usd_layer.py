@@ -24,8 +24,9 @@ class ExtractMayaUsdLayer(publish.Extractor):
         cmds.loadPlugin("mayaUsdPlugin", quiet=True)
 
         data = instance.data["stageLayerIdentifier"]
-        proxy, layer_identifier = data.split(">", 1)
+        self.log.debug(f"Using proxy layer: {data}")
 
+        proxy, layer_identifier = data.split(">", 1)
         # TODO: The stage and layer should actually be retrieved during
         #  Collecting so that they can be validated upon and potentially that
         #  any 'child layers' can potentially be recursively exported along
