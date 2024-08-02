@@ -538,6 +538,24 @@ class ExtractModelModel(BaseSettingsModel):
     active: bool = SettingsField(title="Active")
 
 
+class ExtractMayaUsdModelModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+
+
+class ExtractMayaUsdPointcacheModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+
+
+class ExtractMayaUsdAnimationModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+
+
 class ExtractMayaSceneRawModel(BaseSettingsModel):
     """Add loaded instances to those published families:"""
     enabled: bool = SettingsField(title="ExtractMayaSceneRaw")
@@ -703,6 +721,14 @@ class PublishersModel(BaseSettingsModel):
     ValidateGLSLPlugin: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate GLSL Plugin"
+    )
+    ValidateOrnatrixRigContent: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Ornatrix Rig Content"
+    )
+    ValidateOrnatrixCacheContent: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Ornatrix Cache Content"
     )
     ValidateRenderImageRule: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -931,6 +957,10 @@ class PublishersModel(BaseSettingsModel):
             title="Validate Rig Controllers (Arnold Attributes)",
         )
     )
+    ValidateSingleAssembly: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Single Assembly",
+    )
     ValidateSkeletalMeshHierarchy: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Skeletal Mesh Top Node",
@@ -1030,6 +1060,18 @@ class PublishersModel(BaseSettingsModel):
     ExtractAlembic: ExtractAlembicModel = SettingsField(
         default_factory=ExtractAlembicModel,
         title="Extract Alembic"
+    )
+    ExtractMayaUsdModel: ExtractMayaUsdModelModel = SettingsField(
+        default_factory=ExtractMayaUsdModelModel,
+        title="Extract Maya USD with Model"
+    )
+    ExtractMayaUsdPointcache: ExtractMayaUsdPointcacheModel = SettingsField(
+        default_factory=ExtractMayaUsdPointcacheModel,
+        title="Extract Maya USD with Pointcache"
+    )
+    ExtractMayaUsdAnimation: ExtractMayaUsdAnimationModel = SettingsField(
+        default_factory=ExtractMayaUsdAnimationModel,
+        title="Extract Maya USD with Animation"
     )
 
 
@@ -1187,6 +1229,16 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "ValidateGLSLPlugin": {
         "enabled": False,
+        "optional": False,
+        "active": True
+    },
+    "ValidateOrnatrixRigContent": {
+        "enabled": True,
+        "optional": False,
+        "active": True
+    },
+    "ValidateOrnatrixCacheContent": {
+        "enabled": True,
         "optional": False,
         "active": True
     },
@@ -1458,6 +1510,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": False,
         "active": True
     },
+    "ValidateSingleAssembly": {
+        "enabled": True,
+        "optional": False,
+        "active": True
+    },
     "ValidateSkeletalMeshHierarchy": {
         "enabled": True,
         "optional": False,
@@ -1636,5 +1693,20 @@ DEFAULT_PUBLISH_SETTINGS = {
         "writeNormals": True,
         "writeUVSets": False,
         "writeVisibility": False
+    },
+    "ExtractMayaUsdModel": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
+    },
+    "ExtractMayaUsdPointcache": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
+    },
+    "ExtractMayaUsdAnimation": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
     }
 }

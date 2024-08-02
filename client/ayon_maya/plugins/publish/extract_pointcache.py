@@ -1,4 +1,5 @@
 import os
+import contextlib
 from collections import OrderedDict
 
 from ayon_core.lib import (
@@ -17,6 +18,7 @@ from ayon_maya.api.lib import (
     iter_visible_nodes_in_range,
     maintained_selection,
     suspended_refresh,
+    force_shader_assignments_to_faces
 )
 from ayon_maya.api import plugin
 from maya import cmds
@@ -195,7 +197,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
             ),
         }
 
-        if instance.data.get("visibleOnly", False):
+        if attribute_values.get("visibleOnly", False):
             # If we only want to include nodes that are visible in the frame
             # range then we need to do our own check. Alembic's `visibleOnly`
             # flag does not filter out those that are only hidden on some
@@ -205,15 +207,20 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
                 iter_visible_nodes_in_range(nodes, start=start, end=end)
             )
 
+        shapes = self.get_members_shapes(instance)
+
         suspend = not instance.data.get("refresh", False)
-        with suspended_refresh(suspend=suspend):
-            with maintained_selection():
-                cmds.select(nodes, noExpand=True)
-                self.log.debug(
-                    "Running `extract_alembic` with the keyword arguments: "
-                    "{}".format(kwargs)
-                )
-                extract_alembic(**kwargs)
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(suspended_refresh(suspend=suspend))
+            stack.enter_context(maintained_selection())
+            if instance.data.get("writeFaceSets", True):
+                stack.enter_context(force_shader_assignments_to_faces(shapes))
+            cmds.select(nodes, noExpand=True)
+            self.log.debug(
+                "Running `extract_alembic` with the keyword arguments: "
+                "{}".format(kwargs)
+            )
+            extract_alembic(**kwargs)
 
         if "representations" not in instance.data:
             instance.data["representations"] = []
@@ -259,6 +266,10 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
 
     def get_members_and_roots(self, instance):
         return instance[:], instance.data.get("setMembers")
+
+    def get_members_shapes(self, instance):
+        nodes = list(instance[:])
+        return cmds.ls(nodes, type=("mesh", "nurbsCurve"), long=True)
 
     @classmethod
     def get_attribute_defs(cls):
