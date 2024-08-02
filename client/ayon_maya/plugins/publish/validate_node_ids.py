@@ -62,4 +62,4 @@ class ValidateNodeIDs(plugin.MayaInstancePlugin):
                                              # Exclude those with already
                                              # existing ids
                                              existing_ids=False)
-        return id_nodes
+        return list(id_nodes)
