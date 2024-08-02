@@ -13,7 +13,7 @@ class CollectUserDefinedAttributes(plugin.MayaInstancePlugin):
     def process(self, instance):
 
         # Collect user defined attributes.
-        if not instance.data["creator_attributes"].get(
+        if not instance.data.get("creator_attributes", {}).get(
             "includeUserDefinedAttributes"
         ):
             return
