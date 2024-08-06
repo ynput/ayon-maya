@@ -144,7 +144,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             basis_list = [
                 1, 0, 0, 0,
                 0, 1, 0, 0,
-                0, 0, -1, 0,
+                0, 0, 1, 0,
                 0, 0, 0, 1
             ]
 
