@@ -42,7 +42,7 @@ def convert_transformation_matrix(transform_mm: om.MMatrix, rotation: list) -> o
     convert_transform = om.MTransformationMatrix(transform_mm)
 
     convert_translation = convert_transform.translation(om.MSpace.kWorld)
-    convert_translation = om.MVector(convert_translation.x, convert_translation.z, -convert_translation.y)
+    convert_translation = om.MVector(convert_translation.x, convert_translation.z, convert_translation.y)
     convert_scale = convert_transform.scale(om.MSpace.kObject)
     convert_transform.setTranslation(convert_translation, om.MSpace.kWorld)
     converted_rotation = om.MEulerRotation(
