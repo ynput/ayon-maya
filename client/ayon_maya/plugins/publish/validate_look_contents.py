@@ -1,3 +1,5 @@
+import inspect
+
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
     PublishValidationError,
@@ -30,11 +32,13 @@ class ValidateLookContents(plugin.MayaInstancePlugin):
         """Process all the nodes in the instance"""
 
         if not instance[:]:
-            raise PublishValidationError("Instance is empty")
+            raise PublishValidationError(
+                "Instance is empty", description=self.get_description())
         invalid = self.get_invalid(instance)
         if invalid:
-            raise PublishValidationError("'{}' has invalid look "
-                               "content".format(instance.name))
+            raise PublishValidationError(
+                f"'{instance.name}' has invalid look content",
+                description=self.get_description())
 
     @classmethod
     def get_invalid(cls, instance):
@@ -72,8 +76,11 @@ class ValidateLookContents(plugin.MayaInstancePlugin):
 
         # Validate at least one single relationship is collected
         if not lookdata["relationships"]:
-            cls.log.error("Look '%s' has no "
-                          "`relationships`" % instance.name)
+            cls.log.error(
+                "Look '%s' has no relationships. This usually indicates that "
+                "geometry or shaders are lacking the required 'cbId'. "
+                "Re-save your scene, try again. If still an issue investigate "
+                "the attributes on the meshes or shaders." % instance.name)
             invalid.add(instance.name)
 
         # Check if attributes are on a node with an ID, crucial for rebuild!
@@ -133,3 +140,28 @@ class ValidateLookContents(plugin.MayaInstancePlugin):
                 continue
             else:
                 cls.log.error("Converted texture does not match current renderer.") # noqa
+
+    @staticmethod
+    def get_description():
+        return inspect.cleandoc("""
+            ## Invalid look contents
+
+            This validator does a general validation on the look contents and
+            settings.
+
+            Likely issues:
+
+            - The look must have geometry members.
+            - All shader and set relationships must have valid `cbId` 
+              attributes so that they can be correctly applied elsewhere.
+            - Files used by the textures and file nodes must exist on disk.
+
+            #### Issues with cbId attributes
+
+            The most common issue here is the `cbId` attribute being invalid.
+            These IDs get generated on scene save (on non-referenced nodes) so
+            a good first step is usually saving your scene, and trying again.
+            If it still fails, then likely you have referenced nodes that do
+            not have a valid `cbId`. This should usually be fixed in the scene
+            from which that geometry or shader was initially created.
+        """)
