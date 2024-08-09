@@ -1,5 +1,5 @@
 from ayon_maya.api import plugin
-from ayon_core.lib import BoolDef
+from ayon_core.lib import BoolDef, EnumDef
 
 
 class CreateLayout(plugin.MayaCreator):
@@ -17,5 +17,9 @@ class CreateLayout(plugin.MayaCreator):
                     label="Group Loaded Assets",
                     tooltip="Enable this when you want to publish group of "
                             "loaded asset",
-                    default=False)
+                    default=False),
+            EnumDef("layout_options",
+                    items=["fbx", "abc"],
+                    label="Export Layout For Fbx",
+                    default="fbx")
         ]

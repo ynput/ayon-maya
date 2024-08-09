@@ -55,17 +55,14 @@ def convert_transformation_matrix_abc(transform_mm: om.MMatrix, rotation: list) 
     return convert_transform.asMatrix()
 
 
-class ExtractLayout(plugin.MayaExtractorPlugin, OptionalPyblishPluginMixin):
+class ExtractLayout(plugin.MayaExtractorPlugin):
     """Extract a layout."""
 
-    label = "Extract Layout"
-    families = ["layout"]
+    label = "Extract Layout(FBX)"
+    families = ["layout.fbx"]
     project_container = "AVALON_CONTAINERS"
-    optional = False
 
     def process(self, instance):
-        if not self.is_active(instance.data):
-            return
         # Define extract output file path
         stagingdir = self.staging_dir(instance)
 
@@ -161,9 +158,19 @@ class ExtractLayout(plugin.MayaExtractorPlugin, OptionalPyblishPluginMixin):
                 "z": local_rotation[2]
             }
             json_data.append(json_element)
+        json_filename = "{}.json".format(instance.name)
+        json_path = os.path.join(stagingdir, json_filename)
 
-        json_representation = self.create_json_data_representation(
-            instance, stagingdir, json_data)
+        with open(json_path, "w+") as file:
+            json.dump(json_data, fp=file, indent=2)
+
+        json_representation = {
+            'name': 'json',
+            'ext': 'json',
+            'files': json_filename,
+            "stagingDir": stagingdir,
+        }
+
         instance.data["representations"].append(json_representation)
 
         self.log.debug("Extracted instance '%s' to: %s",
@@ -171,49 +178,19 @@ class ExtractLayout(plugin.MayaExtractorPlugin, OptionalPyblishPluginMixin):
 
     def create_transformation_matrix(self, local_matrix, local_rotation):
         matrix = om.MMatrix(local_matrix)
-        matrix = convert_transformation_matrix_abc(matrix, local_rotation)
         t_matrix = convert_matrix_to_4x4_list(matrix)
         return t_matrix
 
-    def create_json_data_representation(self, instance, stagingdir, json_data):
-        json_filename = "{}.json".format(instance.name)
-        json_path = os.path.join(stagingdir, json_filename)
 
-        with open(json_path, "w+") as file:
-            json.dump(json_data, fp=file, indent=2)
-
-        return {
-            'name': 'json',
-            'ext': 'json',
-            'files': json_filename,
-            "stagingDir": stagingdir,
-        }
-
-
-class ExtractLayoutFBX(ExtractLayout):
+class ExtractLayoutAbc(ExtractLayout):
     """Extract a layout."""
 
-    label = "Extract Layout(FBX)"
-    families = ["layout"]
+    label = "Extract Layout(Abc)"
+    families = ["layout.abc"]
     project_container = "AVALON_CONTAINERS"
-    optional = True
 
     def create_transformation_matrix(self, local_matrix, local_rotation):
         matrix = om.MMatrix(local_matrix)
+        matrix = convert_transformation_matrix_abc(matrix, local_rotation)
         t_matrix = convert_matrix_to_4x4_list(matrix)
         return t_matrix
-
-    def create_json_data_representation(self, instance, stagingdir, json_data):
-        json_filename = "{}_fbx.json".format(instance.name)
-        json_path = os.path.join(stagingdir, json_filename)
-
-        with open(json_path, "w+") as file:
-            json.dump(json_data, fp=file, indent=2)
-
-        return {
-            'name': 'fbx_json',
-            'ext': 'json',
-            'files': json_filename,
-            "stagingDir": stagingdir,
-            "outputName": 'fbx'
-        }
