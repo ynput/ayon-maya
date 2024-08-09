@@ -2,7 +2,6 @@ import json
 import math
 import os
 from typing import List
-from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
 from ayon_api import get_representation_by_id
 from ayon_maya.api import plugin
 from maya import cmds
