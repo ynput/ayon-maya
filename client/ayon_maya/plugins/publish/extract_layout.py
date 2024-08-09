@@ -29,7 +29,7 @@ def convert_matrix_to_4x4_list(
     return result
 
 
-def convert_transformation_matrix(transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
+def convert_transformation_matrix_abc(transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
     """Convert matrix to list of transformation matrix for Unreal Engine import.
 
     Args:
@@ -57,10 +57,9 @@ def convert_transformation_matrix(transform_mm: om.MMatrix, rotation: list) -> o
 class ExtractLayout(plugin.MayaExtractorPlugin):
     """Extract a layout."""
 
-    label = "Extract Layout"
-    families = ["layout"]
+    label = "Extract Layout(FBX)"
+    families = ["layout.fbx"]
     project_container = "AVALON_CONTAINERS"
-    optional = True
 
     def process(self, instance):
         # Define extract output file path
@@ -128,13 +127,10 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 "version": str(version_id)
             }
 
-
             local_matrix = cmds.xform(asset, query=True, matrix=True)
             local_rotation = cmds.xform(asset, query=True, rotation=True, euler=True)
 
-            matrix = om.MMatrix(local_matrix)
-            matrix = convert_transformation_matrix(matrix, local_rotation)
-            t_matrix = convert_matrix_to_4x4_list(matrix)
+            t_matrix = self.create_transformation_matrix(local_matrix, local_rotation)
 
             json_element["transform_matrix"] = [
                 list(row)
@@ -161,7 +157,6 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 "z": local_rotation[2]
             }
             json_data.append(json_element)
-
         json_filename = "{}.json".format(instance.name)
         json_path = os.path.join(stagingdir, json_filename)
 
@@ -179,3 +174,22 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
         self.log.debug("Extracted instance '%s' to: %s",
                        instance.name, json_representation)
+
+    def create_transformation_matrix(self, local_matrix, local_rotation):
+        matrix = om.MMatrix(local_matrix)
+        t_matrix = convert_matrix_to_4x4_list(matrix)
+        return t_matrix
+
+
+class ExtractLayoutAbc(ExtractLayout):
+    """Extract a layout."""
+
+    label = "Extract Layout(Abc)"
+    families = ["layout.abc"]
+    project_container = "AVALON_CONTAINERS"
+
+    def create_transformation_matrix(self, local_matrix, local_rotation):
+        matrix = om.MMatrix(local_matrix)
+        matrix = convert_transformation_matrix_abc(matrix, local_rotation)
+        t_matrix = convert_matrix_to_4x4_list(matrix)
+        return t_matrix
