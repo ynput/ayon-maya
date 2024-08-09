@@ -116,6 +116,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             # TODO use product entity to get product type rather than
             #    data in representation 'context'
             repre_context = representation["context"]
+            repre_ext = repre_context["ext"]
             product_type = repre_context.get("product", {}).get("type")
             if not product_type:
                 product_type = repre_context.get("family")
@@ -125,7 +126,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 "instance_name": cmds.getAttr(
                     "{}.namespace".format(container)),
                 "representation": str(representation_id),
-                "version": str(version_id)
+                "version": str(version_id),
+                "ext": repre_ext
             }
 
 
@@ -134,6 +136,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
             matrix = om.MMatrix(local_matrix)
             if instance.data.get("alembic", False):
+                self.log.debug("Converting transformation for alembic export.")
                 matrix = convert_transformation_matrix_abc(matrix, local_rotation)
             t_matrix = convert_matrix_to_4x4_list(matrix)
 
