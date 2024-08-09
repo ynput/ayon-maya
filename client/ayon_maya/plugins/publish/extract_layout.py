@@ -29,7 +29,7 @@ def convert_matrix_to_4x4_list(
     return result
 
 
-def convert_transformation_matrix(transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
+def convert_transformation_matrix_abc(transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
     """Convert matrix to list of transformation matrix for Unreal Engine import.
 
     Args:
@@ -133,7 +133,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             local_rotation = cmds.xform(asset, query=True, rotation=True, euler=True)
 
             matrix = om.MMatrix(local_matrix)
-            matrix = convert_transformation_matrix(matrix, local_rotation)
+            if instance.data.get("alembic", False):
+                matrix = convert_transformation_matrix_abc(matrix, local_rotation)
             t_matrix = convert_matrix_to_4x4_list(matrix)
 
             json_element["transform_matrix"] = [

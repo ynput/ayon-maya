@@ -17,5 +17,9 @@ class CreateLayout(plugin.MayaCreator):
                     label="Group Loaded Assets",
                     tooltip="Enable this when you want to publish group of "
                             "loaded asset",
-                    default=False)
+                    default=False),
+            BoolDef("alembic",
+                    label="Layout for Alembic Export",
+                    tooltip="Create layout which stores transformation for "
+                            "alembic export")
         ]
