@@ -20,6 +20,6 @@ class CreateLayout(plugin.MayaCreator):
                     default=False),
             EnumDef("layout_options",
                     items=["fbx", "abc"],
-                    label="Export Layout For Fbx",
+                    label="Export Layout Options",
                     default="fbx")
         ]
