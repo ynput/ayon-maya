@@ -20,10 +20,16 @@ class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
     @classmethod
     def get_invalid(cls, instance):
         invalid = []
-        if {"animation.fbx", "animation.abc"} not in instance.data["families"]:
-            cls.log.debug(
-                "Either 'Collect Fbx Animation' or "
-                "'Collect Animation Output Geometry(Alembic)' should be enabled")
+        if "animation.abc" in instance.data["families"]:
+            return invalid
+        elif "animation.fbx" in instance.data["families"]:
+            return invalid
+        else:
+            cls.log.error(
+                "Users must turn on either 'Collect Fbx Animation'\n"
+                "or 'Collect Animation Output Geometry(Alembic)'\n"
+                "for publishing\n"
+            )
             invalid.append(instance.name)
 
         return invalid
@@ -31,5 +37,10 @@ class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
     def process(self, instance):
         invalid = self.get_invalid(instance)
         if invalid:
-            raise PublishValidationError(
-                "Invalid Animation Product Type. See log.")
+            message = (
+                "Invalid Animation Product Type\n"
+                "Users must turn on either 'Collect Fbx Animation'\n"
+                "or 'Collect Animation Output Geometry(Alembic)'\n"
+                "for publishing\n"
+            )
+            raise PublishValidationError(message)
