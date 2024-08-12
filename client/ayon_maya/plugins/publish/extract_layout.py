@@ -29,31 +29,6 @@ def convert_matrix_to_4x4_list(
     return result
 
 
-def convert_transformation_matrix(transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
-    """Convert matrix to list of transformation matrix for Unreal Engine import.
-
-    Args:
-        transform_mm (om.MMatrix): Local Matrix for the asset
-        rotation (list): Rotations of the asset
-
-    Returns:
-        List[om.MMatrix]: List of transformation matrix of the asset
-    """
-    convert_transform = om.MTransformationMatrix(transform_mm)
-
-    convert_translation = convert_transform.translation(om.MSpace.kWorld)
-    convert_translation = om.MVector(convert_translation.x, convert_translation.z, convert_translation.y)
-    convert_scale = convert_transform.scale(om.MSpace.kObject)
-    convert_transform.setTranslation(convert_translation, om.MSpace.kWorld)
-    converted_rotation = om.MEulerRotation(
-        math.radians(rotation[0]), math.radians(rotation[2]), math.radians(rotation[1])
-    )
-    convert_transform.setRotation(converted_rotation)
-    convert_transform.setScale([convert_scale[0], convert_scale[2], convert_scale[1]], om.MSpace.kObject)
-
-    return convert_transform.asMatrix()
-
-
 class ExtractLayout(plugin.MayaExtractorPlugin):
     """Extract a layout."""
 
@@ -177,9 +152,33 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
     def create_transformation_matrix(self, local_matrix, local_rotation):
         matrix = om.MMatrix(local_matrix)
-        matrix = convert_transformation_matrix(matrix, local_rotation)
+        matrix = self.convert_transformation_matrix(matrix, local_rotation)
         t_matrix = convert_matrix_to_4x4_list(matrix)
         return t_matrix
+
+    def convert_transformation_matrix(self, transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
+        """Convert matrix to list of transformation matrix for Unreal Engine import.
+
+        Args:
+            transform_mm (om.MMatrix): Local Matrix for the asset
+            rotation (list): Rotations of the asset
+
+        Returns:
+            List[om.MMatrix]: List of transformation matrix of the asset
+        """
+        convert_transform = om.MTransformationMatrix(transform_mm)
+
+        convert_translation = convert_transform.translation(om.MSpace.kWorld)
+        convert_translation = om.MVector(convert_translation.x, convert_translation.z, convert_translation.y)
+        convert_scale = convert_transform.scale(om.MSpace.kObject)
+        convert_transform.setTranslation(convert_translation, om.MSpace.kWorld)
+        converted_rotation = om.MEulerRotation(
+            math.radians(rotation[0]), math.radians(rotation[2]), math.radians(rotation[1])
+        )
+        convert_transform.setRotation(converted_rotation)
+        convert_transform.setScale([convert_scale[0], convert_scale[2], convert_scale[1]], om.MSpace.kObject)
+
+        return convert_transform.asMatrix()
 
 
 class ExtractLayoutAbc(ExtractLayout):
@@ -189,10 +188,27 @@ class ExtractLayoutAbc(ExtractLayout):
     families = ["layout.abc"]
     project_container = "AVALON_CONTAINERS"
 
-    def create_transformation_matrix(self, local_matrix, local_rotation):
-        # TODO: need to find the correct implementation of layout for alembic
-        matrix = om.MMatrix(local_matrix)
-        matrix = convert_transformation_matrix(matrix, local_rotation)
-        t_matrix = convert_matrix_to_4x4_list(matrix)
-        return t_matrix
+    def convert_transformation_matrix(self, transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
+        """Convert matrix to list of transformation matrix for Unreal Engine import.
 
+        Args:
+            transform_mm (om.MMatrix): Local Matrix for the asset
+            rotation (list): Rotations of the asset
+
+        Returns:
+            List[om.MMatrix]: List of transformation matrix of the asset
+        """
+        # TODO: need to find the correct implementation of layout for alembic
+        convert_transform = om.MTransformationMatrix(transform_mm)
+
+        convert_translation = convert_transform.translation(om.MSpace.kWorld)
+        convert_translation = om.MVector(convert_translation.x, convert_translation.z, convert_translation.y)
+        convert_scale = convert_transform.scale(om.MSpace.kObject)
+        convert_transform.setTranslation(convert_translation, om.MSpace.kWorld)
+        converted_rotation = om.MEulerRotation(
+            math.radians(rotation[0]), math.radians(rotation[2]), math.radians(rotation[1])
+        )
+        convert_transform.setRotation(converted_rotation)
+        convert_transform.setScale([convert_scale[0], convert_scale[2], convert_scale[1]], om.MSpace.kObject)
+
+        return convert_transform.asMatrix()
