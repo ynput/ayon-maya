@@ -23,7 +23,7 @@ class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
         if {"animation.fbx", "animation.abc"} not in instance.data["families"]:
             cls.log.debug(
                 "Either 'Collect Fbx Animation' or "
-                "'Collect Animation Output Geometry(Alembic) should be enabled")
+                "'Collect Animation Output Geometry(Alembic)' should be enabled")
             invalid.append(instance.name)
 
         return invalid
