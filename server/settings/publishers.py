@@ -631,7 +631,7 @@ class PublishersModel(BaseSettingsModel):
         title="Collect Render Layers",
         section="Collectors"
     )
-    CollectFbxAnimation: CollectFbxAnimationModel = SettingsField(
+    CollectFbxAnimation: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Collect FBX Animation",
     )
