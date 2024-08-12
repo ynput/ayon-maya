@@ -516,7 +516,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
 
 class ExtractAnimation(ExtractAlembic):
     label = "Extract Animation (Alembic)"
-    families = ["animation"]
+    families = ["animation.abc"]
 
     def get_members_and_roots(self, instance):
         # Collect the out set nodes

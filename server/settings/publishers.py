@@ -176,10 +176,6 @@ class CollectMayaRenderModel(BaseSettingsModel):
     )
 
 
-class CollectFbxAnimationModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Collect Fbx Animation")
-
-
 class CollectFbxCameraModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="CollectFbxCamera")
 
@@ -636,7 +632,7 @@ class PublishersModel(BaseSettingsModel):
         section="Collectors"
     )
     CollectFbxAnimation: CollectFbxAnimationModel = SettingsField(
-        default_factory=CollectFbxAnimationModel,
+        default_factory=BasicValidateModel,
         title="Collect FBX Animation",
     )
     CollectFbxCamera: CollectFbxCameraModel = SettingsField(
@@ -1088,7 +1084,9 @@ DEFAULT_PUBLISH_SETTINGS = {
         "sync_workfile_version": False
     },
     "CollectFbxAnimation": {
-        "enabled": False
+        "enabled": True,
+        "optional": True,
+        "active": False
     },
     "CollectFbxCamera": {
         "enabled": False

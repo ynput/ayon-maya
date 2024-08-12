@@ -1,9 +1,11 @@
 import maya.cmds as cmds
 import pyblish.api
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import plugin
 
 
-class CollectAnimationOutputGeometry(plugin.MayaInstancePlugin):
+class CollectAnimationOutputGeometry(plugin.MayaInstancePlugin,
+                                     OptionalPyblishPluginMixin):
     """Collect out hierarchy data for instance.
 
     Collect all hierarchy nodes which reside in the out_SET of the animation
@@ -17,12 +19,15 @@ class CollectAnimationOutputGeometry(plugin.MayaInstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.4
     families = ["animation"]
-    label = "Collect Animation Output Geometry"
+    label = "Collect Animation Output Geometry(Alembic)"
+    optional = True
 
     ignore_type = ["constraints"]
 
     def process(self, instance):
         """Collect the hierarchy nodes"""
+        if not self.is_active(instance.data):
+            return
 
         product_type = instance.data["productType"]
         out_set = next((i for i in instance.data["setMembers"] if
@@ -33,6 +38,8 @@ class CollectAnimationOutputGeometry(plugin.MayaInstancePlugin):
                 "Expecting out_SET for instance of product type '{}'"
             ).format(product_type))
             return
+
+        instance.data["families"].append("animation.abc")
 
         members = cmds.ls(cmds.sets(out_set, query=True), long=True)
 
