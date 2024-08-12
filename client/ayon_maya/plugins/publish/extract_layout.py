@@ -29,7 +29,7 @@ def convert_matrix_to_4x4_list(
     return result
 
 
-def convert_transformation_matrix_abc(transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
+def convert_transformation_matrix(transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
     """Convert matrix to list of transformation matrix for Unreal Engine import.
 
     Args:
@@ -177,6 +177,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
     def create_transformation_matrix(self, local_matrix, local_rotation):
         matrix = om.MMatrix(local_matrix)
+        matrix = convert_transformation_matrix(matrix, local_rotation)
         t_matrix = convert_matrix_to_4x4_list(matrix)
         return t_matrix
 
@@ -189,7 +190,9 @@ class ExtractLayoutAbc(ExtractLayout):
     project_container = "AVALON_CONTAINERS"
 
     def create_transformation_matrix(self, local_matrix, local_rotation):
+        # TODO: need to find the correct implementation of layout for alembic
         matrix = om.MMatrix(local_matrix)
-        matrix = convert_transformation_matrix_abc(matrix, local_rotation)
+        matrix = convert_transformation_matrix(matrix, local_rotation)
         t_matrix = convert_matrix_to_4x4_list(matrix)
         return t_matrix
+
