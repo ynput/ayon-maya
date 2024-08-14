@@ -1057,6 +1057,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ExtractAlembicModel,
         title="Extract Alembic"
     )
+    ExtractAnimation: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Animation"
+    )
     ExtractMayaUsdModel: ExtractMayaUsdModelModel = SettingsField(
         default_factory=ExtractMayaUsdModelModel,
         title="Extract Maya USD with Model"
@@ -1691,6 +1695,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "writeNormals": True,
         "writeUVSets": False,
         "writeVisibility": False
+    },
+    "ExtractAnimation": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
     },
     "ExtractMayaUsdModel": {
         "enabled": True,

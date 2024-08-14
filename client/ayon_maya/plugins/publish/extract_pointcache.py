@@ -515,8 +515,22 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
 
 
 class ExtractAnimation(ExtractAlembic):
-    label = "Extract Animation (Alembic)"
-    families = ["animation.abc"]
+    label = "Extract Animation"
+    families = ["animation"]
+    optional = True
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        extract_animation_enabled = (
+            project_settings
+            ["maya"]
+            ["publish"].get("ExtractAnimation", {})
+        )
+        if extract_animation_enabled:
+            if not extract_animation_enabled.get("active"):
+                cls.active = False
+        else:
+            cls.enabled = False
 
     def get_members_and_roots(self, instance):
         # Collect the out set nodes
