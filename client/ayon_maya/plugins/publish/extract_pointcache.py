@@ -11,7 +11,7 @@ from ayon_core.lib import (
     UISeparatorDef,
 )
 from ayon_core.pipeline import KnownPublishError
-from ayon_core.pipeline.publish import AYONPyblishPluginMixin
+from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
 from ayon_maya.api.alembic import extract_alembic
 from ayon_maya.api.lib import (
     get_all_children,
@@ -24,7 +24,8 @@ from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
+class ExtractAlembic(plugin.MayaExtractorPlugin,
+                     OptionalPyblishPluginMixin):
     """Produce an alembic of just point positions and normals.
 
     Positions and normals, uvs, creases are preserved, but nothing more,
@@ -38,7 +39,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
     hosts = ["maya"]
     families = ["pointcache", "model", "vrayproxy.alembic"]
     targets = ["local", "remote"]
-
+    optional = False
     # From settings
     attr = []
     attrPrefix = []
@@ -71,6 +72,9 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
     writeVisibility = False
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
+
         if instance.data.get("farm"):
             self.log.debug("Should be processed on farm, skipping.")
             return
@@ -518,6 +522,7 @@ class ExtractAnimation(ExtractAlembic):
     label = "Extract Animation"
     families = ["animation"]
     optional = True
+    active = True
 
     @classmethod
     def apply_settings(cls, project_settings):
