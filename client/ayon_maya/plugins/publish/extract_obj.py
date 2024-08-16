@@ -18,6 +18,15 @@ class ExtractObj(plugin.MayaExtractorPlugin):
     label = "Extract OBJ"
     families = ["model"]
 
+    # Default OBJ export options.
+    obj_options = {
+        "groups": 1,
+        "ptgroups": 1,
+        "materials": 0,
+        "smoothing": 1,
+        "normals": 1,
+    }
+
     def process(self, instance):
 
         # Define output path
@@ -44,7 +53,18 @@ class ExtractObj(plugin.MayaExtractorPlugin):
         if not cmds.pluginInfo('objExport', query=True, loaded=True):
             cmds.loadPlugin('objExport')
 
-        # Export
+        # Check if shaders should be included as part of the model export. If
+        # False, the default shader is assigned to the geometry.
+        include_shaders = instance.data.get("include_shaders", False)
+        if include_shaders:
+            self.obj_options["materials"] = 1
+
+        # Format options for the OBJexport command.
+        options = ';'.join(
+            f"{key}={val}" for key, val in self.obj_options.items()
+        )
+
+        # Export    
         with lib.no_display_layers(instance):
             with lib.displaySmoothness(members,
                                        divisionsU=0,
@@ -52,15 +72,14 @@ class ExtractObj(plugin.MayaExtractorPlugin):
                                        pointsWire=4,
                                        pointsShaded=1,
                                        polygonObject=1):
-                with lib.shader(members,
-                                shadingEngine="initialShadingGroup"):
-                    with lib.maintained_selection():
-                        cmds.select(members, noExpand=True)
-                        cmds.file(path,
-                                  exportSelected=True,
-                                  type='OBJexport',
-                                  preserveReferences=True,
-                                  force=True)
+                with lib.maintained_selection():
+                    cmds.select(members, noExpand=True)
+                    cmds.file(path,
+                              exportSelected=True,
+                              type='OBJexport',
+                              op=options,
+                              preserveReferences=True,
+                              force=True)
 
         if "representation" not in instance.data:
             instance.data["representation"] = []

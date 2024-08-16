@@ -39,5 +39,9 @@ class CreateModel(plugin.MayaCreator):
                     placeholder="attr1, attr2"),
             TextDef("attrPrefix",
                     label="Custom Attributes Prefix",
-                    placeholder="prefix1, prefix2")
+                    placeholder="prefix1, prefix2"),
+            BoolDef("include_shaders",
+                    label="Include Shaders",
+                    tooltip="Include shaders in the geometry export.",
+                    default=False),
         ]
