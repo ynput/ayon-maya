@@ -40,9 +40,8 @@ class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
         invalid = self.get_invalid(instance)
         if invalid:
             message = (
-                f"Invalid Animation Product Type in {invalid}\n"
-                "Users must turn on either 'Collect Fbx Animation'\n"
-                "or 'Extract Animation', or 'Extract USD Animation'\n"
-                "or 'Extract Multiverse USD Animation Sparse Cache' for publishing\n"
+                f"Animation instance generates no products: {invalid}\n"
+                "Make sure to enable at least one of the export(s) "
+                "product types: FBX, Alembic and/or USD."
             )
             raise PublishValidationError(message)
