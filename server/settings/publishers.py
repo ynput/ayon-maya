@@ -947,6 +947,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Animation Out Set Related Node Ids",
     )
+    ValidateAnimationProductTypePublish: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Animation Product Type Publish",
+    )
     ValidateRigControllersArnoldAttributes: BasicValidateModel = (
         SettingsField(
             default_factory=BasicValidateModel,
@@ -1503,6 +1507,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "active": True
     },
     "ValidateOutRelatedNodeIds": {
+        "enabled": True,
+        "optional": False,
+        "active": True
+    },
+    "ValidateAnimationProductTypePublish": {
         "enabled": True,
         "optional": False,
         "active": True
