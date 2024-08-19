@@ -519,7 +519,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
 
 
 class ExtractAnimation(ExtractAlembic):
-    label = "Extract Animation"
+    label = "Extract Animation (Alembic)"
     families = ["animation"]
     optional = True
 
