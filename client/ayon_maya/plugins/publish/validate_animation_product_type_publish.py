@@ -7,9 +7,11 @@ from ayon_maya.api import plugin
 
 
 class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
-    """Validate Animation Product Type to ensure either fbx animation
-    collector or collect animation output geometry(Alembic) enabled for
-    publishing
+    """Validate at least a single product type is exported for the instance.
+    
+    Validate either fbx animation collector or collect animation output 
+    geometry(Alembic) enabled for publishing otherwise no products
+    would be generated for the instance - publishing nothing valid.
     """
 
     order = ValidateContentsOrder
