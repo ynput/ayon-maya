@@ -25,9 +25,11 @@ class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
         publish_attributes = instance.data["publish_attributes"]
         if "animation.fbx" in instance.data["families"]:
             return invalid
-        elif publish_attributes["ExtractAnimation"]["active"]:
+        elif publish_attributes.get("ExtractAnimation", {}).get("active", False):
             return invalid
-        elif publish_attributes["ExtractMayaUsdAnim"]["active"]:
+        elif publish_attributes.get("ExtractMayaUsdAnim", {}).get("active", False):
+            return invalid
+        elif publish_attributes.get("ExtractMultiverseUsdAnim", {}).get("active", False):
             return invalid
         else:
             invalid.append(instance.name)
@@ -40,7 +42,7 @@ class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
             message = (
                 f"Invalid Animation Product Type in {invalid}\n"
                 "Users must turn on either 'Collect Fbx Animation'\n"
-                "or 'Collect Animation Output Geometry(Alembic)'\n"
-                "for publishing\n"
+                "or 'Extract Animation', or 'Extract USD Animation'\n"
+                "or 'Extract Multiverse USD Animation Sparse Cache' for publishing\n"
             )
             raise PublishValidationError(message)
