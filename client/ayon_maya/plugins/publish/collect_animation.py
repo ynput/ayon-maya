@@ -5,11 +5,14 @@ from ayon_maya.api import plugin
 
 class CollectAnimationOutputGeometry(plugin.MayaInstancePlugin):
     """Collect out hierarchy data for instance.
+
     Collect all hierarchy nodes which reside in the out_SET of the animation
     instance or point cache instance. This is to unify the logic of retrieving
     that specific data. This eliminates the need to write two separate pieces
     of logic to fetch all hierarchy nodes.
+
     Results in a list of nodes from the content of the instances
+
     """
 
     order = pyblish.api.CollectorOrder + 0.4
