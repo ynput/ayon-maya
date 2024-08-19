@@ -27,6 +27,8 @@ class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
             return invalid
         elif publish_attributes["ExtractAnimation"]["active"]:
             return invalid
+        elif publish_attributes["ExtractMayaUsdAnim"]["active"]:
+            return invalid
         else:
             invalid.append(instance.name)
 
