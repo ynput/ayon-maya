@@ -16,6 +16,7 @@ class CreateModel(plugin.MayaCreator):
 
     write_color_sets = False
     write_face_sets = True
+    include_shaders = False
 
     def get_instance_attr_defs(self):
 
@@ -43,5 +44,5 @@ class CreateModel(plugin.MayaCreator):
             BoolDef("include_shaders",
                     label="Include Shaders",
                     tooltip="Include shaders in the geometry export.",
-                    default=False),
+                    default=self.include_shaders),
         ]
