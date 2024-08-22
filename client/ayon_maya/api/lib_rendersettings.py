@@ -7,7 +7,7 @@ from ayon_core.lib import Logger
 from ayon_core.settings import get_project_settings
 
 from ayon_core.pipeline import CreatorError, get_current_project_name
-from ayon_core.pipeline.context_tools import get_current_folder_entity
+from ayon_core.pipeline.context_tools import get_current_task_entity
 from ayon_maya.api.lib import reset_frame_range
 
 
@@ -77,8 +77,6 @@ class RenderSettings(object):
             renderer = cmds.getAttr(
                 'defaultRenderGlobals.currentRenderer').lower()
 
-        folder_entity = get_current_folder_entity()
-        folder_attributes = folder_entity["attrib"]
         # project_settings/maya/create/CreateRender/aov_separator
         try:
             aov_separator = self._aov_chars[(
@@ -101,29 +99,31 @@ class RenderSettings(object):
                         prefix, type="string")  # noqa
         else:
             print("{0} isn't a supported renderer to autoset settings.".format(renderer)) # noqa
-        # TODO: handle not having res values in the doc
-        width = folder_attributes.get("resolutionWidth")
-        height = folder_attributes.get("resolutionHeight")
 
+        task_entity = get_current_task_entity(fields={"attrib"})
+        task_attributes = task_entity["attrib"]
+        width: int = task_attributes["resolutionWidth"]
+        height: int = task_attributes["resolutionHeight"]
+        pixel_aspect: float = task_attributes["pixelAspect"]
         if renderer == "arnold":
             # set renderer settings for Arnold from project settings
-            self._set_arnold_settings(width, height)
+            self._set_arnold_settings()
 
         if renderer == "vray":
-            self._set_vray_settings(aov_separator, width, height)
+            self._set_vray_settings(aov_separator)
 
         if renderer == "redshift":
-            self._set_redshift_settings(width, height)
+            self._set_redshift_settings()
             mel.eval("redshiftUpdateActiveAovList")
 
         if renderer == "renderman":
             image_dir = self._image_dir["renderman"]
             cmds.setAttr("rmanGlobals.imageOutputDir",
                          image_dir, type="string")
-            self._set_renderman_settings(width, height,
-                                         aov_separator)
+            self._set_renderman_settings(aov_separator)
+        self._set_default_render_resolution(width, height, pixel_aspect)
 
-    def _set_arnold_settings(self, width, height):
+    def _set_arnold_settings(self):
         """Sets settings for Arnold."""
         from mtoa.core import createOptions  # noqa
         from mtoa.aovs import AOVInterface  # noqa
@@ -156,9 +156,6 @@ class RenderSettings(object):
                 continue
             AOVInterface('defaultArnoldRenderOptions').addAOV(aov)
 
-        cmds.setAttr("defaultResolution.width", width)
-        cmds.setAttr("defaultResolution.height", height)
-
         self._set_global_output_settings()
 
         cmds.setAttr(
@@ -175,7 +172,7 @@ class RenderSettings(object):
         self._additional_attribs_setter(additional_options)
         reset_frame_range(playback=False, fps=False, render=True)
 
-    def _set_redshift_settings(self, width, height):
+    def _set_redshift_settings(self):
         """Sets settings for Redshift."""
         # Not all hosts can import this module.
         from maya import cmds  # noqa: F401
@@ -231,11 +228,9 @@ class RenderSettings(object):
                      redshift_render_presets.get("multipart_exr", True))
         cmds.setAttr("redshiftOptions.exrForceMultilayer",
                      redshift_render_presets["force_combine"])
-        cmds.setAttr("defaultResolution.width", width)
-        cmds.setAttr("defaultResolution.height", height)
         self._additional_attribs_setter(additional_options)
 
-    def _set_renderman_settings(self, width, height, aov_separator):
+    def _set_renderman_settings(self, aov_separator: str):
         """Sets settings for Renderman"""
         # Not all hosts can import this module.
         from maya import cmds  # noqa: F401
@@ -295,11 +290,15 @@ class RenderSettings(object):
         additional_options = rman_render_presets["additional_options"]
 
         self._set_global_output_settings()
-        cmds.setAttr("defaultResolution.width", width)
-        cmds.setAttr("defaultResolution.height", height)
         self._additional_attribs_setter(additional_options)
 
-    def _set_vray_settings(self, aov_separator, width, height):
+    def _set_vray_settings(
+        self,
+        width: int,
+        height: int,
+        pixel_aspect: float,
+        aov_separator
+    ):
         # type: (str, int, int) -> None
         """Sets important settings for Vray."""
         # Not all hosts can import this module.
@@ -372,10 +371,21 @@ class RenderSettings(object):
         # resolution
         cmds.setAttr("{}.width".format(node), width)
         cmds.setAttr("{}.height".format(node), height)
+        cmds.setAttr("{}.pixelAspect".format(node), pixel_aspect)
 
         additional_options = vray_render_presets["additional_options"]
-
         self._additional_attribs_setter(additional_options)
+
+    def _set_default_render_resolution(self,
+                                       width: int,
+                                       height: int,
+                                       pixel_aspect: float):
+        from maya import cmds  # noqa: F401
+        device_aspect = pixel_aspect * (width / height)
+        cmds.setAttr("defaultResolution.width", width)
+        cmds.setAttr("defaultResolution.height", height)
+        cmds.setAttr("defaultResolution.pixelAspect", pixel_aspect)
+        cmds.setAttr("defaultResolution.deviceAspectRatio", device_aspect)
 
     @staticmethod
     def _set_global_output_settings():
