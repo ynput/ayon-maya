@@ -155,7 +155,6 @@ class LayoutLoader(plugin.Loader):
             prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
-        print(asset)
         # TODO: implement the function to load all the assets and set transforms
         return containerise(
             name=name,
@@ -167,6 +166,7 @@ class LayoutLoader(plugin.Loader):
     def update(self, container, context):
         repre_entity = context["representation"]
         path = get_representation_path(repre_entity)
+        asset = self._process(path, options=None)
         # Update metadata
         node = container["objectName"]
         cmds.setAttr("{}.representation".format(node),
