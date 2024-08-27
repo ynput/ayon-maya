@@ -1708,7 +1708,7 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "ExtractAnimation": {
         "enabled": True,
-        "optional": True,
+        "optional": False,
         "active": True,
     },
     "ExtractMayaUsdModel": {
