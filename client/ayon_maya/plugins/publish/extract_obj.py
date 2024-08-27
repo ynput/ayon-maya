@@ -56,8 +56,9 @@ class ExtractObj(plugin.MayaExtractorPlugin):
         # Check if shaders should be included as part of the model export. If
         # False, the default shader is assigned to the geometry.
         include_shaders = instance.data.get("include_shaders", False)
+        options = self.obj_options.copy()
         if include_shaders:
-            self.obj_options["materials"] = 1
+            options["materials"] = 1
 
             # Materials for `.obj` files are exported to a `.mtl` file that
             # usually lives next to the `.obj` and is referenced to by filename
@@ -74,8 +75,8 @@ class ExtractObj(plugin.MayaExtractorPlugin):
             transfers.append((mtl_source, mtl_destination))
 
         # Format options for the OBJexport command.
-        options = ';'.join(
-            f"{key}={val}" for key, val in self.obj_options.items()
+        options_str = ';'.join(
+            f"{key}={val}" for key, val in options.items()
         )
 
         # Export    
@@ -91,7 +92,7 @@ class ExtractObj(plugin.MayaExtractorPlugin):
                     cmds.file(path,
                               exportSelected=True,
                               type='OBJexport',
-                              op=options,
+                              op=options_str,
                               preserveReferences=True,
                               force=True)
 
