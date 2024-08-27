@@ -59,6 +59,20 @@ class ExtractObj(plugin.MayaExtractorPlugin):
         if include_shaders:
             self.obj_options["materials"] = 1
 
+            # Materials for `.obj` files are exported to a `.mtl` file that
+            # usually lives next to the `.obj` and is referenced to by filename
+            # from the `.obj` file itself, like:
+            # mtllib modelMain.mtl
+            # We want to copy the file over and preserve the filename for
+            # the materials to load correctly for the obj file, so we add it
+            # as explicit file transfer
+            mtl_source = path[:-len(".obj")] + ".mtl"
+            mtl_filename = os.path.basename(mtl_source)
+            mtl_destination = os.path.join(instance.data["publishDir"],
+                                           mtl_filename)
+            transfers = instance.data.setdefault("transfers", [])
+            transfers.append((mtl_source, mtl_destination))
+
         # Format options for the OBJexport command.
         options = ';'.join(
             f"{key}={val}" for key, val in self.obj_options.items()
