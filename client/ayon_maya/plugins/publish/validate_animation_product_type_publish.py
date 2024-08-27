@@ -21,20 +21,21 @@ class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
 
     @classmethod
     def get_invalid(cls, instance):
-        invalid = []
-        publish_attributes = instance.data["publish_attributes"]
-        if "animation.fbx" in instance.data["families"]:
-            return invalid
-        elif publish_attributes.get("ExtractAnimation", {}).get("active", False):
-            return invalid
-        elif publish_attributes.get("ExtractMayaUsdAnim", {}).get("active", False):
-            return invalid
-        elif publish_attributes.get("ExtractMultiverseUsdAnim", {}).get("active", False):
-            return invalid
-        else:
-            invalid.append(instance.name)
 
-        return invalid
+        def _is_plugin_active(plugin: str, default: bool = False) -> bool:
+            """Return whether plugin is active for instance"""
+            publish_attributes = instance.data["publish_attributes"]
+            return publish_attributes.get(plugin, {}).get("active", default)
+
+        if any(
+            "animation.fbx" in instance.data["families"]
+            or _is_plugin_active("ExtractAnimation", default=True)
+            or _is_plugin_active("ExtractMayaUsdAnim")
+            or _is_plugin_active("ExtractMultiverseUsdAnim")
+        ):
+            return []
+
+        return [instance.data["instance_node"]]
 
     def process(self, instance):
         invalid = self.get_invalid(instance)
