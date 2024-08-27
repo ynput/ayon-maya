@@ -110,7 +110,7 @@ class RenderSettings(object):
             self._set_arnold_settings()
 
         if renderer == "vray":
-            self._set_vray_settings(aov_separator)
+            self._set_vray_settings(width, height, pixel_aspect, aov_separator)
 
         if renderer == "redshift":
             self._set_redshift_settings()
