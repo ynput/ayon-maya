@@ -1,3 +1,5 @@
+import inspect
+
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
     PublishValidationError,
@@ -41,9 +43,21 @@ class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
         invalid = self.get_invalid(instance)
         if invalid:
             name = invalid[0]
-            message = (
+            raise PublishValidationError(
                 f"Animation instance generates no products: {name}\n"
                 "Make sure to enable at least one of the export(s) "
-                "product types: FBX, Alembic and/or USD."
+                "product types: FBX, Alembic and/or USD.",
+                description=self.get_description()
             )
-            raise PublishValidationError(message)
+
+    @staticmethod
+    def get_description():
+        return inspect.cleandoc("""
+            ## Instance generates no products
+
+            The animation instance generates no products. As a result of that
+            there is nothing to publish.
+            
+            Please make sure to enable at least one of the product types to 
+            export: FBX, Alembic and/or USD.
+        """)
