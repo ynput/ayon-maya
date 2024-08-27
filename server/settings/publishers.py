@@ -1063,7 +1063,8 @@ class PublishersModel(BaseSettingsModel):
     )
     ExtractAnimation: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
-        title="Extract Animation"
+        title="Extract Animation (Alembic)",
+        description="Alembic extractor for loaded rigs"
     )
     ExtractMayaUsdModel: ExtractMayaUsdModelModel = SettingsField(
         default_factory=ExtractMayaUsdModelModel,
