@@ -39,8 +39,9 @@ class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
     def process(self, instance):
         invalid = self.get_invalid(instance)
         if invalid:
+            name = invalid[0]
             message = (
-                f"Animation instance generates no products: {invalid}\n"
+                f"Animation instance generates no products: {name}\n"
                 "Make sure to enable at least one of the export(s) "
                 "product types: FBX, Alembic and/or USD."
             )
