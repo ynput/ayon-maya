@@ -27,7 +27,7 @@ class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
             publish_attributes = instance.data["publish_attributes"]
             return publish_attributes.get(plugin, {}).get("active", default)
 
-        if any(
+        if (
             "animation.fbx" in instance.data["families"]
             or _is_plugin_active("ExtractAnimation", default=True)
             or _is_plugin_active("ExtractMayaUsdAnim")
