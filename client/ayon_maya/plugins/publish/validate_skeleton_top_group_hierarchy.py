@@ -65,7 +65,8 @@ class ValidateAnimatedRigTopGroupHierarchy(plugin.MayaInstancePlugin,
 
         skeleton_anim_nodes = instance.data("animated_skeleton", [])
         if not skeleton_anim_nodes:
-            return
+            raise PublishValidationError(
+                "The skeletonAnim_SET includes no objects.")
 
         invalid = get_non_root_nodes(skeleton_anim_nodes)
         if invalid:
