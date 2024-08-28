@@ -37,11 +37,11 @@ class ValidateSkeletonTopGroupHierarchy(plugin.MayaInstancePlugin,
         if not self.is_active(instance.data):
             return
 
-        skeleton_mesh_data = instance.data("skeleton_mesh", [])
-        if not skeleton_mesh_data:
+        skeleton_mesh_nodes = instance.data("skeleton_mesh", [])
+        if not skeleton_mesh_nodes:
             return
 
-        invalid = get_non_root_nodes(skeleton_mesh_data)
+        invalid = get_non_root_nodes(skeleton_mesh_nodes)
         if invalid:
             raise PublishValidationError(
                 "The skeletonMesh_SET includes the object which "
@@ -63,11 +63,11 @@ class ValidateAnimatedRigTopGroupHierarchy(plugin.MayaInstancePlugin,
         if not self.is_active(instance.data):
             return
 
-        skeleton_mesh_data = instance.data("animated_skeleton", [])
-        if not skeleton_mesh_data:
+        skeleton_anim_nodes = instance.data("animated_skeleton", [])
+        if not skeleton_anim_nodes:
             return
 
-        invalid = get_non_root_nodes(skeleton_mesh_data)
+        invalid = get_non_root_nodes(skeleton_anim_nodes)
         if invalid:
             raise PublishValidationError(
                 "The skeletonAnim_SET includes the object which "
