@@ -546,7 +546,7 @@ class ExtractMayaUsdPointcacheModel(BaseSettingsModel):
     active: bool = SettingsField(title="Active")
 
 
-class ExtractMayaUsdAnimationModel(BaseSettingsModel):
+class ExtractMayaUsdAnimModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
@@ -1078,8 +1078,8 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ExtractMayaUsdPointcacheModel,
         title="Extract Maya USD with Pointcache"
     )
-    ExtractMayaUsdAnimation: ExtractMayaUsdAnimationModel = SettingsField(
-        default_factory=ExtractMayaUsdAnimationModel,
+    ExtractMayaUsdAnim: ExtractMayaUsdAnimModel = SettingsField(
+        default_factory=ExtractMayaUsdAnimModel,
         title="Extract Maya USD with Animation"
     )
 
@@ -1725,7 +1725,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": True,
         "active": False,
     },
-    "ExtractMayaUsdAnimation": {
+    "ExtractMayaUsdAnim": {
         "enabled": True,
         "optional": True,
         "active": False,
