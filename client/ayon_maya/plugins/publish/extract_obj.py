@@ -2,12 +2,14 @@
 import os
 
 import pyblish.api
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractObj(plugin.MayaExtractorPlugin):
+class ExtractObj(plugin.MayaExtractorPlugin,
+                 OptionalPyblishPluginMixin):
     """Extract OBJ from Maya.
 
     This extracts reproducible OBJ exports ignoring any of the settings
@@ -28,6 +30,8 @@ class ExtractObj(plugin.MayaExtractorPlugin):
     }
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
 
         # Define output path
 
