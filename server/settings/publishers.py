@@ -1531,6 +1531,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": False,
         "active": True
     },
+    "ValidateAnimatedRigTopGroupHierarchy": {
+        "enabled": True,
+        "optional": False,
+        "active": True
+    },
     "ValidateSkeletalMeshHierarchy": {
         "enabled": True,
         "optional": False,
