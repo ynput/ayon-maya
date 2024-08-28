@@ -1097,9 +1097,9 @@ DEFAULT_PUBLISH_SETTINGS = {
         "sync_workfile_version": False
     },
     "CollectFbxAnimation": {
-        "enabled": True,
+        "enabled": False,
         "optional": True,
-        "active": False
+        "active": True
     },
     "CollectFbxCamera": {
         "enabled": False
