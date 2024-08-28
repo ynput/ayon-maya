@@ -82,12 +82,12 @@ class ValidateAnimatedRigTopGroupHierarchy(plugin.MayaInstancePlugin,
     def get_description():
         return inspect.cleandoc("""
             ### Invalid FBX export
-        
+
             FBX export is enabled for your animation instance however the
             instance does not meet the required configurations for a valid
             export.
-            
+
             It must contain at one or more objects in the `skeletonAnim_SET`.
-            
+
             These objects must all be root nodes, they may have no parents. 
         """)
