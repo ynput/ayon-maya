@@ -41,7 +41,7 @@ class ValidateSkeletonTopGroupHierarchy(plugin.MayaInstancePlugin,
         ]
         return non_top_hierarchy_list
 
-class ValidateAnimatedSkeletonTopGroupHierarchy(ValidateSkeletonTopGroupHierarchy):
+class ValidateAnimatedRigTopGroupHierarchy(ValidateSkeletonTopGroupHierarchy):
     order = ValidateContentsOrder + 0.05
     label = "Animated Rig Top Group Hierarchy"
     families = ["animation.fbx"]
@@ -50,7 +50,6 @@ class ValidateAnimatedSkeletonTopGroupHierarchy(ValidateSkeletonTopGroupHierarch
     def process(self, instance):
         if not self.is_active(instance.data):
             return
-
         invalid = []
         skeleton_mesh_data = instance.data("animated_skeleton", [])
         if skeleton_mesh_data:
