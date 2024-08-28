@@ -961,6 +961,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Single Assembly",
     )
+    ValidateAnimatedRigTopGroupHierarchy: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Animated Rig Top Group Hierarchy",
+    )
     ValidateSkeletalMeshHierarchy: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Skeletal Mesh Top Node",

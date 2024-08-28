@@ -40,3 +40,22 @@ class ValidateSkeletonTopGroupHierarchy(plugin.MayaInstancePlugin,
             target for target in targets if target.count("|") > 2
         ]
         return non_top_hierarchy_list
+
+class ValidateAnimatedSkeletonTopGroupHierarchy(ValidateSkeletonTopGroupHierarchy):
+    order = ValidateContentsOrder + 0.05
+    label = "Animated Rig Top Group Hierarchy"
+    families = ["animation.fbx"]
+    optional = True
+
+    def process(self, instance):
+        if not self.is_active(instance.data):
+            return
+
+        invalid = []
+        skeleton_mesh_data = instance.data("animated_skeleton", [])
+        if skeleton_mesh_data:
+            invalid = self.get_top_hierarchy(skeleton_mesh_data)
+            if invalid:
+                raise PublishValidationError(
+                    "The skeletonAnim_SET includes the object which "
+                    "is not at the top hierarchy: {}".format(invalid))
