@@ -61,13 +61,6 @@ class ValidateAnimatedRigTopGroupHierarchy(plugin.MayaInstancePlugin,
     families = ["animation.fbx"]
     optional = True
 
-    def get_top_hierarchy(self, targets):
-        targets = cmds.ls(targets, long=True)  # ensure long names
-        non_top_hierarchy_list = [
-            target for target in targets if target.count("|") > 2
-        ]
-        return non_top_hierarchy_list
-
     def process(self, instance):
         if not self.is_active(instance.data):
             return
@@ -76,13 +69,6 @@ class ValidateAnimatedRigTopGroupHierarchy(plugin.MayaInstancePlugin,
         if not skeleton_anim_nodes:
             raise PublishValidationError(
                 "The skeletonAnim_SET includes no objects.",
-                description=self.get_description())
-
-        invalid = self.get_top_hierarchy(skeleton_anim_nodes)
-        if invalid:
-            raise PublishValidationError(
-                "The skeletonAnim_SET includes the object which "
-                "is not at the top hierarchy: {}".format(invalid),
                 description=self.get_description())
 
     @staticmethod
