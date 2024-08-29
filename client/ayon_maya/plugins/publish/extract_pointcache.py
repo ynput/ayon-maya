@@ -518,7 +518,8 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
         return defs
 
 
-class ExtractAnimation(ExtractAlembic):
+class ExtractAnimation(ExtractAlembic,
+                       OptionalPyblishPluginMixin):
     label = "Extract Animation (Alembic)"
     families = ["animation"]
     optional = False
