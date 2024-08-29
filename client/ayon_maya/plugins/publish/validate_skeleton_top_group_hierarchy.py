@@ -1,5 +1,3 @@
-import inspect
-
 from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError,
@@ -48,39 +46,3 @@ class ValidateSkeletonTopGroupHierarchy(plugin.MayaInstancePlugin,
             raise PublishValidationError(
                 "The skeletonMesh_SET includes the object which "
                 "is not at the top hierarchy: {}".format(invalid))
-
-
-class ValidateAnimatedRigTopGroupHierarchy(plugin.MayaInstancePlugin,
-                                           OptionalPyblishPluginMixin):
-    """Validates top group hierarchy in the SETs
-    Make sure the object inside the SETs are always top
-    group of the hierarchy
-    """
-    order = ValidateContentsOrder + 0.05
-    label = "Animated Rig Top Group Hierarchy"
-    families = ["animation.fbx"]
-    optional = True
-
-    def process(self, instance):
-        if not self.is_active(instance.data):
-            return
-
-        skeleton_anim_nodes = instance.data("animated_skeleton", [])
-        if not skeleton_anim_nodes:
-            raise PublishValidationError(
-                "The skeletonAnim_SET includes no objects.",
-                description=self.get_description())
-
-    @staticmethod
-    def get_description():
-        return inspect.cleandoc("""
-            ### Invalid FBX export
-
-            FBX export is enabled for your animation instance however the
-            instance does not meet the required configurations for a valid
-            export.
-
-            It must contain at one or more objects in the `skeletonAnim_SET`.
-
-            These objects must all be root nodes, they may have no parents. 
-        """)

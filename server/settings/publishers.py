@@ -961,9 +961,9 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Single Assembly",
     )
-    ValidateAnimatedRigTopGroupHierarchy: BasicValidateModel = SettingsField(
+    ValidateAnimatedRigContent: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
-        title="Validate Animated Rig Top Group Hierarchy",
+        title="Validate Animated Rig Content",
     )
     ValidateSkeletalMeshHierarchy: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -1531,10 +1531,10 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": False,
         "active": True
     },
-    "ValidateAnimatedRigTopGroupHierarchy": {
+    "ValidateAnimatedRigContent": {
         "enabled": True,
-        "optional": True,
-        "active": False
+        "optional": False,
+        "active": True
     },
     "ValidateSkeletalMeshHierarchy": {
         "enabled": True,
