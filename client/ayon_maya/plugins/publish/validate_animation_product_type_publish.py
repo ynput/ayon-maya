@@ -24,14 +24,39 @@ class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
     @classmethod
     def get_invalid(cls, instance):
 
-        def _is_plugin_active(plugin: str, default: bool = False) -> bool:
+        plugins = instance.context.data["create_context"].publish_plugins
+        plugins_by_name = {plugin.__name__: plugin for plugin in plugins}
+
+        def _is_plugin_active(plugin_name: str) -> bool:
             """Return whether plugin is active for instance"""
+            # Check if Plug-in is found
+            plugin = plugins_by_name.get(plugin_name)
+            if not plugin:
+                cls.log.debug(f"Plugin {plugin_name} not found. "
+                              f"It may be disabled in settings")
+                return False
+
+            # Check if plug-in is globally enabled
+            if not getattr(plugin, "enabled", True):
+                cls.log.debug(f"Plugin {plugin_name} is disabled. "
+                              f"It is disabled in settings")
+                return False
+
+            # Check if optional state has active state set to False
             publish_attributes = instance.data["publish_attributes"]
-            return publish_attributes.get(plugin, {}).get("active", default)
+            default_active = getattr(plugin, "active", True)
+            active_for_instance = publish_attributes.get(
+                plugin_name, {}).get("active", default_active)
+            if not active_for_instance:
+                cls.log.debug(
+                    f"Plugin {plugin_name} is disabled for this instance.")
+                return False
+
+            return True
 
         if (
             "animation.fbx" in instance.data["families"]
-            or _is_plugin_active("ExtractAnimation", default=True)
+            or _is_plugin_active("ExtractAnimation")
             or _is_plugin_active("ExtractMayaUsdAnim")
             or _is_plugin_active("ExtractMultiverseUsdAnim")
         ):
