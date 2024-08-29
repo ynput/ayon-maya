@@ -55,6 +55,7 @@ class BasicExportMeshModel(BaseSettingsModel):
         default_factory=list,
         title="Default Products"
     )
+    include_shaders: bool = SettingsField(title="Include Shaders")
 
 
 class CreateAnimationModel(BaseSettingsModel):
@@ -311,7 +312,8 @@ DEFAULT_CREATORS_SETTINGS = {
             "Main",
             "Proxy",
             "Sculpt"
-        ]
+        ],
+        "include_shaders": False,
     },
     "CreatePointCache": {
         "enabled": True,
