@@ -1093,7 +1093,7 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "CollectFbxModel": {
         "enabled": False,
-        "optional": True,
+        "optional": False,
         "active": True
     },
     "CollectGLTF": {

@@ -12,7 +12,7 @@ class CollectFbxCamera(plugin.MayaInstancePlugin,
     order = pyblish.api.CollectorOrder + 0.2
     label = "Collect Camera for FBX export"
     families = ["camera"]
-    optional = True
+    optional = False
 
     def process(self, instance):
         if not self.is_active(instance.data):
