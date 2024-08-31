@@ -130,6 +130,12 @@ def create_items_from_nodes(nodes):
     project_name = get_current_project_name()
     folder_ids = set(id_hashes.keys())
 
+    # Ignore invalid ids
+    folder_ids = {
+        folder_id for folder_id in folder_ids
+        if ayon_api.utils.convert_entity_id(folder_id)
+    }
+
     folder_entities = ayon_api.get_folders(
         project_name, folder_ids, fields={"id", "path"}
     )
