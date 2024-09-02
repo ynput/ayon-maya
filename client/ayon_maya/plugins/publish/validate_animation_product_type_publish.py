@@ -54,12 +54,18 @@ class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
 
             return True
 
-        if (
-            "animation.fbx" in instance.data["families"]
-            or _is_plugin_active("ExtractAnimation")
-            or _is_plugin_active("ExtractMayaUsdAnim")
-            or _is_plugin_active("ExtractMultiverseUsdAnim")
-        ):
+        active_check = {
+            "fbx": "animation.fbx" in instance.data["families"],
+            "ExtractAnimation": _is_plugin_active("ExtractAnimation"),
+            "ExtractMayaUsdAnim": _is_plugin_active("ExtractMayaUsdAnim"),
+            "ExtractMultiverseUsdAnim": _is_plugin_active(
+                "ExtractMultiverseUsdAnim"),
+        }
+        active = [key for key, state in active_check.items() if state]
+
+        if active:
+            active_str = ", ".join(active)
+            cls.log.debug(f"Found active animation extractions: {active_str}")
             return []
 
         return [instance.data["instance_node"]]
