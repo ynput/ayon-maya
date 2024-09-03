@@ -1731,6 +1731,10 @@ def apply_attributes(attributes, nodes_by_id):
         attr_value = attr_data["attributes"]
         for node in nodes:
             for attr, value in attr_value.items():
+                if value is None:
+                    log.warning(
+                        f"Skipping setting {node}.{attr} with value 'None'")
+
                 set_attribute(attr, value, node)
 
 
