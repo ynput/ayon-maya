@@ -1,4 +1,5 @@
 from maya import cmds
+import math
 import json
 import collections
 import ayon_api
@@ -140,15 +141,44 @@ class LayoutLoader(plugin.Loader):
 
                 for instance in instances:
                     transform = instance.get('transform')
+                    instance_name = instance.get('asset_name')
+                    self.set_transformation(instance_name, transform)
 
-                return assets
+    def set_transformation(self, instance_name, transform):
+        asset = [
+            asset for asset in cmds.ls(f"{instance_name}*")
+            if asset.endswith("_CON")
+        ][0]
+        translation = [
+            transform["translation"]["x"],
+            transform["translation"]["z"],
+            transform["translation"]["y"]
+            ]
+
+        rotation = [
+            math.degrees(transform["rotation"]["x"]),
+            math.degrees(transform["rotation"]["z"]),
+            math.degrees(transform["rotation"]["y"]),
+        ]
+        scale = [
+            transform["scale"]["x"],
+            transform["scale"]["z"],
+            transform["scale"]["y"]
+        ]
+        cmds.xform(
+            asset,
+            translation=translation,
+            rotation=rotation,
+            scale=scale,
+            worldSpace=True
+        )
 
     def load(self, context, name, namespace, options):
 
         path = self.filepath_from_context(context)
 
         self.log.info(">>> loading json [ {} ]".format(path))
-        asset = self._process(path, options)
+        self._process(path, options)
         folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
             folder_name + "_",
@@ -166,7 +196,7 @@ class LayoutLoader(plugin.Loader):
     def update(self, container, context):
         repre_entity = context["representation"]
         path = get_representation_path(repre_entity)
-        asset = self._process(path, options=None)
+        self._process(path, options=None)
         # Update metadata
         node = container["objectName"]
         cmds.setAttr("{}.representation".format(node),
