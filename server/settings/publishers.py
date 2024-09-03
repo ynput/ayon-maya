@@ -180,10 +180,6 @@ class CollectFbxAnimationModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Collect Fbx Animation")
 
 
-class CollectFbxCameraModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="CollectFbxCamera")
-
-
 class CollectGLTFModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="CollectGLTF")
 
@@ -550,7 +546,7 @@ class ExtractMayaUsdPointcacheModel(BaseSettingsModel):
     active: bool = SettingsField(title="Active")
 
 
-class ExtractMayaUsdAnimationModel(BaseSettingsModel):
+class ExtractMayaUsdAnimModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
@@ -639,8 +635,8 @@ class PublishersModel(BaseSettingsModel):
         default_factory=CollectFbxAnimationModel,
         title="Collect FBX Animation",
     )
-    CollectFbxCamera: CollectFbxCameraModel = SettingsField(
-        default_factory=CollectFbxCameraModel,
+    CollectFbxCamera: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
         title="Collect Camera for FBX export",
     )
     CollectFbxModel: BasicValidateModel = SettingsField(
@@ -1069,8 +1065,8 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ExtractMayaUsdPointcacheModel,
         title="Extract Maya USD with Pointcache"
     )
-    ExtractMayaUsdAnimation: ExtractMayaUsdAnimationModel = SettingsField(
-        default_factory=ExtractMayaUsdAnimationModel,
+    ExtractMayaUsdAnim: ExtractMayaUsdAnimModel = SettingsField(
+        default_factory=ExtractMayaUsdAnimModel,
         title="Extract Maya USD with Animation"
     )
 
@@ -1091,11 +1087,13 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": False
     },
     "CollectFbxCamera": {
-        "enabled": False
+        "enabled": False,
+        "optional": True,
+        "active": True
     },
     "CollectFbxModel": {
         "enabled": False,
-        "optional": True,
+        "optional": False,
         "active": True
     },
     "CollectGLTF": {
@@ -1704,7 +1702,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": True,
         "active": False,
     },
-    "ExtractMayaUsdAnimation": {
+    "ExtractMayaUsdAnim": {
         "enabled": True,
         "optional": True,
         "active": False,
