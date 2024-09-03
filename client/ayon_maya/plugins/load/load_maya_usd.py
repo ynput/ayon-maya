@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 import maya.cmds as cmds
-from ayon_core.pipeline import get_representation_path
-from ayon_core.pipeline.load import get_representation_path_from_context
 from ayon_maya.api.lib import namespaced, unique_namespace
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
@@ -18,6 +16,9 @@ class MayaUsdLoader(plugin.Loader):
     icon = "code-fork"
     color = "orange"
 
+    # TODO: Add to settings
+    use_ayon_entity_uri = True
+
     def load(self, context, name=None, namespace=None, options=None):
         folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
@@ -29,7 +30,7 @@ class MayaUsdLoader(plugin.Loader):
         # Make sure we can load the plugin
         cmds.loadPlugin("mayaUsdPlugin", quiet=True)
 
-        path = get_representation_path_from_context(context)
+        path = self.filepath_from_context(context)
 
         # Create the shape
         cmds.namespace(addNamespace=namespace)
@@ -72,13 +73,12 @@ class MayaUsdLoader(plugin.Loader):
         members = cmds.sets(node, query=True) or []
         shapes = cmds.ls(members, type="mayaUsdProxyShape")
 
-        repre_entity = context["representation"]
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         for shape in shapes:
             cmds.setAttr("{}.filePath".format(shape), path, type="string")
 
         cmds.setAttr("{}.representation".format(node),
-                     repre_entity["id"],
+                     context["representation"]["id"],
                      type="string")
 
     def switch(self, container, context):
