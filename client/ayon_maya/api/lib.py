@@ -1734,6 +1734,7 @@ def apply_attributes(attributes, nodes_by_id):
                 if value is None:
                     log.warning(
                         f"Skipping setting {node}.{attr} with value 'None'")
+                    continue
 
                 set_attribute(attr, value, node)
 
