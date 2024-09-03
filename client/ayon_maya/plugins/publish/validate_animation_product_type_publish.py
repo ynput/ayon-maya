@@ -7,6 +7,8 @@ from ayon_core.pipeline.publish import (
 )
 from ayon_maya.api import plugin
 
+import pyblish.api
+
 
 class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
     """Validate at least a single product type is exported for the instance.
@@ -50,6 +52,15 @@ class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
             if not active_for_instance:
                 cls.log.debug(
                     f"Plugin {plugin_name} is disabled for this instance.")
+                return False
+
+            # Check if the instance, according to pyblish is a match for the
+            # plug-in. This may e.g. be excluded due to different families
+            # or matching algorithm (e.g. ExtractMultiverseUsdAnim uses
+            # `pyblish.api.Subset`
+            if not pyblish.api.instances_by_plugin([instance], plugin):
+                cls.log.debug(
+                    f"Plugin {plugin_name} does not match for this instance.")
                 return False
 
             return True
