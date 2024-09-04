@@ -277,8 +277,9 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
 
     @classmethod
     def get_attribute_defs(cls):
+        defs = super(ExtractAlembic, cls).get_attribute_defs()
         if not cls.overrides:
-            return []
+            return defs
 
         override_defs = OrderedDict({
             "eulerFilter": BoolDef(
@@ -495,8 +496,6 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
                 )
             )
         })
-
-        defs = super(ExtractAlembic, cls).get_attribute_defs()
 
         defs.extend([
             UISeparatorDef("sep_alembic_options"),
