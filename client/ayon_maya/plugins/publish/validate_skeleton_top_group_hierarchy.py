@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-"""Plugin for validating naming conventions."""
 from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError,
@@ -9,12 +7,26 @@ from ayon_maya.api import plugin
 from maya import cmds
 
 
+def get_non_root_nodes(nodes):
+    """Return all nodes that are not root nodes (they have parents)
+
+    Arguments:
+        nodes (list[str]): Maya nodes.
+
+    Returns:
+        list[str]: Non-root maya node (long names)
+    """
+    nodes = cmds.ls(nodes, long=True)  # ensure long names
+    return [
+        node for node in nodes if node.count("|") > 2
+    ]
+
+
 class ValidateSkeletonTopGroupHierarchy(plugin.MayaInstancePlugin,
                                         OptionalPyblishPluginMixin):
     """Validates top group hierarchy in the SETs
     Make sure the object inside the SETs are always top
     group of the hierarchy
-
     """
     order = ValidateContentsOrder + 0.05
     label = "Skeleton Rig Top Group Hierarchy"
@@ -25,18 +37,12 @@ class ValidateSkeletonTopGroupHierarchy(plugin.MayaInstancePlugin,
         if not self.is_active(instance.data):
             return
 
-        invalid = []
-        skeleton_mesh_data = instance.data("skeleton_mesh", [])
-        if skeleton_mesh_data:
-            invalid = self.get_top_hierarchy(skeleton_mesh_data)
-            if invalid:
-                raise PublishValidationError(
-                    "The skeletonMesh_SET includes the object which "
-                    "is not at the top hierarchy: {}".format(invalid))
+        skeleton_mesh_nodes = instance.data("skeleton_mesh", [])
+        if not skeleton_mesh_nodes:
+            return
 
-    def get_top_hierarchy(self, targets):
-        targets = cmds.ls(targets, long=True)  # ensure long names
-        non_top_hierarchy_list = [
-            target for target in targets if target.count("|") > 2
-        ]
-        return non_top_hierarchy_list
+        invalid = get_non_root_nodes(skeleton_mesh_nodes)
+        if invalid:
+            raise PublishValidationError(
+                "The skeletonMesh_SET includes the object which "
+                "is not at the top hierarchy: {}".format(invalid))

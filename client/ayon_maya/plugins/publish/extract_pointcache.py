@@ -11,7 +11,7 @@ from ayon_core.lib import (
     UISeparatorDef,
 )
 from ayon_core.pipeline import KnownPublishError
-from ayon_core.pipeline.publish import AYONPyblishPluginMixin
+from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
 from ayon_maya.api.alembic import extract_alembic
 from ayon_maya.api.lib import (
     get_all_children,
@@ -24,7 +24,8 @@ from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
+class ExtractAlembic(plugin.MayaExtractorPlugin,
+                     OptionalPyblishPluginMixin):
     """Produce an alembic of just point positions and normals.
 
     Positions and normals, uvs, creases are preserved, but nothing more,
@@ -38,7 +39,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
     hosts = ["maya"]
     families = ["pointcache", "model", "vrayproxy.alembic"]
     targets = ["local", "remote"]
-
+    optional = False
     # From settings
     attr = []
     attrPrefix = []
@@ -71,6 +72,9 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
     writeVisibility = False
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
+
         if instance.data.get("farm"):
             self.log.debug("Should be processed on farm, skipping.")
             return
@@ -273,8 +277,9 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
 
     @classmethod
     def get_attribute_defs(cls):
+        defs = super(ExtractAlembic, cls).get_attribute_defs()
         if not cls.overrides:
-            return []
+            return defs
 
         override_defs = OrderedDict({
             "eulerFilter": BoolDef(
@@ -492,8 +497,6 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
             )
         })
 
-        defs = super(ExtractAlembic, cls).get_attribute_defs()
-
         defs.extend([
             UISeparatorDef("sep_alembic_options"),
             UILabelDef("Alembic Options"),
@@ -514,9 +517,11 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
         return defs
 
 
-class ExtractAnimation(ExtractAlembic):
+class ExtractAnimation(ExtractAlembic,
+                       OptionalPyblishPluginMixin):
     label = "Extract Animation (Alembic)"
     families = ["animation"]
+    optional = False
 
     def get_members_and_roots(self, instance):
         # Collect the out set nodes
