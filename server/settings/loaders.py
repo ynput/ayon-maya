@@ -6,6 +6,17 @@ class LoaderEnabledModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
 
 
+class LoaderEnabledUseAyonEntityURIModel(LoaderEnabledModel):
+    use_ayon_entity_uri: bool = SettingsField(
+        title="Use AYON Entity URI",
+        description=(
+            "Use the AYON Entity URI on load instead of the resolved filepath "
+            "so that the AYON USD Resolver will resolve the paths at runtime. "
+            "This should be enabled when using the AYON USD Resolver."
+        )
+    )
+
+
 class ColorsSetting(BaseSettingsModel):
     model: ColorRGBA_uint8 = SettingsField(
         (209, 132, 30, 1.0), title="Model:")
@@ -177,6 +188,10 @@ class LoadersModel(BaseSettingsModel):
         default_factory=LoaderEnabledModel,
         title="Matchmove Loader"
     )
+    MayaUsdLoader: LoaderEnabledUseAyonEntityURIModel = SettingsField(
+        default_factory=LoaderEnabledUseAyonEntityURIModel,
+        title="Maya Load USD to Maya Proxy Loader"
+    )
     MultiverseUsdLoader: LoaderEnabledModel = SettingsField(
         default_factory=LoaderEnabledModel,
         title="Multiverse USD Loader"
@@ -287,6 +302,10 @@ DEFAULT_LOADERS_SETTING = {
     "ImagePlaneLoader": {"enabled": True},
     "LookLoader": {"enabled": True},
     "MatchmoveLoader": {"enabled": True},
+    "MayaUsdLoader": {
+        "enabled": True,
+        "use_ayon_entity_uri": True
+    },
     "MultiverseUsdLoader": {"enabled": True},
     "MultiverseUsdOverLoader": {"enabled": True},
     "RedshiftProxyLoader": {"enabled": True},

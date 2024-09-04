@@ -16,9 +16,6 @@ class MayaUsdLoader(plugin.Loader):
     icon = "code-fork"
     color = "orange"
 
-    # TODO: Add to settings
-    use_ayon_entity_uri = True
-
     def load(self, context, name=None, namespace=None, options=None):
         folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
