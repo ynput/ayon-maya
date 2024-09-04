@@ -180,6 +180,10 @@ class CollectFbxAnimationModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Collect Fbx Animation")
 
 
+class CollectFbxCameraModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="CollectFbxCamera")
+
+
 class CollectGLTFModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="CollectGLTF")
 
@@ -631,8 +635,8 @@ class PublishersModel(BaseSettingsModel):
         title="Collect Render Layers",
         section="Collectors"
     )
-    CollectFbxAnimation: CollectFbxAnimationModel = SettingsField(
-        default_factory=CollectFbxAnimationModel,
+    CollectFbxAnimation: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
         title="Collect FBX Animation",
     )
     CollectFbxCamera: BasicValidateModel = SettingsField(
@@ -947,6 +951,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Animation Out Set Related Node Ids",
     )
+    ValidateAnimationProductTypePublish: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Animation Product Type Publish",
+    )
     ValidateRigControllersArnoldAttributes: BasicValidateModel = (
         SettingsField(
             default_factory=BasicValidateModel,
@@ -956,6 +964,10 @@ class PublishersModel(BaseSettingsModel):
     ValidateSingleAssembly: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Single Assembly",
+    )
+    ValidateAnimatedRigContent: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Animated Rig Content",
     )
     ValidateSkeletalMeshHierarchy: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -1057,6 +1069,11 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ExtractAlembicModel,
         title="Extract Alembic"
     )
+    ExtractAnimation: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Animation (Alembic)",
+        description="Alembic extractor for loaded rigs"
+    )
     ExtractMayaUsdModel: ExtractMayaUsdModelModel = SettingsField(
         default_factory=ExtractMayaUsdModelModel,
         title="Extract Maya USD with Model"
@@ -1084,7 +1101,9 @@ DEFAULT_PUBLISH_SETTINGS = {
         "sync_workfile_version": False
     },
     "CollectFbxAnimation": {
-        "enabled": False
+        "enabled": False,
+        "optional": True,
+        "active": True
     },
     "CollectFbxCamera": {
         "enabled": False,
@@ -1503,12 +1522,22 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": False,
         "active": True
     },
+    "ValidateAnimationProductTypePublish": {
+        "enabled": True,
+        "optional": False,
+        "active": True
+    },
     "ValidateRigControllersArnoldAttributes": {
         "enabled": True,
         "optional": False,
         "active": True
     },
     "ValidateSingleAssembly": {
+        "enabled": True,
+        "optional": False,
+        "active": True
+    },
+    "ValidateAnimatedRigContent": {
         "enabled": True,
         "optional": False,
         "active": True
@@ -1691,6 +1720,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "writeNormals": True,
         "writeUVSets": False,
         "writeVisibility": False
+    },
+    "ExtractAnimation": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
     },
     "ExtractMayaUsdModel": {
         "enabled": True,

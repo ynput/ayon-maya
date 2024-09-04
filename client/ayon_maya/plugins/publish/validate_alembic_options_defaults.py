@@ -23,6 +23,8 @@ class ValidateAlembicDefaultsPointcache(
 
     plugin_name = "ExtractAlembic"
 
+    ignore_keys = {"active"}
+
     @classmethod
     def _get_settings(cls, context):
         maya_settings = context.data["project_settings"]["maya"]
@@ -42,6 +44,9 @@ class ValidateAlembicDefaultsPointcache(
 
         invalid = {}
         for key, value in attributes.items():
+            if key in self.ignore_keys:
+                continue
+
             if key not in settings:
                 # This may occur if attributes have changed over time and an
                 # existing instance has older legacy attributes that do not
@@ -106,6 +111,9 @@ class ValidateAlembicDefaultsPointcache(
             cls._get_publish_attributes(create_instance)
         )
         for key in attributes.keys():
+            if key in cls.ignore_keys:
+                continue
+
             if key not in settings:
                 # This may occur if attributes have changed over time and an
                 # existing instance has older legacy attributes that do not
