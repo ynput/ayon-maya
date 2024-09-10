@@ -570,24 +570,47 @@ def pairwise(iterable):
     return zip(a, a)
 
 
-def collect_animation_defs(fps=False):
+def collect_animation_defs(fps=False, create_context=None):
     """Get the basic animation attribute definitions for the publisher.
 
+    Arguments:
+        fps (bool): Whether to include `fps` attribute definition.
+        create_context (CreateContext | None): When provided the context of
+            publisher will be used to define the defaults for the attributes.
+            Depending on project settings this may then use the entity's frame
+            range and FPS instead of the current scene values.
+
     Returns:
-        OrderedDict
+        List[NumberDef]: List of number attribute definitions.
 
     """
 
-    # get scene values as defaults
-    frame_start = cmds.playbackOptions(query=True, minTime=True)
-    frame_end = cmds.playbackOptions(query=True, maxTime=True)
-    frame_start_handle = cmds.playbackOptions(
-        query=True, animationStartTime=True
-    )
-    frame_end_handle = cmds.playbackOptions(query=True, animationEndTime=True)
+    use_entity_frame_range = False
+    if create_context is not None:
+        project_settings = create_context.get_current_project_settings()
+        print(project_settings["maya"]["create"])
+        use_entity_frame_range: bool = project_settings["maya"]["create"].get(
+            "use_entity_attributes_as_defaults", False)
 
-    handle_start = frame_start - frame_start_handle
-    handle_end = frame_end_handle - frame_end
+    if create_context is not None and use_entity_frame_range:
+        task_entity = create_context.get_current_task_entity()
+        frame_start = task_entity["attrib"]["frameStart"]
+        frame_end = task_entity["attrib"]["frameEnd"]
+        handle_start = task_entity["attrib"]["handleStart"]
+        handle_end = task_entity["attrib"]["handleEnd"]
+        default_fps = task_entity["attrib"]["fps"]
+    else:
+        # get scene values as defaults
+        frame_start = cmds.playbackOptions(query=True, minTime=True)
+        frame_end = cmds.playbackOptions(query=True, maxTime=True)
+        frame_start_handle = cmds.playbackOptions(
+            query=True, animationStartTime=True)
+        frame_end_handle = cmds.playbackOptions(
+            query=True, animationEndTime=True)
+
+        handle_start = frame_start - frame_start_handle
+        handle_end = frame_end_handle - frame_end
+        default_fps = mel.eval('currentTimeUnitToFPS()')
 
     # build attributes
     defs = [
@@ -619,9 +642,8 @@ def collect_animation_defs(fps=False):
     ]
 
     if fps:
-        current_fps = mel.eval('currentTimeUnitToFPS()')
         fps_def = NumberDef(
-            "fps", label="FPS", default=current_fps, decimals=5
+            "fps", label="FPS", default=default_fps, decimals=5
         )
         defs.append(fps_def)
 
