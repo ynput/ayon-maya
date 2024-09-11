@@ -545,9 +545,24 @@ class CollectLook(plugin.MayaInstancePlugin):
                     self.log.warning("Attribute '{}' is mixed-type and is "
                                      "not supported yet.".format(attribute))
                     continue
-                if cmds.getAttr(attribute, type=True) == "message":
+
+                attribute_type = cmds.getAttr(attribute, type=True)
+                if attribute_type == "message":
                     continue
-                node_attributes[attr] = cmds.getAttr(attribute, asString=True)
+
+                # Maya has a tendency to return string attribute values as
+                # `None` if it is an empty string and the attribute has never
+                # been set but is still at default value.
+                value = cmds.getAttr(attribute, asString=True)
+                if value is None:
+                    # If the attribute type is `string` we will convert it
+                    # to enforce an empty string value
+                    if attribute_type == "string":
+                        value = ""
+                    else:
+                        continue
+
+                node_attributes[attr] = value
             # Only include if there are any properties we care about
             if not node_attributes:
                 continue

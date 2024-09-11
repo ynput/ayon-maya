@@ -36,18 +36,6 @@ class ExtractFBXAnimation(plugin.MayaExtractorPlugin):
         instance.data["skeletonDefinitions"] = True
         instance.data["referencedAssetsContent"] = True
         fbx_exporter.set_options_from_instance(instance)
-        # Export from the rig's namespace so that the exported
-        # FBX does not include the namespace but preserves the node
-        # names as existing in the rig workfile
-        if not out_members:
-            skeleton_set = [
-                i for i in instance
-                if i.endswith("skeletonAnim_SET")
-            ]
-            self.log.debug(
-                "Top group of animated skeleton not found in "
-                "{}.\nSkipping fbx animation extraction.".format(skeleton_set))
-            return
 
         namespace = get_namespace(out_members[0])
         relative_out_members = [

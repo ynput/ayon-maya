@@ -24,7 +24,9 @@ class ValidateAnimationContent(plugin.MayaInstancePlugin,
 
     @classmethod
     def get_invalid(cls, instance):
-
+        if "animation.abc" not in instance.data["families"]:
+            cls.log.debug("Skipping Validate Animation content.")
+            return
         out_set = next((i for i in instance.data["setMembers"] if
                         i.endswith("out_SET")), None)
 

@@ -288,8 +288,12 @@ def generate_capture_preset(instance, camera, path,
 
     # Override viewport options by instance data
     viewport_options = preset.setdefault("viewport_options", {})
-    viewport_options["displayLights"] = instance.data["displayLights"]
     viewport_options["imagePlane"] = instance.data.get("imagePlane", True)
+
+    # When using 'project settings' we preserve the capture preset that
+    # was picked, then we do not override it with the instance data
+    if instance.data["displayLights"] != "project_settings":
+        viewport_options["displayLights"] = instance.data["displayLights"]
 
     # Override transparency if requested.
     transparency = instance.data.get("transparency", 0)
@@ -1731,6 +1735,11 @@ def apply_attributes(attributes, nodes_by_id):
         attr_value = attr_data["attributes"]
         for node in nodes:
             for attr, value in attr_value.items():
+                if value is None:
+                    log.warning(
+                        f"Skipping setting {node}.{attr} with value 'None'")
+                    continue
+
                 set_attribute(attr, value, node)
 
 

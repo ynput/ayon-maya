@@ -33,11 +33,6 @@ class CollectReview(plugin.MayaInstancePlugin):
 
         # Collect display lights.
         display_lights = instance.data.get("displayLights", "default")
-        if display_lights == "project_settings":
-            settings = instance.context.data["project_settings"]
-            settings = settings["maya"]["publish"]["ExtractPlayblast"]
-            settings = settings["capture_preset"]["ViewportOptions"]
-            display_lights = settings["displayLights"]
 
         # Collect camera focal length.
         burninDataMembers = instance.data.get("burninDataMembers", {})
