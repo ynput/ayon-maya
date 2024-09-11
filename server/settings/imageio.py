@@ -62,7 +62,7 @@ DEFAULT_IMAGEIO_SETTINGS = {
         "rules": []
     },
     "workfile": {
-        "enabled": False,
+        "enabled": True,
         "renderSpace": "ACES - ACEScg",
         "displayName": "ACES",
         "viewName": "sRGB"
