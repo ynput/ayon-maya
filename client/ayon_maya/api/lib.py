@@ -588,7 +588,6 @@ def collect_animation_defs(fps=False, create_context=None):
     use_entity_frame_range = False
     if create_context is not None:
         project_settings = create_context.get_current_project_settings()
-        print(project_settings["maya"]["create"])
         use_entity_frame_range: bool = project_settings["maya"]["create"].get(
             "use_entity_attributes_as_defaults", False)
 
