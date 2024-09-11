@@ -176,6 +176,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         Returns:
             List[om.MMatrix]: List of transformation matrix of the asset
         """
+        # TODO: Edit the function to make sure the rotation has been correct even in some extreme
+        # ocassions
         convert_transform = om.MTransformationMatrix(transform_mm)
 
         convert_translation = convert_transform.translation(om.MSpace.kWorld)
