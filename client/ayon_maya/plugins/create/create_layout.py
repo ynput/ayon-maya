@@ -17,9 +17,5 @@ class CreateLayout(plugin.MayaCreator):
                     label="Group Loaded Assets",
                     tooltip="Enable this when you want to publish group of "
                             "loaded asset",
-                    default=False),
-            EnumDef("layout_options",
-                    items=["fbx", "abc"],
-                    label="Export Layout Options",
-                    default="fbx")
+                    default=False)
         ]

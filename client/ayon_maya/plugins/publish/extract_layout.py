@@ -32,8 +32,8 @@ def convert_matrix_to_4x4_list(
 class ExtractLayout(plugin.MayaExtractorPlugin):
     """Extract a layout."""
 
-    label = "Extract Layout(FBX)"
-    families = ["layout.fbx"]
+    label = "Extract Layout"
+    families = ["layout"]
     project_container = "AVALON_CONTAINERS"
 
     def process(self, instance):
@@ -81,11 +81,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             representation = get_representation_by_id(
                 project_name,
                 representation_id,
-                fields={"versionId", "context"}
+                fields={"versionId", "context", "name"}
             )
-
-            self.log.debug(representation)
-
             version_id = representation["versionId"]
             # TODO use product entity to get product type rather than
             #    data in representation 'context'
@@ -99,13 +96,15 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 "instance_name": cmds.getAttr(
                     "{}.namespace".format(container)),
                 "representation": str(representation_id),
-                "version": str(version_id)
+                "version": str(version_id),
+                "extension": representation["name"]
             }
 
             local_matrix = cmds.xform(asset, query=True, matrix=True)
             local_rotation = cmds.xform(asset, query=True, rotation=True, euler=True)
 
-            t_matrix = self.create_transformation_matrix(local_matrix, local_rotation)
+            t_matrix = self.create_transformation_matrix(
+                local_matrix, local_rotation, product_type, representation["name"])
 
             json_element["transform_matrix"] = [
                 list(row)
@@ -150,14 +149,25 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         self.log.debug("Extracted instance '%s' to: %s",
                        instance.name, json_representation)
 
-    def create_transformation_matrix(self, local_matrix, local_rotation):
+    def create_transformation_matrix(self, local_matrix, local_rotation, product_type, extension="abc"):
         matrix = om.MMatrix(local_matrix)
-        matrix = self.convert_transformation_matrix(matrix, local_rotation)
+        if extension == "fbx":
+            matrix = self.convert_transformation_matrix(matrix, local_rotation)
+        elif extension == "abc":
+            matrix = self.convert_abc_transformation_matrix(matrix, local_rotation)
+        elif extension == "ma":
+            if product_type == "rig":
+                matrix = self.convert_transformation_matrix(matrix, local_rotation)
+            else:
+                matrix = self.convert_abc_transformation_matrix(matrix, local_rotation)
+        else:
+            raise RuntimeError(
+                f"No convert transformation matrix found for the loaded asset in {extension}")
         t_matrix = convert_matrix_to_4x4_list(matrix)
         return t_matrix
 
-    def convert_transformation_matrix(self, transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
-        """Convert matrix to list of transformation matrix for Unreal Engine import.
+    def convert_abc_transformation_matrix(self, transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
+        """Convert matrix to list of transformation matrix for Unreal Engine alembic asset import.
 
         Args:
             transform_mm (om.MMatrix): Local Matrix for the asset
@@ -166,39 +176,6 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         Returns:
             List[om.MMatrix]: List of transformation matrix of the asset
         """
-        convert_transform = om.MTransformationMatrix(transform_mm)
-
-        convert_translation = convert_transform.translation(om.MSpace.kWorld)
-        convert_translation = om.MVector(convert_translation.x, convert_translation.z, convert_translation.y)
-        convert_scale = convert_transform.scale(om.MSpace.kObject)
-        convert_transform.setTranslation(convert_translation, om.MSpace.kWorld)
-        converted_rotation = om.MEulerRotation(
-            math.radians(rotation[0]), math.radians(rotation[2]), math.radians(rotation[1])
-        )
-        convert_transform.setRotation(converted_rotation)
-        convert_transform.setScale([convert_scale[0], convert_scale[2], convert_scale[1]], om.MSpace.kObject)
-
-        return convert_transform.asMatrix()
-
-
-class ExtractLayoutAbc(ExtractLayout):
-    """Extract a layout."""
-
-    label = "Extract Layout(Abc)"
-    families = ["layout.abc"]
-    project_container = "AVALON_CONTAINERS"
-
-    def convert_transformation_matrix(self, transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
-        """Convert matrix to list of transformation matrix for Unreal Engine import.
-
-        Args:
-            transform_mm (om.MMatrix): Local Matrix for the asset
-            rotation (list): Rotations of the asset
-
-        Returns:
-            List[om.MMatrix]: List of transformation matrix of the asset
-        """
-        # TODO: need to find the correct implementation of layout for alembic
         convert_transform = om.MTransformationMatrix(transform_mm)
 
         convert_translation = convert_transform.translation(om.MSpace.kWorld)
