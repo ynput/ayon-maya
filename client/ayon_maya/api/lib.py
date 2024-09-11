@@ -3341,12 +3341,10 @@ def set_colorspace():
     is_ocio_set = bool(os.environ.get("OCIO"))
 
     if not imageio["workfile"]["enabled"]:
-        log.error(
-            "The AYON settings for Maya Color Management were last configured "
-            "using deprecated settings. Make sure to update the workfile "
-            "colorspace values for 'ayon+settings://maya/imageio/workfile' "
-            "and enable the checkbox to avoid this error."
+        log.info(
+            "AYON Maya Color Management settings for workfile are disabled."
         )
+        return
 
     # set color spaces for rendering space and view transforms
     def _colormanage(**kwargs):
