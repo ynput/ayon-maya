@@ -1,5 +1,5 @@
 from ayon_maya.api import plugin
-from ayon_core.lib import BoolDef, EnumDef
+from ayon_core.lib import BoolDef
 
 
 class CreateLayout(plugin.MayaCreator):
