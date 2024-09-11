@@ -8,9 +8,9 @@ from ayon_core.lib import (
 )
 
 
-def _get_animation_attr_defs():
+def _get_animation_attr_defs(create_context):
     """Get Animation generic definitions."""
-    defs = lib.collect_animation_defs()
+    defs = lib.collect_animation_defs(create_context=create_context)
     defs.extend(
         [
             BoolDef("farm", label="Submit to Farm"),
@@ -99,7 +99,7 @@ class CreateAnimation(plugin.MayaHiddenCreator):
         return node_data
 
     def get_instance_attr_defs(self):
-        return _get_animation_attr_defs()
+        return _get_animation_attr_defs(self.create_context)
 
 
 class CreatePointCache(plugin.MayaCreator):
@@ -121,7 +121,7 @@ class CreatePointCache(plugin.MayaCreator):
         return node_data
 
     def get_instance_attr_defs(self):
-        return _get_animation_attr_defs()
+        return _get_animation_attr_defs(self.create_context)
 
     def create(self, product_name, instance_data, pre_create_data):
         instance = super(CreatePointCache, self).create(
