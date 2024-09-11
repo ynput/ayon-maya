@@ -3337,9 +3337,6 @@ def set_colorspace():
     project_name = get_current_project_name()
     imageio = get_project_settings(project_name)["maya"]["imageio"]
 
-    # ocio compatibility variables
-    is_ocio_set = bool(os.environ.get("OCIO"))
-
     if not imageio["workfile"]["enabled"]:
         log.info(
             "AYON Maya Color Management settings for workfile are disabled."
@@ -3361,11 +3358,13 @@ def set_colorspace():
         except RuntimeError as exc:
             log.error(exc)
 
+    log.info(f"Setting Maya colorspace..")
+
     # enable color management
     cmds.colorManagementPrefs(edit=True, cmEnabled=True)
     cmds.colorManagementPrefs(edit=True, ocioRulesEnabled=True)
 
-    log.info("Using Maya OCIO v2")
+    is_ocio_set = bool(os.environ.get("OCIO"))
     if not is_ocio_set:
         # Set the Maya 2022+ default OCIO v2 config file path
         log.info("Setting default Maya OCIO v2 config")
