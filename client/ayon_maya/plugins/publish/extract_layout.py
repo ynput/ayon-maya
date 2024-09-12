@@ -192,7 +192,6 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
         return convert_transform.asMatrix()
 
-
     def convert_transformation_matrix(self, transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
         """Convert matrix to list of transformation matrix for Unreal Engine fbx asset import.
 
