@@ -3379,7 +3379,7 @@ def set_colorspace():
         except RuntimeError as exc:
             log.error(exc)
 
-    log.info(f"Setting Maya colorspace..")
+    log.info("Setting Maya colorspace..")
 
     # enable color management
     cmds.colorManagementPrefs(edit=True, cmEnabled=True)
