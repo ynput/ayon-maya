@@ -15,7 +15,8 @@ class CreateMultiverseUsdOver(plugin.MayaCreator):
     icon = "cubes"
 
     def get_instance_attr_defs(self):
-        defs = lib.collect_animation_defs(fps=True)
+        defs = lib.collect_animation_defs(
+            fps=True, create_context=self.create_context)
         defs.extend([
             EnumDef("fileFormat",
                     label="File format",

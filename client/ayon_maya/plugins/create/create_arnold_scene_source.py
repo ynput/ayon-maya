@@ -44,7 +44,7 @@ class CreateArnoldSceneSource(plugin.MayaCreator):
 
     def get_instance_attr_defs(self):
 
-        defs = lib.collect_animation_defs()
+        defs = lib.collect_animation_defs(create_context=self.create_context)
 
         defs.extend([
             BoolDef("motionBlur",
