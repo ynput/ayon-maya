@@ -9,14 +9,13 @@ from maya import cmds
 
 
 class CreateMayaUsd(plugin.MayaCreator):
-    """Create Maya USD Export"""
+    """Create Maya USD Export from maya scene objects"""
 
     identifier = "io.openpype.creators.maya.mayausd"
     label = "Maya USD"
     product_type = "usd"
     icon = "cubes"
     description = "Create Maya USD Export"
-
     cache = {}
 
     def get_publish_families(self):
@@ -44,7 +43,16 @@ class CreateMayaUsd(plugin.MayaCreator):
 
             self.cache["jobContextItems"] = job_context_items
 
-        defs = lib.collect_animation_defs()
+        defs = [
+            BoolDef("exportAnimationData",
+                    label="Export Animation Data",
+                    tooltip="When disabled no frame range is exported and "
+                            "only the start frame is used to define the "
+                            "static export frame.",
+                    default=True)
+        ]
+        defs.extend(lib.collect_animation_defs(
+            create_context=self.create_context))
         defs.extend([
             EnumDef("defaultUSDFormat",
                     label="File format",
@@ -53,6 +61,17 @@ class CreateMayaUsd(plugin.MayaCreator):
                         "usda": "ASCII"
                     },
                     default="usdc"),
+            # TODO: Remove note from tooltip when issue is resolved, see:
+            #  https://github.com/Autodesk/maya-usd/issues/3389
+            BoolDef("exportRoots",
+                    label="Export as roots",
+                    tooltip=(
+                        "Export the members of the object sets without "
+                        "their parents.\n"
+                        "Note: There's an export bug that when this is "
+                        "enabled MayaUsd fails to export instance meshes"
+                    ),
+                    default=True),
             BoolDef("stripNamespaces",
                     label="Strip Namespaces",
                     tooltip=(
@@ -100,3 +119,87 @@ class CreateMayaUsd(plugin.MayaCreator):
         ])
 
         return defs
+
+    def get_pre_create_attr_defs(self):
+        defs = super().get_pre_create_attr_defs()
+        defs.extend([
+            BoolDef("createAssetTemplateHierarchy",
+                    label="Create asset hierarchy",
+                    tooltip=(
+                        "Create the root hierarchy for '{folder_name}/geo'"
+                        " as per the USD Asset Structure guidelines to"
+                        " add your geometry into."
+                    ),
+                    default=False)
+        ])
+        return defs
+
+    def _create_template_hierarchy(self, folder_name, variant):
+        """Create the asset root template to hold the geo for the usd asset.
+
+        Args:
+            folder_name: Asset name to use for the group
+            variant: Variant name to use as namespace.
+                This is needed so separate asset contributions can be
+                correctly created from a single scene.
+
+        Returns:
+            list: The root node and geometry group.
+
+        """
+
+        def set_usd_type(node, value):
+            attr = "USD_typeName"
+            if not cmds.attributeQuery(attr, node=node, exists=True):
+                cmds.addAttr(node, ln=attr, dt="string")
+            cmds.setAttr(f"{node}.{attr}", value, type="string")
+
+        # Ensure simple unique namespace (add trailing number)
+        namespace = variant
+        name = f"{namespace}:{folder_name}"
+        i = 1
+        while cmds.objExists(name):
+            name = f"{namespace}{i}:{folder_name}"
+            i += 1
+
+        # Define template hierarchy {folder_name}/geo
+        root = cmds.createNode("transform",
+                               name=name,
+                               skipSelect=True)
+        geo = cmds.createNode("transform",
+                              name="geo",
+                              parent=root,
+                              skipSelect=True)
+        set_usd_type(geo, "Scope")
+        # Lock + hide transformations since we're exporting as Scope
+        for attr in ["tx", "ty", "tz", "rx", "ry", "rz", "sx", "sy", "sz"]:
+            cmds.setAttr(f"{geo}.{attr}", lock=True, keyable=False)
+
+        return [root, geo]
+
+    def create(self, product_name, instance_data, pre_create_data):
+
+        # Create template hierarchy
+        if pre_create_data.get("createAssetTemplateHierarchy", False):
+            members = []
+            if pre_create_data.get("use_selection"):
+                members = cmds.ls(selection=True,
+                                  long=True,
+                                  type="dagNode")
+
+            folder_path = instance_data["folderPath"]
+            folder_name = folder_path.rsplit("/", 1)[-1]
+
+            root, geo = self._create_template_hierarchy(
+                folder_name=folder_name,
+                variant=instance_data["variant"]
+            )
+
+            if members:
+                cmds.parent(members, geo)
+
+            # Select root and enable selection just so parent class'
+            # create adds it to the created instance
+            cmds.select(root, replace=True, noExpand=True)
+
+        super().create(product_name, instance_data, pre_create_data)

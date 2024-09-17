@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Extract model as Maya Scene."""
 import os
+from contextlib import nullcontext
 
 from ayon_core.pipeline import publish
 from ayon_maya.api import lib
@@ -69,6 +70,10 @@ class ExtractModel(plugin.MayaExtractorPlugin,
                           noIntermediate=True,
                           long=True)
 
+        # Check if shaders should be included as part of the model export. If
+        # False, the default shader is assigned to the geometry.
+        include_shaders = instance.data.get("include_shaders", False)
+
         with lib.no_display_layers(instance):
             with lib.displaySmoothness(members,
                                        divisionsU=0,
@@ -76,8 +81,11 @@ class ExtractModel(plugin.MayaExtractorPlugin,
                                        pointsWire=4,
                                        pointsShaded=1,
                                        polygonObject=1):
-                with lib.shader(members,
-                                shadingEngine="initialShadingGroup"):
+                with (
+                    nullcontext()
+                    if include_shaders
+                    else lib.shader(members, shadingEngine="initialShadingGroup")
+                ):
                     with lib.maintained_selection():
                         cmds.select(members, noExpand=True)
                         cmds.file(path,

@@ -66,7 +66,7 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
 
         # Whether to include all nodes in the instance (including those from
         # history) or only use the exact set members
-        members_only = instance.data.get("exactSetMembersOnly", False)
+        members_only = instance.data.get("exactSetMembersOnly", True)
         if members_only:
             members = instance.data.get("setMembers", list())
             if not members:
@@ -144,7 +144,7 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
             }:
                 continue
 
-            set_content = set(cmds.sets(obj_set, query=True))
+            set_content = set(cmds.sets(obj_set, query=True) or [])
             if set_content.intersection(members_with_refs):
                 loaded_containers.append(obj_set)
 

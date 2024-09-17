@@ -288,8 +288,12 @@ def generate_capture_preset(instance, camera, path,
 
     # Override viewport options by instance data
     viewport_options = preset.setdefault("viewport_options", {})
-    viewport_options["displayLights"] = instance.data["displayLights"]
     viewport_options["imagePlane"] = instance.data.get("imagePlane", True)
+
+    # When using 'project settings' we preserve the capture preset that
+    # was picked, then we do not override it with the instance data
+    if instance.data["displayLights"] != "project_settings":
+        viewport_options["displayLights"] = instance.data["displayLights"]
 
     # Override transparency if requested.
     transparency = instance.data.get("transparency", 0)
@@ -566,24 +570,46 @@ def pairwise(iterable):
     return zip(a, a)
 
 
-def collect_animation_defs(fps=False):
+def collect_animation_defs(fps=False, create_context=None):
     """Get the basic animation attribute definitions for the publisher.
 
+    Arguments:
+        fps (bool): Whether to include `fps` attribute definition.
+        create_context (CreateContext | None): When provided the context of
+            publisher will be used to define the defaults for the attributes.
+            Depending on project settings this may then use the entity's frame
+            range and FPS instead of the current scene values.
+
     Returns:
-        OrderedDict
+        List[NumberDef]: List of number attribute definitions.
 
     """
 
-    # get scene values as defaults
-    frame_start = cmds.playbackOptions(query=True, minTime=True)
-    frame_end = cmds.playbackOptions(query=True, maxTime=True)
-    frame_start_handle = cmds.playbackOptions(
-        query=True, animationStartTime=True
-    )
-    frame_end_handle = cmds.playbackOptions(query=True, animationEndTime=True)
+    use_entity_frame_range = False
+    if create_context is not None:
+        project_settings = create_context.get_current_project_settings()
+        use_entity_frame_range: bool = project_settings["maya"]["create"].get(
+            "use_entity_attributes_as_defaults", False)
 
-    handle_start = frame_start - frame_start_handle
-    handle_end = frame_end_handle - frame_end
+    if create_context is not None and use_entity_frame_range:
+        task_entity = create_context.get_current_task_entity()
+        frame_start = task_entity["attrib"]["frameStart"]
+        frame_end = task_entity["attrib"]["frameEnd"]
+        handle_start = task_entity["attrib"]["handleStart"]
+        handle_end = task_entity["attrib"]["handleEnd"]
+        default_fps = task_entity["attrib"]["fps"]
+    else:
+        # get scene values as defaults
+        frame_start = cmds.playbackOptions(query=True, minTime=True)
+        frame_end = cmds.playbackOptions(query=True, maxTime=True)
+        frame_start_handle = cmds.playbackOptions(
+            query=True, animationStartTime=True)
+        frame_end_handle = cmds.playbackOptions(
+            query=True, animationEndTime=True)
+
+        handle_start = frame_start - frame_start_handle
+        handle_end = frame_end_handle - frame_end
+        default_fps = mel.eval('currentTimeUnitToFPS()')
 
     # build attributes
     defs = [
@@ -615,9 +641,8 @@ def collect_animation_defs(fps=False):
     ]
 
     if fps:
-        current_fps = mel.eval('currentTimeUnitToFPS()')
         fps_def = NumberDef(
-            "fps", label="FPS", default=current_fps, decimals=5
+            "fps", label="FPS", default=default_fps, decimals=5
         )
         defs.append(fps_def)
 
@@ -1421,7 +1446,12 @@ def get_id_required_nodes(referenced_nodes=False,
     def _add_to_result_if_valid(obj):
         """Add to `result` if the object should be included"""
         fn_dep.setObject(obj)
-        if not existing_ids and fn_dep.hasAttribute("cbId"):
+        if (
+                not existing_ids
+                and fn_dep.hasAttribute("cbId")
+                # May not be an empty value
+                and fn_dep.findPlug("cbId", True).asString()
+        ):
             return
 
         if not referenced_nodes and fn_dep.isFromReferencedFile:
@@ -1726,6 +1756,11 @@ def apply_attributes(attributes, nodes_by_id):
         attr_value = attr_data["attributes"]
         for node in nodes:
             for attr, value in attr_value.items():
+                if value is None:
+                    log.warning(
+                        f"Skipping setting {node}.{attr} with value 'None'")
+                    continue
+
                 set_attribute(attr, value, node)
 
 
