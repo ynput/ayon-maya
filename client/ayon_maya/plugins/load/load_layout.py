@@ -52,8 +52,11 @@ class LayoutLoader(plugin.Loader):
     @staticmethod
     def _get_loader(loaders, product_type):
         name = ""
-        if product_type in {"rig", "model", "camera", "animation"}:
-            name = "ReferenceLoader"
+        if product_type in {
+            "rig", "model", "camera",
+            "animation", "staticMesh",
+            "skeletalMesh"}:
+                name = "ReferenceLoader"
 
         if name == "":
             return None
@@ -100,40 +103,39 @@ class LayoutLoader(plugin.Loader):
                 continue
 
             instance_name = element.get('asset_name')
+            assets = [
+                asset for asset in cmds.ls(f"{instance_name}*")
+                if asset.endswith("_CON")
+            ]
+            if not assets:
+                if repre_id not in loaded_options:
+                    loaded_options.append(repre_id)
 
-            if repre_id not in loaded_options:
-                loaded_options.append(repre_id)
+                    product_type = element.get("product_type")
+                    if product_type is None:
+                        product_type = element.get("family")
+                    loaders = loaders_from_representation(
+                        all_loaders, repre_id)
 
-                product_type = element.get("product_type")
-                if product_type is None:
-                    product_type = element.get("family")
-                loaders = loaders_from_representation(
-                    all_loaders, repre_id)
+                    loader = None
 
-                loader = None
+                    if repr_format:
+                        loader = self._get_loader(loaders, product_type)
 
-                if repr_format:
-                    loader = self._get_loader(loaders, product_type)
+                    if not loader:
+                        self.log.error(
+                            f"No valid loader found for {repre_id}")
+                        continue
 
-                if not loader:
-                    self.log.error(
-                        f"No valid loader found for {repre_id}")
-                    continue
-
-                options = {
-                    # "asset_dir": asset_dir
-                }
-                assets = [asset for asset in cmds.ls(f"{instance_name}*")
-                          if asset.endswith("_CON")]
-                if not assets:
-                    assets = load_container(
+                    options = {
+                        # "asset_dir": asset_dir
+                    }
+                    load_container(
                         loader,
                         repre_id,
                         namespace=instance_name,
                         options=options
                     )
-                    if not assets:
-                        return []
                 instances = [
                     item for item in data
                     if ((item.get('version') and
@@ -148,7 +150,7 @@ class LayoutLoader(plugin.Loader):
         asset = [
             asset for asset in cmds.ls(f"{instance_name}*")
             if asset.endswith("_CON")
-        ][0]
+        ]
         translation = [
             transform["translation"]["x"],
             transform["translation"]["z"],
