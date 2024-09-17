@@ -67,6 +67,12 @@ class LayoutLoader(plugin.Loader):
 
         return None
 
+    @staticmethod
+    def get_asset(instance_name):
+        return [
+                asset for asset in cmds.ls(f"{instance_name}*")
+                if asset.endswith("_CON")
+            ]
 
     def _process(self, filepath, options, loaded_options=None):
 
@@ -103,10 +109,7 @@ class LayoutLoader(plugin.Loader):
                 continue
 
             instance_name = element.get('asset_name')
-            assets = [
-                asset for asset in cmds.ls(f"{instance_name}*")
-                if asset.endswith("_CON")
-            ]
+            assets = self.get_asset(instance_name)
             if not assets:
                 if repre_id not in loaded_options:
                     loaded_options.append(repre_id)
