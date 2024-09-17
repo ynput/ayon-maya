@@ -19,8 +19,11 @@ class CreateOxCache(plugin.MayaCreator):
 
         # Add animation data without step and handles
         remove = {"handleStart", "handleEnd"}
-        defs = [attr_def for attr_def in lib.collect_animation_defs()
-                if attr_def.key not in remove]
+        defs = [
+            attr_def for attr_def in lib.collect_animation_defs(
+                create_context=self.create_context)
+            if attr_def.key not in remove
+        ]
         defs.extend(
             [
                 EnumDef("format",
