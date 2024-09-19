@@ -167,7 +167,7 @@ class LayoutLoader(plugin.Loader):
             ]
 
         rotation = [
-            math.degrees(transform["rotation"]["x"]) - 180,
+            math.degrees(transform["rotation"]["x"]) - 90,
             180 - math.degrees(transform["rotation"]["z"]),
             math.degrees(transform["rotation"]["y"]),
         ]
