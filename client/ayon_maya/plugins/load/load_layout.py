@@ -67,12 +67,14 @@ class LayoutLoader(plugin.Loader):
 
         return None
 
-    @staticmethod
-    def get_asset(instance_name):
-        return [
-                asset for asset in cmds.ls(f"{instance_name}*")
-                if asset.endswith("_CON")
-            ]
+    def get_asset(self, instance_name):
+        container = [
+            con for con in cmds.ls(f"{instance_name}*")
+            if con.endswith("_CON")
+        ][0]
+        namespace = cmds.getAttr(f"{container}.namespace")
+        asset = [asset for asset in cmds.ls(f"{namespace}:*", assemblies=True)][0]
+        return asset
 
     def _process(self, filepath, options, loaded_options=None):
 
@@ -109,8 +111,13 @@ class LayoutLoader(plugin.Loader):
                 continue
 
             instance_name = element.get('asset_name')
-            assets = self.get_asset(instance_name)
-            if not assets:
+            extension = instance_name.split("_")[-1]
+            instance_name = instance_name.replace(f"_{extension}", "")
+            containers = [
+                con for con in cmds.ls(f"{instance_name}*")
+                if con.endswith("_CON")
+            ]
+            if not containers:
                 if repre_id not in loaded_options:
                     loaded_options.append(repre_id)
 
@@ -147,13 +154,12 @@ class LayoutLoader(plugin.Loader):
                 for instance in instances:
                     transform = instance.get('transform')
                     instance_name = instance.get('asset_name')
+                    extension = instance_name.split("_")[-1]
+                    instance_name = instance_name.replace(f"_{extension}", "")
                     self.set_transformation(instance_name, transform)
 
     def set_transformation(self, instance_name, transform):
-        asset = [
-            asset for asset in cmds.ls(f"{instance_name}*")
-            if asset.endswith("_CON")
-        ]
+        asset = self.get_asset(instance_name)
         translation = [
             transform["translation"]["x"],
             transform["translation"]["z"],
@@ -170,6 +176,7 @@ class LayoutLoader(plugin.Loader):
             transform["scale"]["z"],
             transform["scale"]["y"]
         ]
+
         cmds.xform(
             asset,
             translation=translation,
