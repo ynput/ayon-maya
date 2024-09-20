@@ -172,7 +172,7 @@ class LayoutLoader(plugin.Loader):
             math.degrees(transform["rotation"]["y"]),
         ]
         scale = [
-            transform["scale"]["x"],
+            -transform["scale"]["x"],
             transform["scale"]["z"],
             transform["scale"]["y"]
         ]
@@ -181,8 +181,7 @@ class LayoutLoader(plugin.Loader):
             asset,
             translation=translation,
             rotation=rotation,
-            scale=scale,
-            rotatePivot=[-90, 0, 0]
+            scale=scale
         )
 
     def load(self, context, name, namespace, options):
