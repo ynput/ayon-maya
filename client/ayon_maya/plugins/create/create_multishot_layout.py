@@ -161,8 +161,10 @@ class CreateMultishotLayout(plugin.MayaCreator):
                 layout_task_name = pre_create_data["taskName"]
                 layout_task_entity = task_entities[layout_task_name]
 
-            shot_name = f"{shot['name']}%s" % (
-                f" ({shot['label']})" if shot["label"] else "")
+            shot_name = shot['name']
+            if shot["label"] and shot["label"] != shot_name:
+                shot_name += f" ({shot['label']})"
+
             cmds.shot(sequenceStartTime=shot["attrib"]["clipIn"],
                       sequenceEndTime=shot["attrib"]["clipOut"],
                       shotName=shot_name)
