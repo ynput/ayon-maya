@@ -16,22 +16,22 @@ from .publish_playblast import (
 def linear_unit_enum():
     """Get linear units enumerator."""
     return [
-        {"label": "mm", "value": "millimeter"},
-        {"label": "cm", "value": "centimeter"},
-        {"label": "m", "value": "meter"},
-        {"label": "km", "value": "kilometer"},
-        {"label": "in", "value": "inch"},
-        {"label": "ft", "value": "foot"},
-        {"label": "yd", "value": "yard"},
-        {"label": "mi", "value": "mile"}
+        {"label": "millimeter", "value": "mm"},
+        {"label": "centimeter", "value": "cm"},
+        {"label": "meter", "value": "m"},
+        {"label": "kilometer", "value": "km"},
+        {"label": "inch", "value": "in"},
+        {"label": "foot", "value": "ft"},
+        {"label": "yard", "value": "yd"},
+        {"label": "mile", "value": "mi"}
     ]
 
 
 def angular_unit_enum():
     """Get angular units enumerator."""
     return [
-        {"label": "deg", "value": "degree"},
-        {"label": "rad", "value": "radian"},
+        {"label": "degree", "value": "deg"},
+        {"label": "radian", "value": "rad"},
     ]
 
 
