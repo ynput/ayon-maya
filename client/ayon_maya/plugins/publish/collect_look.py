@@ -486,8 +486,12 @@ class CollectLook(plugin.MayaInstancePlugin):
             dict
 
         """
-
         node, components = (member.rsplit(".", 1) + [None])[:2]
+        if components and not cmds.objectType(node, isAType="shape"):
+            # Components are always on shapes. When only a single shape is
+            # parented under a transform Maya returns it as e.g. `cube.f[0:4]`
+            # instead of `cubeShape.f[0:4]` so we expand that to the shape
+            node = cmds.listRelatives(node, shapes=True, fullPath=True)[0]
 
         # Only include valid members of the instance
         if node not in instance_members:
