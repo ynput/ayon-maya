@@ -76,16 +76,17 @@ class LayoutLoader(plugin.Loader):
         asset = [asset for asset in cmds.ls(f"{namespace}:*", assemblies=True)][0]
         return asset
 
-    def _process(self, filepath, options, loaded_options=None):
+    def _process_element(self, filepath, options, loaded_options=None):
 
         with open(filepath, "r") as fp:
             data = json.load(fp)
 
         all_loaders = discover_loader_plugins()
 
-        if not loaded_options:
+        if loaded_options is None:
             loaded_options = []
 
+        # get the list of representations by using version id
         repre_entities_by_version_id = self._get_repre_entities_by_version_id(
             data
         )
@@ -100,10 +101,10 @@ class LayoutLoader(plugin.Loader):
                         f"No valid representation found for version"
                         f" {version_id}")
                     continue
-                repre_entity = repre_entities[0]
+                # always use the first representation to load
+                repre_entity = next((repre_entity for repre_entity in repre_entities), None)
                 repre_id = repre_entity["id"]
                 repr_format = repre_entity["name"]
-
 
             # If reference is None, this element is skipped, as it cannot be
             # imported in Maya
@@ -152,8 +153,8 @@ class LayoutLoader(plugin.Loader):
                         item.get('version') == element.get('version')))]
 
                 for instance in instances:
-                    transform = instance.get('transform')
-                    instance_name = instance.get('asset_name')
+                    transform = instance["transform"]
+                    instance_name = instance["asset_name"]
                     extension = instance_name.split("_")[-1]
                     instance_name = instance_name.replace(f"_{extension}", "")
                     self.set_transformation(instance_name, transform)
@@ -164,8 +165,7 @@ class LayoutLoader(plugin.Loader):
             transform["translation"]["x"],
             transform["translation"]["z"],
             transform["translation"]["y"]
-            ]
-
+        ]
         rotation = [
             math.degrees(transform["rotation"]["x"]),
             180 - math.degrees(transform["rotation"]["z"]),
@@ -189,14 +189,14 @@ class LayoutLoader(plugin.Loader):
         path = self.filepath_from_context(context)
 
         self.log.info(">>> loading json [ {} ]".format(path))
-        self._process(path, options)
+        self._process_element(path, options)
         folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
             folder_name + "_",
             prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
-        # TODO: implement the function to load all the assets and set transforms
+
         return containerise(
             name=name,
             namespace=namespace,
@@ -207,25 +207,25 @@ class LayoutLoader(plugin.Loader):
     def update(self, container, context):
         repre_entity = context["representation"]
         path = get_representation_path(repre_entity)
-        self._process(path, options=None)
+        self._process_element(path, options=None)
         # Update metadata
         node = container["objectName"]
         cmds.setAttr("{}.representation".format(node),
                      repre_entity["id"],
                      type="string")
-        self.log.info("... updated")
 
     def switch(self, container, context):
         self.update(container, context)
 
     def remove(self, container):
-        members = cmds.sets(container['objectName'], query=True)
-        cmds.lockNode(members, lock=False)
-        cmds.delete([container['objectName']] + members)
+        if container is not None:
+            members = cmds.sets(container['objectName'], query=True)
+            cmds.lockNode(members, lock=False)
+            cmds.delete([container['objectName']] + members)
 
-        # Clean up the namespace
-        try:
-            cmds.namespace(removeNamespace=container['namespace'],
-                           deleteNamespaceContent=True)
-        except RuntimeError:
-            pass
+            # Clean up the namespace
+            try:
+                cmds.namespace(removeNamespace=container['namespace'],
+                            deleteNamespaceContent=True)
+            except RuntimeError:
+                pass
