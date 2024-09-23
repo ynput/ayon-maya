@@ -12,6 +12,7 @@ from ayon_core.pipeline import (
     loaders_from_representation,
     get_current_project_name
 )
+from maya.api import OpenMaya as om
 from ayon_maya.api.pipeline import containerise
 
 
@@ -160,9 +161,30 @@ class LayoutLoader(plugin.Loader):
 
     def set_transformation(self, instance_name, transform, rotation):
         asset = self.get_asset(instance_name)
-        maya_matrix = [element for row in transform for element in row]
-        # TODO: Make sure the orientation is correct
-        cmds.xform(asset, matrix=maya_matrix)
+        maya_transform_matrix = [element for row in transform for element in row]
+        transform_matrix = self.convert_transformation_matrix(
+            maya_transform_matrix, rotation)
+        cmds.xform(asset, matrix=transform_matrix)
+
+    def convert_transformation_matrix(self, transform, rotation):
+        """Convert matrix to list of transformation matrix for Unreal Engine import.
+
+        Args:
+            transform (list): Transformations of the asset
+            rotation (list): Rotations of the asset
+
+        Returns:
+            List[om.MMatrix]: List of transformation matrix of the asset
+        """
+        transform_mm = om.MMatrix(transform)
+        convert_transform = om.MTransformationMatrix(transform_mm)
+        print(rotation)
+        converted_rotation = om.MEulerRotation(
+            math.radians(rotation["x"]), math.radians(rotation["y"]), math.radians(rotation["z"])
+        )
+        convert_transform.setRotation(converted_rotation)
+
+        return convert_transform.asMatrix()
 
     def load(self, context, name, namespace, options):
 
