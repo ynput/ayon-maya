@@ -101,8 +101,10 @@ class LayoutLoader(plugin.Loader):
                         f"No valid representation found for version"
                         f" {version_id}")
                     continue
+                extension = element.get("extension")
                 # always use the first representation to load
-                repre_entity = next((repre_entity for repre_entity in repre_entities), None)
+                repre_entity = next((repre_entity for repre_entity in repre_entities
+                                    if repre_entity["name"] == extension), None)
                 repre_id = repre_entity["id"]
                 repr_format = repre_entity["name"]
 
@@ -111,9 +113,7 @@ class LayoutLoader(plugin.Loader):
             if not repre_id:
                 continue
 
-            instance_name = element.get('asset_name')
-            extension = instance_name.split("_")[-1]
-            instance_name = instance_name.replace(f"_{extension}", "")
+            instance_name = element.get('instance_name')
             containers = [
                 con for con in cmds.ls(f"{instance_name}*")
                 if con.endswith("_CON")
@@ -153,36 +153,16 @@ class LayoutLoader(plugin.Loader):
                         item.get('version') == element.get('version')))]
 
                 for instance in instances:
-                    transform = instance["transform"]
-                    instance_name = instance["asset_name"]
-                    extension = instance_name.split("_")[-1]
-                    instance_name = instance_name.replace(f"_{extension}", "")
-                    self.set_transformation(instance_name, transform)
+                    transform = instance["transform_matrix"]
+                    instance_name = instance["instance_name"]
+                    rotation = instance["rotation"]
+                    self.set_transformation(instance_name, transform, rotation)
 
-    def set_transformation(self, instance_name, transform):
+    def set_transformation(self, instance_name, transform, rotation):
         asset = self.get_asset(instance_name)
-        translation = [
-            transform["translation"]["x"],
-            transform["translation"]["z"],
-            transform["translation"]["y"]
-        ]
-        rotation = [
-            math.degrees(transform["rotation"]["x"]),
-            180 - math.degrees(transform["rotation"]["z"]),
-            math.degrees(transform["rotation"]["y"]),
-        ]
-        scale = [
-            -transform["scale"]["x"],
-            transform["scale"]["z"],
-            transform["scale"]["y"]
-        ]
-
-        cmds.xform(
-            asset,
-            translation=translation,
-            rotation=rotation,
-            scale=scale
-        )
+        maya_matrix = [element for row in transform for element in row]
+        # TODO: Make sure the orientation is correct
+        cmds.xform(asset, matrix=maya_matrix)
 
     def load(self, context, name, namespace, options):
 
