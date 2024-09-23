@@ -15,6 +15,7 @@ from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
 from ayon_maya.api.alembic import extract_alembic
 from ayon_maya.api.lib import (
     get_all_children,
+    get_highest_in_hierarchy,
     iter_visible_nodes_in_range,
     maintained_selection,
     suspended_refresh,
@@ -129,7 +130,10 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
             # Set the root nodes if we don't want to include parents
             # The roots are to be considered the ones that are the actual
             # direct members of the set
-            root = roots
+            # We ignore members that are children of other members to avoid
+            # the parenting / ancestor relationship error on export and assume
+            # the user intended to export starting at the top of the two.
+            root = get_highest_in_hierarchy(roots)
 
         kwargs = {
             "file": path,
