@@ -68,10 +68,12 @@ class LayoutLoader(plugin.Loader):
 
         return None
 
-    def get_asset(self, instance_name):
-        container = next((con for con in cmds.ls(f"{instance_name}*_CON")), None)
-        namespace = cmds.getAttr(f"{container}.namespace")
-        asset = [asset for asset in cmds.ls(f"{namespace}:*", assemblies=True)][0]
+    def get_asset(self, containers, instance_name):
+        asset = None
+        containers = [con for con in containers if con.startswith(instance_name)]
+        for container in containers:
+            namespace = cmds.getAttr(f"{container}.namespace")
+            asset = [asset for asset in cmds.ls(f"{namespace}:*", assemblies=True)][0]
         return asset
 
     def _process_element(self, element, repre_entities_by_version_id):
@@ -85,10 +87,10 @@ class LayoutLoader(plugin.Loader):
                     "No valid representation found for version"
                     f" {version_id}")
                 return
-            extension = element.get("extension")
             # always use the first representation to load
-            repre_entity = next((repre_entity for repre_entity in repre_entities
-                                if repre_entity["name"] == extension), None)
+            # If reference is None, this element is skipped, as it cannot be
+            # imported in Maya, repre_entities must always be the first one
+            repre_entity = repre_entities[0]
             repre_id = repre_entity["id"]
             repr_format = repre_entity["name"]
 
@@ -117,20 +119,21 @@ class LayoutLoader(plugin.Loader):
         options = {
             # "asset_dir": asset_dir
         }
-        load_container(
+        assets = load_container(
             loader,
             repre_id,
             namespace=instance_name,
             options=options
             )
 
-        self.set_transformation(element)
+        self.set_transformation(assets, element)
+        return assets
 
-    def set_transformation(self, element):
+    def set_transformation(self, assets, element):
         instance_name = element["instance_name"]
         transform = element["transform_matrix"]
         rotation = element["rotation"]
-        asset = self.get_asset(instance_name)
+        asset = self.get_asset(assets, instance_name)
         maya_transform_matrix = [element for row in transform for element in row]
         transform_matrix = self.convert_transformation_matrix(
             maya_transform_matrix, rotation)
@@ -168,8 +171,10 @@ class LayoutLoader(plugin.Loader):
         repre_entities_by_version_id = self._get_repre_entities_by_version_id(
             data
         )
+        assets = []
         for element in data:
-            self._process_element(element, repre_entities_by_version_id)
+            elements = self._process_element(element, repre_entities_by_version_id)
+            assets.extend(elements)
 
         folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
@@ -181,7 +186,7 @@ class LayoutLoader(plugin.Loader):
         return containerise(
             name=name,
             namespace=namespace,
-            nodes=[],
+            nodes=assets,
             context=context,
             loader=self.__class__.__name__)
 
@@ -195,7 +200,17 @@ class LayoutLoader(plugin.Loader):
         repre_entities_by_version_id = self._get_repre_entities_by_version_id(
             data
         )
+        existing_container = container["nodes"]
         for element in data:
+            version_id = element.get("version")
+            if version_id:
+                repre_entities = repre_entities_by_version_id[version_id]
+                if not repre_entities:
+                    self.log.error(
+                        "No valid representation found for version"
+                        f" {version_id}")
+                    return
+                extension = element.get("extension")
             self.set_transformation(element)
 
         # Update metadata
