@@ -17,12 +17,12 @@ from ayon_maya.api.pipeline import containerise
 
 
 class LayoutLoader(plugin.Loader):
-    """Layout Loader(json)"""
+    """Layout Loader (json)"""
 
     product_types = {"layout"}
     representations = {"json"}
 
-    label = "Layout Loader(json)"
+    label = "Layout Loader"
     order = -10
     icon = "code-fork"
     color = "orange"
@@ -69,97 +69,67 @@ class LayoutLoader(plugin.Loader):
         return None
 
     def get_asset(self, instance_name):
-        container = [
-            con for con in cmds.ls(f"{instance_name}*")
-            if con.endswith("_CON")
-        ][0]
+        container = next((con for con in cmds.ls(f"{instance_name}*_CON")), None)
         namespace = cmds.getAttr(f"{container}.namespace")
         asset = [asset for asset in cmds.ls(f"{namespace}:*", assemblies=True)][0]
         return asset
 
-    def _process_element(self, filepath, options, loaded_options=None):
+    def _process_element(self, element, repre_entities_by_version_id):
+        repre_id = None
+        repr_format = None
+        version_id = element.get("version")
+        if version_id:
+            repre_entities = repre_entities_by_version_id[version_id]
+            if not repre_entities:
+                self.log.error(
+                    "No valid representation found for version"
+                    f" {version_id}")
+                return
+            extension = element.get("extension")
+            # always use the first representation to load
+            repre_entity = next((repre_entity for repre_entity in repre_entities
+                                if repre_entity["name"] == extension), None)
+            repre_id = repre_entity["id"]
+            repr_format = repre_entity["name"]
 
-        with open(filepath, "r") as fp:
-            data = json.load(fp)
+        # If reference is None, this element is skipped, as it cannot be
+        # imported in Maya
+        if not repre_id:
+            return
 
+        instance_name: str = element['instance_name']
         all_loaders = discover_loader_plugins()
+        product_type = element.get("product_type")
+        if product_type is None:
+            product_type = element.get("family")
+        loaders = loaders_from_representation(
+            all_loaders, repre_id)
 
-        if loaded_options is None:
-            loaded_options = []
+        loader = None
 
-        # get the list of representations by using version id
-        repre_entities_by_version_id = self._get_repre_entities_by_version_id(
-            data
-        )
-        for element in data:
-            repre_id = None
-            repr_format = None
-            version_id = element.get("version")
-            if version_id:
-                repre_entities = repre_entities_by_version_id[version_id]
-                if not repre_entities:
-                    self.log.error(
-                        f"No valid representation found for version"
-                        f" {version_id}")
-                    continue
-                extension = element.get("extension")
-                # always use the first representation to load
-                repre_entity = next((repre_entity for repre_entity in repre_entities
-                                    if repre_entity["name"] == extension), None)
-                repre_id = repre_entity["id"]
-                repr_format = repre_entity["name"]
+        if repr_format:
+            loader = self._get_loader(loaders, product_type)
 
-            # If reference is None, this element is skipped, as it cannot be
-            # imported in Maya
-            if not repre_id:
-                continue
+        if not loader:
+            self.log.error(
+                f"No valid loader found for {repre_id}")
+            return
+        options = {
+            # "asset_dir": asset_dir
+        }
+        load_container(
+            loader,
+            repre_id,
+            namespace=instance_name,
+            options=options
+            )
 
-            instance_name = element.get('instance_name')
-            containers = [
-                con for con in cmds.ls(f"{instance_name}*")
-                if con.endswith("_CON")
-            ]
-            if not containers:
-                if repre_id not in loaded_options:
-                    loaded_options.append(repre_id)
+        self.set_transformation(element)
 
-                    product_type = element.get("product_type")
-                    if product_type is None:
-                        product_type = element.get("family")
-                    loaders = loaders_from_representation(
-                        all_loaders, repre_id)
-
-                    loader = None
-
-                    if repr_format:
-                        loader = self._get_loader(loaders, product_type)
-
-                    if not loader:
-                        self.log.error(
-                            f"No valid loader found for {repre_id}")
-                        continue
-
-                    options = {
-                        # "asset_dir": asset_dir
-                    }
-                    load_container(
-                        loader,
-                        repre_id,
-                        namespace=instance_name,
-                        options=options
-                    )
-                instances = [
-                    item for item in data
-                    if ((item.get('version') and
-                        item.get('version') == element.get('version')))]
-
-                for instance in instances:
-                    transform = instance["transform_matrix"]
-                    instance_name = instance["instance_name"]
-                    rotation = instance["rotation"]
-                    self.set_transformation(instance_name, transform, rotation)
-
-    def set_transformation(self, instance_name, transform, rotation):
+    def set_transformation(self, element):
+        instance_name = element["instance_name"]
+        transform = element["transform_matrix"]
+        rotation = element["rotation"]
         asset = self.get_asset(instance_name)
         maya_transform_matrix = [element for row in transform for element in row]
         transform_matrix = self.convert_transformation_matrix(
@@ -191,7 +161,16 @@ class LayoutLoader(plugin.Loader):
         path = self.filepath_from_context(context)
 
         self.log.info(">>> loading json [ {} ]".format(path))
-        self._process_element(path, options)
+        with open(path, "r") as fp:
+            data = json.load(fp)
+
+        # get the list of representations by using version id
+        repre_entities_by_version_id = self._get_repre_entities_by_version_id(
+            data
+        )
+        for element in data:
+            self._process_element(element, repre_entities_by_version_id)
+
         folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
             folder_name + "_",
@@ -209,7 +188,16 @@ class LayoutLoader(plugin.Loader):
     def update(self, container, context):
         repre_entity = context["representation"]
         path = get_representation_path(repre_entity)
-        self._process_element(path, options=None)
+        with open(path, "r") as fp:
+            data = json.load(fp)
+
+        # get the list of representations by using version id
+        repre_entities_by_version_id = self._get_repre_entities_by_version_id(
+            data
+        )
+        for element in data:
+            self.set_transformation(element)
+
         # Update metadata
         node = container["objectName"]
         cmds.setAttr("{}.representation".format(node),
