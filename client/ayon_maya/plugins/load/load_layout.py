@@ -196,23 +196,10 @@ class LayoutLoader(plugin.Loader):
         with open(path, "r") as fp:
             data = json.load(fp)
 
-        # get the list of representations by using version id
-        repre_entities_by_version_id = self._get_repre_entities_by_version_id(
-            data
-        )
-        existing_container = container["nodes"]
+        existing_containers = cmds.ls(container["nodes"])
+        # TODO: Supports to load non-existing containers
         for element in data:
-            version_id = element.get("version")
-            if version_id:
-                repre_entities = repre_entities_by_version_id[version_id]
-                if not repre_entities:
-                    self.log.error(
-                        "No valid representation found for version"
-                        f" {version_id}")
-                    return
-                extension = element.get("extension")
-            self.set_transformation(element)
-
+            self.set_transformation(existing_containers, element)
         # Update metadata
         node = container["objectName"]
         cmds.setAttr("{}.representation".format(node),
