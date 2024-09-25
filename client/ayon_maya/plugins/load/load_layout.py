@@ -79,7 +79,8 @@ class LayoutLoader(plugin.Loader):
         # Get the highest root node from the loaded container
         for container in containers:
             members = get_container_members(container)
-            roots = get_highest_in_hierarchy(members)
+            transforms = cmds.ls(members, transforms=True)
+            roots = get_highest_in_hierarchy(transforms)
             root = next(iter(roots), None)
             if root is not None:
                 return root
