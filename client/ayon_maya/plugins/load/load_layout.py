@@ -4,10 +4,13 @@ import json
 import collections
 import ayon_api
 from ayon_maya.api import plugin
-from ayon_maya.api.lib import unique_namespace
+from ayon_maya.api.lib import (
+    unique_namespace,
+    get_container_members,
+    get_highest_in_hierarchy
+)
 from ayon_core.pipeline import (
     load_container,
-    get_representation_path,
     discover_loader_plugins,
     loaders_from_representation,
     get_current_project_name
@@ -22,7 +25,7 @@ class LayoutLoader(plugin.Loader):
     product_types = {"layout"}
     representations = {"json"}
 
-    label = "Layout Loader"
+    label = "Load Layout"
     order = -10
     icon = "code-fork"
     color = "orange"
@@ -69,12 +72,17 @@ class LayoutLoader(plugin.Loader):
         return None
 
     def get_asset(self, containers, instance_name):
-        asset = None
+        # TODO: Improve this logic to support multiples of same asset
+        #  and to avoid bugs with containers getting renamed by artists
+        # Find container names that starts with 'instance name'
         containers = [con for con in containers if con.startswith(instance_name)]
+        # Get the highest root node from the loaded container
         for container in containers:
-            namespace = cmds.getAttr(f"{container}.namespace")
-            asset = [asset for asset in cmds.ls(f"{namespace}:*", assemblies=True)][0]
-        return asset
+            members = get_container_members(container)
+            roots = get_highest_in_hierarchy(members)
+            root = next(iter(roots), None)
+            if root is not None:
+                return root
 
     def _process_element(self, element, repre_entities_by_version_id):
         repre_id = None
@@ -96,8 +104,10 @@ class LayoutLoader(plugin.Loader):
 
         # If reference is None, this element is skipped, as it cannot be
         # imported in Maya
-        if not repre_id:
+        if not repr_format:
+            self.log.warning(f"Representation name not defined for element: {element}")
             return
+
 
         instance_name: str = element['instance_name']
         all_loaders = discover_loader_plugins()
@@ -107,10 +117,7 @@ class LayoutLoader(plugin.Loader):
         loaders = loaders_from_representation(
             all_loaders, repre_id)
 
-        loader = None
-
-        if repr_format:
-            loader = self._get_loader(loaders, product_type)
+        loader = self._get_loader(loaders, product_type)
 
         if not loader:
             self.log.error(
@@ -124,7 +131,7 @@ class LayoutLoader(plugin.Loader):
             repre_id,
             namespace=instance_name,
             options=options
-            )
+        )
 
         self.set_transformation(assets, element)
         return assets
@@ -134,6 +141,7 @@ class LayoutLoader(plugin.Loader):
         transform = element["transform_matrix"]
         rotation = element["rotation"]
         asset = self.get_asset(assets, instance_name)
+        # flatten matrix to a list
         maya_transform_matrix = [element for row in transform for element in row]
         transform_matrix = self.convert_transformation_matrix(
             maya_transform_matrix, rotation)
@@ -151,7 +159,6 @@ class LayoutLoader(plugin.Loader):
         """
         transform_mm = om.MMatrix(transform)
         convert_transform = om.MTransformationMatrix(transform_mm)
-        print(rotation)
         converted_rotation = om.MEulerRotation(
             math.radians(rotation["x"]), math.radians(rotation["y"]), math.radians(rotation["z"])
         )
@@ -160,10 +167,8 @@ class LayoutLoader(plugin.Loader):
         return convert_transform.asMatrix()
 
     def load(self, context, name, namespace, options):
-
         path = self.filepath_from_context(context)
-
-        self.log.info(">>> loading json [ {} ]".format(path))
+        self.log.info(f">>> loading json [ {path} ]")
         with open(path, "r") as fp:
             data = json.load(fp)
 
@@ -192,11 +197,12 @@ class LayoutLoader(plugin.Loader):
 
     def update(self, container, context):
         repre_entity = context["representation"]
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
+        self.log.info(f">>> loading json [ {path} ]")
         with open(path, "r") as fp:
             data = json.load(fp)
 
-        existing_containers = cmds.ls(container["nodes"])
+        existing_containers = get_container_members(container)
         # TODO: Supports to load non-existing containers
         for element in data:
             self.set_transformation(existing_containers, element)
@@ -210,14 +216,12 @@ class LayoutLoader(plugin.Loader):
         self.update(container, context)
 
     def remove(self, container):
-        if container is not None:
-            members = cmds.sets(container['objectName'], query=True)
-            cmds.lockNode(members, lock=False)
-            cmds.delete([container['objectName']] + members)
-
-            # Clean up the namespace
-            try:
-                cmds.namespace(removeNamespace=container['namespace'],
-                            deleteNamespaceContent=True)
-            except RuntimeError:
-                pass
+        members = cmds.sets(container['objectName'], query=True)
+        cmds.lockNode(members, lock=False)
+        cmds.delete([container['objectName']] + members)
+        # Clean up the namespace
+        try:
+            cmds.namespace(removeNamespace=container['namespace'],
+                        deleteNamespaceContent=True)
+        except RuntimeError:
+            pass
