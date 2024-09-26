@@ -50,7 +50,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         # TODO representation queries can be refactored to be faster
         project_name = instance.context.data["projectName"]
 
-        for asset in cmds.sets(str(instance), query=True):
+        members = instance.data["setMembers"]
+        for asset in members:
             # Find the container
             project_container = self.project_container
             container_list = cmds.ls(project_container)
