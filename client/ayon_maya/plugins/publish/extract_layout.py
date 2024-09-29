@@ -32,8 +32,8 @@ def convert_matrix_to_4x4_list(
 class ExtractLayout(plugin.MayaExtractorPlugin):
     """Extract a layout."""
 
-    label = "Extract Layout(FBX)"
-    families = ["layout.fbx"]
+    label = "Extract Layout"
+    families = ["layout"]
     project_container = "AVALON_CONTAINERS"
 
     def process(self, instance):
@@ -50,7 +50,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         # TODO representation queries can be refactored to be faster
         project_name = instance.context.data["projectName"]
 
-        for asset in cmds.sets(str(instance), query=True):
+        members = instance.data["setMembers"]
+        for asset in members:
             # Find the container
             project_container = self.project_container
             container_list = cmds.ls(project_container)
@@ -81,11 +82,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             representation = get_representation_by_id(
                 project_name,
                 representation_id,
-                fields={"versionId", "context"}
+                fields={"versionId", "context", "name"}
             )
-
-            self.log.debug(representation)
-
             version_id = representation["versionId"]
             # TODO use product entity to get product type rather than
             #    data in representation 'context'
@@ -99,7 +97,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 "instance_name": cmds.getAttr(
                     "{}.namespace".format(container)),
                 "representation": str(representation_id),
-                "version": str(version_id)
+                "version": str(version_id),
+                "extension": repre_context["ext"]
             }
 
             local_matrix = cmds.xform(asset, query=True, matrix=True)
@@ -157,7 +156,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         return t_matrix
 
     def convert_transformation_matrix(self, transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
-        """Convert matrix to list of transformation matrix for Unreal Engine import.
+        """Convert matrix to list of transformation matrix for Unreal Engine fbx asset import.
 
         Args:
             transform_mm (om.MMatrix): Local Matrix for the asset
@@ -166,39 +165,6 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         Returns:
             List[om.MMatrix]: List of transformation matrix of the asset
         """
-        convert_transform = om.MTransformationMatrix(transform_mm)
-
-        convert_translation = convert_transform.translation(om.MSpace.kWorld)
-        convert_translation = om.MVector(convert_translation.x, convert_translation.z, convert_translation.y)
-        convert_scale = convert_transform.scale(om.MSpace.kObject)
-        convert_transform.setTranslation(convert_translation, om.MSpace.kWorld)
-        converted_rotation = om.MEulerRotation(
-            math.radians(rotation[0]), math.radians(rotation[2]), math.radians(rotation[1])
-        )
-        convert_transform.setRotation(converted_rotation)
-        convert_transform.setScale([convert_scale[0], convert_scale[2], convert_scale[1]], om.MSpace.kObject)
-
-        return convert_transform.asMatrix()
-
-
-class ExtractLayoutAbc(ExtractLayout):
-    """Extract a layout."""
-
-    label = "Extract Layout(Abc)"
-    families = ["layout.abc"]
-    project_container = "AVALON_CONTAINERS"
-
-    def convert_transformation_matrix(self, transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
-        """Convert matrix to list of transformation matrix for Unreal Engine import.
-
-        Args:
-            transform_mm (om.MMatrix): Local Matrix for the asset
-            rotation (list): Rotations of the asset
-
-        Returns:
-            List[om.MMatrix]: List of transformation matrix of the asset
-        """
-        # TODO: need to find the correct implementation of layout for alembic
         convert_transform = om.MTransformationMatrix(transform_mm)
 
         convert_translation = convert_transform.translation(om.MSpace.kWorld)

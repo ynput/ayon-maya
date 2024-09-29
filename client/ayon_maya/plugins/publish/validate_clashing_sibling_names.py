@@ -1,14 +1,15 @@
 from collections import defaultdict
 import inspect
 
-import ayon_maya.api.action
+import pyblish.api
 from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError,
     ValidateContentsOrder,
 )
+
+import ayon_maya.api.action
 from ayon_maya.api import plugin, lib
-import pyblish.api
 
 
 def remove_namespace(path: str) -> str:
