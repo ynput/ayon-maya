@@ -4364,9 +4364,13 @@ def get_sequence(filepath, pattern="%04d"):
         # multiple image search paths.
         return
 
+    # clique.PATTERNS["frames"] supports only `.1001.exr` not `_1001.exr` so
+    # we use a customized pattern.
+    pattern = "[_.](?P<index>(?P<padding>0*)\\d+)\\.\\D+\\d?$"
+    patterns = [pattern]
     collections, _remainder = clique.assemble(
         files,
-        patterns=[clique.PATTERNS["frames"]],
+        patterns=patterns,
         minimum_items=1)
 
     if len(collections) > 1:
