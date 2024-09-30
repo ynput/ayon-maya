@@ -49,8 +49,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         json_data = []
         # TODO representation queries can be refactored to be faster
         project_name = instance.context.data["projectName"]
-
-        members = instance.data["setMembers"]
+        members = [member.lstrip('|') for member in instance.data["setMembers"]]
         for asset in members:
             # Find the container
             project_container = self.project_container
