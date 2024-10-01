@@ -139,16 +139,44 @@ class LayoutLoader(plugin.Loader):
 
     def set_transformation(self, assets, element):
         instance_name = element["instance_name"]
-        transform = element["transform_matrix"]
-        rotation = element["rotation"]
         asset = self.get_asset(assets, instance_name)
-        # flatten matrix to a list
-        maya_transform_matrix = [element for row in transform for element in row]
-        transform_matrix = self.convert_transformation_matrix(
-            maya_transform_matrix, rotation)
-        cmds.xform(asset, matrix=transform_matrix)
+        unreal_import = True if "unreal" in element.get("host", []) else False
+        if unreal_import:
+            transform = element["transform"]
+            self._set_transformation(asset, transform)
+        else:
+            transform = element["transform_matrix"]
+            rotation = element["rotation"]
+            # flatten matrix to a list
+            maya_transform_matrix = [element for row in transform for element in row]
+            self._convert_transformation_matrix(asset, maya_transform_matrix, rotation)
 
-    def convert_transformation_matrix(self, transform, rotation):
+    def _set_transformation(self, asset, transform):
+        translation = [
+            transform["translation"]["x"],
+            transform["translation"]["z"],
+            transform["translation"]["y"]
+            ]
+
+        rotation = [
+            math.degrees(transform["rotation"]["x"]),
+            180 - math.degrees(transform["rotation"]["z"]),
+            math.degrees(transform["rotation"]["y"]),
+        ]
+        scale = [
+            -transform["scale"]["x"],
+            transform["scale"]["z"],
+            transform["scale"]["y"]
+        ]
+
+        cmds.xform(
+            asset,
+            translation=translation,
+            rotation=rotation,
+            scale=scale
+        )
+
+    def _convert_transformation_matrix(self, asset, transform, rotation):
         """Convert matrix to list of transformation matrix for Unreal Engine import.
 
         Args:
@@ -164,8 +192,7 @@ class LayoutLoader(plugin.Loader):
             math.radians(rotation["x"]), math.radians(rotation["y"]), math.radians(rotation["z"])
         )
         convert_transform.setRotation(converted_rotation)
-
-        return convert_transform.asMatrix()
+        cmds.xform(asset, matrix=convert_transform.asMatrix())
 
     def load(self, context, name, namespace, options):
         path = self.filepath_from_context(context)
