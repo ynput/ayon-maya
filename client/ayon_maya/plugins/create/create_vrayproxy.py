@@ -26,7 +26,8 @@ class CreateVrayProxy(plugin.MayaCreator):
 
         # Add time range attributes but remove some attributes
         # which this instance actually doesn't use
-        defs.extend(lib.collect_animation_defs())
+        defs.extend(lib.collect_animation_defs(
+            create_context=self.create_context))
         remove = {"handleStart", "handleEnd", "step"}
         defs = [attr_def for attr_def in defs if attr_def.key not in remove]
 

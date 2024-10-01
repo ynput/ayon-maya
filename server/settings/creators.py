@@ -147,6 +147,16 @@ class CreateMultishotLayout(BasicCreatorModel):
 
 
 class CreatorsModel(BaseSettingsModel):
+    use_entity_attributes_as_defaults: bool = SettingsField(
+        False,
+        title="Use current context entity attributes as frame range defaults",
+        description=(
+            "For frame range attributes on the created instances, use the "
+            "current context's task entity as the default value. When "
+            "disabled it will default to Maya's current timeline."
+        )
+    )
+
     CreateLook: CreateLookModel = SettingsField(
         default_factory=CreateLookModel,
         title="Create Look"
@@ -256,6 +266,7 @@ class CreatorsModel(BaseSettingsModel):
 
 
 DEFAULT_CREATORS_SETTINGS = {
+    "use_entity_attributes_as_defaults": False,
     "CreateLook": {
         "enabled": True,
         "make_tx": True,

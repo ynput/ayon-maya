@@ -51,7 +51,8 @@ class CreateMayaUsd(plugin.MayaCreator):
                             "static export frame.",
                     default=True)
         ]
-        defs.extend(lib.collect_animation_defs())
+        defs.extend(lib.collect_animation_defs(
+            create_context=self.create_context))
         defs.extend([
             EnumDef("defaultUSDFormat",
                     label="File format",

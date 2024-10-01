@@ -1,5 +1,7 @@
 import tempfile
 
+from ayon_core.lib import is_in_tests
+
 import maya.api.OpenMaya as om
 import maya.api.OpenMayaUI as omui
 import pyblish.api
@@ -20,7 +22,7 @@ class ExtractActiveViewThumbnail(plugin.MayaInstancePlugin):
     families = ["workfile"]
 
     def process(self, instance):
-        if IS_HEADLESS:
+        if IS_HEADLESS or is_in_tests():
             self.log.debug(
                 "Skip extraction of active view thumbnail, due to being in"
                 "headless mode."

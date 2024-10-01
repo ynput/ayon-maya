@@ -21,5 +21,6 @@ class CreateRedshiftProxy(plugin.MayaCreator):
                     default=False)
         ]
 
-        defs.extend(lib.collect_animation_defs())
+        defs.extend(lib.collect_animation_defs(
+            create_context=self.create_context))
         return defs
