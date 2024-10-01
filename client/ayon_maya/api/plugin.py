@@ -1064,6 +1064,14 @@ class ReferenceLoader(Loader):
             }:
                 cmds.sets(node, forceElement=container)
 
+    def update_allowed_representation_switches(self):
+        return {
+            # Allow switching between `ma` and `mb` representations if new
+            # version happens to contain only the other representation
+            "ma": ["mb"],
+            "mb": ["ma"]
+        }
+
 
 class MayaLoader(LoaderPlugin):
     """Base class for loader plugins."""
