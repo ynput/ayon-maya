@@ -4313,21 +4313,19 @@ def search_textures(filepath):
     filename = os.path.basename(filepath)
 
     # Collect full sequence if it matches a sequence pattern
-    if len(filename.split(".")) > 2:
+    # For UDIM based textures (tiles)
+    if "<UDIM>" in filename:
+        sequences = get_sequence(filepath,
+                                 pattern="<UDIM>")
+        if sequences:
+            return sequences
 
-        # For UDIM based textures (tiles)
-        if "<UDIM>" in filename:
-            sequences = get_sequence(filepath,
-                                     pattern="<UDIM>")
-            if sequences:
-                return sequences
-
-        # Frame/time - Based textures (animated masks f.e)
-        elif "%04d" in filename:
-            sequences = get_sequence(filepath,
-                                     pattern="%04d")
-            if sequences:
-                return sequences
+    # Frame/time - Based textures (animated masks f.e)
+    elif "%04d" in filename:
+        sequences = get_sequence(filepath,
+                                 pattern="%04d")
+        if sequences:
+            return sequences
 
     # Assuming it is a fixed name (single file)
     if os.path.exists(filepath):
@@ -4366,9 +4364,13 @@ def get_sequence(filepath, pattern="%04d"):
         # multiple image search paths.
         return
 
+    # clique.PATTERNS["frames"] supports only `.1001.exr` not `_1001.exr` so
+    # we use a customized pattern.
+    pattern = "[_.](?P<index>(?P<padding>0*)\\d+)\\.\\D+\\d?$"
+    patterns = [pattern]
     collections, _remainder = clique.assemble(
         files,
-        patterns=[clique.PATTERNS["frames"]],
+        patterns=patterns,
         minimum_items=1)
 
     if len(collections) > 1:
