@@ -3243,6 +3243,8 @@ def update_content_on_context_change():
     creator_attribute_values = {
         "frameStart": float(task_entity["attrib"]["frameStart"]),
         "frameEnd": float(task_entity["attrib"]["frameEnd"]),
+        "handleStart": float(task_entity["attrib"]["handleStart"]),
+        "handleEnd": float(task_entity["attrib"]["handleEnd"]),
     }
 
     has_changes = False
