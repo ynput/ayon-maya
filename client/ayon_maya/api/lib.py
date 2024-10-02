@@ -4311,21 +4311,19 @@ def search_textures(filepath):
     filename = os.path.basename(filepath)
 
     # Collect full sequence if it matches a sequence pattern
-    if len(filename.split(".")) > 2:
+    # For UDIM based textures (tiles)
+    if "<UDIM>" in filename:
+        sequences = get_sequence(filepath,
+                                 pattern="<UDIM>")
+        if sequences:
+            return sequences
 
-        # For UDIM based textures (tiles)
-        if "<UDIM>" in filename:
-            sequences = get_sequence(filepath,
-                                     pattern="<UDIM>")
-            if sequences:
-                return sequences
-
-        # Frame/time - Based textures (animated masks f.e)
-        elif "%04d" in filename:
-            sequences = get_sequence(filepath,
-                                     pattern="%04d")
-            if sequences:
-                return sequences
+    # Frame/time - Based textures (animated masks f.e)
+    elif "%04d" in filename:
+        sequences = get_sequence(filepath,
+                                 pattern="%04d")
+        if sequences:
+            return sequences
 
     # Assuming it is a fixed name (single file)
     if os.path.exists(filepath):
