@@ -101,36 +101,6 @@ class ValidateRigOutSetNodeIdsModel(BaseSettingsModel):
     allow_history_only: bool = SettingsField(title="Allow history only")
 
 
-class ValidateModelNameModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    database: bool = SettingsField(
-        title="Use database shader name definitions"
-    )
-    material_file: MultiplatformPathModel = SettingsField(
-        default_factory=MultiplatformPathModel,
-        title="Material File",
-        description=(
-            "Path to material file defining list of material names to check."
-        )
-    )
-    regex: str = SettingsField(
-        "(.*)_(\\d)*_(?P<shader>.*)_(GEO)",
-        title="Validation regex",
-        description=(
-            "Regex for validating name of top level group name. You can use"
-            " named capturing groups:(?P<asset>.*) for Asset name"
-        )
-    )
-    top_level_regex: str = SettingsField(
-        ".*_GRP",
-        title="Top level group name regex",
-        description=(
-            "To check for asset in name so *_some_asset_name_GRP"
-            " is valid, use:.*?_(?P<asset>.*)_GEO"
-        )
-    )
-
-
 class ValidateModelContentModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
@@ -787,11 +757,6 @@ class PublishersModel(BaseSettingsModel):
         title="Yeti Rig Settings"
     )
     # Model - START
-    ValidateModelName: ValidateModelNameModel = SettingsField(
-        default_factory=ValidateModelNameModel,
-        title="Validate Model Name",
-        section="Model",
-    )
     ValidateModelContent: ValidateModelContentModel = SettingsField(
         default_factory=ValidateModelContentModel,
         title="Validate Model Content",
@@ -1328,17 +1293,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": False,
         "active": True
-    },
-    "ValidateModelName": {
-        "enabled": False,
-        "database": True,
-        "material_file": {
-            "windows": "",
-            "darwin": "",
-            "linux": ""
-        },
-        "regex": "(.*)_(\\d)*_(?P<shader>.*)_(GEO)",
-        "top_level_regex": ".*_GRP"
     },
     "ValidateModelContent": {
         "enabled": True,
