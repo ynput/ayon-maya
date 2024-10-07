@@ -69,6 +69,14 @@ class ValidateClashingSiblingNames(plugin.MayaInstancePlugin,
         if not self.is_active(instance.data):
             return
 
+        if "publish_attributes" not in instance.data:
+            # This is an instance generated at runtime, for example a USD
+            # contribution workflow instance. We will ignore this validation
+            self.log.debug("Skipping validation of clashing siblings for"
+                           f" '{instance}', because it is a runtime instance"
+                           " (has no publish attributes)")
+            return
+
         if not self.is_strip_namespaces_enabled(instance):
             return
 

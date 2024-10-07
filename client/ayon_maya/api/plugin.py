@@ -1064,6 +1064,15 @@ class ReferenceLoader(Loader):
             }:
                 cmds.sets(node, forceElement=container)
 
+    @classmethod
+    def get_representation_name_aliases(cls, representation_name):
+        # Allow switching between `ma` and `mb` representations if new
+        # version happens to contain only the other representation
+        return {
+            "ma": ["mb"],
+            "mb": ["ma"]
+        }.get(representation_name, [])
+
 
 class MayaLoader(LoaderPlugin):
     """Base class for loader plugins."""
