@@ -760,6 +760,7 @@ class PublishersModel(BaseSettingsModel):
     ValidateModelContent: ValidateModelContentModel = SettingsField(
         default_factory=ValidateModelContentModel,
         title="Validate Model Content",
+        section="Model"
     )
     ValidateTransformNamingSuffix: ValidateTransformNamingSuffixModel = (
         SettingsField(
