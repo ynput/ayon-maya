@@ -3,7 +3,6 @@ from pydantic import validator
 from ayon_server.settings import (
     BaseSettingsModel,
     SettingsField,
-    MultiplatformPathModel,
     ensure_unique_names,
 )
 from ayon_server.exceptions import BadRequestException
