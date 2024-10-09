@@ -2,7 +2,6 @@
 
 import os
 import copy
-from pprint import pformat
 import sys
 import uuid
 import re
@@ -3360,48 +3359,10 @@ def set_colorspace():
     project_name = get_current_project_name()
     imageio = get_project_settings(project_name)["maya"]["imageio"]
 
-    # ocio compatibility variables
-    ocio_v2_maya_version = 2022
-    maya_version = int(cmds.about(version=True))
-    ocio_v2_support = use_ocio_v2 = maya_version >= ocio_v2_maya_version
-    is_ocio_set = bool(os.environ.get("OCIO"))
-
-    use_workfile_settings = imageio.get("workfile", {}).get("enabled")
-    if use_workfile_settings:
-        root_dict = imageio["workfile"]
-    else:
-        # TODO: deprecated code from 3.15.5 - remove
-        # Maya 2022+ introduces new OCIO v2 color management settings that
-        # can override the old color management preferences. AYON has
-        # separate settings for both so we fall back when necessary.
-        use_ocio_v2 = imageio["colorManagementPreference_v2"]["enabled"]
-        if use_ocio_v2 and not ocio_v2_support:
-            # Fallback to legacy behavior with a warning
-            log.warning(
-                "Color Management Preference v2 is enabled but not "
-                "supported by current Maya version: {} (< {}). Falling "
-                "back to legacy settings.".format(
-                    maya_version, ocio_v2_maya_version)
-            )
-
-        if use_ocio_v2:
-            root_dict = imageio["colorManagementPreference_v2"]
-        else:
-            root_dict = imageio["colorManagementPreference"]
-
-        if not isinstance(root_dict, dict):
-            msg = "set_colorspace(): argument should be dictionary"
-            log.error(msg)
-            return
-
-    # backward compatibility
-    # TODO: deprecated code from 3.15.5 - remove with deprecated code above
-    view_name = root_dict.get("viewTransform")
-    if view_name is None:
-        view_name = root_dict.get("viewName")
-
-    log.debug(">> root_dict: {}".format(pformat(root_dict)))
-    if not root_dict:
+    if not imageio["workfile"]["enabled"]:
+        log.info(
+            "AYON Maya Color Management settings for workfile are disabled."
+        )
         return
 
     # set color spaces for rendering space and view transforms
@@ -3419,36 +3380,27 @@ def set_colorspace():
         except RuntimeError as exc:
             log.error(exc)
 
+    log.info("Setting Maya colorspace..")
+
     # enable color management
     cmds.colorManagementPrefs(edit=True, cmEnabled=True)
     cmds.colorManagementPrefs(edit=True, ocioRulesEnabled=True)
 
-    if use_ocio_v2:
-        log.info("Using Maya OCIO v2")
-        if not is_ocio_set:
-            # Set the Maya 2022+ default OCIO v2 config file path
-            log.info("Setting default Maya OCIO v2 config")
-            # Note: Setting "" as value also sets this default however
-            # introduces a bug where launching a file on startup will prompt
-            # to save the empty scene before it, so we set using the path.
-            # This value has been the same for 2022, 2023 and 2024
-            path = "<MAYA_RESOURCES>/OCIO-configs/Maya2022-default/config.ocio"
-            cmds.colorManagementPrefs(edit=True, configFilePath=path)
+    is_ocio_set = bool(os.environ.get("OCIO"))
+    if not is_ocio_set:
+        # Set the Maya 2022+ default OCIO v2 config file path
+        log.info("Setting default Maya OCIO v2 config")
+        # Note: Setting "" as value also sets this default however
+        # introduces a bug where launching a file on startup will prompt
+        # to save the empty scene before it, so we set using the path.
+        # This value has been the same for 2022, 2023 and 2024.
+        path = "<MAYA_RESOURCES>/OCIO-configs/Maya2022-default/config.ocio"
+        cmds.colorManagementPrefs(edit=True, configFilePath=path)
 
-        # set rendering space and view transform
-        _colormanage(renderingSpaceName=root_dict["renderSpace"])
-        _colormanage(viewName=view_name)
-        _colormanage(displayName=root_dict["displayName"])
-    else:
-        log.info("Using Maya OCIO v1 (legacy)")
-        if not is_ocio_set:
-            # Set the Maya default config file path
-            log.info("Setting default Maya OCIO v1 legacy config")
-            cmds.colorManagementPrefs(edit=True, configFilePath="legacy")
-
-        # set rendering space and view transform
-        _colormanage(renderingSpaceName=root_dict["renderSpace"])
-        _colormanage(viewTransformName=view_name)
+    # set rendering space and view transform
+    _colormanage(renderingSpaceName=imageio["workfile"]["renderSpace"])
+    _colormanage(viewName=imageio["workfile"]["viewName"])
+    _colormanage(displayName=imageio["workfile"]["displayName"])
 
 
 @contextlib.contextmanager
