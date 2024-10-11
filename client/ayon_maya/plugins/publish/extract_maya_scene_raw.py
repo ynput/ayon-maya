@@ -126,8 +126,8 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
         self.log.debug("Extracted instance '%s' to: %s" % (instance.name,
                                                            path))
 
-    @classmethod
-    def _get_loaded_containers(cls, members):
+    @staticmethod
+    def _get_loaded_containers(members):
         # type: (list[str]) -> list[str]
         refs_to_include = {
             cmds.referenceQuery(node, referenceNode=True)
