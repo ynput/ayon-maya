@@ -34,7 +34,6 @@ ALEMBIC_ARGS = {
     "userAttrPrefix": (list, tuple),
     "uvWrite": bool,
     "uvsOnly": bool,
-    "verbose": bool,
     "wholeFrameGeo": bool,
     "worldSpace": bool,
     "writeColorSets": bool,
@@ -259,7 +258,6 @@ def extract_alembic(
         "userAttr": userAttr,
         "userAttrPrefix": userAttrPrefix,
         "stripNamespaces": stripNamespaces,
-        "verbose": verbose
     }
 
     # Validate options
