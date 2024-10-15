@@ -57,7 +57,7 @@ def extract_alembic(
     melPostJobCallback=None,
     noNormals=False,
     preRoll=False,
-    preRollStartFrame=0,
+    preRollStartFrame=None,
     pythonPerFrameCallback=None,
     pythonPostJobCallback=None,
     renderableOnly=False,
@@ -119,10 +119,11 @@ def extract_alembic(
         preRoll (bool): This frame range will not be sampled.
             Defaults to False.
 
-        preRollStartFrame (float): The frame to start scene
+        preRollStartFrame (Optional[float]): The frame to start scene
             evaluation at.  This is used to set the starting frame for time
             dependent translations and can be used to evaluate run-up that
-            isn't actually translated. Defaults to 0.
+            isn't actually translated. Defaults to None, meaning no pre-roll
+            start frame will be used to roll from.
 
         pythonPerFrameCallback (Optional[str]): Python callback run per frame.
 
