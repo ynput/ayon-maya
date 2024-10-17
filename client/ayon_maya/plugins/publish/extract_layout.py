@@ -97,7 +97,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                     "{}.namespace".format(container)),
                 "representation": str(representation_id),
                 "version": str(version_id),
-                "extension": repre_context["ext"]
+                "extension": repre_context["ext"],
+                "host": self.hosts
             }
 
             local_matrix = cmds.xform(asset, query=True, matrix=True)
