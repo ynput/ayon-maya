@@ -304,7 +304,7 @@ DEFAULT_LOADERS_SETTING = {
     "MatchmoveLoader": {"enabled": True},
     "MayaUsdLoader": {
         "enabled": True,
-        "use_ayon_entity_uri": True
+        "use_ayon_entity_uri": False
     },
     "MultiverseUsdLoader": {"enabled": True},
     "MultiverseUsdOverLoader": {"enabled": True},
