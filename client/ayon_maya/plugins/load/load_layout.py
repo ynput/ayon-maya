@@ -1,4 +1,5 @@
 from maya import cmds
+import re
 import math
 import json
 import collections
@@ -71,11 +72,27 @@ class LayoutLoader(plugin.Loader):
 
         return None
 
+    def _get_instance_name(self, instance_name):
+        """
+        Splits the given instance name and convert it into the asset name.
+
+        Args:
+        instance_name (str): Instance name.
+
+        Returns:
+        str: asset name.
+        """
+        pattern = r'([a-zA-Z]+)_(\d+|[a-zA-Z]+)'
+        reg_matches = re.findall(pattern, instance_name)
+        asset_name = '_'.join(['_'.join(match) for match in reg_matches])
+        return asset_name
+
     def get_asset(self, containers, instance_name):
         # TODO: Improve this logic to support multiples of same asset
         #  and to avoid bugs with containers getting renamed by artists
         # Find container names that starts with 'instance name'
-        containers = [con for con in containers if con.startswith(instance_name)]
+        asset_name = self._get_instance_name(instance_name)
+        containers = [con for con in containers if con.startswith(asset_name)]
         # Get the highest root node from the loaded container
         for container in containers:
             members = get_container_members(container)
@@ -168,7 +185,7 @@ class LayoutLoader(plugin.Loader):
             transform["scale"]["z"],
             transform["scale"]["y"]
         ]
-
+        print(asset, translation, rotation, scale)
         cmds.xform(
             asset,
             translation=translation,
