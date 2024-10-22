@@ -228,11 +228,9 @@ class LayoutLoader(plugin.Loader):
         self.log.info(f">>> loading json [ {path} ]")
         with open(path, "r") as fp:
             data = json.load(fp)
-
-        existing_containers = get_container_members(container)
         # TODO: Supports to load non-existing containers
         for element in data:
-            self.set_transformation(existing_containers, element)
+            self.set_transformation(container["nodes"], element)
         # Update metadata
         node = container["objectName"]
         cmds.setAttr("{}.representation".format(node),
