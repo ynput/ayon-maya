@@ -1,5 +1,4 @@
 from maya import cmds
-import re
 import math
 import json
 import collections
