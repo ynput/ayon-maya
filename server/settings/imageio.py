@@ -31,28 +31,6 @@ class ImageIOFileRulesModel(BaseSettingsModel):
         return value
 
 
-class ColorManagementPreferenceV2Model(BaseSettingsModel):
-    """Color Management Preference v2 (Maya 2022+).
-
-    Please migrate all to 'imageio/workfile' and enable it.
-    """
-
-    enabled: bool = SettingsField(
-        True, title="Use Color Management Preference v2"
-    )
-
-    renderSpace: str = SettingsField(title="Rendering Space")
-    displayName: str = SettingsField(title="Display")
-    viewName: str = SettingsField(title="View")
-
-
-class ColorManagementPreferenceModel(BaseSettingsModel):
-    """Color Management Preference (legacy)."""
-
-    renderSpace: str = SettingsField(title="Rendering Space")
-    viewTransform: str = SettingsField(title="Viewer Transform ")
-
-
 class WorkfileImageIOModel(BaseSettingsModel):
     enabled: bool = SettingsField(True, title="Enabled")
     renderSpace: str = SettingsField(title="Rendering Space")
@@ -61,10 +39,7 @@ class WorkfileImageIOModel(BaseSettingsModel):
 
 
 class ImageIOSettings(BaseSettingsModel):
-    """Maya color management project settings.
-
-    Todo: What to do with color management preferences version?
-    """
+    """Maya color management project settings."""
 
     _isGroup: bool = True
     activate_host_color_management: bool = SettingsField(
@@ -78,17 +53,6 @@ class ImageIOSettings(BaseSettingsModel):
         default_factory=WorkfileImageIOModel,
         title="Workfile"
     )
-    # Deprecated
-    colorManagementPreference_v2: ColorManagementPreferenceV2Model = (
-        SettingsField(
-            default_factory=ColorManagementPreferenceV2Model,
-            title="DEPRECATED: Color Management Preference v2 (Maya 2022+)"
-        )
-    )
-    colorManagementPreference: ColorManagementPreferenceModel = SettingsField(
-        default_factory=ColorManagementPreferenceModel,
-        title="DEPRECATED: Color Management Preference (legacy)"
-    )
 
 
 DEFAULT_IMAGEIO_SETTINGS = {
@@ -98,19 +62,9 @@ DEFAULT_IMAGEIO_SETTINGS = {
         "rules": []
     },
     "workfile": {
-        "enabled": False,
+        "enabled": True,
         "renderSpace": "ACES - ACEScg",
         "displayName": "ACES",
         "viewName": "sRGB"
-    },
-    "colorManagementPreference_v2": {
-        "enabled": True,
-        "renderSpace": "ACEScg",
-        "displayName": "sRGB",
-        "viewName": "ACES 1.0 SDR-video"
-    },
-    "colorManagementPreference": {
-        "renderSpace": "scene-linear Rec 709/sRGB",
-        "viewTransform": "sRGB gamma"
     }
 }
