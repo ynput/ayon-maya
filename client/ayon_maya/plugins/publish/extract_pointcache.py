@@ -215,6 +215,29 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
                 iter_visible_nodes_in_range(nodes, start=start, end=end)
             )
 
+        # Our logic is that `preroll` means:
+        # - True: include a preroll from `preRollStartFrame` to the start
+        #  frame that is not included in the exported file. Just 'roll up'
+        #  the export from there.
+        # - False: do not roll up from `preRollStartFrame`.
+        # `AbcExport` however approaches this very differently.
+        # A call to `AbcExport` allows to export multiple "jobs" of frame
+        # ranges in one go. Using `-preroll` argument there means: this one
+        # job in the full list of jobs SKIP writing these frames into the
+        # Alembic. In short, marking that job as just preroll.
+        # Then additionally, separate from `-preroll` the `AbcExport` command
+        # allows to supply `preRollStartFrame` which, when not None, means
+        # always RUN UP from that start frame. Since our `preRollStartFrame`
+        # is always an integer attribute we will convert the attributes so
+        # they behave like how we intended them initially
+        if kwargs["preRoll"]:
+            # Never mark `preRoll` as True because it would basically end up
+            # writing no samples at all. We just use this to leave
+            # `preRollStartFrame` as a number value.
+            kwargs["preRoll"] = False
+        else:
+            kwargs["preRollStartFrame"] = None
+
         shapes = self.get_members_shapes(instance)
 
         suspend = not instance.data.get("refresh", False)
