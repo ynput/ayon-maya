@@ -347,7 +347,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 )
                 del options[key]
 
-        options = self.override_options(instance)
+        options = self.override_options(options)
 
         self.log.debug('Exporting USD: {} / {}'.format(file_path, members))
         with maintained_time():
