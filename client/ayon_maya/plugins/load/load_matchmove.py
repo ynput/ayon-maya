@@ -1,3 +1,5 @@
+import runpy
+
 from ayon_maya.api import plugin
 from maya import mel
 
@@ -20,7 +22,7 @@ class MatchmoveLoader(plugin.Loader):
     def load(self, context, name, namespace, data):
         path = self.filepath_from_context(context)
         if path.lower().endswith(".py"):
-            exec(open(path).read())
+            runpy.run_path(path, run_name="__main__")
 
         elif path.lower().endswith(".mel"):
             mel.eval('source "{}"'.format(path))
