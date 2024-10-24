@@ -21,9 +21,9 @@ class CreateVRayScene(plugin.RenderlayerCreator):
     render_settings = {}
     singleton_node_name = "vraysceneMain"
 
-    @classmethod
-    def apply_settings(cls, project_settings):
-        cls.render_settings = project_settings["maya"]["render_settings"]
+    def apply_settings(self, project_settings):
+        super().apply_settings(project_settings)
+        self.render_settings = project_settings["maya"]["render_settings"]
 
     def create(self, product_name, instance_data, pre_create_data):
         # Only allow a single render instance to exist
