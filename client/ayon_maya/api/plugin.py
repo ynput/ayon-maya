@@ -1,10 +1,8 @@
 import json
 import os
-from abc import ABCMeta
 
 import ayon_api
 import qargparse
-import six
 
 from ayon_core.lib import BoolDef, Logger
 from ayon_core.pipeline import (
@@ -110,9 +108,7 @@ def get_ayon_entity_uri_from_representation_context(context: dict) -> str:
     return uris[0]["uri"]
 
 
-@six.add_metaclass(ABCMeta)
-class MayaCreatorBase(object):
-
+class MayaCreatorBase:
     @staticmethod
     def cache_instance_data(shared_data):
         """Cache instances for Creators to shared data.
@@ -297,7 +293,6 @@ class MayaCreatorBase(object):
             self._remove_instance_from_context(instance)
 
 
-@six.add_metaclass(ABCMeta)
 class MayaCreator(Creator, MayaCreatorBase):
 
     settings_category = "maya"
