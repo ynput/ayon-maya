@@ -15,6 +15,7 @@ from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
 from ayon_maya.api.alembic import extract_alembic
 from ayon_maya.api.lib import (
     get_all_children,
+    get_highest_in_hierarchy,
     iter_visible_nodes_in_range,
     maintained_selection,
     suspended_refresh,
@@ -129,7 +130,10 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
             # Set the root nodes if we don't want to include parents
             # The roots are to be considered the ones that are the actual
             # direct members of the set
-            root = roots
+            # We ignore members that are children of other members to avoid
+            # the parenting / ancestor relationship error on export and assume
+            # the user intended to export starting at the top of the two.
+            root = get_highest_in_hierarchy(roots)
 
         kwargs = {
             "file": path,
@@ -210,6 +214,29 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
             nodes = list(
                 iter_visible_nodes_in_range(nodes, start=start, end=end)
             )
+
+        # Our logic is that `preroll` means:
+        # - True: include a preroll from `preRollStartFrame` to the start
+        #  frame that is not included in the exported file. Just 'roll up'
+        #  the export from there.
+        # - False: do not roll up from `preRollStartFrame`.
+        # `AbcExport` however approaches this very differently.
+        # A call to `AbcExport` allows to export multiple "jobs" of frame
+        # ranges in one go. Using `-preroll` argument there means: this one
+        # job in the full list of jobs SKIP writing these frames into the
+        # Alembic. In short, marking that job as just preroll.
+        # Then additionally, separate from `-preroll` the `AbcExport` command
+        # allows to supply `preRollStartFrame` which, when not None, means
+        # always RUN UP from that start frame. Since our `preRollStartFrame`
+        # is always an integer attribute we will convert the attributes so
+        # they behave like how we intended them initially
+        if kwargs["preRoll"]:
+            # Never mark `preRoll` as True because it would basically end up
+            # writing no samples at all. We just use this to leave
+            # `preRollStartFrame` as a number value.
+            kwargs["preRoll"] = False
+        else:
+            kwargs["preRollStartFrame"] = None
 
         shapes = self.get_members_shapes(instance)
 

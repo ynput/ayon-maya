@@ -3,7 +3,6 @@ from pydantic import validator
 from ayon_server.settings import (
     BaseSettingsModel,
     SettingsField,
-    MultiplatformPathModel,
     ensure_unique_names,
 )
 from ayon_server.exceptions import BadRequestException
@@ -16,22 +15,22 @@ from .publish_playblast import (
 def linear_unit_enum():
     """Get linear units enumerator."""
     return [
-        {"label": "mm", "value": "millimeter"},
-        {"label": "cm", "value": "centimeter"},
-        {"label": "m", "value": "meter"},
-        {"label": "km", "value": "kilometer"},
-        {"label": "in", "value": "inch"},
-        {"label": "ft", "value": "foot"},
-        {"label": "yd", "value": "yard"},
-        {"label": "mi", "value": "mile"}
+        {"label": "millimeter", "value": "mm"},
+        {"label": "centimeter", "value": "cm"},
+        {"label": "meter", "value": "m"},
+        {"label": "kilometer", "value": "km"},
+        {"label": "inch", "value": "in"},
+        {"label": "foot", "value": "ft"},
+        {"label": "yard", "value": "yd"},
+        {"label": "mile", "value": "mi"}
     ]
 
 
 def angular_unit_enum():
     """Get angular units enumerator."""
     return [
-        {"label": "deg", "value": "degree"},
-        {"label": "rad", "value": "radian"},
+        {"label": "degree", "value": "deg"},
+        {"label": "radian", "value": "rad"},
     ]
 
 
@@ -99,36 +98,6 @@ class ValidateRigOutSetNodeIdsModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="ValidateSkinclusterDeformerSet")
     optional: bool = SettingsField(title="Optional")
     allow_history_only: bool = SettingsField(title="Allow history only")
-
-
-class ValidateModelNameModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    database: bool = SettingsField(
-        title="Use database shader name definitions"
-    )
-    material_file: MultiplatformPathModel = SettingsField(
-        default_factory=MultiplatformPathModel,
-        title="Material File",
-        description=(
-            "Path to material file defining list of material names to check."
-        )
-    )
-    regex: str = SettingsField(
-        "(.*)_(\\d)*_(?P<shader>.*)_(GEO)",
-        title="Validation regex",
-        description=(
-            "Regex for validating name of top level group name. You can use"
-            " named capturing groups:(?P<asset>.*) for Asset name"
-        )
-    )
-    top_level_regex: str = SettingsField(
-        ".*_GRP",
-        title="Top level group name regex",
-        description=(
-            "To check for asset in name so *_some_asset_name_GRP"
-            " is valid, use:.*?_(?P<asset>.*)_GEO"
-        )
-    )
 
 
 class ValidateModelContentModel(BaseSettingsModel):
@@ -787,14 +756,10 @@ class PublishersModel(BaseSettingsModel):
         title="Yeti Rig Settings"
     )
     # Model - START
-    ValidateModelName: ValidateModelNameModel = SettingsField(
-        default_factory=ValidateModelNameModel,
-        title="Validate Model Name",
-        section="Model",
-    )
     ValidateModelContent: ValidateModelContentModel = SettingsField(
         default_factory=ValidateModelContentModel,
         title="Validate Model Content",
+        section="Model"
     )
     ValidateTransformNamingSuffix: ValidateTransformNamingSuffixModel = (
         SettingsField(
@@ -1328,17 +1293,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": False,
         "active": True
-    },
-    "ValidateModelName": {
-        "enabled": False,
-        "database": True,
-        "material_file": {
-            "windows": "",
-            "darwin": "",
-            "linux": ""
-        },
-        "regex": "(.*)_(\\d)*_(?P<shader>.*)_(GEO)",
-        "top_level_regex": ".*_GRP"
     },
     "ValidateModelContent": {
         "enabled": True,
