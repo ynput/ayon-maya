@@ -416,7 +416,7 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
     an instance per renderlayer.
 
     """
-
+    settings_category = "maya"
     # These are required to be overridden in subclass
     singleton_node_name = ""
 
