@@ -374,7 +374,8 @@ def parse_usd_prim_container(prim, proxy):
 
     """
     data = prim.GetCustomDataByKey("ayon")
-    if not data or not data.get("id") == AYON_CONTAINER_ID:
+    if not data or not data.get("id") in {AVALON_CONTAINER_ID,
+                                          AYON_CONTAINER_ID}:
         return
 
     # Store transient data
