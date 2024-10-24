@@ -543,6 +543,8 @@ class ExtractCameraAlembicModel(BaseSettingsModel):
                     "camera export. Needs to be written as a JSON list.",
     )
 
+
+
     @validator("bake_attributes")
     def validate_json_list(cls, value):
         if not value.strip():
@@ -597,6 +599,15 @@ class ExtractGPUCacheModel(BaseSettingsModel):
     writeMaterials: bool = SettingsField(title="Write Materials")
     useBaseTessellation: bool = SettingsField(title="User Based Tessellation")
 
+class ExtractSkeletalMeshAlembicModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="ExtractSkeletalMeshAlembic")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+
+class ExtractSkeletalMeshFbxModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="ExtractSkeletalMeshFbx")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
 
 class PublishersModel(BaseSettingsModel):
     CollectMayaRender: CollectMayaRenderModel = SettingsField(
@@ -1051,7 +1062,14 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ExtractMayaUsdAnimModel,
         title="Extract Maya USD with Animation"
     )
-
+    ExtractSkeletalMeshAlembic: ExtractSkeletalMeshAlembicModel = SettingsField(
+        default_factory=ExtractSkeletalMeshAlembicModel,
+        title="Extract Unreal Skeletal Mesh (Alembic)"
+    )
+    ExtractSkeletalMeshFbx: ExtractSkeletalMeshFbxModel = SettingsField(
+        default_factory=ExtractSkeletalMeshFbxModel,
+        title="Extract Unreal Skeletal Mesh (FBX)"
+    )
 
 DEFAULT_SUFFIX_NAMING = {
     "mesh": ["_GEO", "_GES", "_GEP", "_OSD"],
@@ -1694,5 +1712,15 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "active": False,
+    },
+    "ExtractSkeletalMeshAlembic": {
+        "enabled": False,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractSkeletalMeshFbx": {
+        "enabled": False,
+        "optional": True,
+        "active": True,
     }
 }
