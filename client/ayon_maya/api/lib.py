@@ -4029,7 +4029,6 @@ def get_capture_preset(
         project_settings (dict): Project settings.
         log (logging.Logger): Logging object.
     """
-    capture_preset = None
     filtering_criteria = {
         "task_names": task_name,
         "task_types": task_type,
@@ -4037,15 +4036,17 @@ def get_capture_preset(
     }
 
     plugin_settings = project_settings["maya"]["publish"]["ExtractPlayblast"]
-    if plugin_settings["profiles"]:
-        profile = filter_profiles(
-            plugin_settings["profiles"],
-            filtering_criteria,
-            logger=log
-        )
-        capture_preset = profile.get("capture_preset")
-    else:
+    if not plugin_settings["profiles"]:
         log.warning("No profiles present for Extract Playblast")
+
+    profile = filter_profiles(
+        plugin_settings["profiles"],
+        filtering_criteria,
+        logger=log
+    )
+    capture_preset = None
+    if profile:
+        capture_preset = profile["capture_preset"]
 
     # Backward compatibility for deprecated Extract Playblast settings
     # without profiles.
