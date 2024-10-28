@@ -159,7 +159,7 @@ class LayoutLoader(plugin.Loader):
 
         rotation = [
             math.degrees(transform["rotation"]["x"]),
-            math.degrees(transform["rotation"]["z"]) + 90,
+            math.degrees(transform["rotation"]["z"]),
             math.degrees(transform["rotation"]["y"]),
         ]
         scale = [
@@ -171,7 +171,8 @@ class LayoutLoader(plugin.Loader):
             asset,
             translation=translation,
             rotation=rotation,
-            scale=scale
+            scale=scale,
+            rotateAxis=[0, -90, 0]
         )
 
     def _convert_transformation_matrix(self, asset, transform, rotation):
