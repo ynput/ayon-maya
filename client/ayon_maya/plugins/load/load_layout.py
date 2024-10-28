@@ -172,6 +172,7 @@ class LayoutLoader(plugin.Loader):
             translation=translation,
             rotation=rotation,
             scale=scale,
+            # mirror rotation axis along with Y-plane
             rotateAxis=[0, -90, 0]
         )
 
