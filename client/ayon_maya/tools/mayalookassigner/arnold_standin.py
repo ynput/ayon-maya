@@ -325,23 +325,23 @@ def assign_look(
 
             if edit["action"] == "setattr":
                 visibility = False
-                for attr, value in edit["attributes"].items():
-                    if attr not in ATTRIBUTE_MAPPING:
+                for attr_name, value in edit["attributes"].items():
+                    if attr_name not in ATTRIBUTE_MAPPING:
                         log.warning(
                             "Skipping setting attribute {} on {} because it is"
-                            " not recognized.".format(attr, edit["nodes"])
+                            " not recognized.".format(attr_name, edit["nodes"])
                         )
                         continue
 
                     if isinstance(value, str):
                         value = "'{}'".format(value)
 
-                    if ATTRIBUTE_MAPPING[attr] == "visibility":
+                    mapped_attr_name = ATTRIBUTE_MAPPING[attr_name]
+                    if mapped_attr_name == "visibility":
                         visibility = True
                         continue
 
-                    assignment = "{}={}".format(ATTRIBUTE_MAPPING[attr], value)
-
+                    assignment = f"{mapped_attr_name}={value}"
                     for node in edit["nodes"]:
                         node_assignments[node].append(assignment)
 
