@@ -2,9 +2,11 @@ import os
 import json
 from collections import defaultdict
 import logging
+from typing import List, Optional
 
 from maya import cmds
 import ayon_api
+import attr
 
 from ayon_core.pipeline import get_current_project_name
 from ayon_maya import api
@@ -105,6 +107,11 @@ def shading_engine_assignments(shading_engine, attribute, nodes, assignments):
         attribute (string): "surfaceShader" or "displacementShader"
         nodes: (list): Nodes paths relative to aiStandIn.
         assignments (dict): Assignments by nodes.
+
+    Returns:
+        dict[str, list[str]]: The operator `aiSetParameter` assignments
+          needed per node to assign the shading engine.
+
     """
     shader_inputs = cmds.listConnections(
         shading_engine + "." + attribute, source=True
@@ -132,10 +139,120 @@ def shading_engine_assignments(shading_engine, attribute, nodes, assignments):
         assignments[node].append(assignment)
 
 
-def assign_look(standin, product_name):
+@attr.s
+class SetParameter:
+    """Simple class to manage aiSetParameter nodes"""
+    selection: str = attr.ib()
+    assignments: List[str] = attr.ib()
+    node: Optional[str] = attr.ib(default=None)
+
+    def create(self, name=None) -> str:
+        operator: str = cmds.createNode("aiSetParameter",
+                                        skipSelect=True,
+                                         name=name)
+        self.node = operator
+        self.update()
+        return operator
+
+    def update(self):
+        operator = self.node
+        cmds.setAttr(f"{operator}.selection", self.selection, type="string")
+
+        # Remove any existing assignments
+        for i in reversed(
+            range(cmds.getAttr(f"{operator}.assignment", size=True))
+        ):
+            cmds.removeMultiInstance(f"{operator}.assignment[{i}]", b=True)
+
+        # Set the new assignments
+        for i, assignment in enumerate(self.assignments):
+            cmds.setAttr(
+                f"{operator}.assignment[{i}]",
+                assignment,
+                type="string"
+            )
+
+    def delete(self):
+        if self.node and cmds.objExists(self.node):
+            cmds.delete(self.node)
+
+
+def get_current_set_parameter_operators(standin: str) -> List[SetParameter]:
+    """Return SetParameter operators for a aiStandin node.
+
+    Args:
+        standin: The `aiStandin` node to get the assignments from.
+
+    Returns:
+        The list of `SetParameter` objects that represent the assignments.
+
+    """
+    plug = standin + ".operators"
+    num = cmds.getAttr(plug, size=True)
+
+    set_parameters = []
+    for i in range(num):
+
+        index_plug = f"{plug}[{i}]"
+
+        inputs = cmds.listConnections(
+            index_plug, source=True, destination=False)
+        if not inputs:
+            continue
+
+        # We only consider `aiSetParameter` nodes for now because that is what
+        # the look assignment logic creates.
+        input_node = inputs[0]
+        if cmds.nodeType(input_node) != "aiSetParameter":
+            continue
+
+        selection = cmds.getAttr(f"{input_node}.selection")
+        assignment_plug = f"{input_node}.assignment"
+        assignments = []
+        for j in range(cmds.getAttr(assignment_plug, size=True)):
+            assignment_index_plug = f"{assignment_plug}[{j}]"
+            assignment = cmds.getAttr(assignment_index_plug)
+            assignments.append(assignment)
+
+        parameter = SetParameter(
+            selection=selection,
+            assignments=assignments,
+            node=input_node)
+        set_parameters.append(parameter)
+    return set_parameters
+
+
+def assign_look(
+        standin: str,
+        product_name: str,
+        include_selection_prefixes: Optional[List[str]] = None):
+    """Assign a look to an aiStandIn node.
+
+    Arguments:
+        standin (str): The aiStandin proxy shape.
+        product_name (str): The product name to load.
+        include_selection_prefixes (Optional[List[str]]): If provided,
+            only children to these object path prefixes will be considered.
+            The paths are the full path from the root of the Alembic file,
+            e.g. `/parent/child1/child2`
+    """
+    # TODO: Technically a more logical entry point here to assign by version
+    #  instead of product name so that you can also assign older looks.
     log.info("Assigning {} to {}.".format(product_name, standin))
 
     nodes_by_id = get_nodes_by_id(standin)
+
+    # If any inclusion selection prefixes are set we allow assigning only
+    # to those paths or any children
+    if include_selection_prefixes:
+        prefixes = tuple(f"{prefix}/" for prefix in include_selection_prefixes)
+        for node_id, nodes in dict(nodes_by_id).items():
+            print(nodes)
+            nodes = [node for node in nodes if node.startswith(prefixes)]
+            if nodes:
+                nodes_by_id[node_id] = nodes
+            else:
+                nodes_by_id.pop(node_id)
 
     # Group by folder id so we run over the look per folder
     node_ids_by_folder_id = defaultdict(set)
@@ -144,6 +261,12 @@ def assign_look(standin, product_name):
         node_ids_by_folder_id[folder_id].add(node_id)
 
     project_name = get_current_project_name()
+
+    operators = get_current_set_parameter_operators(standin)
+    operators_by_node = {
+        cmds.getAttr(f"{op.node}.selection"): op for op in operators
+    }
+
     for folder_id, node_ids in node_ids_by_folder_id.items():
 
         # Get latest look version
@@ -175,7 +298,7 @@ def assign_look(standin, product_name):
             )
         )
 
-        # Create assignments
+        # Define the assignment operators needed for this look
         node_assignments = {}
         for edit in edits:
             for node in edit["nodes"]:
@@ -229,35 +352,48 @@ def assign_look(standin, product_name):
                     for node in edit["nodes"]:
                         node_assignments[node].append(assignment)
 
-        # Assign shader
-        # Clear all current shader assignments
+        # Cleanup: remove any empty operator slots
         plug = standin + ".operators"
         num = cmds.getAttr(plug, size=True)
         for i in reversed(range(num)):
-            cmds.removeMultiInstance("{}[{}]".format(plug, i), b=True)
+            index_plug = f"{plug}[{i}]"
+            if not cmds.listConnections(index_plug,
+                                        source=True,
+                                        destination=False):
+                cmds.removeMultiInstance(index_plug, b=True)
 
-        # Create new assignment overrides
-        index = 0
+        # Update the node assignments on the standin
         for node, assignments in node_assignments.items():
             if not assignments:
                 continue
 
-            with api.lib.maintained_selection():
-                operator = cmds.createNode("aiSetParameter")
-                operator = cmds.rename(operator, namespace + ":" + operator)
+            # If this node has an existing assignment, update it
+            if node in operators_by_node:
+                set_parameter = operators_by_node[node]
+                set_parameter.assignments[:] = assignments
+                set_parameter.update()
 
-            cmds.setAttr(operator + ".selection", node, type="string")
-            for i, assignment in enumerate(assignments):
-                cmds.setAttr(
-                    "{}.assignment[{}]".format(operator, i),
-                    assignment,
-                    type="string"
+            # Create a new assignment
+            else:
+                set_parameter = SetParameter(
+                    selection=node,
+                    assignments=assignments
                 )
+                operators_by_node[node] = set_parameter
 
+                # Create the `aiSetParameter` node
+                label = node.rsplit(":", 1)[-1].rsplit("/", 1)[-1]
+                name = f"{namespace}:set_parameter_{label}"
+                operator = set_parameter.create(name=name)
+
+                # Connect to next available index
+                size = cmds.getAttr(plug, size=True)
                 cmds.connectAttr(
-                    operator + ".out", "{}[{}]".format(plug, index)
+                    f"{operator}.out",
+                    f"{plug}[{size}]",
+                    force=True
                 )
 
-                index += 1
-
-            cmds.sets(operator, edit=True, addElement=container_node)
+                # Add it to the looks container so it is removed along
+                # with it if needed.
+                cmds.sets(operator, edit=True, addElement=container_node)
