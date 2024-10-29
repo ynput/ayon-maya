@@ -74,7 +74,7 @@ def get_nodes_by_id(standin):
     """
 
     # Transform to shape if not shape
-    if not cmds.nodeType(standin, isAType="shape"):
+    if not cmds.objectType(standin, isAType="shape"):
         shapes = cmds.listRelatives(
             standin,
             shapes=True,
