@@ -268,7 +268,14 @@ class MayaLookAssignerWindow(QtWidgets.QWidget):
 
             # Assign Arnold Standin look.
             if cmds.pluginInfo("mtoa", query=True, loaded=True):
-                arnold_standins = cmds.ls(nodes, type="aiStandIn", long=True)
+                # If the current renderer is Arnold we also allow assigning
+                # to gpuCache nodes. If not, then we skip it because Arnold may
+                # be loaded even if unused as renderer in current project.
+                types = ["aiStandIn"]
+                renderer = cmds.getAttr("defaultRenderGlobals.currentRenderer")
+                if renderer == "arnold":
+                    types.append("gpuCache")
+                arnold_standins = cmds.ls(nodes, type=types, long=True)
                 for standin in arnold_standins:
                     arnold_standin.assign_look_by_version(
                         standin, version_id=version_entity["id"])
