@@ -54,8 +54,8 @@ def calculate_visibility_mask(attributes):
         "aiVisibleInSpecularReflection": 64
     }
     mask = 255
-    for attr, value in mapping.items():
-        if attributes.get(attr, True):
+    for attr_name, value in mapping.items():
+        if attributes.get(attr_name, True):
             continue
 
         mask -= value
