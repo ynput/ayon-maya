@@ -72,7 +72,24 @@ def get_nodes_by_id(standin):
     Returns:
         (dict): Dictionary with node full name/path and id.
     """
-    path = cmds.getAttr(standin + ".dso")
+
+    # Transform to shape if not shape
+    if not cmds.nodeType(standin, isAType="shape"):
+        shapes = cmds.listRelatives(
+            standin,
+            shapes=True,
+            noIntermediate=True,
+            type=("aiStandIn", "gpuCache"),
+            fullPath=True)
+        if not shapes:
+            return {}
+        standin = shapes[0]
+
+    attr = "dso"  # aiStandIn
+    if cmds.nodeType(standin) == "gpuCache":
+        attr = "cacheFileName"
+
+    path = cmds.getAttr(f"{standin}.{attr}")
 
     if path.endswith(".abc"):
         # Support alembic files directly
@@ -187,10 +204,10 @@ class SetParameter:
 
 
 def get_current_set_parameter_operators(standin: str) -> List[SetParameter]:
-    """Return SetParameter operators for a aiStandin node.
+    """Return SetParameter operators for a aiStandIn node.
 
     Args:
-        standin: The `aiStandin` node to get the assignments from.
+        standin: The `aiStandIn` node to get the assignments from.
 
     Returns:
         The list of `SetParameter` objects that represent the assignments.
@@ -232,7 +249,7 @@ def get_current_set_parameter_operators(standin: str) -> List[SetParameter]:
 
 
 def get_nodes_by_id_filtered(standin, include_selection_prefixes):
-    """Get aiStandin object paths by `cbId` via Alembic or JSON sidecar.
+    """Get aiStandIn object paths by `cbId` via Alembic or JSON sidecar.
 
     Args:
         standin (string): aiStandIn node.
@@ -267,7 +284,7 @@ def assign_look(
     """Assign a look to an aiStandIn node.
 
     Arguments:
-        standin (str): The aiStandin proxy shape.
+        standin (str): The aiStandIn proxy shape.
         product_name (str): The product name to load.
         include_selection_prefixes (Optional[List[str]]): If provided,
             only children to these object path prefixes will be considered.
@@ -318,7 +335,7 @@ def assign_look_by_version(
     """Assign a look to an aiStandIn node by look version id.
     
     Args:
-        standin (str): aiStandin node. 
+        standin (str): aiStandIn node.
         version_id (str): Look product version id. 
         nodes_by_id (Optional[Dict[str, List[str]]]): Pre-computed dictionary 
             with node ids and paths, as optimization or as filter to only
