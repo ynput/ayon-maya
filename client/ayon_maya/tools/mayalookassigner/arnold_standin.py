@@ -175,7 +175,7 @@ class SetParameter:
     def create(self, name=None) -> str:
         operator: str = cmds.createNode("aiSetParameter",
                                         skipSelect=True,
-                                         name=name)
+                                        name=name)
         self.node = operator
         self.update()
         return operator
