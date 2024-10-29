@@ -1,6 +1,6 @@
 import os
 import json
-from collections import defaultdict
+import uuid
 import logging
 from typing import List, Optional
 
@@ -97,6 +97,15 @@ def get_nodes_by_id(standin):
 
     with open(json_path, "r") as f:
         return json.load(f)
+
+
+def is_valid_uuid(value) -> bool:
+    """Return whether value is a valid UUID"""
+    try:
+        uuid.UUID(value)
+    except ValueError:
+        return False
+    return True
 
 
 def shading_engine_assignments(shading_engine, attribute, nodes, assignments):
@@ -222,6 +231,35 @@ def get_current_set_parameter_operators(standin: str) -> List[SetParameter]:
     return set_parameters
 
 
+def get_nodes_by_id_filtered(standin, include_selection_prefixes):
+    """Get aiStandin object paths by `cbId` via Alembic or JSON sidecar.
+
+    Args:
+        standin (string): aiStandIn node.
+        include_selection_prefixes (List[str] | None): If not None,
+            only children to these object path prefixes will be considered.
+            The paths are the full path from the root of the Alembic file,
+            e.g. `/parent/child1/child2`.
+
+    Returns:
+        Dict[str, List[str]]: Dictionary with `cbId` and object paths.
+    """
+    nodes_by_id = get_nodes_by_id(standin)
+
+    # If any inclusion selection prefixes are set we allow assigning only
+    # to those paths or any children
+    if include_selection_prefixes:
+        prefixes = tuple(f"{prefix}/" for prefix in include_selection_prefixes)
+        for node_id, nodes in dict(nodes_by_id).items():
+            nodes = [node for node in nodes if node.startswith(prefixes)]
+            if nodes:
+                nodes_by_id[node_id] = nodes
+            else:
+                nodes_by_id.pop(node_id)
+
+    return nodes_by_id
+
+
 def assign_look(
         standin: str,
         product_name: str,
@@ -236,39 +274,24 @@ def assign_look(
             The paths are the full path from the root of the Alembic file,
             e.g. `/parent/child1/child2`
     """
-    # TODO: Technically a more logical entry point here to assign by version
-    #  instead of product name so that you can also assign older looks.
-    log.info("Assigning {} to {}.".format(product_name, standin))
+    nodes_by_id = get_nodes_by_id_filtered(
+        standin, include_selection_prefixes=include_selection_prefixes)
 
-    nodes_by_id = get_nodes_by_id(standin)
-
-    # If any inclusion selection prefixes are set we allow assigning only
-    # to those paths or any children
-    if include_selection_prefixes:
-        prefixes = tuple(f"{prefix}/" for prefix in include_selection_prefixes)
-        for node_id, nodes in dict(nodes_by_id).items():
-            print(nodes)
-            nodes = [node for node in nodes if node.startswith(prefixes)]
-            if nodes:
-                nodes_by_id[node_id] = nodes
-            else:
-                nodes_by_id.pop(node_id)
-
-    # Group by folder id so we run over the look per folder
-    node_ids_by_folder_id = defaultdict(set)
+    folder_ids = set()
     for node_id in nodes_by_id:
         folder_id = node_id.split(":", 1)[0]
-        node_ids_by_folder_id[folder_id].add(node_id)
+
+        # Skip invalid folder ids
+        if not is_valid_uuid(folder_id):
+            nodes = nodes_by_id[node_id]
+            log.warning(
+                f"Skipping invalid folder id {folder_id} for nodes: {nodes}")
+            continue
+
+        folder_ids.add(folder_id)
 
     project_name = get_current_project_name()
-
-    operators = get_current_set_parameter_operators(standin)
-    operators_by_node = {
-        cmds.getAttr(f"{op.node}.selection"): op for op in operators
-    }
-
-    for folder_id, node_ids in node_ids_by_folder_id.items():
-
+    for folder_id in folder_ids:
         # Get latest look version
         version_entity = ayon_api.get_last_version_by_product_name(
             project_name,
@@ -281,119 +304,143 @@ def assign_look(
                 product_name
             ))
             continue
-        version_id = version_entity["id"]
 
-        relationships = lib.get_look_relationships(version_id)
-        shader_nodes, container_node = lib.load_look(version_id)
-        namespace = shader_nodes[0].split(":")[0]
+        assign_look_by_version(
+            standin,
+            version_id=version_entity["id"],
+            nodes_by_id=nodes_by_id)
 
-        # Get only the node ids and paths related to this folder
-        # And get the shader edits the look supplies
-        asset_nodes_by_id = {
-            node_id: nodes_by_id[node_id] for node_id in node_ids
-        }
-        edits = list(
-            api.lib.iter_shader_edits(
-                relationships, shader_nodes, asset_nodes_by_id
-            )
+
+def assign_look_by_version(
+        standin,
+        version_id,
+        nodes_by_id=None):
+    """Assign a look to an aiStandIn node by look version id.
+    
+    Args:
+        standin (str): aiStandin node. 
+        version_id (str): Look product version id. 
+        nodes_by_id (Optional[Dict[str, List[str]]]): Pre-computed dictionary 
+            with node ids and paths, as optimization or as filter to only
+            consider a subset of the nodes using e.g. 
+            `get_nodes_by_id_filtered`.
+    """
+    if not nodes_by_id:
+        nodes_by_id = get_nodes_by_id(standin)
+
+    # Get current active operators
+    operators = get_current_set_parameter_operators(standin)
+    operators_by_node = {
+        cmds.getAttr(f"{op.node}.selection"): op for op in operators
+    }
+
+    # Get look data to assign
+    relationships = lib.get_look_relationships(version_id)
+    shader_nodes, container_node = lib.load_look(version_id)
+    namespace = shader_nodes[0].split(":")[0]
+
+    edits = list(
+        api.lib.iter_shader_edits(
+            relationships, shader_nodes, nodes_by_id
         )
+    )
 
-        # Define the assignment operators needed for this look
-        node_assignments = {}
-        for edit in edits:
-            for node in edit["nodes"]:
-                if node not in node_assignments:
-                    node_assignments[node] = []
+    # Define the assignment operators needed for this look
+    node_assignments = {}
+    for edit in edits:
+        for node in edit["nodes"]:
+            if node not in node_assignments:
+                node_assignments[node] = []
 
-            if edit["action"] == "assign":
-                if not cmds.ls(edit["shader"], type="shadingEngine"):
-                    log.info("Skipping non-shader: %s" % edit["shader"])
-                    continue
-
-                shading_engine_assignments(
-                    shading_engine=edit["shader"],
-                    attribute="surfaceShader",
-                    nodes=edit["nodes"],
-                    assignments=node_assignments
-                )
-                shading_engine_assignments(
-                    shading_engine=edit["shader"],
-                    attribute="displacementShader",
-                    nodes=edit["nodes"],
-                    assignments=node_assignments
-                )
-
-            if edit["action"] == "setattr":
-                visibility = False
-                for attr_name, value in edit["attributes"].items():
-                    if attr_name not in ATTRIBUTE_MAPPING:
-                        log.warning(
-                            "Skipping setting attribute {} on {} because it is"
-                            " not recognized.".format(attr_name, edit["nodes"])
-                        )
-                        continue
-
-                    if isinstance(value, str):
-                        value = "'{}'".format(value)
-
-                    mapped_attr_name = ATTRIBUTE_MAPPING[attr_name]
-                    if mapped_attr_name == "visibility":
-                        visibility = True
-                        continue
-
-                    assignment = f"{mapped_attr_name}={value}"
-                    for node in edit["nodes"]:
-                        node_assignments[node].append(assignment)
-
-                if visibility:
-                    mask = calculate_visibility_mask(edit["attributes"])
-                    assignment = "visibility={}".format(mask)
-
-                    for node in edit["nodes"]:
-                        node_assignments[node].append(assignment)
-
-        # Cleanup: remove any empty operator slots
-        plug = standin + ".operators"
-        num = cmds.getAttr(plug, size=True)
-        for i in reversed(range(num)):
-            index_plug = f"{plug}[{i}]"
-            if not cmds.listConnections(index_plug,
-                                        source=True,
-                                        destination=False):
-                cmds.removeMultiInstance(index_plug, b=True)
-
-        # Update the node assignments on the standin
-        for node, assignments in node_assignments.items():
-            if not assignments:
+        if edit["action"] == "assign":
+            if not cmds.ls(edit["shader"], type="shadingEngine"):
+                log.info("Skipping non-shader: %s" % edit["shader"])
                 continue
 
-            # If this node has an existing assignment, update it
-            if node in operators_by_node:
-                set_parameter = operators_by_node[node]
-                set_parameter.assignments[:] = assignments
-                set_parameter.update()
+            shading_engine_assignments(
+                shading_engine=edit["shader"],
+                attribute="surfaceShader",
+                nodes=edit["nodes"],
+                assignments=node_assignments
+            )
+            shading_engine_assignments(
+                shading_engine=edit["shader"],
+                attribute="displacementShader",
+                nodes=edit["nodes"],
+                assignments=node_assignments
+            )
 
-            # Create a new assignment
-            else:
-                set_parameter = SetParameter(
-                    selection=node,
-                    assignments=assignments
-                )
-                operators_by_node[node] = set_parameter
+        if edit["action"] == "setattr":
+            visibility = False
+            for attr_name, value in edit["attributes"].items():
+                if attr_name not in ATTRIBUTE_MAPPING:
+                    log.warning(
+                        "Skipping setting attribute {} on {} because it is"
+                        " not recognized.".format(attr_name, edit["nodes"])
+                    )
+                    continue
 
-                # Create the `aiSetParameter` node
-                label = node.rsplit(":", 1)[-1].rsplit("/", 1)[-1]
-                name = f"{namespace}:set_parameter_{label}"
-                operator = set_parameter.create(name=name)
+                if isinstance(value, str):
+                    value = "'{}'".format(value)
 
-                # Connect to next available index
-                size = cmds.getAttr(plug, size=True)
-                cmds.connectAttr(
-                    f"{operator}.out",
-                    f"{plug}[{size}]",
-                    force=True
-                )
+                mapped_attr_name = ATTRIBUTE_MAPPING[attr_name]
+                if mapped_attr_name == "visibility":
+                    visibility = True
+                    continue
 
-                # Add it to the looks container so it is removed along
-                # with it if needed.
-                cmds.sets(operator, edit=True, addElement=container_node)
+                assignment = f"{mapped_attr_name}={value}"
+                for node in edit["nodes"]:
+                    node_assignments[node].append(assignment)
+
+            if visibility:
+                mask = calculate_visibility_mask(edit["attributes"])
+                assignment = "visibility={}".format(mask)
+
+                for node in edit["nodes"]:
+                    node_assignments[node].append(assignment)
+
+    # Cleanup: remove any empty operator slots
+    plug = standin + ".operators"
+    num = cmds.getAttr(plug, size=True)
+    for i in reversed(range(num)):
+        index_plug = f"{plug}[{i}]"
+        if not cmds.listConnections(index_plug,
+                                    source=True,
+                                    destination=False):
+            cmds.removeMultiInstance(index_plug, b=True)
+
+    # Update the node assignments on the standin
+    for node, assignments in node_assignments.items():
+        if not assignments:
+            continue
+
+        # If this node has an existing assignment, update it
+        if node in operators_by_node:
+            set_parameter = operators_by_node[node]
+            set_parameter.assignments[:] = assignments
+            set_parameter.update()
+
+        # Create a new assignment
+        else:
+            set_parameter = SetParameter(
+                selection=node,
+                assignments=assignments
+            )
+            operators_by_node[node] = set_parameter
+
+            # Create the `aiSetParameter` node
+            label = node.rsplit(":", 1)[-1].rsplit("/", 1)[-1]
+            name = f"{namespace}:set_parameter_{label}"
+            operator = set_parameter.create(name=name)
+
+            # Connect to next available index
+            size = cmds.getAttr(plug, size=True)
+            cmds.connectAttr(
+                f"{operator}.out",
+                f"{plug}[{size}]",
+                force=True
+            )
+
+            # Add it to the looks container so it is removed along
+            # with it if needed.
+            cmds.sets(operator, edit=True, addElement=container_node)
