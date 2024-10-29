@@ -133,9 +133,6 @@ class CollectReview(plugin.MayaInstancePlugin):
             # as Extract Playblast is already adding fps to representation.
             instance.data["fps"] = instance.context.data["fps"]
 
-            # make ftrack publishable
-            instance.data.setdefault("families", []).append('ftrack')
-
             # Collect audio
             playback_slider = mel.eval('$tmpVar=$gPlayBackSlider')
             audio_name = cmds.timeControl(playback_slider,

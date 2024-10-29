@@ -11,7 +11,6 @@ import logging
 import contextlib
 import capture
 import clique
-from .exitstack import ExitStack
 from collections import OrderedDict, defaultdict
 from math import ceil
 from six import string_types
@@ -195,7 +194,7 @@ def render_capture_preset(preset):
     # not supported by `capture` so we pop it off of the preset
     reload_textures = preset["viewport_options"].pop("loadTextures", False)
     panel = preset.pop("panel")
-    with ExitStack() as stack:
+    with contextlib.ExitStack() as stack:
         stack.enter_context(maintained_time())
         stack.enter_context(panel_camera(panel, preset["camera"]))
         stack.enter_context(viewport_default_options(panel, preset))
@@ -2920,7 +2919,7 @@ def bake_to_world_space(nodes,
                        "sx", "sy", "sz"}
 
     world_space_nodes = []
-    with ExitStack() as stack:
+    with contextlib.ExitStack() as stack:
         delete_bin = stack.enter_context(delete_after())
         # Create the duplicate nodes that are in world-space connected to
         # the originals
