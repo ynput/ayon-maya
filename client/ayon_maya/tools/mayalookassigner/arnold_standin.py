@@ -325,8 +325,14 @@ def assign_look_by_version(
             consider a subset of the nodes using e.g. 
             `get_nodes_by_id_filtered`.
     """
-    if not nodes_by_id:
+    if nodes_by_id is None:
         nodes_by_id = get_nodes_by_id(standin)
+
+    if not nodes_by_id:
+        # Nothing to do - opt out early
+        log.debug(f"No ids found in standin '{standin}'. "
+                  "Skipping assignment...")
+        return
 
     # Get current active operators
     operators = get_current_set_parameter_operators(standin)
