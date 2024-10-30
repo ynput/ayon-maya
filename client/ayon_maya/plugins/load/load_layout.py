@@ -159,7 +159,7 @@ class LayoutLoader(plugin.Loader):
 
         rotation = [
             math.degrees(transform["rotation"]["x"]),
-            math.degrees(transform["rotation"]["z"]),
+            -math.degrees(transform["rotation"]["z"]),
             math.degrees(transform["rotation"]["y"]),
         ]
         scale = [
@@ -167,14 +167,11 @@ class LayoutLoader(plugin.Loader):
             transform["scale"]["z"],
             transform["scale"]["y"]
         ]
-        y_rotation_axis =  math.degrees(transform["rotation"]["z"]) - 90
         cmds.xform(
             asset,
             translation=translation,
             rotation=rotation,
-            scale=scale,
-            # mirror rotation axis along with Y-plane
-            rotateAxis=[0, y_rotation_axis, 0]
+            scale=scale
         )
 
     def _convert_transformation_matrix(self, asset, transform, rotation):
