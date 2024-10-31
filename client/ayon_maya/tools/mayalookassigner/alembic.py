@@ -71,8 +71,14 @@ def get_alembic_paths_by_property(filename, attr, verbose=False):
         if not _property.isConstant():
             log.warning("Id not constant on: {0}".format(name))
 
-        # Get first value sample
-        value = _property.getValue()[0]
+        # Maya alembic export seems to export `cbId` string as array property
+        # whereas Houdini primitive `cbId` attribute comes through as a
+        # scalar property (which still holds the string?)
+        if isinstance(_property, alembic.Abc.IArrayProperty):
+            # Get first value sample
+            value = _property.getValue()[0]
+        else:
+            value = _property.getValue()
 
         obj_ids[name] = value
 
