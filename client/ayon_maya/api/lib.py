@@ -83,6 +83,15 @@ DISPLAY_LIGHTS_ENUM = [
 ]
 
 
+class RigSetsNotExistError(RuntimeError):
+    """Raised when required rig sets for animation instance are missing.
+
+    This is raised from `create_rig_animation_instance` when the required
+    `out_SET` or `controls_SET` are missing.
+    """
+    pass
+
+
 def get_main_window():
     """Acquire Maya's main window"""
     from qtpy import QtWidgets
@@ -4168,8 +4177,14 @@ def create_rig_animation_instance(
     controls = next((node for node in nodes if
                      node.endswith("controls_SET")), None)
     if name != "fbx":
-        assert output, "No out_SET in rig, this is a bug."
-        assert controls, "No controls_SET in rig, this is a bug."
+        if not output:
+            raise RigSetsNotExistError(
+                "No out_SET in rig. The loaded rig publish is lacking the "
+                "out_SET required for animation instances.")
+        if not controls:
+            raise RigSetsNotExistError(
+                "No controls_SET in rig. The loaded rig publish is lacking "
+                "the controls_SET required for animation instances.")
 
     anim_skeleton = next((node for node in nodes if
                           node.endswith("skeletonAnim_SET")), None)
