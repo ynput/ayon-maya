@@ -27,6 +27,10 @@ class CreateMayaUsd(plugin.MayaCreator):
         for instance_change in event["changes"]:
             # First check if there's a change we want to respond to
             instance = instance_change["instance"]
+            if instance is None:
+                # Change is on context
+                continue
+
             if instance["creator_identifier"] != self.identifier:
                 continue
 
