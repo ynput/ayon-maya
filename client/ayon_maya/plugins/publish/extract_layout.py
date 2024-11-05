@@ -1,11 +1,22 @@
 import json
 import math
 import os
+import uuid
 from typing import List
+
 from ayon_api import get_representation_by_id
 from ayon_maya.api import plugin
 from maya import cmds
 from maya.api import OpenMaya as om
+
+
+def is_valid_uuid(value) -> bool:
+    """Return whether value is a valid UUID"""
+    try:
+        uuid.UUID(value)
+    except ValueError:
+        return False
+    return True
 
 
 def convert_matrix_to_4x4_list(
@@ -78,11 +89,27 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             representation_id = cmds.getAttr(
                 "{}.representation".format(container))
 
+            # Ignore invalid UUID is the representation for whatever reason
+            # is invalid
+            if not is_valid_uuid(representation_id):
+                self.log.warning(
+                    f"Skipping container with invalid UUID: {container}")
+                continue
+
+            # TODO: Once we support managed products from another project
+            #  we should be querying here using the project name from the
+            #  container instead.
             representation = get_representation_by_id(
                 project_name,
                 representation_id,
                 fields={"versionId", "context", "name"}
             )
+            if not representation:
+                self.log.warning(
+                    "Representation not found in current project "
+                    "for container: {}".format(container))
+                continue
+
             version_id = representation["versionId"]
             # TODO use product entity to get product type rather than
             #    data in representation 'context'
