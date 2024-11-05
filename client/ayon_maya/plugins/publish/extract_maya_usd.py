@@ -240,6 +240,10 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         # Can be overridden by inherited classes
         return members
 
+    def override_options(self, options: dict) -> dict:
+        # Can be overridden by inherited classes
+        return options
+
     def process(self, instance):
         if not self.is_active(instance.data):
             return
@@ -343,6 +347,8 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 )
                 del options[key]
 
+        options = self.override_options(options)
+
         self.log.debug('Exporting USD: {} / {}'.format(file_path, members))
         with maintained_time():
             with maintained_selection():
@@ -416,6 +422,14 @@ class ExtractMayaUsdAnim(ExtractMayaUsd):
 
         members = cmds.ls(cmds.sets(out_set, query=True), long=True)
         return members
+
+    def override_options(self, options: dict) -> dict:
+        options = options.copy()
+        options["exportUVs"] = False
+        options["exportColorSets"] = False
+        options["exportMaterials"] = False
+        options["exportAssignedMaterials"] = False
+        return options
 
 
 class ExtractMayaUsdModel(ExtractMayaUsd):
