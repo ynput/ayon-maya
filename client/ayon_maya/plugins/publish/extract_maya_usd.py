@@ -258,7 +258,6 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         # Parse export options
         options = self.default_options
         options = self.parse_overrides(instance, options)
-        self.log.debug("Export options: {0}".format(options))
 
         # Perform extraction
         self.log.debug("Performing extraction ...")
@@ -359,6 +358,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 default_prim = default_prim.rsplit(":", 1)[-1]
             options["defaultPrim"] = default_prim
 
+        self.log.debug("Export options: {0}".format(options))
         self.log.debug('Exporting USD: {} / {}'.format(file_path, members))
         with maintained_time():
             with maintained_selection():
