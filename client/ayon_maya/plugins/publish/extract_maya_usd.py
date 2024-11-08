@@ -258,7 +258,6 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         # Parse export options
         options = self.default_options
         options = self.parse_overrides(instance, options)
-        self.log.debug("Export options: {0}".format(options))
 
         # Perform extraction
         self.log.debug("Performing extraction ...")
@@ -343,6 +342,23 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 )
                 del options[key]
 
+        # Fix default prim bug in Maya USD 0.30.0 where prefixed `|` remains
+        # See: https://github.com/Autodesk/maya-usd/issues/3991
+        if (
+                options.get("exportRoots")          # only if roots are defined
+                and "defaultPrim" not in options    # ignore if already set
+                and "rootPrim" not in options       # ignore if root is created
+                and maya_usd_version == (0, 30, 0)  # only for Maya USD 0.30.0
+        ):
+            # Define the default prim name as it will end up in the USD file
+            # from the first export root node
+            first_root = options["exportRoots"][0]
+            default_prim = first_root.rsplit("|", 1)[-1]
+            if options["stripNamespaces"]:
+                default_prim = default_prim.rsplit(":", 1)[-1]
+            options["defaultPrim"] = default_prim
+
+        self.log.debug("Export options: {0}".format(options))
         self.log.debug('Exporting USD: {} / {}'.format(file_path, members))
         with maintained_time():
             with maintained_selection():
