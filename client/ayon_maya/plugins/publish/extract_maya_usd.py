@@ -346,7 +346,6 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         # Fix default prim bug in Maya USD 0.30.0 where prefixed `|` remains
         # See: https://github.com/Autodesk/maya-usd/issues/3991
         if (
-                False and
                 options.get("exportRoots")          # only if roots are defined
                 and "defaultPrim" not in options    # ignore if already set
                 and "rootPrim" not in options       # ignore if root is created
