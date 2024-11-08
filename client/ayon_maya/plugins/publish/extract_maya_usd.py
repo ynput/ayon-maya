@@ -348,8 +348,8 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         if (
                 False and
                 options.get("exportRoots")          # only if roots are defined
-                and not "defaultPrim" in options    # ignore if already set
-                and not "rootPrim" in options       # ignore if root is created
+                and "defaultPrim" not in options    # ignore if already set
+                and "rootPrim" not in options       # ignore if root is created
                 and maya_usd_version == (0, 30, 0)  # only for Maya USD 0.30.0
         ):
             # Define the default prim name as it will end up in the USD file
