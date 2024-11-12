@@ -946,9 +946,11 @@ class ReferenceLoader(Loader):
             cmds.sets(invalid, remove=node)
 
         # Update metadata
-        cmds.setAttr("{}.representation".format(node),
-                     repre_entity["id"],
-                     type="string")
+        for attr_name, value in {
+            "representation": repre_entity["_id"],
+            "project_name": context["project"]["name"]
+        }.items():
+            lib.set_attribute(node=node, attribute=attr_name, value=value)
 
         # When an animation or pointcache gets connected to an Xgen container,
         # the compound attribute "xgenContainers" gets created. When animation
