@@ -947,7 +947,7 @@ class ReferenceLoader(Loader):
 
         # Update metadata
         for attr_name, value in {
-            "representation": repre_entity["_id"],
+            "representation": repre_entity["id"],
             "project_name": context["project"]["name"]
         }.items():
             lib.set_attribute(node=node, attribute=attr_name, value=value)
