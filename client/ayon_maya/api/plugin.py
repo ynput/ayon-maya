@@ -946,10 +946,10 @@ class ReferenceLoader(Loader):
             cmds.sets(invalid, remove=node)
 
         # Update metadata
-        for attr_name, value in {
-            "representation": repre_entity["id"],
-            "project_name": context["project"]["name"]
-        }.items():
+        for attr_name, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
             lib.set_attribute(node=node, attribute=attr_name, value=value)
 
         # When an animation or pointcache gets connected to an Xgen container,
