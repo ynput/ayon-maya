@@ -6,7 +6,7 @@ from typing import List
 
 from ayon_api import get_representation_by_id
 from ayon_maya.api import plugin
-from ayon_maya.api.lib import get_highest_in_hierarchy
+from ayon_maya.api.lib import get_highest_in_hierarchy, get_container_members
 from maya import cmds
 from maya.api import OpenMaya as om
 
@@ -178,13 +178,13 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         self.log.debug("Extracted instance '%s' to: %s",
                        instance.name, json_representation)
 
-    def get_containers_sub_assembly(self, containers, asset):
+    def get_containers_sub_assembly(self, containers, container_root):
         """Allow to collect the asset containers through sub-assembly workflow if
         there is a layout container
 
         Args:
             containers (list): Ayon asset containers
-            asset (str): asset name
+            container_root (str): the root of the asset container
 
         Returns:
             dict: container dict with the container and its related asset name
@@ -193,17 +193,15 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         for existing_container in containers:
             if cmds.getAttr(f"{existing_container}.loader").lower() == "layoutloader":
                 for container in cmds.sets(existing_container, query=True):
-                    container_namespace = cmds.getAttr(f"{container}.namespace")
-                    container_rn = cmds.ls(f"{container_namespace}:*", references=True)
-                    if container_rn:
-                        associated_nodes = cmds.referenceQuery(container_rn, nodes=True)
-                    else:
-                        associated_nodes = cmds.ls(f"{container_namespace}:*")
-                    container_asset = get_highest_in_hierarchy(associated_nodes)[0]
-                    all_containers_set.update({container: container_asset})
+                    members = get_container_members(container)
+                    transforms = cmds.ls(members, transforms=True)
+                    roots = get_highest_in_hierarchy(transforms)
+                    root = next(iter(roots), None)
+                    if root is not None:
+                        all_containers_set[container] = root
             else:
-                container_asset = asset
-                all_containers_set.update({existing_container: container_asset})
+                all_containers_set[existing_container] = container_root
+
         return all_containers_set
 
     def create_transformation_matrix(self, local_matrix, local_rotation):
