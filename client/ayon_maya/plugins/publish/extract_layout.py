@@ -87,7 +87,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 continue
 
             container_dict = self.get_containers_sub_assembly(containers, asset)
-            for container, asset in container_dict.items():
+            for container, container_root in container_dict.items():
                 representation_id = cmds.getAttr(
                     "{}.representation".format(container))
 
@@ -130,8 +130,10 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                     "host": self.hosts
                 }
 
-                local_matrix = cmds.xform(asset, query=True, matrix=True)
-                local_rotation = cmds.xform(asset, query=True, rotation=True, euler=True)
+                local_matrix = cmds.xform(
+                    container_root, query=True, matrix=True)
+                local_rotation = cmds.xform(
+                    container_root, query=True, rotation=True, euler=True)
 
                 t_matrix = self.create_transformation_matrix(local_matrix, local_rotation)
 
