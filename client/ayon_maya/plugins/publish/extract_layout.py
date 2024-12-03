@@ -86,7 +86,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 self.log.warning("It may not be properly loaded after published") # noqa
                 continue
 
-            container_dict = self.get_containers_sub_assembly(containers, asset)
+            container_dict = self.process_container(containers)
             for container, container_root in container_dict.items():
                 representation_id = cmds.getAttr(
                     "{}.representation".format(container))
@@ -180,29 +180,30 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         self.log.debug("Extracted instance '%s' to: %s",
                        instance.name, json_representation)
 
-    def get_containers_sub_assembly(self, containers, container_root):
+    def process_container(self, containers):
         """Allow to collect the asset containers through sub-assembly workflow if
         there is a layout container
 
         Args:
             containers (list): Ayon asset containers
-            container_root (str): the root of the asset container
 
         Returns:
             dict: container dict with the container and its related asset name
         """
         all_containers_set = {}
-        for existing_container in containers:
-            if cmds.getAttr(f"{existing_container}.loader").lower() == "layoutloader":
-                for container in cmds.sets(existing_container, query=True):
-                    members = get_container_members(container)
-                    transforms = cmds.ls(members, transforms=True)
-                    roots = get_highest_in_hierarchy(transforms)
-                    root = next(iter(roots), None)
-                    if root is not None:
-                        all_containers_set[container] = root
+        for container in containers:
+            if cmds.getAttr(f"{container}.loader") == "LayoutLoader":
+                # Flatten container layout loader products to their individual loaded containers
+                for member_container in get_container_members(container):
+                    # Recursively process each member container
+                    self.process_container(member_container)
             else:
-                all_containers_set[existing_container] = container_root
+                members = get_container_members(container)
+                transforms = cmds.ls(members, transforms=True)
+                roots = get_highest_in_hierarchy(transforms)
+                root = next(iter(roots), None)
+                if root is not None:
+                    all_containers_set[container] = root
 
         return all_containers_set
 
