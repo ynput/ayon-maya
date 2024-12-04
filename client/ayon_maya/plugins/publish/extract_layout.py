@@ -194,9 +194,10 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         for container in containers:
             if cmds.getAttr(f"{container}.loader") == "LayoutLoader":
                 # Flatten container layout loader products to their individual loaded containers
-                for member_container in get_container_members(container):
-                    # Recursively process each member container
-                    self.process_container(member_container)
+                member_containers = get_container_members(container)
+                # Recursively process each member container
+                containers_set = self.process_container(member_containers)
+                all_containers_set.update(containers_set)
             else:
                 members = get_container_members(container)
                 transforms = cmds.ls(members, transforms=True)
