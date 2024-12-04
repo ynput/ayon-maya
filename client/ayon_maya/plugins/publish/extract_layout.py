@@ -86,7 +86,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 self.log.warning("It may not be properly loaded after published") # noqa
                 continue
 
-            container_dict = self.process_container(containers)
+            container_dict = self.process_containers(containers)
             for container, container_root in container_dict.items():
                 representation_id = cmds.getAttr(
                     "{}.representation".format(container))
@@ -180,15 +180,15 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         self.log.debug("Extracted instance '%s' to: %s",
                        instance.name, json_representation)
 
-    def process_container(self, containers):
+    def process_containers(self, containers):
         """Allow to collect the asset containers through sub-assembly workflow if
-        there is a layout container
+        there is a layout container.
 
         Args:
-            containers (list): Ayon asset containers
+            containers (list[str]): Ayon asset containers
 
         Returns:
-            dict: container dict with the container and its related asset name
+            dict[str, str]: container mapping to its related root transform node
         """
         all_containers_set = {}
         for container in containers:
@@ -196,15 +196,15 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 # Flatten container layout loader products to their individual loaded containers
                 member_containers = get_container_members(container)
                 # Recursively process each member container
-                children_containers = self.process_container(member_containers)
+                children_containers = self.process_containers(member_containers)
                 all_containers_set.update(children_containers)
             else:
                 members = get_container_members(container)
                 transforms = cmds.ls(members, transforms=True)
                 roots = get_highest_in_hierarchy(transforms)
-                root = next(iter(roots), None)
-                if root is not None:
-                    all_containers_set[container] = root
+                if roots:
+                    # Assume just a single root node
+                    all_containers_set[container] = roots[0]
 
         return all_containers_set
 
