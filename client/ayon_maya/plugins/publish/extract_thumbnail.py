@@ -74,7 +74,7 @@ class ExtractThumbnail(plugin.MayaExtractorPlugin):
 
         representation = {
             "name": "thumbnail",
-            "ext": "jpg",
+            "ext": "png",
             "files": thumbnail,
             "stagingDir": dst_staging,
             "thumbnail": True
