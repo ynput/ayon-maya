@@ -419,6 +419,7 @@ def ls():
         yield parse_container(container)
 
 
+@lib.undo_chunk()
 def containerise(name,
                  namespace,
                  nodes,
