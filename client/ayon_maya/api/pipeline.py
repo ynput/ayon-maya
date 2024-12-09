@@ -452,8 +452,8 @@ def containerise(name,
         ("namespace", namespace),
         ("loader", loader),
         ("representation", context["representation"]["id"]),
+        ("project_name", context["project"]["name"])
     ]
-
     for key, value in data:
         cmds.addAttr(container, longName=key, dataType="string")
         cmds.setAttr(container + "." + key, str(value), type="string")
