@@ -6,6 +6,7 @@ from typing import List
 
 from ayon_api import get_representation_by_id
 from ayon_maya.api import plugin
+from ayon_maya.api.lib import get_highest_in_hierarchy, get_container_members
 from maya import cmds
 from maya.api import OpenMaya as om
 
@@ -84,80 +85,83 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 self.log.warning("{} isn't from the loader".format(asset))
                 self.log.warning("It may not be properly loaded after published") # noqa
                 continue
-            container = containers[0]
 
-            representation_id = cmds.getAttr(
-                "{}.representation".format(container))
+            container_dict = self.process_containers(containers)
+            for container, container_root in container_dict.items():
+                representation_id = cmds.getAttr(
+                    "{}.representation".format(container))
 
-            # Ignore invalid UUID is the representation for whatever reason
-            # is invalid
-            if not is_valid_uuid(representation_id):
-                self.log.warning(
-                    f"Skipping container with invalid UUID: {container}")
-                continue
+                # Ignore invalid UUID is the representation for whatever reason
+                # is invalid
+                if not is_valid_uuid(representation_id):
+                    self.log.warning(
+                        f"Skipping container with invalid UUID: {container}")
+                    continue
 
-            # TODO: Once we support managed products from another project
-            #  we should be querying here using the project name from the
-            #  container instead.
-            representation = get_representation_by_id(
-                project_name,
-                representation_id,
-                fields={"versionId", "context", "name"}
-            )
-            if not representation:
-                self.log.warning(
-                    "Representation not found in current project "
-                    "for container: {}".format(container))
-                continue
+                # TODO: Once we support managed products from another project
+                #  we should be querying here using the project name from the
+                #  container instead.
+                representation = get_representation_by_id(
+                    project_name,
+                    representation_id,
+                    fields={"versionId", "context", "name"}
+                )
+                if not representation:
+                    self.log.warning(
+                        "Representation not found in current project "
+                        "for container: {}".format(container))
+                    continue
 
-            version_id = representation["versionId"]
-            # TODO use product entity to get product type rather than
-            #    data in representation 'context'
-            repre_context = representation["context"]
-            product_type = repre_context.get("product", {}).get("type")
-            if not product_type:
-                product_type = repre_context.get("family")
+                version_id = representation["versionId"]
+                # TODO use product entity to get product type rather than
+                #    data in representation 'context'
+                repre_context = representation["context"]
+                product_type = repre_context.get("product", {}).get("type")
+                if not product_type:
+                    product_type = repre_context.get("family")
 
-            json_element = {
-                "product_type": product_type,
-                "instance_name": cmds.getAttr(
-                    "{}.namespace".format(container)),
-                "representation": str(representation_id),
-                "version": str(version_id),
-                "extension": repre_context["ext"],
-                "host": self.hosts
-            }
+                json_element = {
+                    "product_type": product_type,
+                    "instance_name": cmds.getAttr(
+                        "{}.namespace".format(container)),
+                    "representation": str(representation_id),
+                    "version": str(version_id),
+                    "extension": repre_context["ext"],
+                    "host": self.hosts
+                }
 
-            local_matrix = cmds.xform(asset, query=True, matrix=True)
-            local_rotation = cmds.xform(asset, query=True, rotation=True, euler=True)
+                local_matrix = cmds.xform(
+                    container_root, query=True, matrix=True)
+                local_rotation = cmds.xform(
+                    container_root, query=True, rotation=True, euler=True)
 
-            t_matrix = self.create_transformation_matrix(local_matrix, local_rotation)
+                t_matrix = self.create_transformation_matrix(local_matrix, local_rotation)
 
-            json_element["transform_matrix"] = [
-                list(row)
-                for row in t_matrix
-            ]
+                json_element["transform_matrix"] = [
+                    list(row)
+                    for row in t_matrix
+                ]
 
-            basis_list = [
-                1, 0, 0, 0,
-                0, 1, 0, 0,
-                0, 0, 1, 0,
-                0, 0, 0, 1
-            ]
+                basis_list = [
+                    1, 0, 0, 0,
+                    0, 1, 0, 0,
+                    0, 0, 1, 0,
+                    0, 0, 0, 1
+                ]
 
-            basis_mm = om.MMatrix(basis_list)
-            b_matrix = convert_matrix_to_4x4_list(basis_mm)
+                basis_mm = om.MMatrix(basis_list)
+                b_matrix = convert_matrix_to_4x4_list(basis_mm)
 
-            json_element["basis"] = []
-            for row in b_matrix:
-                json_element["basis"].append(list(row))
+                json_element["basis"] = []
+                for row in b_matrix:
+                    json_element["basis"].append(list(row))
 
-            json_element["rotation"] = {
-                "x": local_rotation[0],
-                "y": local_rotation[1],
-                "z": local_rotation[2]
-            }
-            json_data.append(json_element)
+                json_element["rotation"] = {
+                    "x": local_rotation[0],
+                    "y": local_rotation[1],
+                    "z": local_rotation[2]
+                }
+                json_data.append(json_element)
         json_filename = "{}.json".format(instance.name)
         json_path = os.path.join(stagingdir, json_filename)
 
@@ -175,6 +179,34 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
         self.log.debug("Extracted instance '%s' to: %s",
                        instance.name, json_representation)
+
+    def process_containers(self, containers):
+        """Allow to collect the asset containers through sub-assembly workflow if
+        there is a layout container.
+
+        Args:
+            containers (list[str]): Ayon asset containers
+
+        Returns:
+            dict[str, str]: container mapping to its related root transform node
+        """
+        all_containers_set = {}
+        for container in containers:
+            if cmds.getAttr(f"{container}.loader") == "LayoutLoader":
+                # Flatten container layout loader products to their individual loaded containers
+                member_containers = get_container_members(container)
+                # Recursively process each member container
+                children_containers = self.process_containers(member_containers)
+                all_containers_set.update(children_containers)
+            else:
+                members = get_container_members(container)
+                transforms = cmds.ls(members, transforms=True)
+                roots = get_highest_in_hierarchy(transforms)
+                if roots:
+                    # Assume just a single root node
+                    all_containers_set[container] = roots[0]
+
+        return all_containers_set
 
     def create_transformation_matrix(self, local_matrix, local_rotation):
         matrix = om.MMatrix(local_matrix)
