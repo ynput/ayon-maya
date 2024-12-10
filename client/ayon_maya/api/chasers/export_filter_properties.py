@@ -126,10 +126,10 @@ class FilterPropertiesExportChaser(mayaUsdLib.ExportChaser):
                     return
 
                 if not match_pattern(spec.name, pattern):
-                    self.log.debug(f"Removing spec: %s", path)
+                    self.log.debug("Removing spec: %s", path)
                     specs_to_remove.append(path)
                 else:
-                    self.log.debug(f"Keeping spec: %s", path)
+                    self.log.debug("Keeping spec: %s", path)
 
             layer.Traverse("/", find_attribute_specs_to_remove)
 
