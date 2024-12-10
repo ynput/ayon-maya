@@ -165,6 +165,8 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
 
         # TODO: Support more `mayaUSDExport` parameters
         return {
+            "chaser": (list, None),  # optional list
+            "chaserArgs": (list, None),  # optional list
             "defaultUSDFormat": str,
             "stripNamespaces": bool,
             "mergeTransformAndShape": bool,
@@ -191,6 +193,8 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
 
         # TODO: Support more `mayaUSDExport` parameters
         return {
+            "chaser": None,
+            "chaserArgs": None,
             "defaultUSDFormat": "usdc",
             "stripNamespaces": False,
             "mergeTransformAndShape": True,
