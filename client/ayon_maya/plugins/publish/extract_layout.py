@@ -200,11 +200,12 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 all_containers_set.update(children_containers)
             else:
                 members = get_container_members(container)
-                transforms = cmds.ls(members, transforms=True)
+                transforms = cmds.ls(members, transforms=True, references=False)
                 roots = get_highest_in_hierarchy(transforms)
                 if roots:
+                    root = roots[0].split("|")[1]
                     # Assume just a single root node
-                    all_containers_set[container] = roots[0]
+                    all_containers_set[container] = root
 
         return all_containers_set
 
@@ -228,12 +229,12 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
         convert_translation = convert_transform.translation(om.MSpace.kWorld)
         convert_translation = om.MVector(convert_translation.x, convert_translation.z, convert_translation.y)
-        convert_scale = convert_transform.scale(om.MSpace.kObject)
+        convert_scale = convert_transform.scale(om.MSpace.kWorld)
         convert_transform.setTranslation(convert_translation, om.MSpace.kWorld)
         converted_rotation = om.MEulerRotation(
             math.radians(rotation[0]), math.radians(rotation[2]), math.radians(rotation[1])
         )
         convert_transform.setRotation(converted_rotation)
-        convert_transform.setScale([convert_scale[0], convert_scale[2], convert_scale[1]], om.MSpace.kObject)
+        convert_transform.setScale([convert_scale[0], convert_scale[2], convert_scale[1]], om.MSpace.kWorld)
 
         return convert_transform.asMatrix()
