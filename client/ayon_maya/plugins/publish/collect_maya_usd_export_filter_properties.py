@@ -5,12 +5,14 @@ from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 from ayon_maya.api import plugin
 
 
-class CollectMayaUsdFilterProperties(plugin.InstancePlugin,
+class CollectMayaUsdFilterProperties(plugin.MayaInstancePlugin,
                                      AYONPyblishPluginMixin):
 
     order = pyblish.api.CollectorOrder
     label = "Maya USD Export Chaser: Filter Properties"
     families = ["mayaUsd"]
+
+    default_filter = ""
 
     @classmethod
     def get_attribute_defs(cls):
@@ -21,7 +23,8 @@ class CollectMayaUsdFilterProperties(plugin.InstancePlugin,
                 tooltip=(
                     "Filter USD properties to export."
                 ),
-                placeholder="* ^xformOp* ^points"
+                placeholder="* ^xformOp* ^points",
+                default=cls.default_filter
             )
         ]
 
