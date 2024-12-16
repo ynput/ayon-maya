@@ -238,6 +238,11 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
 
             options[key] = value
 
+        # Do not pass None values
+        for key, value in options.copy().items():
+            if value is None:
+                del options[key]
+
         return options
 
     def filter_members(self, members):
