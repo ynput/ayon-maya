@@ -74,7 +74,7 @@ class ExtractThumbnail(plugin.MayaExtractorPlugin):
 
         representation = {
             "name": "thumbnail",
-            "ext": "jpg",
+            "ext": os.path.splitext(thumbnail)[-1].lstrip(".").lower(),
             "files": thumbnail,
             "stagingDir": dst_staging,
             "thumbnail": True
