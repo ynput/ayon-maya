@@ -21,7 +21,13 @@ class CollectMayaUsdFilterProperties(plugin.MayaInstancePlugin,
                 "filter_properties",
                 label="USD Filter Properties",
                 tooltip=(
-                    "Filter USD properties to export."
+                    "Filter USD properties using a pattern:\n"
+                    "- Only include xforms: xformOp*\n"
+                    "- All but xforms: * ^xformOp*\n"
+                    "- All but mesh point data: * ^extent ^points "
+                    "^faceVertex* ^primvars*\n\n"
+                    "The pattern matching is very similar to SideFX Houdini's "
+                    "Pattern Matching in Parameters."
                 ),
                 placeholder="* ^xformOp* ^points",
                 default=cls.default_filter
