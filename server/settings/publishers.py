@@ -157,6 +157,24 @@ class CollectGLTFModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="CollectGLTF")
 
 
+class CollectMayaUsdFilterPropertiesModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Maya USD Export Chaser: Filter Properties")
+    default_filter: str = SettingsField(
+        title="Default Filter",
+        description=(
+            "Set the default filter for USD properties to export. It uses"
+            " [SideFX Houdini Pattern Matching in Parameters]"
+            "(https://www.sidefx.com/docs/houdini/network/patterns.html)."
+            "\nSome examples would include:\n"
+            "- Only include xforms: `xformOp*`\n"
+            "- Everything but xforms: `* ^xformOp*`\n"
+            "- Everything but mesh point data: `* ^extent ^points"
+            " ^faceVertexCounts ^faceVertexIndices ^primvars*`"
+        ),
+        default=""
+    )
+
+
 class ValidateFrameRangeModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="ValidateFrameRange")
     optional: bool = SettingsField(title="Optional")
@@ -620,6 +638,12 @@ class PublishersModel(BaseSettingsModel):
         default_factory=CollectGLTFModel,
         title="Collect Assets for GLB/GLTF export"
     )
+    CollectMayaUsdFilterProperties: CollectMayaUsdFilterPropertiesModel = (
+        SettingsField(
+            default_factory=CollectMayaUsdFilterPropertiesModel,
+            title="Maya USD Export Chaser: Filter Properties"
+        )
+    )
     ValidateInstanceInContext: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Instance In Context",
@@ -1082,6 +1106,10 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "CollectGLTF": {
         "enabled": False
+    },
+    "CollectMayaUsdFilterProperties": {
+        "enabled": True,
+        "default_filter": ""
     },
     "ValidateInstanceInContext": {
         "enabled": True,
