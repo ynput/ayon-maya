@@ -186,10 +186,14 @@ class LayoutLoader(plugin.Loader):
         """
         transform_mm = om.MMatrix(transform)
         convert_transform = om.MTransformationMatrix(transform_mm)
+        convert_translation = convert_transform.translation(om.MSpace.kWorld)
+        convert_translation = om.MVector(convert_translation.x, convert_translation.z, convert_translation.y)
+        convert_scale = convert_transform.scale(om.MSpace.kWorld)
         converted_rotation = om.MEulerRotation(
             math.radians(rotation["x"]), math.radians(rotation["y"]), math.radians(rotation["z"])
         )
         convert_transform.setRotation(converted_rotation)
+        convert_transform.setScale([convert_scale[0], convert_scale[2], convert_scale[1]], om.MSpace.kObject)
         cmds.xform(asset, matrix=convert_transform.asMatrix())
 
     def load(self, context, name, namespace, options):
