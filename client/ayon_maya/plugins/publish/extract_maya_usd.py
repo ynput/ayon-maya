@@ -309,7 +309,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         options["filterTypes"] = ["constraint"]
 
         def parse_attr_str(attr_str):
-            """Return list of strings from `a,b,c,,d` to `[a, b, c, d]`.
+            """Return list of strings from `a,b,c,d` to `[a, b, c, d]`.
 
             Args:
                 attr_str (str): Concatenated attributes by comma
