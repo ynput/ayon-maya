@@ -265,7 +265,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         file_path = file_path.replace('\\', '/')
 
         # Parse export options
-        options = self.default_options.copy()
+        options = self.default_options
         options = self.parse_overrides(instance, options)
 
         # Perform extraction
