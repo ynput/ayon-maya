@@ -1039,9 +1039,7 @@ class ReferenceLoader(Loader):
             (str)
         """
         settings = get_project_settings(project_name)
-        use_env_var_as_root = (settings["maya"]
-                                       ["maya_dirmap"]
-                                       ["use_env_var_as_root"])
+        use_env_var_as_root = settings["maya"]["dirmap"]["use_env_var_as_root"]
         if use_env_var_as_root:
             anatomy = Anatomy(project_name)
             file_url = anatomy.replace_root_with_env_key(file_url, '${{{}}}')
