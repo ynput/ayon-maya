@@ -57,7 +57,7 @@ class ValidateRenderImageRule(plugin.MayaInstancePlugin,
     def get_default_render_image_folder(cls, instance):
         # Allow custom staging dir to override the expected output directory
         # of the renders
-        if instance.data.get("stagingDir_custom", True):
+        if instance.data.get("stagingDir_custom", False):
             staging_dir = instance.data.get("stagingDir")
             if staging_dir:
                 cls.log.debug(
