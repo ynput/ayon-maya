@@ -257,7 +257,6 @@ class CollectMayaRender(plugin.MayaInstancePlugin):
             "source": filepath,
             "expectedFiles": full_exp_files,
             "publishRenderMetadataFolder": common_publish_meta_path,
-            "stagingDir": common_publish_meta_path,
             "renderProducts": layer_render_products,
             "resolutionWidth": lib.get_attr_in_layer(
                 "defaultResolution.width", layer=layer_name
