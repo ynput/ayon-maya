@@ -434,25 +434,6 @@ class ExtractMayaUsdAnim(ExtractMayaUsd):
         return members
 
 
-class ExtractMayaUsdModel(ExtractMayaUsd):
-    """Extractor for Maya USD Asset data for model family
-
-    Upon publish a .usd (or .usdz) asset file will typically be written.
-    """
-
-    label = "Extract USD"
-    families = ["model"]
-
-    # Exposed in settings
-    optional = True
-    active = False
-
-    def process(self, instance):
-        # TODO: Fix this without changing instance data
-        instance.data["exportAnimationData"] = False
-        super(ExtractMayaUsdModel, self).process(instance)
-
-
 class ExtractMayaUsdPointcache(ExtractMayaUsd):
     """Extractor for Maya USD for 'pointcache' family"""
 
