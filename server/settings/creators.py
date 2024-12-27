@@ -49,7 +49,6 @@ class CreateMultiverseLookModel(BaseSettingsModel):
 
 class BasicExportMeshModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
-    write_color_sets: bool = SettingsField(title="Write Color Sets")
     write_face_sets: bool = SettingsField(title="Write Face Sets")
     default_variants: list[str] = SettingsField(
         default_factory=list,
@@ -59,8 +58,6 @@ class BasicExportMeshModel(BaseSettingsModel):
 
 
 class CreateAnimationModel(BaseSettingsModel):
-    write_color_sets: bool = SettingsField(title="Write Color Sets")
-    write_face_sets: bool = SettingsField(title="Write Face Sets")
     include_parent_hierarchy: bool = SettingsField(
         title="Include Parent Hierarchy")
     include_user_defined_attributes: bool = SettingsField(
@@ -73,8 +70,6 @@ class CreateAnimationModel(BaseSettingsModel):
 
 class CreatePointCacheModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
-    write_color_sets: bool = SettingsField(title="Write Color Sets")
-    write_face_sets: bool = SettingsField(title="Write Face Sets")
     include_user_defined_attributes: bool = SettingsField(
         title="Include User Defined Attributes"
     )
@@ -307,8 +302,6 @@ DEFAULT_CREATORS_SETTINGS = {
         "publish_mip_map": True
     },
     "CreateAnimation": {
-        "write_color_sets": False,
-        "write_face_sets": False,
         "include_parent_hierarchy": False,
         "include_user_defined_attributes": False,
         "default_variants": [
@@ -317,7 +310,6 @@ DEFAULT_CREATORS_SETTINGS = {
     },
     "CreateModel": {
         "enabled": True,
-        "write_color_sets": False,
         "write_face_sets": True,
         "default_variants": [
             "Main",
@@ -328,8 +320,6 @@ DEFAULT_CREATORS_SETTINGS = {
     },
     "CreatePointCache": {
         "enabled": True,
-        "write_color_sets": False,
-        "write_face_sets": False,
         "include_user_defined_attributes": False,
         "default_variants": [
             "Main"

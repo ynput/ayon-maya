@@ -14,17 +14,12 @@ class CreateModel(plugin.MayaCreator):
     icon = "cube"
     default_variants = ["Main", "Proxy", "_MD", "_HD", "_LD"]
 
-    write_color_sets = False
     write_face_sets = True
     include_shaders = False
 
     def get_instance_attr_defs(self):
 
         return [
-            BoolDef("writeColorSets",
-                    label="Write vertex colors",
-                    tooltip="Write vertex colors with the geometry",
-                    default=self.write_color_sets),
             BoolDef("writeFaceSets",
                     label="Write face sets",
                     tooltip="Write face sets with the geometry",
@@ -34,13 +29,6 @@ class CreateModel(plugin.MayaCreator):
                     tooltip="Whether to include parent hierarchy of nodes in "
                             "the publish instance",
                     default=False),
-            TextDef("attr",
-                    label="Custom Attributes",
-                    default="",
-                    placeholder="attr1, attr2"),
-            TextDef("attrPrefix",
-                    label="Custom Attributes Prefix",
-                    placeholder="prefix1, prefix2"),
             BoolDef("include_shaders",
                     label="Include Shaders",
                     tooltip="Include shaders in the geometry export.",
