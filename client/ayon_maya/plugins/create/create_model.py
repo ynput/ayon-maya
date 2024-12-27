@@ -40,4 +40,20 @@ class CreateModel(plugin.MayaCreator):
                     label="Include Shaders",
                     tooltip="Include shaders in the geometry export.",
                     default=self.include_shaders),
+            # TODO: Remove these `attr` and `attrPrefix` attributes to avoid
+            #  confusion. This currently does NOT influence the model product
+            #  `mayaScene` nor `Alembic` output. It only influences the Maya
+            #  USD exported output. Which is confusing, because the attr def
+            #  is ALSO exposed in the Alembic export plugin as attr defs.
+            #  Preferably we unify them or clean it up some way so they are
+            #  not duplicated.
+            TextDef("attr",
+                    label="Custom Attributes",
+                    tooltip="Relevant to Maya USD Export only",
+                    default="",
+                    placeholder="attr1, attr2"),
+            TextDef("attrPrefix",
+                    label="Custom Attributes Prefix",
+                    tooltip="Relevant to Maya USD Export only",
+                    placeholder="prefix1, prefix2"),
         ]
