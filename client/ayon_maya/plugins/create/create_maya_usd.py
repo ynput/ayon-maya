@@ -264,3 +264,5 @@ class CreateMayaUsdModel(CreateMayaUsd):
         for attr_def in attr_defs:
             if attr_def.key == "createAssetTemplateHierarchy":
                 attr_def.default = True
+
+        return attr_defs
