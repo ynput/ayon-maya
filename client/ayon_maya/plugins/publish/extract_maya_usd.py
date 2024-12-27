@@ -165,6 +165,8 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
 
         # TODO: Support more `mayaUSDExport` parameters
         return {
+            "chaser": (list, None),  # optional list
+            "chaserArgs": (list, None),  # optional list
             "defaultUSDFormat": str,
             "stripNamespaces": bool,
             "mergeTransformAndShape": bool,
@@ -191,6 +193,8 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
 
         # TODO: Support more `mayaUSDExport` parameters
         return {
+            "chaser": None,
+            "chaserArgs": None,
             "defaultUSDFormat": "usdc",
             "stripNamespaces": False,
             "mergeTransformAndShape": True,
@@ -233,6 +237,11 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 continue
 
             options[key] = value
+
+        # Do not pass None values
+        for key, value in options.copy().items():
+            if value is None:
+                del options[key]
 
         return options
 
@@ -300,7 +309,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         options["filterTypes"] = ["constraint"]
 
         def parse_attr_str(attr_str):
-            """Return list of strings from `a,b,c,,d` to `[a, b, c, d]`.
+            """Return list of strings from `a,b,c,d` to `[a, b, c, d]`.
 
             Args:
                 attr_str (str): Concatenated attributes by comma

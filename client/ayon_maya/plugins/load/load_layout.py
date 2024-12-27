@@ -145,10 +145,9 @@ class LayoutLoader(plugin.Loader):
             self._set_transformation(asset, transform)
         else:
             transform = element["transform_matrix"]
-            rotation = element["rotation"]
             # flatten matrix to a list
             maya_transform_matrix = [element for row in transform for element in row]
-            self._convert_transformation_matrix(asset, maya_transform_matrix, rotation)
+            self._set_transformation_by_matrix(asset, maya_transform_matrix)
 
     def _set_transformation(self, asset, transform):
         translation = [
@@ -174,23 +173,33 @@ class LayoutLoader(plugin.Loader):
             scale=scale
         )
 
-    def _convert_transformation_matrix(self, asset, transform, rotation):
-        """Convert matrix to list of transformation matrix for Unreal Engine import.
+    def _set_transformation_by_matrix(self, asset, transform):
+        """Set transformation with transform matrix and rotation data
+        for the imported asset.
 
         Args:
             transform (list): Transformations of the asset
-            rotation (list): Rotations of the asset
-
-        Returns:
-            List[om.MMatrix]: List of transformation matrix of the asset
         """
         transform_mm = om.MMatrix(transform)
         convert_transform = om.MTransformationMatrix(transform_mm)
-        converted_rotation = om.MEulerRotation(
-            math.radians(rotation["x"]), math.radians(rotation["y"]), math.radians(rotation["z"])
+        convert_translation = convert_transform.translation(om.MSpace.kWorld)
+        convert_scale = convert_transform.scale(om.MSpace.kWorld)
+        convert_rotation = convert_transform.rotation()
+        rotation_degrees = [om.MAngle(convert_rotation.x).asDegrees(),
+                            om.MAngle(convert_rotation.z).asDegrees(),
+                            om.MAngle(convert_rotation.y).asDegrees()]
+        translation = [
+            convert_translation.x,
+            convert_translation.z,
+            convert_translation.y
+        ]
+        cmds.xform(
+            asset,
+            translation=translation,
+            rotation=rotation_degrees,
+            scale=[convert_scale[0], convert_scale[2], convert_scale[1]]
         )
-        convert_transform.setRotation(converted_rotation)
-        cmds.xform(asset, matrix=convert_transform.asMatrix())
+
 
     def load(self, context, name, namespace, options):
         path = self.filepath_from_context(context)
