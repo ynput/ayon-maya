@@ -29,6 +29,8 @@ class CollectModelProductTypeUSDExport(plugin.MayaInstancePlugin,
         runs BEFORE the relevant Maya USD and USD plug-ins that check what
         attribute definitions to show for these families. As such, it *may*
         occur that the families are added 'too late' for them to be picked up.
+        But so far it seems so good - and likely they are collected in plug-in
+        "order" (and with this being ordered very early we should be fine?)
 
         """
         # Filtering of instance, if needed, can be customized
