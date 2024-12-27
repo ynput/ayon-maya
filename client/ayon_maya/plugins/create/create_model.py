@@ -20,6 +20,13 @@ class CreateModel(plugin.MayaCreator):
     def get_instance_attr_defs(self):
 
         return [
+            # TODO: Differentiate this more clearly from the exact Alembic
+            #  export feature to 'write face sets'
+            #  This particular toggle here implements an additional process
+            #  step for exports where ANY shader assignment is turned into an
+            #  explicit 'per face' assignment even if it was just a regular
+            #  full object material assignment in Maya.
+            #  See: https://github.com/ynput/ayon-maya/pull/37
             BoolDef("writeFaceSets",
                     label="Write face sets",
                     tooltip="Write face sets with the geometry",
