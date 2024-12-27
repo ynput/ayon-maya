@@ -129,6 +129,8 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         )
         register_event_callback("workfile.save.after", after_workfile_save)
 
+        self._register_maya_usd_chasers()
+
     def open_workfile(self, filepath):
         return open_file(filepath)
 
@@ -238,6 +240,25 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         self.log.info("Installed event handler _on_scene_open..")
         self.log.info("Installed event handler _check_lock_file..")
         self.log.info("Installed event handler _before_close_maya..")
+
+    def _register_maya_usd_chasers(self):
+        """Register Maya USD chasers if Maya USD libraries are available."""
+
+        try:
+            import mayaUsd.lib  # noqa
+        except ImportError:
+            # Do not register if Maya USD is not available
+            return
+
+        self.log.info("Installing AYON Maya USD chasers..")
+
+        from .chasers import export_filter_properties  # noqa
+
+        for export_chaser in [
+            export_filter_properties.FilterPropertiesExportChaser
+        ]:
+            mayaUsd.lib.ExportChaser.Register(export_chaser,
+                                              export_chaser.name)
 
 
 def _set_project():
