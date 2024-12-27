@@ -8,7 +8,10 @@ from ayon_core.lib import (
 )
 
 
-def _get_animation_attr_defs(create_context):
+def _get_animation_attr_defs(
+        create_context,
+        include_user_defined_attributes,
+        include_parent_hierarchy=False):
     """Get Animation generic definitions."""
     defs = lib.collect_animation_defs(create_context=create_context)
     defs.extend(
@@ -22,7 +25,8 @@ def _get_animation_attr_defs(create_context):
                 tooltip=(
                     "Whether to include parent hierarchy of nodes in the "
                     "publish instance."
-                )
+                ),
+                default=include_parent_hierarchy
             ),
             BoolDef(
                 "includeUserDefinedAttributes",
@@ -30,7 +34,8 @@ def _get_animation_attr_defs(create_context):
                 tooltip=(
                     "Whether to include all custom maya attributes found "
                     "on nodes as attributes in the Alembic data."
-                )
+                ),
+                default=include_user_defined_attributes
             ),
         ]
     )
@@ -97,7 +102,9 @@ class CreateAnimation(plugin.MayaHiddenCreator):
         return node_data
 
     def get_instance_attr_defs(self):
-        return _get_animation_attr_defs(self.create_context)
+        return _get_animation_attr_defs(self.create_context,
+                                        self.include_user_defined_attributes,
+                                        self.include_parent_hierarchy)
 
 
 class CreatePointCache(plugin.MayaCreator):
@@ -117,7 +124,8 @@ class CreatePointCache(plugin.MayaCreator):
         return node_data
 
     def get_instance_attr_defs(self):
-        return _get_animation_attr_defs(self.create_context)
+        return _get_animation_attr_defs(self.create_context,
+                                        self.include_user_defined_attributes)
 
     def create(self, product_name, instance_data, pre_create_data):
         instance = super(CreatePointCache, self).create(
