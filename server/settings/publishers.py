@@ -1108,7 +1108,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": False
     },
     "CollectMayaUsdFilterProperties": {
-        "enabled": True,
+        "enabled": False,
         "default_filter": ""
     },
     "ValidateInstanceInContext": {
