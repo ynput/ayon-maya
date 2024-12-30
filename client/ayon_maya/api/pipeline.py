@@ -368,7 +368,8 @@ def parse_container(container):
         container (str): A container node name.
 
     Returns:
-        dict[str, Any]: The container schema data for this container node.
+        Optional[dict[str, Any]]: The container schema data for this container
+         if it meets all the required metadata.
 
     """
     data = lib.read(container)
@@ -378,7 +379,7 @@ def parse_container(container):
     if missing:
         log.warning("Container '%s' is missing required keys: %s",
                     container, missing)
-        return {}
+        return
 
     # Backwards compatibility pre-schemas for containers
     data["schema"] = data.get("schema", "openpype:container-1.0")
