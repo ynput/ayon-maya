@@ -243,8 +243,8 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
             stack.enter_context(suspended_refresh(suspend=suspend))
             stack.enter_context(maintained_selection())
             if instance.data.get("writeFaceSets", True):
-                shapes = self.get_members_shapes(nodes)
-                stack.enter_context(force_shader_assignments_to_faces(shapes))
+                meshes = cmds.ls(nodes, type="mesh", long=True)
+                stack.enter_context(force_shader_assignments_to_faces(meshes))
             cmds.select(nodes, noExpand=True)
             self.log.debug(
                 "Running `extract_alembic` with the keyword arguments: "
@@ -296,9 +296,6 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
 
     def get_members_and_roots(self, instance):
         return instance[:], instance.data.get("setMembers")
-
-    def get_members_shapes(self, nodes: "list[str]") -> "list[str]":
-        return cmds.ls(nodes, type=("mesh", "nurbsCurve"), long=True)
 
     @classmethod
     def get_attribute_defs(cls):
