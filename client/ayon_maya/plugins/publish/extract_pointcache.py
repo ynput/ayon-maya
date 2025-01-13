@@ -238,7 +238,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
         else:
             kwargs["preRollStartFrame"] = None
 
-        shapes = self.get_members_shapes(instance)
+        shapes = self.get_members_shapes(nodes)
 
         suspend = not instance.data.get("refresh", False)
         with contextlib.ExitStack() as stack:
@@ -298,8 +298,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
     def get_members_and_roots(self, instance):
         return instance[:], instance.data.get("setMembers")
 
-    def get_members_shapes(self, instance):
-        nodes = list(instance[:])
+    def get_members_shapes(self, nodes: "list[str]") -> "list[str]":
         return cmds.ls(nodes, type=("mesh", "nurbsCurve"), long=True)
 
     @classmethod
