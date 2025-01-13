@@ -238,13 +238,12 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
         else:
             kwargs["preRollStartFrame"] = None
 
-        shapes = self.get_members_shapes(nodes)
-
         suspend = not instance.data.get("refresh", False)
         with contextlib.ExitStack() as stack:
             stack.enter_context(suspended_refresh(suspend=suspend))
             stack.enter_context(maintained_selection())
             if instance.data.get("writeFaceSets", True):
+                shapes = self.get_members_shapes(nodes)
                 stack.enter_context(force_shader_assignments_to_faces(shapes))
             cmds.select(nodes, noExpand=True)
             self.log.debug(
