@@ -4407,6 +4407,17 @@ def force_shader_assignments_to_faces(shapes):
             if "." not in member:
                 # Convert to face assignments
                 member = f"{member}.f[*]"
+                if not cmds.objExists(member):
+                    # It is possible for a mesh to have no faces at all
+                    # for which we cannot convert to face assignments anyway.
+                    # It is a `mesh` node type - it just would error on
+                    # 'No object matches name' when trying to assign to the
+                    # faces. So we skip the conversion
+                    log.debug(
+                        "Skipping face assignment conversion because "
+                        f"no mesh faces were found: {member}")
+                    continue
+
                 has_conversions = True
             override_assignments[shading_engine].append(member)
 
