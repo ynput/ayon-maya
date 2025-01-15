@@ -400,7 +400,7 @@ def ensure_namespace(namespace):
         return cmds.namespace(add=namespace)
 
 
-class RenderlayerCreator(NewCreator, MayaCreatorBase):
+class RenderlayerCreator(Creator, MayaCreatorBase):
     """Creator which creates an instance per renderlayer in the workfile.
 
     Create and manages renderlayer product per renderLayer in workfile.
