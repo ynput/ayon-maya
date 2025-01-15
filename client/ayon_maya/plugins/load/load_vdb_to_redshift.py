@@ -164,6 +164,9 @@ class LoadVDBtoRedShift(plugin.Loader):
     def _create_default_redshift_volume_shader(
             self, volume_shape: str) -> List[str]:
         """Create RedshiftStandardVolume shader and assign it to the volume"""
+        # TODO: Should this material become "managed" and get removed on
+        #  removing the Redshift Volume itself? Currently it is not and it
+        #  will linger in the scene as dangling unused material.
 
         # Create shading engine with RedshiftStandardVolume
         material = cmds.shadingNode("RedshiftStandardVolume", asShader=True)
