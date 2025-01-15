@@ -1,10 +1,8 @@
 import json
 import os
-from abc import ABCMeta
 
 import ayon_api
 import qargparse
-import six
 
 from ayon_core.lib import BoolDef, Logger
 from ayon_core.pipeline import (
@@ -70,25 +68,48 @@ def get_reference_node_parents(*args, **kwargs):
     return lib.get_reference_node_parents(*args, **kwargs)
 
 
-class Creator(LegacyCreator):
-    defaults = ['Main']
+def get_ayon_entity_uri_from_representation_context(context: dict) -> str:
+    """Resolve AYON Entity URI from representation context.
 
-    def process(self):
-        nodes = list()
+    Note:
+        The representation context is the `get_representation_context` dict
+        containing the `project`, `folder, `representation` and so forth.
+        It is not the representation entity `context` key.
 
-        with lib.undo_chunk():
-            if (self.options or {}).get("useSelection"):
-                nodes = cmds.ls(selection=True)
+    Arguments:
+        context (dict): The representation context.
 
-            instance = cmds.sets(nodes, name=self.name)
-            lib.imprint(instance, self.data)
+    Raises:
+        RuntimeError: Unable to resolve to a single valid URI.
 
-        return instance
+    Returns:
+        str: The AYON entity URI.
+
+    """
+    # TODO: This is a 1:1 copy from ayon-houdini and may be good to refactor
+    #    and de-duplicate across the codebase, e.g. to core functionality
+    project_name = context["project"]["name"]
+    representation_id = context["representation"]["id"]
+    response = ayon_api.post(
+        f"projects/{project_name}/uris",
+        entityType="representation",
+        ids=[representation_id])
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"Unable to resolve AYON entity URI for '{project_name}' "
+            f"representation id '{representation_id}': {response.text}"
+        )
+    uris = response.data["uris"]
+    if len(uris) != 1:
+        raise RuntimeError(
+            f"Unable to resolve AYON entity URI for '{project_name}' "
+            f"representation id '{representation_id}' to single URI. "
+            f"Received data: {response.data}"
+        )
+    return uris[0]["uri"]
 
 
-@six.add_metaclass(ABCMeta)
-class MayaCreatorBase(object):
-
+class MayaCreatorBase:
     @staticmethod
     def cache_instance_data(shared_data):
         """Cache instances for Creators to shared data.
@@ -273,8 +294,7 @@ class MayaCreatorBase(object):
             self._remove_instance_from_context(instance)
 
 
-@six.add_metaclass(ABCMeta)
-class MayaCreator(NewCreator, MayaCreatorBase):
+class MayaCreator(Creator, MayaCreatorBase):
 
     settings_category = "maya"
 
@@ -392,7 +412,7 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
     an instance per renderlayer.
 
     """
-
+    settings_category = "maya"
     # These are required to be overridden in subclass
     singleton_node_name = ""
 
@@ -660,6 +680,17 @@ class Loader(LoaderPlugin):
     settings_category = SETTINGS_CATEGORY
     load_settings = {}  # defined in settings
 
+    use_ayon_entity_uri = False
+
+    @classmethod
+    def filepath_from_context(cls, context):
+        # TODO: This is a 1:1 copy from ayon-houdini and may be good to
+        #  refactor and de-duplicate across the codebase, e.g. to core
+        if cls.use_ayon_entity_uri:
+            return get_ayon_entity_uri_from_representation_context(context)
+
+        return super().filepath_from_context(context)
+
     @classmethod
     def apply_settings(cls, project_settings):
         super(Loader, cls).apply_settings(project_settings)
@@ -920,9 +951,11 @@ class ReferenceLoader(Loader):
             cmds.sets(invalid, remove=node)
 
         # Update metadata
-        cmds.setAttr("{}.representation".format(node),
-                     repre_entity["id"],
-                     type="string")
+        for attr_name, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            lib.set_attribute(node=node, attribute=attr_name, value=value)
 
         # When an animation or pointcache gets connected to an Xgen container,
         # the compound attribute "xgenContainers" gets created. When animation
@@ -1011,9 +1044,7 @@ class ReferenceLoader(Loader):
             (str)
         """
         settings = get_project_settings(project_name)
-        use_env_var_as_root = (settings["maya"]
-                                       ["maya_dirmap"]
-                                       ["use_env_var_as_root"])
+        use_env_var_as_root = settings["maya"]["dirmap"]["use_env_var_as_root"]
         if use_env_var_as_root:
             anatomy = Anatomy(project_name)
             file_url = anatomy.replace_root_with_env_key(file_url, '${{{}}}')
@@ -1032,6 +1063,15 @@ class ReferenceLoader(Loader):
                 AYON_CONTAINER_ID, AVALON_CONTAINER_ID
             }:
                 cmds.sets(node, forceElement=container)
+
+    @classmethod
+    def get_representation_name_aliases(cls, representation_name):
+        # Allow switching between `ma` and `mb` representations if new
+        # version happens to contain only the other representation
+        return {
+            "ma": ["mb"],
+            "mb": ["ma"]
+        }.get(representation_name, [])
 
 
 class MayaLoader(LoaderPlugin):

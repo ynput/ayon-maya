@@ -2,7 +2,6 @@
 
 import os
 import copy
-from pprint import pformat
 import sys
 import uuid
 import re
@@ -12,7 +11,6 @@ import logging
 import contextlib
 import capture
 import clique
-from .exitstack import ExitStack
 from collections import OrderedDict, defaultdict
 from math import ceil
 from six import string_types
@@ -83,6 +81,15 @@ DISPLAY_LIGHTS_ENUM = [
     {"label": "Flat Lighting", "value": "flat"},
     {"label": "No Lights", "value": "none"}
 ]
+
+
+class RigSetsNotExistError(RuntimeError):
+    """Raised when required rig sets for animation instance are missing.
+
+    This is raised from `create_rig_animation_instance` when the required
+    `out_SET` or `controls_SET` are missing.
+    """
+    pass
 
 
 def get_main_window():
@@ -196,7 +203,7 @@ def render_capture_preset(preset):
     # not supported by `capture` so we pop it off of the preset
     reload_textures = preset["viewport_options"].pop("loadTextures", False)
     panel = preset.pop("panel")
-    with ExitStack() as stack:
+    with contextlib.ExitStack() as stack:
         stack.enter_context(maintained_time())
         stack.enter_context(panel_camera(panel, preset["camera"]))
         stack.enter_context(viewport_default_options(panel, preset))
@@ -288,8 +295,12 @@ def generate_capture_preset(instance, camera, path,
 
     # Override viewport options by instance data
     viewport_options = preset.setdefault("viewport_options", {})
-    viewport_options["displayLights"] = instance.data["displayLights"]
     viewport_options["imagePlane"] = instance.data.get("imagePlane", True)
+
+    # When using 'project settings' we preserve the capture preset that
+    # was picked, then we do not override it with the instance data
+    if instance.data["displayLights"] != "project_settings":
+        viewport_options["displayLights"] = instance.data["displayLights"]
 
     # Override transparency if requested.
     transparency = instance.data.get("transparency", 0)
@@ -566,24 +577,46 @@ def pairwise(iterable):
     return zip(a, a)
 
 
-def collect_animation_defs(fps=False):
+def collect_animation_defs(fps=False, create_context=None):
     """Get the basic animation attribute definitions for the publisher.
 
+    Arguments:
+        fps (bool): Whether to include `fps` attribute definition.
+        create_context (CreateContext | None): When provided the context of
+            publisher will be used to define the defaults for the attributes.
+            Depending on project settings this may then use the entity's frame
+            range and FPS instead of the current scene values.
+
     Returns:
-        OrderedDict
+        List[NumberDef]: List of number attribute definitions.
 
     """
 
-    # get scene values as defaults
-    frame_start = cmds.playbackOptions(query=True, minTime=True)
-    frame_end = cmds.playbackOptions(query=True, maxTime=True)
-    frame_start_handle = cmds.playbackOptions(
-        query=True, animationStartTime=True
-    )
-    frame_end_handle = cmds.playbackOptions(query=True, animationEndTime=True)
+    use_entity_frame_range = False
+    if create_context is not None:
+        project_settings = create_context.get_current_project_settings()
+        use_entity_frame_range: bool = project_settings["maya"]["create"].get(
+            "use_entity_attributes_as_defaults", False)
 
-    handle_start = frame_start - frame_start_handle
-    handle_end = frame_end_handle - frame_end
+    if create_context is not None and use_entity_frame_range:
+        task_entity = create_context.get_current_task_entity()
+        frame_start = task_entity["attrib"]["frameStart"]
+        frame_end = task_entity["attrib"]["frameEnd"]
+        handle_start = task_entity["attrib"]["handleStart"]
+        handle_end = task_entity["attrib"]["handleEnd"]
+        default_fps = task_entity["attrib"]["fps"]
+    else:
+        # get scene values as defaults
+        frame_start = cmds.playbackOptions(query=True, minTime=True)
+        frame_end = cmds.playbackOptions(query=True, maxTime=True)
+        frame_start_handle = cmds.playbackOptions(
+            query=True, animationStartTime=True)
+        frame_end_handle = cmds.playbackOptions(
+            query=True, animationEndTime=True)
+
+        handle_start = frame_start - frame_start_handle
+        handle_end = frame_end_handle - frame_end
+        default_fps = mel.eval('currentTimeUnitToFPS()')
 
     # build attributes
     defs = [
@@ -615,9 +648,8 @@ def collect_animation_defs(fps=False):
     ]
 
     if fps:
-        current_fps = mel.eval('currentTimeUnitToFPS()')
         fps_def = NumberDef(
-            "fps", label="FPS", default=current_fps, decimals=5
+            "fps", label="FPS", default=default_fps, decimals=5
         )
         defs.append(fps_def)
 
@@ -1421,7 +1453,12 @@ def get_id_required_nodes(referenced_nodes=False,
     def _add_to_result_if_valid(obj):
         """Add to `result` if the object should be included"""
         fn_dep.setObject(obj)
-        if not existing_ids and fn_dep.hasAttribute("cbId"):
+        if (
+                not existing_ids
+                and fn_dep.hasAttribute("cbId")
+                # May not be an empty value
+                and fn_dep.findPlug("cbId", True).asString()
+        ):
             return
 
         if not referenced_nodes and fn_dep.isFromReferencedFile:
@@ -1726,6 +1763,11 @@ def apply_attributes(attributes, nodes_by_id):
         attr_value = attr_data["attributes"]
         for node in nodes:
             for attr, value in attr_value.items():
+                if value is None:
+                    log.warning(
+                        f"Skipping setting {node}.{attr} with value 'None'")
+                    continue
+
                 set_attribute(attr, value, node)
 
 
@@ -2877,7 +2919,7 @@ def bake_to_world_space(nodes,
                        "sx", "sy", "sz"}
 
     world_space_nodes = []
-    with ExitStack() as stack:
+    with contextlib.ExitStack() as stack:
         delete_bin = stack.enter_context(delete_after())
         # Create the duplicate nodes that are in world-space connected to
         # the originals
@@ -3199,6 +3241,8 @@ def update_content_on_context_change():
     creator_attribute_values = {
         "frameStart": float(task_entity["attrib"]["frameStart"]),
         "frameEnd": float(task_entity["attrib"]["frameEnd"]),
+        "handleStart": float(task_entity["attrib"]["handleStart"]),
+        "handleEnd": float(task_entity["attrib"]["handleEnd"]),
     }
 
     has_changes = False
@@ -3314,48 +3358,10 @@ def set_colorspace():
     project_name = get_current_project_name()
     imageio = get_project_settings(project_name)["maya"]["imageio"]
 
-    # ocio compatibility variables
-    ocio_v2_maya_version = 2022
-    maya_version = int(cmds.about(version=True))
-    ocio_v2_support = use_ocio_v2 = maya_version >= ocio_v2_maya_version
-    is_ocio_set = bool(os.environ.get("OCIO"))
-
-    use_workfile_settings = imageio.get("workfile", {}).get("enabled")
-    if use_workfile_settings:
-        root_dict = imageio["workfile"]
-    else:
-        # TODO: deprecated code from 3.15.5 - remove
-        # Maya 2022+ introduces new OCIO v2 color management settings that
-        # can override the old color management preferences. AYON has
-        # separate settings for both so we fall back when necessary.
-        use_ocio_v2 = imageio["colorManagementPreference_v2"]["enabled"]
-        if use_ocio_v2 and not ocio_v2_support:
-            # Fallback to legacy behavior with a warning
-            log.warning(
-                "Color Management Preference v2 is enabled but not "
-                "supported by current Maya version: {} (< {}). Falling "
-                "back to legacy settings.".format(
-                    maya_version, ocio_v2_maya_version)
-            )
-
-        if use_ocio_v2:
-            root_dict = imageio["colorManagementPreference_v2"]
-        else:
-            root_dict = imageio["colorManagementPreference"]
-
-        if not isinstance(root_dict, dict):
-            msg = "set_colorspace(): argument should be dictionary"
-            log.error(msg)
-            return
-
-    # backward compatibility
-    # TODO: deprecated code from 3.15.5 - remove with deprecated code above
-    view_name = root_dict.get("viewTransform")
-    if view_name is None:
-        view_name = root_dict.get("viewName")
-
-    log.debug(">> root_dict: {}".format(pformat(root_dict)))
-    if not root_dict:
+    if not imageio["workfile"]["enabled"]:
+        log.info(
+            "AYON Maya Color Management settings for workfile are disabled."
+        )
         return
 
     # set color spaces for rendering space and view transforms
@@ -3373,36 +3379,27 @@ def set_colorspace():
         except RuntimeError as exc:
             log.error(exc)
 
+    log.info("Setting Maya colorspace..")
+
     # enable color management
     cmds.colorManagementPrefs(edit=True, cmEnabled=True)
     cmds.colorManagementPrefs(edit=True, ocioRulesEnabled=True)
 
-    if use_ocio_v2:
-        log.info("Using Maya OCIO v2")
-        if not is_ocio_set:
-            # Set the Maya 2022+ default OCIO v2 config file path
-            log.info("Setting default Maya OCIO v2 config")
-            # Note: Setting "" as value also sets this default however
-            # introduces a bug where launching a file on startup will prompt
-            # to save the empty scene before it, so we set using the path.
-            # This value has been the same for 2022, 2023 and 2024
-            path = "<MAYA_RESOURCES>/OCIO-configs/Maya2022-default/config.ocio"
-            cmds.colorManagementPrefs(edit=True, configFilePath=path)
+    is_ocio_set = bool(os.environ.get("OCIO"))
+    if not is_ocio_set:
+        # Set the Maya 2022+ default OCIO v2 config file path
+        log.info("Setting default Maya OCIO v2 config")
+        # Note: Setting "" as value also sets this default however
+        # introduces a bug where launching a file on startup will prompt
+        # to save the empty scene before it, so we set using the path.
+        # This value has been the same for 2022, 2023 and 2024.
+        path = "<MAYA_RESOURCES>/OCIO-configs/Maya2022-default/config.ocio"
+        cmds.colorManagementPrefs(edit=True, configFilePath=path)
 
-        # set rendering space and view transform
-        _colormanage(renderingSpaceName=root_dict["renderSpace"])
-        _colormanage(viewName=view_name)
-        _colormanage(displayName=root_dict["displayName"])
-    else:
-        log.info("Using Maya OCIO v1 (legacy)")
-        if not is_ocio_set:
-            # Set the Maya default config file path
-            log.info("Setting default Maya OCIO v1 legacy config")
-            cmds.colorManagementPrefs(edit=True, configFilePath="legacy")
-
-        # set rendering space and view transform
-        _colormanage(renderingSpaceName=root_dict["renderSpace"])
-        _colormanage(viewTransformName=view_name)
+    # set rendering space and view transform
+    _colormanage(renderingSpaceName=imageio["workfile"]["renderSpace"])
+    _colormanage(viewName=imageio["workfile"]["viewName"])
+    _colormanage(displayName=imageio["workfile"]["displayName"])
 
 
 @contextlib.contextmanager
@@ -4171,8 +4168,14 @@ def create_rig_animation_instance(
     controls = next((node for node in nodes if
                      node.endswith("controls_SET")), None)
     if name != "fbx":
-        assert output, "No out_SET in rig, this is a bug."
-        assert controls, "No controls_SET in rig, this is a bug."
+        if not output:
+            raise RigSetsNotExistError(
+                "No out_SET in rig. The loaded rig publish is lacking the "
+                "out_SET required for animation instances.")
+        if not controls:
+            raise RigSetsNotExistError(
+                "No controls_SET in rig. The loaded rig publish is lacking "
+                "the controls_SET required for animation instances.")
 
     anim_skeleton = next((node for node in nodes if
                           node.endswith("skeletonAnim_SET")), None)
@@ -4267,21 +4270,19 @@ def search_textures(filepath):
     filename = os.path.basename(filepath)
 
     # Collect full sequence if it matches a sequence pattern
-    if len(filename.split(".")) > 2:
+    # For UDIM based textures (tiles)
+    if "<UDIM>" in filename:
+        sequences = get_sequence(filepath,
+                                 pattern="<UDIM>")
+        if sequences:
+            return sequences
 
-        # For UDIM based textures (tiles)
-        if "<UDIM>" in filename:
-            sequences = get_sequence(filepath,
-                                     pattern="<UDIM>")
-            if sequences:
-                return sequences
-
-        # Frame/time - Based textures (animated masks f.e)
-        elif "%04d" in filename:
-            sequences = get_sequence(filepath,
-                                     pattern="%04d")
-            if sequences:
-                return sequences
+    # Frame/time - Based textures (animated masks f.e)
+    elif "%04d" in filename:
+        sequences = get_sequence(filepath,
+                                 pattern="%04d")
+        if sequences:
+            return sequences
 
     # Assuming it is a fixed name (single file)
     if os.path.exists(filepath):
@@ -4320,9 +4321,13 @@ def get_sequence(filepath, pattern="%04d"):
         # multiple image search paths.
         return
 
+    # clique.PATTERNS["frames"] supports only `.1001.exr` not `_1001.exr` so
+    # we use a customized pattern.
+    pattern = "[_.](?P<index>(?P<padding>0*)\\d+)\\.\\D+\\d?$"
+    patterns = [pattern]
     collections, _remainder = clique.assemble(
         files,
-        patterns=[clique.PATTERNS["frames"]],
+        patterns=patterns,
         minimum_items=1)
 
     if len(collections) > 1:
@@ -4393,6 +4398,17 @@ def force_shader_assignments_to_faces(shapes):
             if "." not in member:
                 # Convert to face assignments
                 member = f"{member}.f[*]"
+                if not cmds.objExists(member):
+                    # It is possible for a mesh to have no faces at all
+                    # for which we cannot convert to face assignments anyway.
+                    # It is a `mesh` node type - it just would error on
+                    # 'No object matches name' when trying to assign to the
+                    # faces. So we skip the conversion
+                    log.debug(
+                        "Skipping face assignment conversion because "
+                        f"no mesh faces were found: {member}")
+                    continue
+
                 has_conversions = True
             override_assignments[shading_engine].append(member)
 

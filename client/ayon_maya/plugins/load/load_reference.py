@@ -5,6 +5,7 @@ import qargparse
 from ayon_core.settings import get_project_settings
 from ayon_maya.api import plugin
 from ayon_maya.api.lib import (
+    RigSetsNotExistError,
     create_rig_animation_instance,
     get_container_members,
     maintained_selection,
@@ -241,9 +242,13 @@ class ReferenceLoader(plugin.ReferenceLoader):
     def _post_process_rig(self, namespace, context, options):
 
         nodes = self[:]
-        create_rig_animation_instance(
-            nodes, context, namespace, options=options, log=self.log
-        )
+        try:
+            create_rig_animation_instance(
+                nodes, context, namespace, options=options, log=self.log
+            )
+        except RigSetsNotExistError as exc:
+            self.log.warning(
+                "Missing rig sets for animation instance creation: %s", exc)
 
     def _lock_camera_transforms(self, nodes):
         cameras = cmds.ls(nodes, type="camera")

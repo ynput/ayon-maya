@@ -5,7 +5,7 @@ from ayon_server.settings import (
     ensure_unique_names,
 )
 from .imageio import ImageIOSettings, DEFAULT_IMAGEIO_SETTINGS
-from .maya_dirmap import MayaDirmapModel, DEFAULT_MAYA_DIRMAP_SETTINGS
+from .dirmap import DirmapModel, DEFAULT_DIRMAP_SETTINGS
 from .include_handles import IncludeHandlesModel, DEFAULT_INCLUDE_HANDLES
 from .explicit_plugins_loading import (
     ExplicitPluginsLoadingModel, DEFAULT_EXPLITCIT_PLUGINS_LOADING_SETTINGS
@@ -51,8 +51,8 @@ class MayaSettings(BaseSettingsModel):
     )
     ext_mapping: list[ExtMappingItemModel] = SettingsField(
         default_factory=list, title="Extension Mapping")
-    maya_dirmap: MayaDirmapModel = SettingsField(
-        default_factory=MayaDirmapModel, title="Maya dirmap Settings")
+    dirmap: DirmapModel = SettingsField(
+        default_factory=DirmapModel, title="Maya dirmap Settings")
     include_handles: IncludeHandlesModel = SettingsField(
         default_factory=IncludeHandlesModel,
         title="Include/Exclude Handles in default playback & render range"
@@ -111,8 +111,8 @@ DEFAULT_MAYA_SETTING = {
         {"name": "workfile", "value": "ma"},
         {"name": "yetiRig", "value": "ma"}
     ],
-    # `maya_dirmap` was originally with dash - `maya-dirmap`
-    "maya_dirmap": DEFAULT_MAYA_DIRMAP_SETTINGS,
+    # `dirmap` was originally with dash - `maya-dirmap`
+    "dirmap": DEFAULT_DIRMAP_SETTINGS,
     "include_handles": DEFAULT_INCLUDE_HANDLES,
     "scriptsmenu": DEFAULT_SCRIPTSMENU_SETTINGS,
     "render_settings": DEFAULT_RENDER_SETTINGS,

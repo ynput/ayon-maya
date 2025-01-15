@@ -8,9 +8,12 @@ from ayon_core.lib import (
 )
 
 
-def _get_animation_attr_defs(cls):
+def _get_animation_attr_defs(
+        create_context,
+        include_user_defined_attributes,
+        include_parent_hierarchy=False):
     """Get Animation generic definitions."""
-    defs = lib.collect_animation_defs()
+    defs = lib.collect_animation_defs(create_context=create_context)
     defs.extend(
         [
             BoolDef("farm", label="Submit to Farm"),
@@ -22,7 +25,8 @@ def _get_animation_attr_defs(cls):
                 tooltip=(
                     "Whether to include parent hierarchy of nodes in the "
                     "publish instance."
-                )
+                ),
+                default=include_parent_hierarchy
             ),
             BoolDef(
                 "includeUserDefinedAttributes",
@@ -30,7 +34,8 @@ def _get_animation_attr_defs(cls):
                 tooltip=(
                     "Whether to include all custom maya attributes found "
                     "on nodes as attributes in the Alembic data."
-                )
+                ),
+                default=include_user_defined_attributes
             ),
         ]
     )
@@ -86,8 +91,6 @@ class CreateAnimation(plugin.MayaHiddenCreator):
     product_type = "animation"
     icon = "male"
 
-    write_color_sets = False
-    write_face_sets = False
     include_parent_hierarchy = False
     include_user_defined_attributes = False
 
@@ -99,9 +102,9 @@ class CreateAnimation(plugin.MayaHiddenCreator):
         return node_data
 
     def get_instance_attr_defs(self):
-        defs = super(CreateAnimation, self).get_instance_attr_defs()
-        defs += _get_animation_attr_defs(self)
-        return defs
+        return _get_animation_attr_defs(self.create_context,
+                                        self.include_user_defined_attributes,
+                                        self.include_parent_hierarchy)
 
 
 class CreatePointCache(plugin.MayaCreator):
@@ -111,8 +114,6 @@ class CreatePointCache(plugin.MayaCreator):
     label = "Pointcache"
     product_type = "pointcache"
     icon = "gears"
-    write_color_sets = False
-    write_face_sets = False
     include_user_defined_attributes = False
 
     def read_instance_node(self, node):
@@ -123,9 +124,8 @@ class CreatePointCache(plugin.MayaCreator):
         return node_data
 
     def get_instance_attr_defs(self):
-        defs = super(CreatePointCache, self).get_instance_attr_defs()
-        defs += _get_animation_attr_defs(self)
-        return defs
+        return _get_animation_attr_defs(self.create_context,
+                                        self.include_user_defined_attributes)
 
     def create(self, product_name, instance_data, pre_create_data):
         instance = super(CreatePointCache, self).create(

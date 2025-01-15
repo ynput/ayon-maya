@@ -87,7 +87,7 @@ def create_folder_id_hash(nodes):
             for k, _ in ids.items():
                 id = k.split(":")[0]
                 node_id_hash[id].append(node)
-        elif cmds.nodeType(node) == "aiStandIn":
+        elif cmds.nodeType(node) in {"aiStandIn", "gpuCache"}:
             for id, _ in arnold_standin.get_nodes_by_id(node).items():
                 id = id.split(":")[0]
                 node_id_hash[id].append(node)
@@ -129,6 +129,12 @@ def create_items_from_nodes(nodes):
 
     project_name = get_current_project_name()
     folder_ids = set(id_hashes.keys())
+
+    # Ignore invalid ids
+    folder_ids = {
+        folder_id for folder_id in folder_ids
+        if ayon_api.utils.convert_entity_id(folder_id)
+    }
 
     folder_entities = ayon_api.get_folders(
         project_name, folder_ids, fields={"id", "path"}

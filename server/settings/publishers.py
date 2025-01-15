@@ -3,7 +3,6 @@ from pydantic import validator
 from ayon_server.settings import (
     BaseSettingsModel,
     SettingsField,
-    MultiplatformPathModel,
     ensure_unique_names,
 )
 from ayon_server.exceptions import BadRequestException
@@ -16,22 +15,22 @@ from .publish_playblast import (
 def linear_unit_enum():
     """Get linear units enumerator."""
     return [
-        {"label": "mm", "value": "millimeter"},
-        {"label": "cm", "value": "centimeter"},
-        {"label": "m", "value": "meter"},
-        {"label": "km", "value": "kilometer"},
-        {"label": "in", "value": "inch"},
-        {"label": "ft", "value": "foot"},
-        {"label": "yd", "value": "yard"},
-        {"label": "mi", "value": "mile"}
+        {"label": "millimeter", "value": "mm"},
+        {"label": "centimeter", "value": "cm"},
+        {"label": "meter", "value": "m"},
+        {"label": "kilometer", "value": "km"},
+        {"label": "inch", "value": "in"},
+        {"label": "foot", "value": "ft"},
+        {"label": "yard", "value": "yd"},
+        {"label": "mile", "value": "mi"}
     ]
 
 
 def angular_unit_enum():
     """Get angular units enumerator."""
     return [
-        {"label": "deg", "value": "degree"},
-        {"label": "rad", "value": "radian"},
+        {"label": "degree", "value": "deg"},
+        {"label": "radian", "value": "rad"},
     ]
 
 
@@ -101,36 +100,6 @@ class ValidateRigOutSetNodeIdsModel(BaseSettingsModel):
     allow_history_only: bool = SettingsField(title="Allow history only")
 
 
-class ValidateModelNameModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    database: bool = SettingsField(
-        title="Use database shader name definitions"
-    )
-    material_file: MultiplatformPathModel = SettingsField(
-        default_factory=MultiplatformPathModel,
-        title="Material File",
-        description=(
-            "Path to material file defining list of material names to check."
-        )
-    )
-    regex: str = SettingsField(
-        "(.*)_(\\d)*_(?P<shader>.*)_(GEO)",
-        title="Validation regex",
-        description=(
-            "Regex for validating name of top level group name. You can use"
-            " named capturing groups:(?P<asset>.*) for Asset name"
-        )
-    )
-    top_level_regex: str = SettingsField(
-        ".*_GRP",
-        title="Top level group name regex",
-        description=(
-            "To check for asset in name so *_some_asset_name_GRP"
-            " is valid, use:.*?_(?P<asset>.*)_GEO"
-        )
-    )
-
-
 class ValidateModelContentModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
@@ -186,6 +155,24 @@ class CollectFbxCameraModel(BaseSettingsModel):
 
 class CollectGLTFModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="CollectGLTF")
+
+
+class CollectMayaUsdFilterPropertiesModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Maya USD Export Chaser: Filter Properties")
+    default_filter: str = SettingsField(
+        title="Default Filter",
+        description=(
+            "Set the default filter for USD properties to export. It uses"
+            " [SideFX Houdini Pattern Matching in Parameters]"
+            "(https://www.sidefx.com/docs/houdini/network/patterns.html)."
+            "\nSome examples would include:\n"
+            "- Only include xforms: `xformOp*`\n"
+            "- Everything but xforms: `* ^xformOp*`\n"
+            "- Everything but mesh point data: `* ^extent ^points"
+            " ^faceVertexCounts ^faceVertexIndices ^primvars*`"
+        ),
+        default=""
+    )
 
 
 class ValidateFrameRangeModel(BaseSettingsModel):
@@ -538,6 +525,24 @@ class ExtractModelModel(BaseSettingsModel):
     active: bool = SettingsField(title="Active")
 
 
+class ExtractMayaUsdModelModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+
+
+class ExtractMayaUsdPointcacheModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+
+
+class ExtractMayaUsdAnimModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+
+
 class ExtractMayaSceneRawModel(BaseSettingsModel):
     """Add loaded instances to those published families:"""
     enabled: bool = SettingsField(title="ExtractMayaSceneRaw")
@@ -617,17 +622,23 @@ class PublishersModel(BaseSettingsModel):
         title="Collect Render Layers",
         section="Collectors"
     )
-    CollectFbxAnimation: CollectFbxAnimationModel = SettingsField(
-        default_factory=CollectFbxAnimationModel,
+    CollectFbxAnimation: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
         title="Collect FBX Animation",
     )
-    CollectFbxCamera: CollectFbxCameraModel = SettingsField(
-        default_factory=CollectFbxCameraModel,
+    CollectFbxCamera: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
         title="Collect Camera for FBX export",
     )
     CollectGLTF: CollectGLTFModel = SettingsField(
         default_factory=CollectGLTFModel,
         title="Collect Assets for GLB/GLTF export"
+    )
+    CollectMayaUsdFilterProperties: CollectMayaUsdFilterPropertiesModel = (
+        SettingsField(
+            default_factory=CollectMayaUsdFilterPropertiesModel,
+            title="Maya USD Export Chaser: Filter Properties"
+        )
     )
     ValidateInstanceInContext: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -765,14 +776,10 @@ class PublishersModel(BaseSettingsModel):
         title="Yeti Rig Settings"
     )
     # Model - START
-    ValidateModelName: ValidateModelNameModel = SettingsField(
-        default_factory=ValidateModelNameModel,
-        title="Validate Model Name",
-        section="Model",
-    )
     ValidateModelContent: ValidateModelContentModel = SettingsField(
         default_factory=ValidateModelContentModel,
         title="Validate Model Content",
+        section="Model"
     )
     ValidateTransformNamingSuffix: ValidateTransformNamingSuffixModel = (
         SettingsField(
@@ -929,6 +936,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Animation Out Set Related Node Ids",
     )
+    ValidateAnimationProductTypePublish: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Animation Product Type Publish",
+    )
     ValidateRigControllersArnoldAttributes: BasicValidateModel = (
         SettingsField(
             default_factory=BasicValidateModel,
@@ -938,6 +949,10 @@ class PublishersModel(BaseSettingsModel):
     ValidateSingleAssembly: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Single Assembly",
+    )
+    ValidateAnimatedRigContent: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Animated Rig Content",
     )
     ValidateSkeletalMeshHierarchy: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -1039,6 +1054,23 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ExtractAlembicModel,
         title="Extract Alembic"
     )
+    ExtractAnimation: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Animation (Alembic)",
+        description="Alembic extractor for loaded rigs"
+    )
+    ExtractMayaUsdModel: ExtractMayaUsdModelModel = SettingsField(
+        default_factory=ExtractMayaUsdModelModel,
+        title="Extract Maya USD with Model"
+    )
+    ExtractMayaUsdPointcache: ExtractMayaUsdPointcacheModel = SettingsField(
+        default_factory=ExtractMayaUsdPointcacheModel,
+        title="Extract Maya USD with Pointcache"
+    )
+    ExtractMayaUsdAnim: ExtractMayaUsdAnimModel = SettingsField(
+        default_factory=ExtractMayaUsdAnimModel,
+        title="Extract Maya USD with Animation"
+    )
 
 
 DEFAULT_SUFFIX_NAMING = {
@@ -1054,13 +1086,26 @@ DEFAULT_PUBLISH_SETTINGS = {
         "sync_workfile_version": False
     },
     "CollectFbxAnimation": {
-        "enabled": False
+        "enabled": False,
+        "optional": True,
+        "active": True
     },
     "CollectFbxCamera": {
-        "enabled": False
+        "enabled": False,
+        "optional": True,
+        "active": True
+    },
+    "CollectFbxModel": {
+        "enabled": False,
+        "optional": False,
+        "active": True
     },
     "CollectGLTF": {
         "enabled": False
+    },
+    "CollectMayaUsdFilterProperties": {
+        "enabled": False,
+        "default_filter": ""
     },
     "ValidateInstanceInContext": {
         "enabled": True,
@@ -1273,17 +1318,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": False,
         "active": True
     },
-    "ValidateModelName": {
-        "enabled": False,
-        "database": True,
-        "material_file": {
-            "windows": "",
-            "darwin": "",
-            "linux": ""
-        },
-        "regex": "(.*)_(\\d)*_(?P<shader>.*)_(GEO)",
-        "top_level_regex": ".*_GRP"
-    },
     "ValidateModelContent": {
         "enabled": True,
         "optional": False,
@@ -1466,12 +1500,22 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": False,
         "active": True
     },
+    "ValidateAnimationProductTypePublish": {
+        "enabled": True,
+        "optional": False,
+        "active": True
+    },
     "ValidateRigControllersArnoldAttributes": {
         "enabled": True,
         "optional": False,
         "active": True
     },
     "ValidateSingleAssembly": {
+        "enabled": True,
+        "optional": False,
+        "active": True
+    },
+    "ValidateAnimatedRigContent": {
         "enabled": True,
         "optional": False,
         "active": True
@@ -1654,5 +1698,25 @@ DEFAULT_PUBLISH_SETTINGS = {
         "writeNormals": True,
         "writeUVSets": False,
         "writeVisibility": False
+    },
+    "ExtractAnimation": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
+    "ExtractMayaUsdModel": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
+    },
+    "ExtractMayaUsdPointcache": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
+    },
+    "ExtractMayaUsdAnim": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
     }
 }

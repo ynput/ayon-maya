@@ -1,3 +1,5 @@
+from collections import Counter
+
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
@@ -30,9 +32,26 @@ class ValidateUniqueNames(plugin.MayaInstancePlugin,
             list: Non-unique name transforms.
 
         """
+        # Check whether Maya's 'short name' includes a longer path than just
+        # the node name to check whether it's unique in the full scene.
+        non_unique_transforms_in_instance = [
+            tr for tr in cmds.ls(instance, type="transform")
+            if '|' in tr
+        ]
 
-        return [tr for tr in cmds.ls(instance, type="transform")
-                if '|' in tr]
+        # Only invalidate if the clash is within the current instance
+        count = Counter()
+        for transform in non_unique_transforms_in_instance:
+            short_name = transform.rsplit("|", 1)[-1]
+            count[short_name] += 1
+
+        invalid = []
+        for transform in non_unique_transforms_in_instance:
+            short_name = transform.rsplit("|", 1)[-1]
+            if count[short_name] >= 2:
+                invalid.append(transform)
+
+        return invalid
 
     def process(self, instance):
         """Process all the nodes in the instance "objectSet"""

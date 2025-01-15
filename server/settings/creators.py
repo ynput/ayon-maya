@@ -49,17 +49,15 @@ class CreateMultiverseLookModel(BaseSettingsModel):
 
 class BasicExportMeshModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
-    write_color_sets: bool = SettingsField(title="Write Color Sets")
     write_face_sets: bool = SettingsField(title="Write Face Sets")
     default_variants: list[str] = SettingsField(
         default_factory=list,
         title="Default Products"
     )
+    include_shaders: bool = SettingsField(title="Include Shaders")
 
 
 class CreateAnimationModel(BaseSettingsModel):
-    write_color_sets: bool = SettingsField(title="Write Color Sets")
-    write_face_sets: bool = SettingsField(title="Write Face Sets")
     include_parent_hierarchy: bool = SettingsField(
         title="Include Parent Hierarchy")
     include_user_defined_attributes: bool = SettingsField(
@@ -72,8 +70,6 @@ class CreateAnimationModel(BaseSettingsModel):
 
 class CreatePointCacheModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
-    write_color_sets: bool = SettingsField(title="Write Color Sets")
-    write_face_sets: bool = SettingsField(title="Write Face Sets")
     include_user_defined_attributes: bool = SettingsField(
         title="Include User Defined Attributes"
     )
@@ -138,6 +134,16 @@ class CreateMultishotLayout(BasicCreatorModel):
 
 
 class CreatorsModel(BaseSettingsModel):
+    use_entity_attributes_as_defaults: bool = SettingsField(
+        False,
+        title="Use current context entity attributes as frame range defaults",
+        description=(
+            "For frame range attributes on the created instances, use the "
+            "current context's task entity as the default value. When "
+            "disabled it will default to Maya's current timeline."
+        )
+    )
+
     CreateLook: CreateLookModel = SettingsField(
         default_factory=CreateLookModel,
         title="Create Look"
@@ -247,6 +253,7 @@ class CreatorsModel(BaseSettingsModel):
 
 
 DEFAULT_CREATORS_SETTINGS = {
+    "use_entity_attributes_as_defaults": False,
     "CreateLook": {
         "enabled": True,
         "make_tx": True,
@@ -287,8 +294,6 @@ DEFAULT_CREATORS_SETTINGS = {
         "publish_mip_map": True
     },
     "CreateAnimation": {
-        "write_color_sets": False,
-        "write_face_sets": False,
         "include_parent_hierarchy": False,
         "include_user_defined_attributes": False,
         "default_variants": [
@@ -297,18 +302,16 @@ DEFAULT_CREATORS_SETTINGS = {
     },
     "CreateModel": {
         "enabled": True,
-        "write_color_sets": False,
         "write_face_sets": True,
         "default_variants": [
             "Main",
             "Proxy",
             "Sculpt"
-        ]
+        ],
+        "include_shaders": False,
     },
     "CreatePointCache": {
         "enabled": True,
-        "write_color_sets": False,
-        "write_face_sets": False,
         "include_user_defined_attributes": False,
         "default_variants": [
             "Main"

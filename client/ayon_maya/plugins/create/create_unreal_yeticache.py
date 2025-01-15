@@ -24,7 +24,8 @@ class CreateUnrealYetiCache(plugin.MayaCreator):
         ]
 
         # Add animation data without step and handles
-        defs.extend(lib.collect_animation_defs())
+        defs.extend(lib.collect_animation_defs(
+            create_context=self.create_context))
         remove = {"step", "handleStart", "handleEnd"}
         defs = [attr_def for attr_def in defs if attr_def.key not in remove]
 

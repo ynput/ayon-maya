@@ -486,8 +486,12 @@ class CollectLook(plugin.MayaInstancePlugin):
             dict
 
         """
-
         node, components = (member.rsplit(".", 1) + [None])[:2]
+        if components and not cmds.objectType(node, isAType="shape"):
+            # Components are always on shapes. When only a single shape is
+            # parented under a transform Maya returns it as e.g. `cube.f[0:4]`
+            # instead of `cubeShape.f[0:4]` so we expand that to the shape
+            node = cmds.listRelatives(node, shapes=True, fullPath=True)[0]
 
         # Only include valid members of the instance
         if node not in instance_members:
@@ -545,9 +549,24 @@ class CollectLook(plugin.MayaInstancePlugin):
                     self.log.warning("Attribute '{}' is mixed-type and is "
                                      "not supported yet.".format(attribute))
                     continue
-                if cmds.getAttr(attribute, type=True) == "message":
+
+                attribute_type = cmds.getAttr(attribute, type=True)
+                if attribute_type == "message":
                     continue
-                node_attributes[attr] = cmds.getAttr(attribute, asString=True)
+
+                # Maya has a tendency to return string attribute values as
+                # `None` if it is an empty string and the attribute has never
+                # been set but is still at default value.
+                value = cmds.getAttr(attribute, asString=True)
+                if value is None:
+                    # If the attribute type is `string` we will convert it
+                    # to enforce an empty string value
+                    if attribute_type == "string":
+                        value = ""
+                    else:
+                        continue
+
+                node_attributes[attr] = value
             # Only include if there are any properties we care about
             if not node_attributes:
                 continue

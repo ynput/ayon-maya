@@ -66,7 +66,7 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
 
         # Whether to include all nodes in the instance (including those from
         # history) or only use the exact set members
-        members_only = instance.data.get("exactSetMembersOnly", False)
+        members_only = instance.data.get("exactSetMembersOnly", True)
         if members_only:
             members = instance.data.get("setMembers", list())
             if not members:
@@ -75,11 +75,19 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
         else:
             members = instance[:]
 
-        selection = members
+        # For some families, like `layout` we collect the containers so we
+        # maintain the containers of the members in the resulting product.
+        # However, if `exactSetMembersOnly` is true (which it is for layouts)
+        # searching the exact set members for containers doesn't make much
+        # sense. We must always search the full hierarchy to actually find
+        # the relevant containers
+        selection = list(members)  # make a copy to not affect input list
         if set(self.add_for_families).intersection(
                 set(instance.data.get("families", []))) or \
                 instance.data.get("productType") in self.add_for_families:
-            selection += self._get_loaded_containers(members)
+            containers = self._get_loaded_containers(instance[:])
+            self.log.debug(f"Collected containers: {containers}")
+            selection.extend(containers)
 
         # Perform extraction
         self.log.debug("Performing extraction ...")
@@ -116,7 +124,7 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
 
     @staticmethod
     def _get_loaded_containers(members):
-        # type: (list) -> list
+        # type: (list[str]) -> list[str]
         refs_to_include = {
             cmds.referenceQuery(node, referenceNode=True)
             for node in members
@@ -140,7 +148,7 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
             }:
                 continue
 
-            set_content = set(cmds.sets(obj_set, query=True))
+            set_content = set(cmds.sets(obj_set, query=True) or [])
             if set_content.intersection(members_with_refs):
                 loaded_containers.append(obj_set)
 

@@ -11,10 +11,11 @@ from ayon_core.lib import (
     UISeparatorDef,
 )
 from ayon_core.pipeline import KnownPublishError
-from ayon_core.pipeline.publish import AYONPyblishPluginMixin
+from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
 from ayon_maya.api.alembic import extract_alembic
 from ayon_maya.api.lib import (
     get_all_children,
+    get_highest_in_hierarchy,
     iter_visible_nodes_in_range,
     maintained_selection,
     suspended_refresh,
@@ -24,7 +25,8 @@ from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
+class ExtractAlembic(plugin.MayaExtractorPlugin,
+                     OptionalPyblishPluginMixin):
     """Produce an alembic of just point positions and normals.
 
     Positions and normals, uvs, creases are preserved, but nothing more,
@@ -38,7 +40,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
     hosts = ["maya"]
     families = ["pointcache", "model", "vrayproxy.alembic"]
     targets = ["local", "remote"]
-
+    optional = False
     # From settings
     attr = []
     attrPrefix = []
@@ -71,6 +73,9 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
     writeVisibility = False
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
+
         if instance.data.get("farm"):
             self.log.debug("Should be processed on farm, skipping.")
             return
@@ -125,7 +130,10 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
             # Set the root nodes if we don't want to include parents
             # The roots are to be considered the ones that are the actual
             # direct members of the set
-            root = roots
+            # We ignore members that are children of other members to avoid
+            # the parenting / ancestor relationship error on export and assume
+            # the user intended to export starting at the top of the two.
+            root = get_highest_in_hierarchy(roots)
 
         kwargs = {
             "file": path,
@@ -207,14 +215,36 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
                 iter_visible_nodes_in_range(nodes, start=start, end=end)
             )
 
-        shapes = self.get_members_shapes(instance)
+        # Our logic is that `preroll` means:
+        # - True: include a preroll from `preRollStartFrame` to the start
+        #  frame that is not included in the exported file. Just 'roll up'
+        #  the export from there.
+        # - False: do not roll up from `preRollStartFrame`.
+        # `AbcExport` however approaches this very differently.
+        # A call to `AbcExport` allows to export multiple "jobs" of frame
+        # ranges in one go. Using `-preroll` argument there means: this one
+        # job in the full list of jobs SKIP writing these frames into the
+        # Alembic. In short, marking that job as just preroll.
+        # Then additionally, separate from `-preroll` the `AbcExport` command
+        # allows to supply `preRollStartFrame` which, when not None, means
+        # always RUN UP from that start frame. Since our `preRollStartFrame`
+        # is always an integer attribute we will convert the attributes so
+        # they behave like how we intended them initially
+        if kwargs["preRoll"]:
+            # Never mark `preRoll` as True because it would basically end up
+            # writing no samples at all. We just use this to leave
+            # `preRollStartFrame` as a number value.
+            kwargs["preRoll"] = False
+        else:
+            kwargs["preRollStartFrame"] = None
 
         suspend = not instance.data.get("refresh", False)
         with contextlib.ExitStack() as stack:
             stack.enter_context(suspended_refresh(suspend=suspend))
             stack.enter_context(maintained_selection())
             if instance.data.get("writeFaceSets", True):
-                stack.enter_context(force_shader_assignments_to_faces(shapes))
+                meshes = cmds.ls(nodes, type="mesh", long=True)
+                stack.enter_context(force_shader_assignments_to_faces(meshes))
             cmds.select(nodes, noExpand=True)
             self.log.debug(
                 "Running `extract_alembic` with the keyword arguments: "
@@ -267,14 +297,11 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
     def get_members_and_roots(self, instance):
         return instance[:], instance.data.get("setMembers")
 
-    def get_members_shapes(self, instance):
-        nodes = list(instance[:])
-        return cmds.ls(nodes, type=("mesh", "nurbsCurve"), long=True)
-
     @classmethod
     def get_attribute_defs(cls):
+        defs = super(ExtractAlembic, cls).get_attribute_defs()
         if not cls.overrides:
-            return []
+            return defs
 
         override_defs = OrderedDict({
             "eulerFilter": BoolDef(
@@ -492,8 +519,6 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
             )
         })
 
-        defs = super(ExtractAlembic, cls).get_attribute_defs()
-
         defs.extend([
             UISeparatorDef("sep_alembic_options"),
             UILabelDef("Alembic Options"),
@@ -514,9 +539,11 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
         return defs
 
 
-class ExtractAnimation(ExtractAlembic):
+class ExtractAnimation(ExtractAlembic,
+                       OptionalPyblishPluginMixin):
     label = "Extract Animation (Alembic)"
     families = ["animation"]
+    optional = False
 
     def get_members_and_roots(self, instance):
         # Collect the out set nodes

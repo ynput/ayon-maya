@@ -309,7 +309,11 @@ class FileNodeLoader(plugin.Loader):
         # with our own data
         tokens = {
             "frame": "<f>",
-            "udim": "<UDIM>"
+            # We do not enforce the UDIM token in the filepath because it
+            # generates the issue that Maya does not detect the file correctly
+            # in e.g. the File Path Editor. Instead, we set the regular
+            # filepath and allow Maya to 'compute' the UDIM token.
+            # "udim": "<UDIM>"
         }
         has_tokens = False
         repre_context = representation["context"]

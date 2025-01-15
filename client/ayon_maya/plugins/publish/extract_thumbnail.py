@@ -2,6 +2,8 @@ import glob
 import os
 import tempfile
 
+import pyblish.api
+
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 
@@ -13,7 +15,7 @@ class ExtractThumbnail(plugin.MayaExtractorPlugin):
     capture.
 
     """
-
+    order = pyblish.api.ExtractorOrder - 0.3
     label = "Thumbnail"
     families = ["review"]
 
@@ -72,7 +74,7 @@ class ExtractThumbnail(plugin.MayaExtractorPlugin):
 
         representation = {
             "name": "thumbnail",
-            "ext": "jpg",
+            "ext": os.path.splitext(thumbnail)[-1].lstrip(".").lower(),
             "files": thumbnail,
             "stagingDir": dst_staging,
             "thumbnail": True
