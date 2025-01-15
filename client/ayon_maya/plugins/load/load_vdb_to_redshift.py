@@ -9,7 +9,7 @@ from ayon_maya.api import plugin, lib
 from ayon_maya.api.plugin import get_load_color_for_product_type
 from ayon_maya.api.pipeline import containerise
 
-from maya import cmds
+from maya import cmds, mel
 
 
 class LoadVDBtoRedShift(plugin.Loader):
@@ -154,6 +154,13 @@ class LoadVDBtoRedShift(plugin.Loader):
         # Set file path
         cmds.setAttr(grid_node + ".fileName", path, type="string")
 
+        # Force refresh with the use frame extension
+        # This makes sure we can directly retrieve the `.gridNames` attribute
+        # and avoids potential 'Failed to find volume file' warnings that
+        # appear once on load whe Maya has not yet initialized use frame
+        # extension behavior correctly on load yet.
+        mel.eval(f'checkUseFrameExtension("{grid_node}")')
+
     def _create_default_redshift_volume_shader(
             self, volume_shape: str) -> List[str]:
         """Create RedshiftStandardVolume shader and assign it to the volume"""
@@ -168,16 +175,16 @@ class LoadVDBtoRedShift(plugin.Loader):
 
         # Set default density name
         channel = "density"
-        # TODO: Unfortunately these grid names are not evaluated, even if
-        #  we force a refresh.
-        # grid_names: List[str] = cmds.getAttr(f"{volume_shape}.gridNames")
-        # if grid_names and channel not in grid_names:
-        #     channel = grid_names[0]
+        grid_names: List[str] = cmds.getAttr(f"{volume_shape}.gridNames")
+        if grid_names and channel not in grid_names:
+            channel = grid_names[0]
         cmds.setAttr("{}.density_name".format(material),
                      channel, type="string")
 
         # Assign shader to the volume shape
         cmds.sets(volume_shape, forceElement=sg)
 
-        self.log.info(f"Created default RedshiftStandardVolume: {material}")
+        self.log.info(
+            f"Created RedshiftStandardVolume: '{material}'"
+            f" using channel '{channel}'")
         return [material, sg]
