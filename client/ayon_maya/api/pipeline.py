@@ -406,9 +406,10 @@ def _ls():
 
     # Find all nodes by attribute existence
     for node_attr in cmds.ls(
-            ["*.id", "*.AYON_id"],
-            recursive=True,
-            long=True):
+        ["*.id", "*.AYON_id"],
+        recursive=True,
+        long=True
+    ):
         try:
             value = cmds.getAttr(node_attr)
         except RuntimeError:
