@@ -56,6 +56,9 @@ class GpuCacheLoader(plugin.Loader):
         return cache
 
     def update(self, container, context):
+        if self._is_legacy_container(container):
+            return self._legacy_update(container, context)
+
         cache = container["objectName"]
 
         # Update the cache
@@ -71,6 +74,9 @@ class GpuCacheLoader(plugin.Loader):
         self.update(container, context)
 
     def remove(self, container):
+        if self._is_legacy_container(container):
+            return self._legacy_remove(container)
+
         # Remove shape and parent transforms
         # If the shape was instanced, remove each transform
         cache = container['objectName']
@@ -79,3 +85,40 @@ class GpuCacheLoader(plugin.Loader):
 
         members = transforms + [cache]
         cmds.delete(members)
+
+    def _is_legacy_container(self, container):
+        """The GPU caches used to be containerized in Maya as objectSets
+        like most other Maya loaders - however, this has the overhead of adding
+        redundant bloat to the Maya scene and disallowed the loaded gpuCaches
+        to be regularly duplicated.
+
+        As such, any container that is an objectSet is considered legacy
+        """
+        return cmds.nodeType(container["objectName"]) == "objectSet"
+
+    def _legacy_update(self, container, context):
+        path = self.filepath_from_context(context)
+
+        # Update the cache
+        members = cmds.sets(container['objectName'], query=True)
+        caches = cmds.ls(members, type="gpuCache", long=True)
+
+        assert len(caches) == 1, "This is a bug"
+        for cache in caches:
+            cmds.setAttr(cache + ".cacheFileName", path, type="string")
+
+        cmds.setAttr(container["objectName"] + ".representation",
+                     context["representation"]["id"],
+                     type="string")
+
+    def _legacy_remove(self, container):
+        members = cmds.sets(container['objectName'], query=True)
+        cmds.lockNode(members, lock=False)
+        cmds.delete([container['objectName']] + members)
+
+        # Clean up the namespace
+        try:
+            cmds.namespace(removeNamespace=container['namespace'],
+                           deleteNamespaceContent=True)
+        except RuntimeError:
+            pass
