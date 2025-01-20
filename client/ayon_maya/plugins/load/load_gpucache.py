@@ -1,8 +1,6 @@
 import maya.cmds as cmds
-from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
-from ayon_maya.api.lib import unique_namespace
-from ayon_maya.api.pipeline import containerise
+from ayon_maya.api.pipeline import imprint_container
 from ayon_maya.api import plugin
 from ayon_maya.api.plugin import get_load_color_for_product_type
 
@@ -20,82 +18,64 @@ class GpuCacheLoader(plugin.Loader):
 
     def load(self, context, name, namespace, data):
         folder_name = context["folder"]["name"]
-        namespace = namespace or unique_namespace(
-            folder_name + "_",
-            prefix="_" if folder_name[0].isdigit() else "",
-            suffix="_",
-        )
 
         cmds.loadPlugin("gpuCache", quiet=True)
 
-        # Root group
-        label = "{}:{}".format(namespace, name)
-        root = cmds.group(name=label, empty=True)
+        # Create GPU cache
+        label = "{}_{}".format(folder_name, name)
+        transform_name = label + "_#"
+        transform = cmds.createNode("transform", name=transform_name)
+        cache = cmds.createNode("gpuCache",
+                                parent=transform,
+                                name="{0}Shape".format(transform_name))
 
+        # Colorize root transform
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
         color = get_load_color_for_product_type("model", settings)
         if color is not None:
             red, green, blue = color
-            cmds.setAttr(root + ".useOutlinerColor", 1)
+            cmds.setAttr(transform + ".useOutlinerColor", 1)
             cmds.setAttr(
-                root + ".outlinerColor", red, green, blue
+                transform + ".outlinerColor", red, green, blue
             )
-
-        # Create transform with shape
-        transform_name = label + "_GPU"
-        transform = cmds.createNode("transform", name=transform_name,
-                                    parent=root)
-        cache = cmds.createNode("gpuCache",
-                                parent=transform,
-                                name="{0}Shape".format(transform_name))
 
         # Set the cache filepath
         path = self.filepath_from_context(context)
         cmds.setAttr(cache + '.cacheFileName', path, type="string")
         cmds.setAttr(cache + '.cacheGeomPath', "|", type="string")    # root
 
-        # Lock parenting of the transform and cache
-        cmds.lockNode([transform, cache], lock=True)
-
-        nodes = [root, transform, cache]
-        self[:] = nodes
-
-        return containerise(
+        imprint_container(
+            cache,
             name=name,
             namespace=namespace,
-            nodes=nodes,
             context=context,
-            loader=self.__class__.__name__)
+            loader=self.__class__.__name__,
+            prefix="AYON_")
+
+        return cache
 
     def update(self, container, context):
-        repre_entity = context["representation"]
-        path = get_representation_path(repre_entity)
+        cache = container["objectName"]
 
         # Update the cache
-        members = cmds.sets(container['objectName'], query=True)
-        caches = cmds.ls(members, type="gpuCache", long=True)
+        path = self.filepath_from_context(context)
+        cmds.setAttr(cache + ".cacheFileName", path, type="string")
 
-        assert len(caches) == 1, "This is a bug"
-
-        for cache in caches:
-            cmds.setAttr(cache + ".cacheFileName", path, type="string")
-
-        cmds.setAttr(container["objectName"] + ".representation",
-                     repre_entity["id"],
+        # Update representation id
+        cmds.setAttr(cache + ".AYON_representation",
+                     context["representation"]["id"],
                      type="string")
 
     def switch(self, container, context):
         self.update(container, context)
 
     def remove(self, container):
-        members = cmds.sets(container['objectName'], query=True)
-        cmds.lockNode(members, lock=False)
-        cmds.delete([container['objectName']] + members)
+        # Remove shape and parent transforms
+        # If the shape was instanced, remove each transform
+        cache = container['objectName']
+        paths = cmds.ls(cache, allPaths=True, long=True)
+        transforms = cmds.listRelatives(paths, parent=True, fullPath=True)
 
-        # Clean up the namespace
-        try:
-            cmds.namespace(removeNamespace=container['namespace'],
-                           deleteNamespaceContent=True)
-        except RuntimeError:
-            pass
+        members = transforms + [cache]
+        cmds.delete(members)

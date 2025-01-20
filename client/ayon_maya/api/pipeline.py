@@ -373,6 +373,12 @@ def parse_container(container):
     """
     data = lib.read(container)
 
+    # Allow `AYON_` prefixed containers, strip the prefix
+    if "id" not in data and "AYON_id" in data:
+        for key in list(data.keys()):
+            if key.startswith("AYON_"):
+                data[key[5:]] = data.pop(key)
+
     # Backwards compatibility pre-schemas for containers
     data["schema"] = data.get("schema", "openpype:container-1.0")
 
@@ -392,36 +398,25 @@ def _ls():
         str: AYON container node name (objectSet)
 
     """
-
-    def _maya_iterate(iterator):
-        """Helper to iterate a maya iterator"""
-        while not iterator.isDone():
-            yield iterator.thisNode()
-            iterator.next()
-
     ids = {
         AYON_CONTAINER_ID,
         # Backwards compatibility
         AVALON_CONTAINER_ID
     }
 
-    # Iterate over all 'set' nodes in the scene to detect whether
-    # they have the ayon container ".id" attribute.
-    fn_dep = om.MFnDependencyNode()
-    iterator = om.MItDependencyNodes(om.MFn.kSet)
-    for mobject in _maya_iterate(iterator):
-        if mobject.apiTypeStr != "kSet":
-            # Only match by exact type
+    # Find all nodes by attribute existence
+    for node_attr in cmds.ls(
+            ["*.id", "*.AYON_id"],
+            recursive=True,
+            long=True):
+        try:
+            value = cmds.getAttr(node_attr)
+        except RuntimeError:
+            # Not a gettable attribute
             continue
 
-        fn_dep.setObject(mobject)
-        if not fn_dep.hasAttribute("id"):
-            continue
-
-        plug = fn_dep.findPlug("id", True)
-        value = plug.asString()
         if value in ids:
-            yield fn_dep.name()
+            yield node_attr.split(".", 1)[0]
 
 
 def ls():
@@ -438,6 +433,30 @@ def ls():
     container_names = _ls()
     for container in sorted(container_names):
         yield parse_container(container)
+
+
+def imprint_container(container,
+                      name,
+                      namespace,
+                      context,
+                      loader=None,
+                      prefix=None):
+    data = [
+        ("schema", "openpype:container-2.0"),
+        ("id", AVALON_CONTAINER_ID),
+        ("name", name),
+        ("namespace", namespace),
+        ("loader", loader),
+        ("representation", context["representation"]["id"]),
+        ("project_name", context["project"]["name"])
+    ]
+    for key, value in data:
+
+        if prefix is not None:
+            key = prefix + key
+
+        cmds.addAttr(container, longName=key, dataType="string")
+        cmds.setAttr(container + "." + key, str(value), type="string")
 
 
 @lib.undo_chunk()
@@ -465,19 +484,7 @@ def containerise(name,
 
     """
     container = cmds.sets(nodes, name="%s_%s_%s" % (namespace, name, suffix))
-
-    data = [
-        ("schema", "openpype:container-2.0"),
-        ("id", AVALON_CONTAINER_ID),
-        ("name", name),
-        ("namespace", namespace),
-        ("loader", loader),
-        ("representation", context["representation"]["id"]),
-        ("project_name", context["project"]["name"])
-    ]
-    for key, value in data:
-        cmds.addAttr(container, longName=key, dataType="string")
-        cmds.setAttr(container + "." + key, str(value), type="string")
+    imprint_container(container, namespace, context, loader)
 
     main_container = cmds.ls(AVALON_CONTAINERS, type="objectSet")
     if not main_container:
