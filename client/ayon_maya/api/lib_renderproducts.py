@@ -227,7 +227,7 @@ class ARenderProducts:
         This should return a list of RenderProducts.
 
         Returns:
-            list: List of RenderProduct
+            list[RenderProduct]: List of render products.
 
         """
 
@@ -242,7 +242,7 @@ class ARenderProducts:
             camera (str): Maya camera name.
 
         Returns:
-            (str): sanitized camera name
+            str: sanitized camera name
 
         Example:
             >>> ARenderProducts.sanizite_camera_name('test:camera_01')
@@ -292,7 +292,7 @@ class ARenderProducts:
             attribute (str): name of attribute to be looked up.
 
         Returns:
-            Attribute value
+            Any: Attribute value
 
         """
         return self._get_attr("defaultRenderGlobals", attribute)
@@ -443,7 +443,7 @@ class ARenderProducts:
         return expected_files
 
     def get_files(self, product):
-        # type: (RenderProduct) -> list
+        # type: (RenderProduct) -> list[str]
         """Return list of expected files.
 
         It will translate render token strings  ('<RenderPass>', etc.) to
@@ -456,7 +456,7 @@ class ARenderProducts:
                 generation.
 
         Returns:
-            List of files
+            list[str]: List of files
 
         """
         return self._generate_file_sequence(
@@ -529,7 +529,7 @@ class RenderProductsArnold(ARenderProducts):
 
     def get_renderer_prefix(self):
 
-        prefix = super(RenderProductsArnold, self).get_renderer_prefix()
+        prefix = super().get_renderer_prefix()
         merge_aovs = self._get_attr("defaultArnoldDriver.mergeAOVs")
         if not merge_aovs and "<renderpass>" not in prefix.lower():
             # When Merge AOVs is disabled and <renderpass> token not present
@@ -806,7 +806,7 @@ class RenderProductsVray(ARenderProducts):
             :func:`ARenderProducts.get_renderer_prefix()`
 
         """
-        prefix = super(RenderProductsVray, self).get_renderer_prefix()
+        prefix = super().get_renderer_prefix()
         if self.multipart:
             return prefix
         aov_separator = self._get_aov_separator()
@@ -823,7 +823,7 @@ class RenderProductsVray(ARenderProducts):
     def _get_layer_data(self):
         # type: () -> LayerMetadata
         """Override to get vray specific extension."""
-        layer_data = super(RenderProductsVray, self)._get_layer_data()
+        layer_data = super()._get_layer_data()
 
         default_ext = self._get_attr("vraySettings.imageFormatStr")
         if default_ext in ["exr (multichannel)", "exr (deep)"]:
@@ -1066,9 +1066,9 @@ class RenderProductsRedshift(ARenderProducts):
                 "<Scene>/<RenderLayer>/<RenderLayer>"
             )
 
-        return super(RenderProductsRedshift, self).get_files(product)
+        return super().get_files(product)
 
-    def get_multipart(self):
+    def get_multipart(self) -> bool:
         # For Redshift we don't directly return upon forcing multilayer
         # due to some AOVs still being written into separate files,
         # like Cryptomatte.
@@ -1082,7 +1082,7 @@ class RenderProductsRedshift(ARenderProducts):
 
         return multipart
 
-    def get_renderer_prefix(self):
+    def get_renderer_prefix(self) -> str:
         """Get image prefix for Redshift.
 
         This overrides :func:`ARenderProducts.get_renderer_prefix()` as
@@ -1093,26 +1093,25 @@ class RenderProductsRedshift(ARenderProducts):
             :func:`ARenderProducts.get_renderer_prefix()`
 
         """
-        prefix = super(RenderProductsRedshift, self).get_renderer_prefix()
+        prefix = super().get_renderer_prefix()
         if self.multipart:
             return prefix
         separator = self.extract_separator(prefix)
         prefix = "{}{}<aov>".format(prefix, separator or "_")
         return prefix
 
-    def get_render_products(self):
-        """Get all AOVs.
+    def get_render_products(self) -> "list[RenderProduct]":
+        """Get all render products.
 
         See Also:
             :func:`ARenderProducts.get_render_products()`
 
         """
-
         if not cmds.ls("redshiftOptions", type="RedshiftOptions"):
             # this occurs when Render Setting windows was not opened yet. In
             # such case there are no Redshift options created so query for AOVs
             # will fail. We terminate here as there are no AOVs specified then.
-            # This state will most probably fail later on some Validator
+            # This state will most probably fail later on some validation
             # anyway.
             return []
 
@@ -1122,119 +1121,160 @@ class RenderProductsRedshift(ARenderProducts):
         ]
 
         # Get Redshift Extension from image format
-        image_format = self._get_attr("redshiftOptions.imageFormat")  # integer
-        ext = mel.eval("redshiftGetImageExtension(%i)" % image_format)
+        image_format: int = self._get_attr("redshiftOptions.imageFormat")
+        ext: str = mel.eval("redshiftGetImageExtension(%i)" % image_format)
 
-        use_ref_aovs = self.render_instance.data.get(
+        use_ref_aovs: bool = self.render_instance.data.get(
             "useReferencedAovs", False) or False
 
+        products: "list[RenderProduct]" = []
+        colorspace = lib.get_color_management_output_transform()
+
+        # Main layer is always included
+        for camera in cameras:
+            products.append(
+                RenderProduct(productName="",
+                              ext=ext,
+                              multipart=self.multipart,
+                              camera=camera,
+                              colorspace=colorspace))
+
+        # AOVs can be globally disabled
+        global_aov_enabled = bool(self._get_attr(
+            "redshiftOptions.aovGlobalEnableMode", as_string=False))
+        if not global_aov_enabled:
+            return products
+
+        # Process all Redshift AOVs
         aovs = cmds.ls(type="RedshiftAOV")
         if not use_ref_aovs:
             ref_aovs = cmds.ls(type="RedshiftAOV", referencedNodes=True)
             aovs = list(set(aovs) - set(ref_aovs))
 
-        products = []
-        global_aov_enabled = bool(
-            self._get_attr("redshiftOptions.aovGlobalEnableMode", as_string=False)
-        )
-        colorspace = lib.get_color_management_output_transform()
-        if not global_aov_enabled:
-            # only beauty output
-            for camera in cameras:
-                products.insert(0,
-                                RenderProduct(productName="",
-                                              ext=ext,
-                                              multipart=self.multipart,
-                                              camera=camera,
-                                              colorspace=colorspace))
-            return products
-
-        light_groups_enabled = False
-        has_beauty_aov = False
-
         for aov in aovs:
-            enabled = self._get_attr(aov, "enabled")
-            if not enabled:
-                continue
+            aov_products = self._get_aov_render_products(
+                aov, cameras, ext, colorspace)
+            products.extend(aov_products)
 
-            aov_type = self._get_attr(aov, "aovType")
-            if self.multipart and aov_type not in self.unmerged_aovs:
-                continue
+        return products
 
-            # Any AOVs that still get processed, like Cryptomatte
-            # by themselves are not multipart files.
+    def _get_aov_render_products(
+            self, aov, cameras, ext, colorspace) -> "list[RenderProduct]":
+        """Process a single Redshift AOV.
 
-            # Redshift skips rendering of masterlayer without AOV suffix
-            # when a Beauty AOV is rendered. It overrides the main layer.
-            if aov_type == "Beauty":
-                has_beauty_aov = True
+        Return all output render products for an AOV, considering light groups.
 
-            aov_name = self._get_attr(aov, "name")
+        For example, assuming:
+            - renderlayer name = "mylayer"
+            - AOV = BeautyAux
+            - lightgroups = key, rim, fill
 
-            # Support light Groups
-            light_groups = []
-            if self._get_attr(aov, "supportsLightGroups"):
-                all_light_groups = self._get_attr(aov, "allLightGroups")
-                if all_light_groups:
-                    # All light groups is enabled
-                    light_groups = self._get_redshift_light_groups()
-                else:
-                    value = self._get_attr(aov, "lightGroupList")
-                    # note: string value can return None when never set
-                    if value:
-                        selected_light_groups = value.strip().split()
-                        light_groups = selected_light_groups
+        Output for lightgroups disabled:
+            - mylayer.exr
+            - mylayer.BeautyAux.exr
 
-                for light_group in light_groups:
-                    aov_light_group_name = "{}_{}".format(aov_name,
-                                                          light_group)
-                    for camera in cameras:
-                        product = RenderProduct(
-                            productName=aov_light_group_name,
-                            aov=aov_name,
-                            ext=ext,
-                            multipart=False,
-                            camera=camera,
-                            driver=aov,
-                            colorspace=colorspace)
-                        products.append(product)
+        Output for lightgroups enabled, option "all"
+            - mylayer.exr
+            - mylayer.BeautyAux_key.exr
+            - mylayer.BeautxAux_rim.exr
+            - mylayer.BeautyAux_fill.exr
+
+        Output for lightgroups enabled, option "remainder"
+        (all other lights that are not in a lightgroup)
+            - mylayer.exr
+            - mylayer.BeautyAux_key.exr
+            - mylayer.BeautyAux_rim.exr
+            - mylayer.BeautyAux_fill.exr
+            - mylayer.BeautyAux_other.exr
+
+        For all other AOVs that support light groups, you will get also the
+        whole AOV itself, i.e.
+            - mylayer.exr
+            - mylayer.DiffuseLighting.exr
+            - mylayer.DiffuseLighting_key.exr
+            - mylayer.DiffuseLighting_rim.exr
+            - mylayer.DiffuseLighting_fill.exr
+
+        See Also:
+            https://redshift.maxon.net/topic/51939
+
+        """
+        # TODO: Many Redshift AOV types are not allowed to be included more
+        #  than once. Redshift will then ignore ever AOV of the same type
+        #  after the first one. We should ignore those too. However, some types
+        #  do get rendered if present multiple times, like `ID`, `Beauty` and
+        #  `Cryptomatte`.
+        enabled = self._get_attr(aov, "enabled")
+        if not enabled:
+            return []
+
+        aov_type = self._get_attr(aov, "aovType")
+        if self.multipart and aov_type not in self.unmerged_aovs:
+            return []
+
+        # Any AOVs that still get processed, like Cryptomatte
+        # by themselves are not multipart files.
+        aov_name = self._get_attr(aov, "name")
+
+        # Support light groups for AOVs
+        products = []
+        if self._get_attr(aov, "supportsLightGroups"):
+            global_aov_off = 0        # Do not render main AOV
+            # global_aov_all = 1      # Render main AOV
+            global_aov_remainder = 2  # Render main AOV + `_other` light group
+
+            global_aov = self._get_attr(aov, "globalAov", as_string=False)
+            light_groups: "list[str]" = []
+            all_light_groups = self._get_attr(aov, "allLightGroups")
+            if all_light_groups:
+                # All light groups is enabled
+                light_groups = self._get_redshift_light_groups()
+            else:
+                value: str = self._get_attr(aov, "lightGroupList")
+                # note: string value can return None when never set
+                if value:
+                    selected_light_groups = value.strip().split()
+                    light_groups = selected_light_groups
+
+            if light_groups and global_aov == global_aov_remainder:
+                # Add the `_other` light group
+                light_groups.append("other")
+
+            for light_group in light_groups:
+                aov_light_group_name = "{}_{}".format(aov_name,
+                                                      light_group)
+                for camera in cameras:
+                    product = RenderProduct(
+                        productName=aov_light_group_name,
+                        aov=aov_name,
+                        ext=ext,
+                        multipart=False,
+                        camera=camera,
+                        driver=aov,
+                        colorspace=colorspace)
+                    products.append(product)
 
             if light_groups:
-                light_groups_enabled = True
+                # No global AOV product for this AOV if it had light groups
 
-            # Redshift AOV Light Select always renders the global AOV
-            # even when light groups are present so we don't need to
-            # exclude it when light groups are active
-            for camera in cameras:
-                product = RenderProduct(productName=aov_name,
-                                        aov=aov_name,
-                                        ext=ext,
-                                        multipart=False,
-                                        camera=camera,
-                                        driver=aov,
-                                        colorspace=colorspace)
-                products.append(product)
+                if global_aov == global_aov_off or aov_type == "Beauty":
+                    return products
 
-        # When a Beauty AOV is added manually, it will be rendered as
-        # 'Beauty_other' in file name and "standard" beauty will have
-        # 'Beauty' in its name. When disabled, standard output will be
-        # without `Beauty`. Except when using light groups.
-        if light_groups_enabled:
-            return products
-
-        beauty_name = "BeautyAux" if has_beauty_aov else ""
+        # Include the global product for AOV (non-light group)
         for camera in cameras:
-            products.insert(0,
-                            RenderProduct(productName=beauty_name,
-                                          ext=ext,
-                                          multipart=self.multipart,
-                                          camera=camera,
-                                          colorspace=colorspace))
+            product = RenderProduct(productName=aov_name,
+                                    aov=aov_name,
+                                    ext=ext,
+                                    multipart=False,
+                                    camera=camera,
+                                    driver=aov,
+                                    colorspace=colorspace)
+            products.append(product)
 
         return products
 
     @staticmethod
-    def _get_redshift_light_groups():
+    def _get_redshift_light_groups() -> "list[str]":
         return sorted(mel.eval("redshiftAllAovLightGroups"))
 
 
@@ -1370,7 +1410,7 @@ class RenderProductsRenderman(ARenderProducts):
         """Get expected files.
 
         """
-        files = super(RenderProductsRenderman, self).get_files(product)
+        files = super().get_files(product)
 
         layer_data = self.layer_data
         new_files = []
