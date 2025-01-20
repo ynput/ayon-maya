@@ -7,7 +7,6 @@ import contextlib
 import shutil
 
 from maya import utils, cmds, OpenMaya
-import maya.api.OpenMaya as om
 
 import pyblish.api
 
