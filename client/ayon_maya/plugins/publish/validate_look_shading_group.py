@@ -66,7 +66,6 @@ class ValidateShadingEngine(plugin.MayaInstancePlugin,
             name = material + "SG"
             if shading_engine != name:
                 # Ignore referenced or read-only shading engines
-
                 if cmds.referenceQuery(shading_engine,
                                        isNodeReferenced=True):
                     cls.log.warning(
