@@ -47,8 +47,7 @@ class ValidateNodeIDs(plugin.MayaInstancePlugin):
             )
             raise PublishXmlValidationError(
                 plugin=self,
-                message="Nodes found without IDs:\n{}".format(names),
-                formatting_data={"nodes": names}
+                message="Nodes found without IDs:\n{}".format(names)
             )
 
     @classmethod
