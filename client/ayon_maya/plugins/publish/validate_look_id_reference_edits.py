@@ -93,7 +93,7 @@ class ValidateLookIdReferenceEdits(plugin.MayaInstancePlugin):
         for ref, nodes in references.items():
             for node in nodes:
 
-                # Somehow this only works if you run the the removal
+                # Somehow this only works if you run the removal
                 # per edit command.
                 for command in ["addAttr",
                                 "connectAttr",
