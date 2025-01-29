@@ -53,10 +53,10 @@ class ValidateTransformNamingSuffix(plugin.MayaInstancePlugin,
     def get_table_for_invalid(cls):
         suffix_naming_table = json.loads(cls.SUFFIX_NAMING_TABLE)
         ss = [
-            " - <b>{}</b>: {}".format(k, ", ".join(v))
+            " - *{}*: {}".format(k, ", ".join(v))
             for k, v in suffix_naming_table.items()
         ]
-        return "<br>".join(ss)
+        return "\n".join(ss)
 
     @staticmethod
     def is_valid_name(
@@ -133,13 +133,12 @@ class ValidateTransformNamingSuffix(plugin.MayaInstancePlugin,
         if invalid:
             valid = self.get_table_for_invalid()
 
-            names = "<br>".join(
+            names = "\n".join(
                 " - {}".format(node) for node in invalid
             )
-            valid = valid.replace("\n", "<br>")
 
             raise PublishValidationError(
                 title="Invalid naming suffix",
-                message="Valid suffixes are:<br>{0}<br><br>"
-                        "Incorrectly named geometry transforms:<br>{1}"
+                message="Valid suffixes are:\n{0}\n\n"
+                        "Incorrectly named geometry transforms:\n{1}"
                         "".format(valid, names))
