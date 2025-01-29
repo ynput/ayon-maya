@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """Plugin for validating naming conventions."""
-import copy
-import inspect
 import json
 
 import ayon_maya.api.action
