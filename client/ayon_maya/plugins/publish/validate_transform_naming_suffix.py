@@ -50,13 +50,19 @@ class ValidateTransformNamingSuffix(plugin.MayaInstancePlugin,
     ALLOW_IF_NOT_IN_SUFFIX_TABLE = True
 
     @classmethod
-    def get_table_for_invalid(cls):
+    def get_table_for_invalid(cls, markdown=False):
         suffix_naming_table = json.loads(cls.SUFFIX_NAMING_TABLE)
-        ss = [
-            " - <b>{}</b>: {}".format(k, ", ".join(v))
-            for k, v in suffix_naming_table.items()
-        ]
-        return "<br>".join(ss)
+        if markdown:
+            ss = [
+                "- **{}**: {}".format(k, ", ".join(v))
+                for k, v in suffix_naming_table.items()
+            ]
+        else:
+            ss = [
+                "- {}: {}".format(k, ", ".join(v))
+                for k, v in suffix_naming_table.items()
+            ]
+        return "\n".join(ss)
 
     @staticmethod
     def is_valid_name(
@@ -133,13 +139,24 @@ class ValidateTransformNamingSuffix(plugin.MayaInstancePlugin,
         if invalid:
             valid = self.get_table_for_invalid()
 
-            names = "<br>".join(
+            names = "\n".join(
                 " - {}".format(node) for node in invalid
             )
-            valid = valid.replace("\n", "<br>")
 
             raise PublishValidationError(
                 title="Invalid naming suffix",
-                message="Valid suffixes are:<br>{0}<br><br>"
-                        "Incorrectly named geometry transforms:<br>{1}"
-                        "".format(valid, names))
+                message="Valid suffixes are:\n{0}\n\n"
+                        "Incorrectly named geometry transforms:\n{1}"
+                        "".format(valid, names),
+                description=self.get_description())
+
+    def get_description(self) -> str:
+        """Get description for the plugin."""
+        table = self.get_table_for_invalid(markdown=True)
+        return (
+            "### Invalid naming suffix\n"
+            "Valid suffixes are:\n"
+            f"{table}\n"
+            "\n\\\n"  # force extra line breaks in the resulting markdown
+            "Use the *Select Invalid* action to identify the invalid nodes."
+        )
