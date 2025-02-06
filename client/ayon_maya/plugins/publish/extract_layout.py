@@ -5,7 +5,7 @@ import uuid
 from typing import List
 
 from ayon_api import get_representation_by_id
-from ayon_maya.api import plugin
+from ayon_maya.api import plugin, pipeline
 from ayon_maya.api.lib import get_highest_in_hierarchy, get_container_members
 from maya import cmds
 from maya.api import OpenMaya as om
@@ -80,7 +80,14 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                     grp_name = asset.split(':')[0]
             else:
                 grp_name = asset.split(':')[0]
+
             containers = cmds.ls("{}*_CON".format(grp_name))
+            containers = [
+                container for container in containers
+                # Make sure to include only valid containers
+                if pipeline.parse_container(container)
+            ]
+
             if len(containers) == 0:
                 self.log.warning("{} isn't from the loader".format(asset))
                 self.log.warning("It may not be properly loaded after published") # noqa
