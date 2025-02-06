@@ -1,3 +1,5 @@
+import os
+
 import ayon_api
 import pyblish.api
 from ayon_core.pipeline import KnownPublishError
@@ -166,5 +168,18 @@ class CollectReview(plugin.MayaInstancePlugin):
 
                     if start_audio <= end_frame and end_audio > start_frame:
                         audio_data.append(get_audio_node_data(node))
+
+            # Exclude audio data with filenames that can't be found with a
+            # warning to avoid a harder error on e.g. Extract Review
+            valid_audio_data = []
+            for audio in audio_data:
+                if not os.path.exists(audio["filename"]):
+                    self.log.warning(
+                        "Timeline audio file not found on disk: '{}'. "
+                        "Ignoring audio.".format(audio["filename"])
+                    )
+                    continue
+                valid_audio_data.append(audio)
+            audio_data = valid_audio_data
 
             instance.data["audio"] = audio_data
