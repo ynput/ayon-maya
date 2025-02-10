@@ -5,14 +5,13 @@ import json
 import logging
 import os
 import platform
-import sys
 import tempfile
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 
 import attr
 import pyblish.api
-import six
+
 from ayon_core.lib import (
     ToolNotFoundError,
     find_executable,
@@ -200,7 +199,7 @@ class MakeRSTexBin(TextureProcessor):
         except Exception:
             self.log.error("Texture .rstexbin conversion failed",
                            exc_info=True)
-            six.reraise(*sys.exc_info())
+            raise
 
         return TextureResult(
             path=destination,

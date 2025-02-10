@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 """Class for handling Render Settings."""
-import six
-import sys
-
 from ayon_core.lib import Logger
 from ayon_core.settings import get_project_settings
 
@@ -343,13 +340,10 @@ class RenderSettings(object):
             separators = [cmds.menuItem(i, query=True, label=True) for i in items]  # noqa: E501
             try:
                 sep_idx = separators.index(aov_separator)
-            except ValueError:
-                six.reraise(
-                    CreatorError,
-                    CreatorError(
-                        "AOV character {} not in {}".format(
-                            aov_separator, separators)),
-                    sys.exc_info()[2])
+            except ValueError as exc:
+                raise CreatorError(
+                    f"AOV character {aov_separator} not in {separators}"
+                ) from exc
 
             cmds.optionMenuGrp(MENU, edit=True, select=sep_idx + 1)
 
