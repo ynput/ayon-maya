@@ -8,7 +8,6 @@ instance.
 
 import contextlib
 import json
-import sys
 
 import maya.app.renderSetup.model.renderSetup as renderSetup
 from maya import cmds
