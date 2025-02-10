@@ -7,7 +7,7 @@ import os
 import platform
 import sys
 import tempfile
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from collections import OrderedDict
 
 import attr
@@ -93,8 +93,7 @@ def no_workspace_dir():
         os.rmdir(fake_workspace_dir)
 
 
-@six.add_metaclass(ABCMeta)
-class TextureProcessor:
+class TextureProcessor(ABC):
 
     extension = None
 

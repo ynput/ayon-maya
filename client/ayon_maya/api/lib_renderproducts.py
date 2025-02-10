@@ -39,9 +39,8 @@ Thanks:
 import logging
 import re
 import os
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
-import six
 import attr
 
 from . import lib
@@ -183,8 +182,7 @@ def get(layer, render_instance=None):
     return renderer(layer, render_instance)
 
 
-@six.add_metaclass(ABCMeta)
-class ARenderProducts:
+class ARenderProducts(ABC):
     """Abstract class with common code for all renderers.
 
     Attributes:
@@ -1453,7 +1451,7 @@ class RenderProductsMayaHardware(ARenderProducts):
                     "Could not find extension for {}".format(value)
                 )
 
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             extensions = {
                 extension["label"]: extension["extension"]
                 for extension in self.extensions

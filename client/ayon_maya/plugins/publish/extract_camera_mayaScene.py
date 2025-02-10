@@ -45,8 +45,7 @@ def grouper(iterable, n, fillvalue=None):
 
     """
     args = [iter(iterable)] * n
-    from six.moves import zip_longest
-    return zip_longest(fillvalue=fillvalue, *args)
+    return itertools.zip_longest(fillvalue=fillvalue, *args)
 
 
 def unlock(plug):
