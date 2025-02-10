@@ -1,14 +1,16 @@
 import math
 
-import ayon_maya.api.action
 import maya.api.OpenMaya as om
+from maya import cmds
+
 from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError,
     ValidateMeshOrder,
 )
+
+import ayon_maya.api.action
 from ayon_maya.api import plugin
-from maya import cmds
 
 
 def _as_report_list(values, prefix="- ", suffix="\n"):

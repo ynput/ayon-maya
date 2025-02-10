@@ -11,12 +11,13 @@ import json
 import sys
 
 import maya.app.renderSetup.model.renderSetup as renderSetup
+from maya import cmds
+
 from ayon_core.lib import BoolDef, EnumDef
 from ayon_core.pipeline import get_representation_path
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from ayon_maya.api.pipeline import containerise
-from maya import cmds
 
 
 @contextlib.contextmanager
