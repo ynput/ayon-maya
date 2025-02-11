@@ -368,10 +368,18 @@ def parse_container(container):
         container (str): A container node name.
 
     Returns:
-        dict: The container schema data for this container node.
+        Optional[dict[str, Any]]: The container schema data for this container
+         if it meets all the required metadata.
 
     """
     data = lib.read(container)
+
+    required = ["id", "name", "namespace", "loader", "representation"]
+    missing = [key for key in required if key not in data]
+    if missing:
+        log.warning("Container '%s' is missing required keys: %s",
+                    container, missing)
+        return
 
     # Backwards compatibility pre-schemas for containers
     data["schema"] = data.get("schema", "openpype:container-1.0")
@@ -432,12 +440,14 @@ def ls():
     they are called 'containers'
 
     Yields:
-        dict: container
+        dict[str, Any]: container
 
     """
     container_names = _ls()
     for container in sorted(container_names):
-        yield parse_container(container)
+        container_data = parse_container(container)
+        if container_data:
+            yield container_data
 
 
 @lib.undo_chunk()
