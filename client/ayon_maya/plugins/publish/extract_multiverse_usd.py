@@ -1,7 +1,7 @@
 import os
 
 import pyblish.api
-import six
+
 from ayon_maya.api.lib import maintained_selection
 from ayon_maya.api import plugin
 from maya import cmds, mel
@@ -130,7 +130,7 @@ class ExtractMultiverseUsd(plugin.MayaExtractorPlugin):
 
             # Ensure the data is of correct type
             value = instance.data[key]
-            if isinstance(value, six.text_type):
+            if isinstance(value, str):
                 value = str(value)
             if not isinstance(value, self.options[key]):
                 self.log.warning(

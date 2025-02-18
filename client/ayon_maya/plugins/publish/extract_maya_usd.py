@@ -2,8 +2,6 @@ import contextlib
 import json
 import os
 
-import six
-
 from ayon_core.pipeline import publish
 from ayon_core.lib import BoolDef
 from ayon_maya.api.lib import maintained_selection, maintained_time
@@ -224,7 +222,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
 
             # Ensure the data is of correct type
             value = instance.data[key]
-            if isinstance(value, six.text_type):
+            if isinstance(value, str):
                 value = str(value)
             if not isinstance(value, self.options[key]):
                 self.log.warning(
