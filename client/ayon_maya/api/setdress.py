@@ -10,7 +10,6 @@ import ayon_api
 from maya import cmds
 
 from ayon_core.pipeline import (
-    schema,
     discover_loader_plugins,
     loaders_from_representation,
     load_container,
@@ -259,11 +258,11 @@ def get_contained_containers(container):
     containers = []
     members = cmds.sets(container['objectName'], query=True)
     for node in cmds.ls(members, type="objectSet"):
-        try:
-            member_container = parse_container(node)
-            containers.append(member_container)
-        except schema.ValidationError:
-            pass
+        member_container = parse_container(node)
+        if not member_container:
+            # Skip invalid container (missing partial metadata)
+            continue
+        containers.append(member_container)
 
     return containers
 
