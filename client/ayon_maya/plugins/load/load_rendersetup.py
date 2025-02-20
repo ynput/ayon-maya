@@ -8,16 +8,15 @@ instance.
 
 import contextlib
 import json
-import sys
 
 import maya.app.renderSetup.model.renderSetup as renderSetup
-import six
+from maya import cmds
+
 from ayon_core.lib import BoolDef, EnumDef
 from ayon_core.pipeline import get_representation_path
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from ayon_maya.api.pipeline import containerise
-from maya import cmds
 
 
 @contextlib.contextmanager
@@ -154,7 +153,7 @@ class RenderSetupLoader(plugin.Loader):
                     json.load(file), renderSetup.DECODE_AND_OVERWRITE, None)
             except Exception:
                 self.log.error("There were errors during loading")
-                six.reraise(*sys.exc_info())
+                raise
 
         # Update metadata
         node = container["objectName"]

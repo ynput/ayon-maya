@@ -5,7 +5,6 @@ import os
 import contextlib
 import copy
 
-import six
 import ayon_api
 
 from maya import cmds
@@ -110,7 +109,7 @@ def load_package(filepath, name, namespace=None):
         # Define a unique namespace for the package
         namespace = os.path.basename(filepath).split(".")[0]
         unique_namespace(namespace)
-    assert isinstance(namespace, six.string_types)
+    assert isinstance(namespace, str)
 
     # Load the setdress package data
     with open(filepath, "r") as fp:
