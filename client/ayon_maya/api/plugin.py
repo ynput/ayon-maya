@@ -278,6 +278,7 @@ class MayaCreatorBase:
 
             self.imprint_instance_node(node, data)
 
+    @lib.undo_chunk()
     def _default_remove_instances(self, instances):
         """Remove specified instance from the scene.
 
