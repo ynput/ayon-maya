@@ -35,7 +35,6 @@ class ExtractFBXAnimation(plugin.MayaExtractorPlugin):
         # the flags they intended to export
         instance.data["skeletonDefinitions"] = True
         instance.data["referencedAssetsContent"] = True
-        instance.data["inputConnections"] = False
         fbx_exporter.set_options_from_instance(instance)
 
         # Export relative only to the first level of the namespace,

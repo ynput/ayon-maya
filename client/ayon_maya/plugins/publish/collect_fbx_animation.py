@@ -13,6 +13,8 @@ class CollectFbxAnimation(plugin.MayaInstancePlugin,
     label = "Collect Fbx Animation"
     families = ["animation"]
     optional = True
+    input_connections = True
+    up_axis = "y"
 
     def process(self, instance):
         if not self.is_active(instance.data):
@@ -34,3 +36,7 @@ class CollectFbxAnimation(plugin.MayaInstancePlugin,
                 ))
             if skeleton_content:
                 instance.data["animated_skeleton"] = skeleton_content
+
+        instance.data["upAxis"] = self.up_axis
+        if self.input_connections:
+            instance.data["inputConnections"] = self.input_connections
