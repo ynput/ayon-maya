@@ -4057,7 +4057,8 @@ def get_capture_preset(
     if capture_preset is None:
         log.debug(
             "Falling back to deprecated Extract Playblast capture preset "
-            "because no new style playblast profiles are defined."
+            "because no new style playblast profiles are defined or no "
+            "profile matches for your current context."
         )
         capture_preset = plugin_settings.get("capture_preset")
 
