@@ -4047,7 +4047,7 @@ def get_capture_preset(
             plugin_settings["profiles"],
             filtering_criteria,
             logger=log
-        )
+        ) or {}
         capture_preset = profile.get("capture_preset")
     else:
         log.warning("No profiles present for Extract Playblast")
