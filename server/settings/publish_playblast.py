@@ -252,7 +252,7 @@ class CapturePresetSetting(BaseSettingsModel):
         title="Camera Options")
 
 
-class ProfilesModel(BaseSettingsModel):
+class PlayblastProfilesModel(BaseSettingsModel):
     _layout = "expanded"
     task_types: list[str] = SettingsField(
         default_factory=list,
@@ -276,7 +276,7 @@ class ExtractPlayblastSetting(BaseSettingsModel):
         default_factory=CapturePresetSetting,
         title="DEPRECATED! Please use \"Profiles\" below. Capture Preset"
     )
-    profiles: list[ProfilesModel] = SettingsField(
+    profiles: list[PlayblastProfilesModel] = SettingsField(
         default_factory=list,
         title="Profiles"
     )
