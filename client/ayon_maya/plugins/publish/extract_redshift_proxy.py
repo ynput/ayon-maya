@@ -25,7 +25,6 @@ class ExtractRedshiftProxy(plugin.MayaExtractorPlugin):
         cmds.loadPlugin("redshift4maya", quiet=True)
 
         staging_dir = self.staging_dir(instance)
-
         file_name = "{}.####.rs".format(instance.name)
         file_path = os.path.join(staging_dir, file_name)
 
