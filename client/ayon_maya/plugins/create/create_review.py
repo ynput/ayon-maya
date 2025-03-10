@@ -1,5 +1,3 @@
-import logging
-
 from ayon_maya.api import (
     lib,
     plugin
