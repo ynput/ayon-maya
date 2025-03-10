@@ -31,18 +31,12 @@ class CreateReview(plugin.MayaCreator):
     useMayaTimeline = True
     panZoom = False
 
-    @classmethod
-    def get_attr_defs_for_instance(cls, instance):
-
-        # Create Context is not available through `cls.create_context`
-        create_context = instance._create_context
-        # cls.log is not available because it links a property
-        log = logging.getLogger(__name__)
-
+    def get_attr_defs_for_instance(self, instance):
+        create_context = self.create_context
         defs = lib.collect_animation_defs(create_context=create_context)
 
         # Option for using Maya or folder frame range in settings.
-        if not cls.useMayaTimeline:
+        if not self.useMayaTimeline:
             # Update the defaults to be the folder frame range
             frame_range = lib.get_frame_range()
             defs_by_key = {attr_def.key: attr_def for attr_def in defs}
@@ -62,7 +56,7 @@ class CreateReview(plugin.MayaCreator):
             task_entity["taskType"] if task_entity else None,
             product_name,
             create_context.get_current_project_settings(),
-            log=log
+            log=self.log
         )
 
         defs.extend([
