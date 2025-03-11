@@ -98,5 +98,6 @@ class ExtractRedshiftProxy(plugin.MayaExtractorPlugin):
         }
         instance.data["representations"].append(representation)
 
-        self.log.debug("Extracted instance '%s' to: %s"
-                       % (instance.name, staging_dir))
+        self.log.debug(
+            f"Extracted instance '{instance.name}' to: {staging_dir}"
+        )
