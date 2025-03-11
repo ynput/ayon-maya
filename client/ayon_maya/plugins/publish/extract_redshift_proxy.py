@@ -24,14 +24,18 @@ class ExtractRedshiftProxy(plugin.MayaExtractorPlugin):
         # Make sure Redshift is loaded
         cmds.loadPlugin("redshift4maya", quiet=True)
 
+        anim_on: bool = instance.data["animation"]
+        if anim_on:
+            # Add frame number #### placeholder for animated exports
+            file_name = "{}.####.rs".format(instance.name)
+        else:
+            file_name = "{}.rs".format(instance.name)
+
         staging_dir = self.staging_dir(instance)
-        file_name = "{}.####.rs".format(instance.name)
         file_path = os.path.join(staging_dir, file_name)
 
-        anim_on: bool = instance.data["animation"]
         rs_options = "exportConnectivity=0;enableCompression=1;keepUnused=0;"
         repr_files: Union[str, list[str]] = file_name
-
         if not anim_on:
             # Remove animation information because it is not required for
             # non-animated products
@@ -61,7 +65,6 @@ class ExtractRedshiftProxy(plugin.MayaExtractorPlugin):
                     ".####.rs", f".{frame_padded}.rs"
                 )
                 repr_files.append(frame_filename)
-        # vertex_colors = instance.data.get("vertexColors", False)
 
         # Write out rs file
         self.log.debug("Writing: '%s'", file_path)
