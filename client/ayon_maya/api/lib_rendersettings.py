@@ -203,7 +203,7 @@ class RenderSettings(object):
         cmds.setAttr("redshiftOptions.GIEnabled", gi_enabled)
         if rs_p_engine != 0:
             cmds.setAttr("redshiftOptions.primaryGIEngine", rs_p_engine)
-        if rs_s_engine == 0:
+        if rs_s_engine != 0:
             cmds.setAttr("redshiftOptions.secondaryGIEngine", rs_s_engine)
 
         additional_options = redshift_render_presets["additional_options"]
