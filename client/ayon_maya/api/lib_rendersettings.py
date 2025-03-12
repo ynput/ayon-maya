@@ -197,22 +197,14 @@ class RenderSettings(object):
         # update the AOV list
         mel.eval("redshiftUpdateActiveAovList")
 
-        # Irradiance Point cloud: 2 (only available for secondary GI engine)
-        # Irradiance Cache: 3 (only available for primary GI engine)
-        # Brute Force: 4
+        gi_enabled: bool = redshift_render_presets["gi_enabled"]
         rs_p_engine = int(redshift_render_presets["primary_gi_engine"])
         rs_s_engine = int(redshift_render_presets["secondary_gi_engine"])
-        if rs_p_engine == 0:
-            # reset the primary GI Engine as default: Brute Force
-            rs_p_engine = 4
-        if rs_s_engine == 0:
-            # reset the secondary GI Engine as default: Irradiance Point cloud
-            rs_s_engine = 2
-
-        gi_enabled: bool = bool(rs_p_engine or rs_s_engine)
         cmds.setAttr("redshiftOptions.GIEnabled", gi_enabled)
-        cmds.setAttr("redshiftOptions.primaryGIEngine", rs_p_engine)
-        cmds.setAttr("redshiftOptions.secondaryGIEngine", rs_s_engine)
+        if rs_p_engine != 0:
+            cmds.setAttr("redshiftOptions.primaryGIEngine", rs_p_engine)
+        if rs_s_engine == 0:
+            cmds.setAttr("redshiftOptions.secondaryGIEngine", rs_s_engine)
 
         additional_options = redshift_render_presets["additional_options"]
         ext = redshift_render_presets["image_format"]
