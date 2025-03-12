@@ -85,7 +85,7 @@ class ImagePlaneLoader(plugin.Loader):
 
     product_types = {"image", "plate", "render"}
     label = "Load imagePlane"
-    representations = {"mov", "exr", "preview", "png", "jpg"}
+    representations = {"mov", "exr", "preview", "png", "jpg", "jpeg"}
     icon = "image"
     color = "orange"
 
