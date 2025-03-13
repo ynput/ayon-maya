@@ -13,15 +13,7 @@ class CollectFileDependencies(plugin.MayaContextPlugin):
     @classmethod
     def apply_settings(cls, project_settings):
         # Disable plug-in if not used for deadline submission anyway
-        if "deadline" not in project_settings:
-            cls.enabled = False
-            return
-        settings = (
-            project_settings
-            ["deadline"]
-            ["publish"]
-            ["MayaSubmitDeadline"]
-        )
+        settings = project_settings["deadline"]["publish"]["MayaSubmitDeadline"]  # noqa
         cls.enabled = settings.get("asset_dependencies", True)
 
     def process(self, context):
