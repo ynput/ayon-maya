@@ -197,22 +197,14 @@ class RenderSettings(object):
         # update the AOV list
         mel.eval("redshiftUpdateActiveAovList")
 
-        rs_p_engine = redshift_render_presets["primary_gi_engine"]
-        rs_s_engine = redshift_render_presets["secondary_gi_engine"]
-
-        if int(rs_p_engine) or int(rs_s_engine) != 0:
-            cmds.setAttr("redshiftOptions.GIEnabled", 1)
-            if int(rs_p_engine) == 0:
-                # reset the primary GI Engine as default
-                cmds.setAttr("redshiftOptions.primaryGIEngine", 4)
-            if int(rs_s_engine) == 0:
-                # reset the secondary GI Engine as default
-                cmds.setAttr("redshiftOptions.secondaryGIEngine", 2)
-        else:
-            cmds.setAttr("redshiftOptions.GIEnabled", 0)
-
-        cmds.setAttr("redshiftOptions.primaryGIEngine", int(rs_p_engine))
-        cmds.setAttr("redshiftOptions.secondaryGIEngine", int(rs_s_engine))
+        gi_enabled: bool = redshift_render_presets["gi_enabled"]
+        rs_p_engine = int(redshift_render_presets["primary_gi_engine"])
+        rs_s_engine = int(redshift_render_presets["secondary_gi_engine"])
+        cmds.setAttr("redshiftOptions.GIEnabled", gi_enabled)
+        if rs_p_engine != 0:
+            cmds.setAttr("redshiftOptions.primaryGIEngine", rs_p_engine)
+        if rs_s_engine != 0:
+            cmds.setAttr("redshiftOptions.secondaryGIEngine", rs_s_engine)
 
         additional_options = redshift_render_presets["additional_options"]
         ext = redshift_render_presets["image_format"]
