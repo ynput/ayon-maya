@@ -1,0 +1,67 @@
+# WARNING: This file is used only for development done on this addon.
+# Be aware that dependencies used here might not match the ones used by
+# the specific addon bundle set up on the AYON server. This file should
+# be used only for local development and CI/CD purposes. To define addon
+# dependencies, use pyproject.toml file in the `client` directory.
+
+[tool.poetry]
+name = "ayon-maya"
+version = "0.4.5"
+description = ""
+authors = ["Ynput Team <team@ynput.io>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+# this is for development only
+python = ">=3.9.1,<3.10"
+pre-commit = "^4.0.0"
+pytest-mock = "^3.14.0"
+mock = "^5.1.0"
+appdirs = "^1.4.4"
+semver = "^3.0.2"
+ayon-python-api = "^1.0.11"
+clique = "^2.0.0"
+attrs = "^24.3.0"
+
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.14.1"
+
+[poetry.group.dev.dependencies]
+# test dependencies
+pytest = "^8.0"
+pytest-print = "^1.0"
+pytest-mock = "^3.6.1"
+# linting dependencies
+ruff = "*"
+pre-commit = "^4"
+codespell = "^2.2.6"
+mypy = "^1.14.0"
+
+[tool.codespell]
+# Ignore words that are not in the dictionary.
+ignore-words-list = "ayon,ynput,parms,parm,hda,developpement"
+
+# Ignore lines that contain this regex. This is hack for missing inline ignore.
+# Remove with next codespell release (>2.2.6)
+ignore-regex = ".*codespell:ignore.*"
+
+skip = "./.*,./package/*,*/vendor/*,*/unreal/integration/*,*/aftereffects/api/extension/js/libs/*"
+count = true
+quiet-level = 3
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "INFO"
+addopts = "-ra -q"
+testpaths = [
+    "client/ayon_core/tests"
+]
+
+[tool.mypy]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/client"

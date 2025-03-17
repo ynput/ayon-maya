@@ -1,7 +1,15 @@
-import os
-import contextlib
-from collections import OrderedDict
+"""Extract Alembic pointcache from Maya."""
 
+from __future__ import annotations
+
+import contextlib
+import hashlib
+import os
+from collections import OrderedDict
+from pathlib import Path
+from typing import TYPE_CHECKING, ClassVar
+
+import pyblish.api
 from ayon_core.lib import (
     BoolDef,
     EnumDef,
@@ -12,67 +20,130 @@ from ayon_core.lib import (
 )
 from ayon_core.pipeline import KnownPublishError
 from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
+from ayon_core.pipeline.traits import (
+    FileLocation,
+    FrameRanged,
+    Geometry,
+    IntendedUse,
+    MimeType,
+    Persistent,
+    Representation,
+    Spatial,
+    TraitBase,
+)
+from maya import cmds
+
+from ayon_maya.api import plugin
 from ayon_maya.api.alembic import extract_alembic
 from ayon_maya.api.lib import (
+    force_shader_assignments_to_faces,
     get_all_children,
     get_highest_in_hierarchy,
     iter_visible_nodes_in_range,
     maintained_selection,
     suspended_refresh,
-    force_shader_assignments_to_faces
 )
-from ayon_maya.api import plugin
-from maya import cmds
+
+if TYPE_CHECKING:
+    from logging import Logger
 
 
-class ExtractAlembic(plugin.MayaExtractorPlugin,
-                     OptionalPyblishPluginMixin):
+def get_file_hash(file_path: Path) -> str:
+    """Get file hash.
+
+    Args:
+            file_path (Path): File path.
+
+    Returns:
+        str: File hash.
+
+    """
+    hasher = hashlib.sha256()  # noqa: HL101
+    with open(file_path, "rb") as file:
+        while chunk := file.read(4096):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
+def maya_units_to_meters_per_unit(unit: str) -> float:
+    """Convert Maya units to meters per unit.
+
+    Args:
+        unit (str): Maya unit.
+
+    Returns:
+        float: Meters per unit.
+
+    Raises:
+        ValueError: If unit is unknown.
+
+    """
+    if unit == "mm":
+        return 0.001
+    if unit == "cm":
+        return 0.01
+    if unit == "m":
+        return 1.0
+    if unit == "km":
+        return 1000.0
+    msg = f"Unknown unit: {unit}"
+    raise ValueError(msg)
+
+
+class ExtractAlembic(plugin.MayaExtractorPlugin, OptionalPyblishPluginMixin):
     """Produce an alembic of just point positions and normals.
+
+    With `farm` it will be skipped in local processing, but processed on farm.
 
     Positions and normals, uvs, creases are preserved, but nothing more,
     for plain and predictable point caches.
 
     Plugin can run locally or remotely (on a farm - if instance is marked with
-    "farm" it will be skipped in local processing, but processed on farm)
     """
-
     label = "Extract Pointcache (Alembic)"
-    hosts = ["maya"]
-    families = ["pointcache", "model", "vrayproxy.alembic"]
-    targets = ["local", "remote"]
+    hosts: ClassVar[list[str]] = ["maya"]
+    families: ClassVar[list[str]] = [
+        "pointcache",
+        "model",
+        "vrayproxy.alembic",
+    ]
+    targets: ClassVar[list[str]] = ["local", "remote"]
     optional = False
     # From settings
-    attr = []
-    attrPrefix = []
-    bake_attributes = []
-    bake_attribute_prefixes = []
-    dataFormat = "ogawa"
-    eulerFilter = False
-    melPerFrameCallback = ""
-    melPostJobCallback = ""
-    overrides = []
-    preRoll = False
-    preRollStartFrame = 0
-    pythonPerFrameCallback = ""
-    pythonPostJobCallback = ""
-    renderableOnly = False
-    stripNamespaces = True
-    uvsOnly = False
-    uvWrite = False
-    userAttr = ""
-    userAttrPrefix = ""
-    verbose = False
-    visibleOnly = False
-    wholeFrameGeo = False
-    worldSpace = True
-    writeColorSets = False
-    writeCreases = False
-    writeFaceSets = False
-    writeNormals = True
+    attr: str = ""
+    attrPrefix: str = ""
+    bake_attributes: ClassVar[list[str]] = []
+    bake_attribute_prefixes: ClassVar[list[str]] = []
+    dataFormat: str = "ogawa"
+    eulerFilter: bool = False
+    melPerFrameCallback: str = ""
+    melPostJobCallback: str = ""
+    overrides: ClassVar[str] = []
+    preRoll: bool = False
+    preRollStartFrame: int = 0
+    pythonPerFrameCallback: str = ""
+    pythonPostJobCallback: str = ""
+    renderableOnly: bool = False
+    stripNamespaces: bool = True
+    uvsOnly: bool = False
+    uvWrite: bool = False
+    userAttr: str = ""
+    userAttrPrefix: str = ""
+    verbose: bool = False
+    visibleOnly: bool = False
+    wholeFrameGeo: bool = False
+    worldSpace: bool = True
+    writeColorSets: bool = False
+    writeCreases: bool = False
+    writeFaceSets: bool = False
+    writeNormals: bool = True
     writeUVSets = False
     writeVisibility = False
 
-    def process(self, instance):
+    log: Logger
+
+    def process(self, instance: pyblish.api.Instance) -> None:
+        """Process the plugin."""
         if not self.is_active(instance.data):
             return
 
@@ -86,9 +157,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
         start = float(instance.data.get("frameStartHandle", 1))
         end = float(instance.data.get("frameEndHandle", 1))
 
-        attribute_values = self.get_attr_values_from_data(
-            instance.data
-        )
+        attribute_values = self.get_attr_values_from_data(instance.data)
 
         attrs = [
             attr.strip()
@@ -156,9 +225,9 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
             "root": root,
             "selection": True,
             "startFrame": start,
-            "step": instance.data.get(
-                "creator_attributes", {}
-            ).get("step", 1.0),
+            "step": instance.data.get("creator_attributes", {}).get(
+                "step", 1.0
+            ),
             "stripNamespaces": attribute_values.get(
                 "stripNamespaces", self.stripNamespaces
             ),
@@ -183,9 +252,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
             "writeVisibility": attribute_values.get(
                 "writeVisibility", self.writeVisibility
             ),
-            "uvsOnly": attribute_values.get(
-                "uvsOnly", self.uvsOnly
-            ),
+            "uvsOnly": attribute_values.get("uvsOnly", self.uvsOnly),
             "melPerFrameCallback": attribute_values.get(
                 "melPerFrameCallback", self.melPerFrameCallback
             ),
@@ -247,26 +314,52 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
                 stack.enter_context(force_shader_assignments_to_faces(meshes))
             cmds.select(nodes, noExpand=True)
             self.log.debug(
-                "Running `extract_alembic` with the keyword arguments: "
-                "{}".format(kwargs)
+                "Running `extract_alembic` with the keyword arguments: %s",
+                kwargs,
             )
             extract_alembic(**kwargs)
 
-        if "representations" not in instance.data:
-            instance.data["representations"] = []
+        traits: list[TraitBase] = [
+            Geometry(),
+            MimeType(mime_type="application/abc"),
+            Persistent(),
+            Spatial(
+                up_axis=cmds.upAxis(q=True, axis=True),
+                meters_per_unit=maya_units_to_meters_per_unit(
+                    instance.context.data["linearUnits"]),
+                handedness="right",
+            ),
+        ]
 
-        representation = {
-            "name": "abc",
-            "ext": "abc",
-            "files": filename,
-            "stagingDir": dirname
-        }
-        instance.data["representations"].append(representation)
+        if instance.data.get("frameStart"):
+            traits.append(
+                FrameRanged(
+                    frame_start=instance.data["frameStart"],
+                    frame_end=instance.data["frameEnd"],
+                    frames_per_second=instance.context.data["fps"],
+                )
+            )
+
+        representation = Representation(
+            name="alembic",
+            traits=[
+                FileLocation(
+                    file_path=Path(path),
+                    file_size=os.path.getsize(path),
+                    file_hash=get_file_hash(Path(path))
+                ),
+                *traits],
+        )
+
+        if not instance.data["representations_with_traits"]:
+            instance.data["representations_with_traits"] = []
+
+        instance.data["representations_with_traits"].append(representation)
 
         if not instance.data.get("stagingDir_persistent", False):
             instance.context.data["cleanupFullPaths"].append(path)
 
-        self.log.debug("Extracted {} to {}".format(instance, dirname))
+        self.log.debug("Extracted %s to %s", instance, dirname)
 
         # Extract proxy.
         if not instance.data.get("proxy"):
@@ -281,248 +374,279 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
             # direct members of the set
             kwargs["root"] = instance.data["proxyRoots"]
 
-        with suspended_refresh(suspend=suspend):
-            with maintained_selection():
-                cmds.select(instance.data["proxy"])
-                extract_alembic(**kwargs)
-        representation = {
-            "name": "proxy",
-            "ext": "abc",
-            "files": os.path.basename(path),
-            "stagingDir": dirname,
-            "outputName": "proxy"
-        }
-        instance.data["representations"].append(representation)
+        with suspended_refresh(suspend=suspend), maintained_selection():
+            cmds.select(instance.data["proxy"])
+            extract_alembic(**kwargs)
 
-    def get_members_and_roots(self, instance):
+        representation = Representation(
+            name="proxy",
+            traits=[
+                FileLocation(
+                    file_path=Path(path),
+                    file_size=os.path.getsize(path),
+                    file_hash=get_file_hash(Path(path))
+                ),
+                IntendedUse(use="proxy"),
+                *traits],
+        )
+
+        instance.data["representations_with_traits"].append(representation)
+
+    @staticmethod
+    def get_members_and_roots(
+            instance: pyblish.api.Instance) -> tuple[list[str], list[str]]:
+        """Get members and roots from the instance.
+
+        Returns:
+            tuple[list[str], list[str]]: Members and roots.
+
+        """
         return instance[:], instance.data.get("setMembers")
 
     @classmethod
-    def get_attribute_defs(cls):
-        defs = super(ExtractAlembic, cls).get_attribute_defs()
+    def get_attribute_defs(cls) -> list:
+        """Get attribute definitions.
+
+        Returns:
+            list: Attribute definitions.
+
+        """
+        defs = super().get_attribute_defs()
         if not cls.overrides:
             return defs
 
-        override_defs = OrderedDict({
-            "eulerFilter": BoolDef(
-                "eulerFilter",
-                label="Euler Filter",
-                default=cls.eulerFilter,
-                tooltip="Apply Euler filter while sampling rotations."
-            ),
-            "renderableOnly": BoolDef(
-                "renderableOnly",
-                label="Renderable Only",
-                default=cls.renderableOnly,
-                tooltip="Only export renderable visible shapes."
-            ),
-            "stripNamespaces": BoolDef(
-                "stripNamespaces",
-                label="Strip Namespaces",
-                default=cls.stripNamespaces,
-                tooltip=(
-                    "Namespaces will be stripped off of the node before being "
-                    "written to Alembic."
-                )
-            ),
-            "uvsOnly": BoolDef(
-                "uvsOnly",
-                label="UVs Only",
-                default=cls.uvsOnly,
-                tooltip=(
-                    "If this flag is present, only uv data for PolyMesh and "
-                    "SubD shapes will be written to the Alembic file."
-                )
-            ),
-            "uvWrite": BoolDef(
-                "uvWrite",
-                label="UV Write",
-                default=cls.uvWrite,
-                tooltip=(
-                    "Uv data for PolyMesh and SubD shapes will be written to "
-                    "the Alembic file."
-                )
-            ),
-            "verbose": BoolDef(
-                "verbose",
-                label="Verbose",
-                default=cls.verbose,
-                tooltip="Prints the current frame that is being evaluated."
-            ),
-            "visibleOnly": BoolDef(
-                "visibleOnly",
-                label="Visible Only",
-                default=cls.visibleOnly,
-                tooltip="Only export dag objects visible during frame range."
-            ),
-            "wholeFrameGeo": BoolDef(
-                "wholeFrameGeo",
-                label="Whole Frame Geo",
-                default=cls.wholeFrameGeo,
-                tooltip=(
-                    "Data for geometry will only be written out on whole "
-                    "frames."
-                )
-            ),
-            "worldSpace": BoolDef(
-                "worldSpace",
-                label="World Space",
-                default=cls.worldSpace,
-                tooltip="Any root nodes will be stored in world space."
-            ),
-            "writeColorSets": BoolDef(
-                "writeColorSets",
-                label="Write Color Sets",
-                default=cls.writeColorSets,
-                tooltip="Write vertex colors with the geometry."
-            ),
-            "writeCreases": BoolDef(
-                "writeCreases",
-                label="Write Creases",
-                default=cls.writeCreases,
-                tooltip="Write the geometry's edge and vertex crease "
-                        "information."
-            ),
-            "writeFaceSets": BoolDef(
-                "writeFaceSets",
-                label="Write Face Sets",
-                default=cls.writeFaceSets,
-                tooltip="Write face sets with the geometry."
-            ),
-            "writeNormals": BoolDef(
-                "writeNormals",
-                label="Write Normals",
-                default=cls.writeNormals,
-                tooltip="Write normals with the deforming geometry."
-            ),
-            "writeUVSets": BoolDef(
-                "writeUVSets",
-                label="Write UV Sets",
-                default=cls.writeUVSets,
-                tooltip=(
-                    "Write all uv sets on MFnMeshes as vector 2 indexed "
-                    "geometry parameters with face varying scope."
-                )
-            ),
-            "writeVisibility": BoolDef(
-                "writeVisibility",
-                label="Write Visibility",
-                default=cls.writeVisibility,
-                tooltip=(
-                    "Visibility state will be stored in the Alembic file. "
-                    "Otherwise everything written out is treated as visible."
-                )
-            ),
-            "preRoll": BoolDef(
-                "preRoll",
-                label="Pre Roll",
-                default=cls.preRoll,
-                tooltip="This frame range will not be sampled."
-            ),
-            "preRollStartFrame": NumberDef(
-                "preRollStartFrame",
-                label="Pre Roll Start Frame",
-                tooltip=(
-                    "The frame to start scene evaluation at. This is used"
-                    " to set the starting frame for time dependent "
-                    "translations and can be used to evaluate run-up that"
-                    " isn't actually translated."
+        override_defs = OrderedDict(
+            {
+                "eulerFilter": BoolDef(
+                    "eulerFilter",
+                    label="Euler Filter",
+                    default=cls.eulerFilter,
+                    tooltip="Apply Euler filter while sampling rotations.",
                 ),
-                default=cls.preRollStartFrame
-            ),
-            "dataFormat": EnumDef(
-                "dataFormat",
-                label="Data Format",
-                items=["ogawa", "HDF"],
-                default=cls.dataFormat,
-                tooltip="The data format to use to write the file."
-            ),
-            "attr": TextDef(
-                "attr",
-                label="Custom Attributes",
-                placeholder="attr1; attr2; ...",
-                default=cls.attr,
-                tooltip=(
-                    "Attributes matching by name will be included in the "
-                    "Alembic export. Attributes should be separated by "
-                    "semi-colon `;`"
-                )
-            ),
-            "attrPrefix": TextDef(
-                "attrPrefix",
-                label="Custom Attributes Prefix",
-                placeholder="prefix1; prefix2; ...",
-                default=cls.attrPrefix,
-                tooltip=(
-                    "Attributes starting with these prefixes will be included "
-                    "in the Alembic export. Attributes should be separated by "
-                    "semi-colon `;`"
-                )
-            ),
-            "userAttr": TextDef(
-                "userAttr",
-                label="User Attr",
-                placeholder="attr1; attr2; ...",
-                default=cls.userAttr,
-                tooltip=(
-                    "Attributes matching by name will be included in the "
-                    "Alembic export. Attributes should be separated by "
-                    "semi-colon `;`"
-                )
-            ),
-            "userAttrPrefix": TextDef(
-                "userAttrPrefix",
-                label="User Attr Prefix",
-                placeholder="prefix1; prefix2; ...",
-                default=cls.userAttrPrefix,
-                tooltip=(
-                    "Attributes starting with these prefixes will be included "
-                    "in the Alembic export. Attributes should be separated by "
-                    "semi-colon `;`"
-                )
-            ),
-            "melPerFrameCallback": TextDef(
-                "melPerFrameCallback",
-                label="Mel Per Frame Callback",
-                default=cls.melPerFrameCallback,
-                tooltip=(
-                    "When each frame (and the static frame) is evaluated the "
-                    "string specified is evaluated as a Mel command."
-                )
-            ),
-            "melPostJobCallback": TextDef(
-                "melPostJobCallback",
-                label="Mel Post Job Callback",
-                default=cls.melPostJobCallback,
-                tooltip=(
-                    "When the translation has finished the string specified "
-                    "is evaluated as a Mel command."
-                )
-            ),
-            "pythonPerFrameCallback": TextDef(
-                "pythonPerFrameCallback",
-                label="Python Per Frame Callback",
-                default=cls.pythonPerFrameCallback,
-                tooltip=(
-                    "When each frame (and the static frame) is evaluated the "
-                    "string specified is evaluated as a python command."
-                )
-            ),
-            "pythonPostJobCallback": TextDef(
-                "pythonPostJobCallback",
-                label="Python Post Frame Callback",
-                default=cls.pythonPostJobCallback,
-                tooltip=(
-                    "When the translation has finished the string specified "
-                    "is evaluated as a python command."
-                )
-            )
-        })
+                "renderableOnly": BoolDef(
+                    "renderableOnly",
+                    label="Renderable Only",
+                    default=cls.renderableOnly,
+                    tooltip="Only export renderable visible shapes.",
+                ),
+                "stripNamespaces": BoolDef(
+                    "stripNamespaces",
+                    label="Strip Namespaces",
+                    default=cls.stripNamespaces,
+                    tooltip=(
+                        "Namespaces will be stripped off of the node before "
+                        "being written to Alembic."
+                    ),
+                ),
+                "uvsOnly": BoolDef(
+                    "uvsOnly",
+                    label="UVs Only",
+                    default=cls.uvsOnly,
+                    tooltip=(
+                        "If this flag is present, only uv data for PolyMesh "
+                        "and SubD shapes will be written to the Alembic file."
+                    ),
+                ),
+                "uvWrite": BoolDef(
+                    "uvWrite",
+                    label="UV Write",
+                    default=cls.uvWrite,
+                    tooltip=(
+                        "Uv data for PolyMesh and SubD shapes will be "
+                        "written to the Alembic file."
+                    ),
+                ),
+                "verbose": BoolDef(
+                    "verbose",
+                    label="Verbose",
+                    default=cls.verbose,
+                    tooltip=(
+                        "Prints the current frame that is being "
+                        "evaluated."
+                    ),
+                ),
+                "visibleOnly": BoolDef(
+                    "visibleOnly",
+                    label="Visible Only",
+                    default=cls.visibleOnly,
+                    tooltip=(
+                        "Only export dag objects visible during "
+                        "frame range."
+                    ),
+                ),
+                "wholeFrameGeo": BoolDef(
+                    "wholeFrameGeo",
+                    label="Whole Frame Geo",
+                    default=cls.wholeFrameGeo,
+                    tooltip=(
+                        "Data for geometry will only be written out on whole "
+                        "frames."
+                    ),
+                ),
+                "worldSpace": BoolDef(
+                    "worldSpace",
+                    label="World Space",
+                    default=cls.worldSpace,
+                    tooltip="Any root nodes will be stored in world space.",
+                ),
+                "writeColorSets": BoolDef(
+                    "writeColorSets",
+                    label="Write Color Sets",
+                    default=cls.writeColorSets,
+                    tooltip="Write vertex colors with the geometry.",
+                ),
+                "writeCreases": BoolDef(
+                    "writeCreases",
+                    label="Write Creases",
+                    default=cls.writeCreases,
+                    tooltip="Write the geometry's edge and vertex crease "
+                    "information.",
+                ),
+                "writeFaceSets": BoolDef(
+                    "writeFaceSets",
+                    label="Write Face Sets",
+                    default=cls.writeFaceSets,
+                    tooltip="Write face sets with the geometry.",
+                ),
+                "writeNormals": BoolDef(
+                    "writeNormals",
+                    label="Write Normals",
+                    default=cls.writeNormals,
+                    tooltip="Write normals with the deforming geometry.",
+                ),
+                "writeUVSets": BoolDef(
+                    "writeUVSets",
+                    label="Write UV Sets",
+                    default=cls.writeUVSets,
+                    tooltip=(
+                        "Write all uv sets on MFnMeshes as vector 2 indexed "
+                        "geometry parameters with face varying scope."
+                    ),
+                ),
+                "writeVisibility": BoolDef(
+                    "writeVisibility",
+                    label="Write Visibility",
+                    default=cls.writeVisibility,
+                    tooltip=(
+                        "Visibility state will be stored in the Alembic "
+                        "file. Otherwise everything written out is treated "
+                        "as visible."
+                    ),
+                ),
+                "preRoll": BoolDef(
+                    "preRoll",
+                    label="Pre Roll",
+                    default=cls.preRoll,
+                    tooltip="This frame range will not be sampled.",
+                ),
+                "preRollStartFrame": NumberDef(
+                    "preRollStartFrame",
+                    label="Pre Roll Start Frame",
+                    tooltip=(
+                        "The frame to start scene evaluation at. This is used"
+                        " to set the starting frame for time dependent "
+                        "translations and can be used to evaluate run-up that"
+                        " isn't actually translated."
+                    ),
+                    default=cls.preRollStartFrame,
+                ),
+                "dataFormat": EnumDef(
+                    "dataFormat",
+                    label="Data Format",
+                    items=["ogawa", "HDF"],
+                    default=cls.dataFormat,
+                    tooltip="The data format to use to write the file.",
+                ),
+                "attr": TextDef(
+                    "attr",
+                    label="Custom Attributes",
+                    placeholder="attr1; attr2; ...",
+                    default=cls.attr,
+                    tooltip=(
+                        "Attributes matching by name will be included in the "
+                        "Alembic export. Attributes should be separated by "
+                        "semi-colon `;`"
+                    ),
+                ),
+                "attrPrefix": TextDef(
+                    "attrPrefix",
+                    label="Custom Attributes Prefix",
+                    placeholder="prefix1; prefix2; ...",
+                    default=cls.attrPrefix,
+                    tooltip=(
+                        "Attributes starting with these prefixes will be "
+                        "included in the Alembic export. Attributes should "
+                        "be separated by semi-colon `;`"
+                    ),
+                ),
+                "userAttr": TextDef(
+                    "userAttr",
+                    label="User Attr",
+                    placeholder="attr1; attr2; ...",
+                    default=cls.userAttr,
+                    tooltip=(
+                        "Attributes matching by name will be included in the "
+                        "Alembic export. Attributes should be separated by "
+                        "semi-colon `;`"
+                    ),
+                ),
+                "userAttrPrefix": TextDef(
+                    "userAttrPrefix",
+                    label="User Attr Prefix",
+                    placeholder="prefix1; prefix2; ...",
+                    default=cls.userAttrPrefix,
+                    tooltip=(
+                        "Attributes starting with these prefixes will be "
+                        "included in the Alembic export. Attributes should "
+                        "be separated by semi-colon `;`"
+                    ),
+                ),
+                "melPerFrameCallback": TextDef(
+                    "melPerFrameCallback",
+                    label="Mel Per Frame Callback",
+                    default=cls.melPerFrameCallback,
+                    tooltip=(
+                        "When each frame (and the static frame) is evaluated "
+                        "the string specified is evaluated as a Mel command."
+                    ),
+                ),
+                "melPostJobCallback": TextDef(
+                    "melPostJobCallback",
+                    label="Mel Post Job Callback",
+                    default=cls.melPostJobCallback,
+                    tooltip=(
+                        "When the translation has finished the string "
+                        "specified is evaluated as a Mel command."
+                    ),
+                ),
+                "pythonPerFrameCallback": TextDef(
+                    "pythonPerFrameCallback",
+                    label="Python Per Frame Callback",
+                    default=cls.pythonPerFrameCallback,
+                    tooltip=(
+                        "When each frame (and the static frame) is "
+                        "evaluated the string specified is evaluated as "
+                        "a python command."
+                    ),
+                ),
+                "pythonPostJobCallback": TextDef(
+                    "pythonPostJobCallback",
+                    label="Python Post Frame Callback",
+                    default=cls.pythonPostJobCallback,
+                    tooltip=(
+                        "When the translation has finished the "
+                        "string specified is evaluated as a python command."
+                    ),
+                ),
+            }
+        )
 
-        defs.extend([
-            UISeparatorDef("sep_alembic_options"),
-            UILabelDef("Alembic Options"),
-        ])
+        defs.extend(
+            [
+                UISeparatorDef("sep_alembic_options"),
+                UILabelDef("Alembic Options"),
+            ]
+        )
 
         # The Arguments that can be modified by the Publisher
         overrides = set(cls.overrides)
@@ -532,31 +656,42 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
 
             defs.append(value)
 
-        defs.append(
-            UISeparatorDef("sep_alembic_options_end")
-        )
+        defs.append(UISeparatorDef("sep_alembic_options_end"))
 
         return defs
 
 
-class ExtractAnimation(ExtractAlembic,
-                       OptionalPyblishPluginMixin):
+class ExtractAnimation(ExtractAlembic, OptionalPyblishPluginMixin):
+    """Produce an alembic of just point positions and normals."""
     label = "Extract Animation (Alembic)"
-    families = ["animation"]
+    families: ClassVar[list[str]] = ["animation"]
     optional = False
 
-    def get_members_and_roots(self, instance):
+    @staticmethod
+    def get_members_and_roots(instance: pyblish.api.Instance) -> tuple:
+        """Get members and roots from the instance.
+
+        Args:
+            instance (pyblish.api.Instance): Instance.
+
+        Returns:
+            tuple: Members and roots.
+
+        Raises:
+            KnownPublishError: If couldn't find exactly one out_SET.
+
+        """
         # Collect the out set nodes
         out_sets = [node for node in instance if node.endswith("out_SET")]
         if len(out_sets) != 1:
-            raise KnownPublishError(
-                "Couldn't find exactly one out_SET: {0}".format(out_sets)
-            )
+            msg = f"Couldn't find exactly one out_SET: {out_sets}"
+            raise KnownPublishError(msg)
         out_set = out_sets[0]
         roots = cmds.sets(out_set, query=True) or []
 
         # Include all descendants
         nodes = roots.copy()
-        nodes.extend(get_all_children(roots, ignore_intermediate_objects=True))
+        nodes.extend(
+            get_all_children(roots, ignore_intermediate_objects=True))
 
         return nodes, roots
