@@ -19,7 +19,7 @@ class MayaPreAutoLoadPlugins(PreLaunchHook):
         enabled = maya_settings["explicit_plugins_loading"]["enabled"]
         if enabled:
             # Force disable the `AddLastWorkfileToLaunchArgs`.
-            self.data.pop("start_last_workfile")
+            self.data.pop("start_last_workfile", None)
 
             # Force post initialization so our dedicated plug-in load can run
             # prior to Maya opening a scene file.
