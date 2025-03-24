@@ -454,9 +454,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         return attr_defs
 
     @classmethod
-    def convert_attribute_values(
-        cls, create_context: "CreateContext", instance: "CreatedInstance"
-    ):
+    def convert_attribute_values(cls, create_context, instance):
         # Convert creator attribute 'mergeTransformAndShape' to
         # plugin attribute, because this attribute has moved from
         # the `io.openpype.creators.maya.mayausd` creator to this extractor
