@@ -195,7 +195,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "chaser": None,
             "chaserArgs": None,
             "defaultUSDFormat": "usdc",
-            "stripNamespaces": False,
+            "stripNamespaces": True,
             "mergeTransformAndShape": True,
             "exportDisplayColor": False,
             "exportColorSets": True,
@@ -211,7 +211,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "jobContext": None,
             "filterTypes": None,
             "staticSingleSample": True,
-            "worldspace": False
+            "worldspace": True
         }
 
     def parse_overrides(self, overrides, options):
@@ -294,11 +294,6 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                                              long=True)
         else:
             options["selection"] = True
-
-        options["stripNamespaces"] = attr_values.get("stripNamespaces", True)
-        options["exportComponentTags"] = attr_values.get("exportComponentTags",
-                                                         False)
-        options["worldspace"] = attr_values.get("worldspace", True)
 
         # TODO: Remove hardcoded filterTypes
         # We always filter constraint types because they serve no valuable
