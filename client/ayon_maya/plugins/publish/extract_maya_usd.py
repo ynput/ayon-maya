@@ -214,15 +214,15 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "worldspace": False
         }
 
-    def parse_overrides(self, instance, options):
+    def parse_overrides(self, overrides, options):
         """Inspect data of instance to determine overridden options"""
 
-        for key in instance.data:
+        for key in overrides:
             if key not in self.options:
                 continue
 
             # Ensure the data is of correct type
-            value = instance.data[key]
+            value = overrides[key]
             if isinstance(value, str):
                 value = str(value)
             if not isinstance(value, self.options[key]):
@@ -265,7 +265,8 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
 
         # Parse export options
         options = self.default_options
-        options = self.parse_overrides(instance, options)
+        options = self.parse_overrides(instance.data, options)
+        options = self.parse_overrides(attr_values, options)
 
         # Perform extraction
         self.log.debug("Performing extraction ...")
