@@ -3,7 +3,7 @@ import json
 import os
 
 from ayon_core.pipeline import publish
-from ayon_core.lib import BoolDef
+from ayon_core.lib import BoolDef, UILabelDef, UISeparatorDef
 from ayon_maya.api.lib import maintained_selection, maintained_time
 from ayon_maya.api import plugin
 
@@ -146,6 +146,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
     Upon publish a .usd (or .usdz) asset file will typically be written.
     """
 
+    enabled = True
     label = "Extract Maya USD Asset"
     families = ["mayaUsd"]
 
@@ -394,22 +395,131 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         )
 
     @classmethod
-    def get_attribute_defs(cls):
-        return super(ExtractMayaUsd, cls).get_attribute_defs() + [
+    def register_create_context_callbacks(cls, create_context):
+        create_context.add_value_changed_callback(cls.on_values_changed)
+
+    @classmethod
+    def on_values_changed(cls, event):
+        """Update instance attribute definitions on attribute changes."""
+        for instance_change in event["changes"]:
+            # First check if there's a change we want to respond to
+            instance = instance_change["instance"]
+            if instance is None:
+                # Change is on context
+                continue
+
+            # Check if active state is toggled
+            value_changes = instance_change["changes"]
+            if "publish_attributes" not in value_changes:
+                continue
+
+            publish_attributes = value_changes["publish_attributes"]
+            class_name = cls.__name__
+            if class_name not in publish_attributes:
+                continue
+
+            if "active" not in publish_attributes[class_name]:
+                continue
+
+            # Update the attribute definitions
+            new_attrs = cls.get_attr_defs_for_instance(
+                event["create_context"], instance
+            )
+            instance.set_publish_plugin_attr_defs(class_name, new_attrs)
+
+    @classmethod
+    def get_attr_defs_for_instance(cls, create_context, instance):
+        is_enabled = cls.enabled
+        if not is_enabled:
+            return []
+
+        if not cls.instance_matches_plugin_families(instance):
+            return []
+
+        if cls.optional:
+            plugin_attr_values = (
+                instance.data
+                .get("publish_attributes", {})
+                .get(cls.__name__, {})
+            )
+            is_enabled = plugin_attr_values.get("active", cls.active)
+
+        attr_defs = [
+            UISeparatorDef("sep_usd_options"),
+            UILabelDef("USD Options"),
+        ]
+        attr_defs.extend(
+            super().get_attr_defs_for_instance(create_context, instance)
+        )
+        attr_defs.extend(cls._get_additional_attr_defs(is_enabled))
+        attr_defs.append(
+            UISeparatorDef("sep_usd_options_end")
+        )
+        return attr_defs
+
+    @classmethod
+    def convert_attribute_values(
+        cls, create_context: "CreateContext", instance: "CreatedInstance"
+    ):
+        # Convert creator attribute 'mergeTransformAndShape' to
+        # plugin attribute, because this attribute has moved from
+        # the `io.openpype.creators.maya.mayausd` creator to this extractor
+        super().convert_attribute_values(create_context, instance)
+        if (
+                not cls.enabled
+                or not instance
+                or not cls.instance_matches_plugin_families(instance)
+        ):
+            return
+        if (
+                instance.data.get("creator_identifier")
+                != "io.openpype.creators.maya.mayausd"
+        ):
+            return
+        creator_attributes = instance.data.get("creator_attributes", {})
+        if not creator_attributes:
+            return
+
+        keys = ["mergeTransformAndShape"]
+        for key in keys:
+            if key in creator_attributes:
+                # Set attribute value for this plugin
+                value = creator_attributes.pop(key)
+                class_name = cls.__name__
+                instance.publish_attributes[class_name][key] = value
+
+    @classmethod
+    def _get_additional_attr_defs(cls, visible: bool) -> list:
+        return [
             BoolDef("stripNamespaces",
-                    label="Strip Namespaces (USD)",
+                    label="Strip Namespaces",
                     tooltip="Strip Namespaces in the USD Export",
+                    visible=visible,
                     default=True),
             BoolDef("worldspace",
-                    label="World-Space (USD)",
+                    label="World-Space",
                     tooltip="Export all root prim using their full worldspace "
                             "transform instead of their local transform.",
+                    visible=visible,
                     default=True),
             BoolDef("exportComponentTags",
                     label="Export Component Tags",
                     tooltip="When enabled, export any geometry component tags "
                             "as UsdGeomSubset data.",
-                    default=False)
+                    visible=visible,
+                    default=False),
+            BoolDef("mergeTransformAndShape",
+                    label="Merge Transform and Shape",
+                    tooltip=(
+                        "Combine Maya transform and shape into a single USD"
+                        "prim that has transform and geometry, for all"
+                        " \"geometric primitives\" (gprims).\n"
+                        "This results in smaller and faster scenes. Gprims "
+                        "will be \"unpacked\" back into transform and shape "
+                        "nodes when imported into Maya from USD."
+                    ),
+                    visible=visible,
+                    default=True),
         ]
 
 
