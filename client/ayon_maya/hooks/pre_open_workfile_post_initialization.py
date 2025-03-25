@@ -18,7 +18,7 @@ class MayaPreOpenWorkfilePostInitialization(PreLaunchHook):
             return
 
         # Force disable the `AddLastWorkfileToLaunchArgs`.
-        start_last_workfile = self.data.pop("start_last_workfile")
+        start_last_workfile = self.data.pop("start_last_workfile", None)
 
         # Ignore if there's no last workfile to start.
         if not start_last_workfile:
