@@ -102,7 +102,7 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
         self.log.debug("Performing extraction ...")
         attribute_values = self.get_attr_values_from_data(instance.data)
 
-        file_type = "mayaAscii" if self.scene_type == "ma" else "mayaBinary"
+        file_type = "mayaAscii" if scene_type == "ma" else "mayaBinary"
         with maintained_selection():
             cmds.select(selection, noExpand=True)
             with contextlib.ExitStack() as stack:
