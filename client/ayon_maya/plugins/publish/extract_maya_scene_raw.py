@@ -129,8 +129,8 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
             instance.data["representations"] = []
 
         representation = {
-            "name": self.scene_type,
-            "ext": self.scene_type,
+            "name": scene_type,
+            "ext": scene_type,
             "files": filename,
             "stagingDir": dir_path,
         }
