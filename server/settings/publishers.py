@@ -615,6 +615,11 @@ class ExtractGPUCacheModel(BaseSettingsModel):
     writeMaterials: bool = SettingsField(title="Write Materials")
     useBaseTessellation: bool = SettingsField(title="User Based Tessellation")
 
+class ExtractSkeletonMeshModel(BaseSettingsModel):
+    enabled: bool = True
+    active: bool = SettingsField(title="Active")
+    optional: bool = SettingsField(title="Optional")
+
 
 class PublishersModel(BaseSettingsModel):
     CollectMayaRender: CollectMayaRenderModel = SettingsField(
@@ -1074,6 +1079,10 @@ class PublishersModel(BaseSettingsModel):
     ExtractMayaUsdAnim: ExtractMayaUsdAnimModel = SettingsField(
         default_factory=ExtractMayaUsdAnimModel,
         title="Extract Maya USD with Animation"
+    )
+    ExtractSkeletonMesh: ExtractSkeletonMeshModel = SettingsField(
+        default_factory=ExtractSkeletonMeshModel,
+        title="Extract Skeleton Mesh"
     )
 
 
@@ -1722,5 +1731,10 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "active": False,
+    },
+    "ExtractSkeletonMesh": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
     }
 }
