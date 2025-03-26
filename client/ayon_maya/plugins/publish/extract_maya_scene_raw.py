@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Extract data as Maya scene (raw)."""
+from __future__ import annotations
 import os
 import contextlib
 from ayon_core.lib import BoolDef
@@ -24,6 +25,9 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
                 "camerarig"]
     scene_type = "ma"
 
+    # Defined by settings
+    add_for_families: list[str] = []
+
     @classmethod
     def get_attribute_defs(cls):
         return [
@@ -36,7 +40,7 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
                     "are imported into the published file generating a "
                     "file without references."
                 ),
-                default=True
+                default=True,
             )
         ]
 
@@ -47,21 +51,26 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
             item["name"]: item["value"]
             for item in maya_settings["ext_mapping"]
         }
+        scene_type: str = self.scene_type
+
+        # Families is used for lookup in extension mapping and add for families
+        families = [instance.data["productType"]]
+        families.extend(instance.data.get("families", []))
+
         if ext_mapping:
-            self.log.debug("Looking in settings for scene type ...")
             # use extension mapping for first family found
-            for family in self.families:
-                try:
-                    self.scene_type = ext_mapping[family]
+
+            for family in families:
+                if family in ext_mapping:
                     self.log.debug(
-                        "Using {} as scene type".format(self.scene_type))
+                        f"Using '{scene_type}' as scene type for '{family}'"
+                    )
+                    scene_type = ext_mapping[family]
                     break
-                except KeyError:
-                    # no preset found
-                    pass
+
         # Define extract output file path
         dir_path = self.staging_dir(instance)
-        filename = "{0}.{1}".format(instance.name, self.scene_type)
+        filename = "{0}.{1}".format(instance.name, scene_type)
         path = os.path.join(dir_path, filename)
 
         # Whether to include all nodes in the instance (including those from
@@ -70,8 +79,9 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
         if members_only:
             members = instance.data.get("setMembers", list())
             if not members:
-                raise RuntimeError("Can't export 'exact set members only' "
-                                   "when set is empty.")
+                raise RuntimeError(
+                    "Can't export 'exact set members only' when set is empty."
+                )
         else:
             members = instance[:]
 
@@ -82,49 +92,53 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
         # sense. We must always search the full hierarchy to actually find
         # the relevant containers
         selection = list(members)  # make a copy to not affect input list
-        if set(self.add_for_families).intersection(
-                set(instance.data.get("families", []))) or \
-                instance.data.get("productType") in self.add_for_families:
+        add_for_families = set(self.add_for_families)
+        if add_for_families and add_for_families.intersection(families):
             containers = self._get_loaded_containers(instance[:])
             self.log.debug(f"Collected containers: {containers}")
             selection.extend(containers)
 
         # Perform extraction
         self.log.debug("Performing extraction ...")
-        attribute_values = self.get_attr_values_from_data(
-            instance.data
-        )
+        attribute_values = self.get_attr_values_from_data(instance.data)
+
+        file_type = "mayaAscii" if self.scene_type == "ma" else "mayaBinary"
         with maintained_selection():
             cmds.select(selection, noExpand=True)
             with contextlib.ExitStack() as stack:
                 if not instance.data.get("shader", True):
-                    # Fix bug where export without shader may import the geometry 'green'
-                    # due to the lack of any shader on import.
-                    stack.enter_context(shader(selection, shadingEngine="initialShadingGroup"))
+                    # Fix bug where export without shader may import the
+                    # geometry 'green' due to the lack of any shader on import.
+                    stack.enter_context(
+                        shader(selection, shadingEngine="initialShadingGroup")
+                    )
 
-                cmds.file(path,
-                          force=True,
-                          typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",
-                          exportSelected=True,
-                          preserveReferences=attribute_values["preserve_references"],
-                          constructionHistory=True,
-                          shader=instance.data.get("shader", True),
-                          constraints=True,
-                          expressions=True)
+                cmds.file(
+                    path,
+                    force=True,
+                    typ=file_type,
+                    exportSelected=True,
+                    preserveReferences=attribute_values["preserve_references"],
+                    constructionHistory=True,
+                    shader=instance.data.get("shader", True),
+                    constraints=True,
+                    expressions=True,
+                )
 
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
         representation = {
-            'name': self.scene_type,
-            'ext': self.scene_type,
-            'files': filename,
-            "stagingDir": dir_path
+            "name": self.scene_type,
+            "ext": self.scene_type,
+            "files": filename,
+            "stagingDir": dir_path,
         }
         instance.data["representations"].append(representation)
 
-        self.log.debug("Extracted instance '%s' to: %s" % (instance.name,
-                                                           path))
+        self.log.debug(
+            "Extracted instance '%s' to: %s" % (instance.name, path)
+        )
 
     @staticmethod
     def _get_loaded_containers(members):
@@ -137,18 +151,23 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
 
         members_with_refs = refs_to_include.union(members)
 
-        obj_sets = cmds.ls("*.id", long=True, type="objectSet", recursive=True,
-                           objectsOnly=True)
+        obj_sets = cmds.ls(
+            "*.id",
+            long=True,
+            type="objectSet",
+            recursive=True,
+            objectsOnly=True,
+        )
 
         loaded_containers = []
         for obj_set in obj_sets:
-
             if not cmds.attributeQuery("id", node=obj_set, exists=True):
                 continue
 
             id_attr = "{}.id".format(obj_set)
             if cmds.getAttr(id_attr) not in {
-                AYON_CONTAINER_ID, AVALON_CONTAINER_ID
+                AYON_CONTAINER_ID,
+                AVALON_CONTAINER_ID,
             }:
                 continue
 
