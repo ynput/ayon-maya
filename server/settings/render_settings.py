@@ -341,13 +341,21 @@ class RedshiftSettingsModel(BaseSettingsModel):
     image_prefix: str = SettingsField(title="Image prefix template")
     # both engines are using the same enumerator,
     #   both were originally str because of JSON limitation.
+    gi_enabled: bool = SettingsField(
+        False,
+        title="Enable Global Illumination"
+    )
     primary_gi_engine: str = SettingsField(
         enum_resolver=redshift_primary_gi_engine_enum,
-        title="Primary GI Engine"
+        title="Primary GI Engine",
+        description="Set the Primary GI engine. "
+                    "If `None` it is not managed by AYON."
     )
     secondary_gi_engine: str = SettingsField(
         enum_resolver=redshift_secondary_gi_engine_enum,
-        title="Secondary GI Engine"
+        title="Secondary GI Engine",
+        description="Set the Secondary GI engine. "
+                    "If `None` it is not managed by AYON."
     )
     image_format: str = SettingsField(
         enum_resolver=redshift_image_output_enum,
@@ -485,6 +493,7 @@ DEFAULT_RENDER_SETTINGS = {
     },
     "redshift_renderer": {
         "image_prefix": "<Scene>/<RenderLayer>/<RenderLayer>",
+        "gi_enabled": False,
         "primary_gi_engine": "0",
         "secondary_gi_engine": "0",
         "image_format": "exr",

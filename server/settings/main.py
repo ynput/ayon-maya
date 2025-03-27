@@ -21,10 +21,19 @@ from .templated_workfile_settings import (
 )
 
 
+def maya_file_extensions_enum():
+    return [
+        {"value": "ma", "label": "Maya Ascii (.ma)"},
+        {"value": "mb", "label": "Maya Binary (.mb)"}
+    ]
+
+
 class ExtMappingItemModel(BaseSettingsModel):
     _layout = "compact"
     name: str = SettingsField(title="Product type")
-    value: str = SettingsField(title="Extension")
+    value: str = SettingsField(
+        title="Extension", enum_resolver=maya_file_extensions_enum
+    )
 
 
 class MayaSettings(BaseSettingsModel):
