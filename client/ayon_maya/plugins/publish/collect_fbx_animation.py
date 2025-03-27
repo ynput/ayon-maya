@@ -59,15 +59,18 @@ class CollectFbxAnimation(plugin.MayaInstancePlugin,
             UILabelDef("Fbx Options"),
         ]
         defs.extend(
-            super(CollectFbxAnimation, cls).get_attribute_defs() + [
+            super().get_attribute_defs() + [
             EnumDef("upAxis",
                     ["x", "y", "z"],
                     default=cls.up_axis,
-                    tooltip="Define the up axis in your FBX file"),
+                    tooltip="Convert the scene's orientation in your FBX file"),
             BoolDef("inputConnections",
                     default=cls.input_connections,
-                    tooltip="Whether the input connections to "
-                            "selected object to be exported"),
+                    tooltip=(
+                        "Whether input connections to "
+                        "selected objects are to be exported."
+                        ),
+                    ),
             UISeparatorDef("sep_fbx_options_end")
         ])
 
