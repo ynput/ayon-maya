@@ -54,15 +54,20 @@ class CollectFbxAnimation(plugin.MayaInstancePlugin,
 
     @classmethod
     def get_attribute_defs(cls):
-        defs = super(CollectFbxAnimation, cls).get_attribute_defs()
-        defs.extend([
+        defs = [
             UISeparatorDef("sep_fbx_options"),
             UILabelDef("Fbx Options"),
+        ]
+        defs.extend(
+            super(CollectFbxAnimation, cls).get_attribute_defs() + [
             EnumDef("upAxis",
                     ["x", "y", "z"],
-                    default=cls.up_axis),
+                    default=cls.up_axis,
+                    tooltip="Define the up axis in your FBX file"),
             BoolDef("inputConnections",
-                    default=cls.input_connections),
+                    default=cls.input_connections,
+                    tooltip="Whether the input connections to "
+                            "selected object to be exported"),
             UISeparatorDef("sep_fbx_options_end")
         ])
 
