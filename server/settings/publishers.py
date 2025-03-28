@@ -1076,8 +1076,8 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ExtractMayaUsdAnimModel,
         title="Extract Maya USD with Animation"
     )
-    ExtractSkeletonMesh: ExtractSkeletonMeshModel = SettingsField(
-        default_factory=ExtractSkeletonMeshModel,
+    ExtractSkeletonMesh: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
         title="Extract Skeleton Mesh"
     )
 
