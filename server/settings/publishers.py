@@ -615,10 +615,6 @@ class ExtractGPUCacheModel(BaseSettingsModel):
     writeMaterials: bool = SettingsField(title="Write Materials")
     useBaseTessellation: bool = SettingsField(title="User Based Tessellation")
 
-class ExtractSkeletonMeshModel(BaseSettingsModel):
-    enabled: bool = True
-    active: bool = SettingsField(title="Active")
-    optional: bool = SettingsField(title="Optional")
 
 
 class PublishersModel(BaseSettingsModel):
