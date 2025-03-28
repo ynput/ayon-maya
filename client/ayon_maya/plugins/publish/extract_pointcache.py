@@ -351,7 +351,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin, OptionalPyblishPluginMixin):
                 *traits],
         )
 
-        if not instance.data["representations_with_traits"]:
+        if not instance.data.get("representations_with_traits"):
             instance.data["representations_with_traits"] = []
 
         instance.data["representations_with_traits"].append(representation)
