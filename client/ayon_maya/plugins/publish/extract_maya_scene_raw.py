@@ -53,20 +53,24 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
         }
         scene_type: str = self.scene_type
 
-        # Families is used for lookup in extension mapping and add for families
+        # Use `families` for lookup in extension mapping and add for families
         families = [instance.data["productType"]]
         families.extend(instance.data.get("families", []))
 
-        if ext_mapping:
-            # use extension mapping for first family found
-
-            for family in families:
-                if family in ext_mapping:
-                    self.log.debug(
-                        f"Using '{scene_type}' as scene type for '{family}'"
-                    )
-                    scene_type = ext_mapping[family]
-                    break
+        # use extension mapping for first family found
+        for family in families:
+            if family in ext_mapping:
+                self.log.debug(
+                    f"Using '{scene_type}' as scene type for '{family}'"
+                )
+                scene_type = ext_mapping[family]
+                break
+        else:
+            self.log.debug(
+                f"Using default '{scene_type}' as scene type for "
+                f"'{families}' because no extension mapping settings "
+                "found for product type."
+            )
 
         # Define extract output file path
         dir_path = self.staging_dir(instance)
