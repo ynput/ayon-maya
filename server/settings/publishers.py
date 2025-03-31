@@ -616,7 +616,6 @@ class ExtractGPUCacheModel(BaseSettingsModel):
     useBaseTessellation: bool = SettingsField(title="User Based Tessellation")
 
 
-
 class PublishersModel(BaseSettingsModel):
     CollectMayaRender: CollectMayaRenderModel = SettingsField(
         default_factory=CollectMayaRenderModel,
