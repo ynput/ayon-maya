@@ -25,6 +25,8 @@ class MatchmoveLoader(plugin.Loader):
             runpy.run_path(path, run_name="__main__")
 
         elif path.lower().endswith(".mel"):
+            # Force forward slashes to avoid issues with backslashes in paths
+            path = path.replace("\\", "/")
             mel.eval('source "{}"'.format(path))
 
         else:
