@@ -107,17 +107,6 @@ class CreateMayaUsd(plugin.MayaCreator):
                         "following format: nameSpaceExample_pPlatonic1"
                     ),
                     default=True),
-            BoolDef("mergeTransformAndShape",
-                    label="Merge Transform and Shape",
-                    tooltip=(
-                        "Combine Maya transform and shape into a single USD"
-                        "prim that has transform and geometry, for all"
-                        " \"geometric primitives\" (gprims).\n"
-                        "This results in smaller and faster scenes. Gprims "
-                        "will be \"unpacked\" back into transform and shape "
-                        "nodes when imported into Maya from USD."
-                    ),
-                    default=True),
             BoolDef("includeUserDefinedAttributes",
                     label="Include User Defined Attributes",
                     tooltip=(
