@@ -643,10 +643,6 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Collect Camera for FBX export",
     )
-    CollectFbxModel: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Collect Model for FBX export",
-    )
     CollectGLTF: CollectGLTFModel = SettingsField(
         default_factory=CollectGLTFModel,
         title="Collect Assets for GLB/GLTF export"
