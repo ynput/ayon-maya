@@ -66,6 +66,7 @@ class CollectFbxAnimation(plugin.MayaInstancePlugin,
                     default=cls.up_axis,
                     tooltip="Convert the scene's orientation in your FBX file"),
             BoolDef("inputConnections",
+                    label="Input Connections",
                     default=cls.input_connections,
                     tooltip=(
                         "Whether input connections to "
