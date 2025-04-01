@@ -29,7 +29,6 @@ def linear_unit_enum():
 def up_axis_enum():
     """Get Up Axis enumerator."""
     return [
-        {"label": "x", "value": "x"},
         {"label": "y", "value": "y"},
         {"label": "z", "value": "z"},
     ]

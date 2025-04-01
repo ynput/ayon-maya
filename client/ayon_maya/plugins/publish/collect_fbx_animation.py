@@ -61,7 +61,7 @@ class CollectFbxAnimation(plugin.MayaInstancePlugin,
         defs.extend(
             super().get_attribute_defs() + [
             EnumDef("upAxis",
-                    items=["x", "y", "z"],
+                    items=["y", "z"],
                     label="Up Axis",
                     default=cls.up_axis,
                     tooltip="Convert the scene's orientation in your FBX file"),
