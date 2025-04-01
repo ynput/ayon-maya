@@ -3,7 +3,7 @@ import json
 import os
 
 from ayon_core.pipeline import publish
-from ayon_core.lib import BoolDef, UILabelDef, UISeparatorDef
+from ayon_core.lib import BoolDef, EnumDef, UILabelDef, UISeparatorDef
 from ayon_maya.api.lib import maintained_selection, maintained_time
 from ayon_maya.api import plugin
 
@@ -167,6 +167,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "chaser": (list, None),  # optional list
             "chaserArgs": (list, None),  # optional list
             "defaultUSDFormat": str,
+            "defaultMeshScheme": str,
             "stripNamespaces": bool,
             "mergeTransformAndShape": bool,
             "exportDisplayColor": bool,
@@ -195,6 +196,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "chaser": None,
             "chaserArgs": None,
             "defaultUSDFormat": "usdc",
+            "defaultMeshScheme": "catmullClark",
             "stripNamespaces": True,
             "mergeTransformAndShape": True,
             "exportDisplayColor": False,
@@ -514,6 +516,23 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                     ),
                     visible=visible,
                     default=True),
+            EnumDef("defaultMeshScheme",
+                    label="Default Subdivision Method",
+                    items=[
+                        {"value": "catmullClark", "label": "Catmull Clark"},
+                        {"value": "loop", "label": "Loop"},
+                        {"value": "bilinear", "label": "Bilinear"},
+                        {"value": "none", "label": "None"},
+                    ],
+                    tooltip=(
+                        "Default subdivision method for meshes.\n"
+                        "Options are: catmullClark, loop, bilinear, none."
+                        "\n\n"
+                        "To specify per mesh subdivision schemes add a "
+                        "USD_ATTR_subdivisionScheme attribute."
+                    ),
+                    default="catmullClark"
+            )
         ]
 
 
