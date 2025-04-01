@@ -68,9 +68,9 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
         else:
             families_label = ", ".join(set(families))
             self.log.debug(
-                f"Using default '{scene_type}' as scene type for "
-                f"'{families_label}' because no extension mapping settings "
-                "found for product type."
+                f"Using default '{scene_type}' as scene type because no "
+                "extension mapping settings found for families: "
+                f"{families_label}."
             )
 
         # Define extract output file path
