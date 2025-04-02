@@ -113,11 +113,14 @@ DEFAULT_MAYA_SETTING = {
     "mel_workspace": DEFAULT_MEL_WORKSPACE_SETTINGS,
     "ext_mapping": [
         {"name": "model", "value": "ma"},
-        {"name": "mayaAscii", "value": "ma"},
+        {"name": "mayaScene", "value": "ma"},
         {"name": "camera", "value": "ma"},
         {"name": "rig", "value": "ma"},
         {"name": "workfile", "value": "ma"},
-        {"name": "yetiRig", "value": "ma"}
+        {"name": "yetiRig", "value": "ma"},
+        {"name": "setdress", "value": "ma"},
+        {"name": "layout", "value": "ma"},
+        {"name": "camerarig", "value": "ma"},
     ],
     # `dirmap` was originally with dash - `maya-dirmap`
     "dirmap": DEFAULT_DIRMAP_SETTINGS,
