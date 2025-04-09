@@ -26,6 +26,14 @@ def linear_unit_enum():
     ]
 
 
+def up_axis_enum():
+    """Get Up Axis enumerator."""
+    return [
+        {"label": "y", "value": "y"},
+        {"label": "z", "value": "z"},
+    ]
+
+
 def angular_unit_enum():
     """Get angular units enumerator."""
     return [
@@ -147,7 +155,12 @@ class CollectMayaRenderModel(BaseSettingsModel):
 
 class CollectFbxAnimationModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Collect Fbx Animation")
-
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    input_connections: bool = SettingsField(True, title="Input Connections")
+    up_axis: str = SettingsField(
+        enum_resolver=up_axis_enum, title="Up Axis"
+    )
 
 class CollectFbxCameraModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="CollectFbxCamera")
@@ -622,8 +635,8 @@ class PublishersModel(BaseSettingsModel):
         title="Collect Render Layers",
         section="Collectors"
     )
-    CollectFbxAnimation: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
+    CollectFbxAnimation: CollectFbxAnimationModel = SettingsField(
+        default_factory=CollectFbxAnimationModel,
         title="Collect FBX Animation",
     )
     CollectFbxCamera: BasicValidateModel = SettingsField(
@@ -1096,7 +1109,9 @@ DEFAULT_PUBLISH_SETTINGS = {
     "CollectFbxAnimation": {
         "enabled": False,
         "optional": True,
-        "active": True
+        "active": True,
+        "input_connections": True,
+        "up_axis": "y"
     },
     "CollectFbxCamera": {
         "enabled": False,
