@@ -442,7 +442,7 @@ def imprint_container(container,
                       loader=None,
                       prefix=None):
     data = [
-        ("schema", "openpype:container-2.0"),
+        ("schema", "ayon:container-3.0"),
         ("id", AVALON_CONTAINER_ID),
         ("name", name),
         ("namespace", namespace),
