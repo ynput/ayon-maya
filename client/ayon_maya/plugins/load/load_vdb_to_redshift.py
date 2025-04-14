@@ -1,9 +1,15 @@
 import os
+from typing import List
 
 from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
-from ayon_maya.api import plugin
+from ayon_core.lib import BoolDef
+
+from ayon_maya.api import plugin, lib
 from ayon_maya.api.plugin import get_load_color_for_product_type
+from ayon_maya.api.pipeline import containerise
+
+from maya import cmds, mel
 
 
 class LoadVDBtoRedShift(plugin.Loader):
@@ -23,11 +29,17 @@ class LoadVDBtoRedShift(plugin.Loader):
     icon = "cloud"
     color = "orange"
 
-    def load(self, context, name=None, namespace=None, data=None):
+    options = [
+        BoolDef("create_shader",
+                label="Create Redshift Volume Shader",
+                tooltip="When enabled create a Redshift Volume Shader and "
+                        "assign it to the volume shape. Without a volume "
+                        "shader assigned Redshift may not render the volume "
+                        "at all.",
+                default=True)
+    ]
 
-        from ayon_maya.api.lib import unique_namespace
-        from ayon_maya.api.pipeline import containerise
-        from maya import cmds
+    def load(self, context, name=None, namespace=None, options=None):
 
         product_type = context["product"]["productType"]
 
@@ -51,7 +63,7 @@ class LoadVDBtoRedShift(plugin.Loader):
                                % compatible)
 
         folder_name = context["folder"]["name"]
-        namespace = namespace or unique_namespace(
+        namespace = namespace or lib.unique_namespace(
             folder_name + "_",
             prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
@@ -78,6 +90,9 @@ class LoadVDBtoRedShift(plugin.Loader):
                        path=self.filepath_from_context(context),
                        representation=context["representation"])
 
+        if options.get("create_shader", True):
+            self._create_default_redshift_volume_shader(volume_node)
+
         nodes = [root, volume_node]
         self[:] = nodes
 
@@ -89,7 +104,6 @@ class LoadVDBtoRedShift(plugin.Loader):
             loader=self.__class__.__name__)
 
     def update(self, container, context):
-        from maya import cmds
 
         repre_entity = context["representation"]
         path = get_representation_path(repre_entity)
@@ -108,7 +122,6 @@ class LoadVDBtoRedShift(plugin.Loader):
                      type="string")
 
     def remove(self, container):
-        from maya import cmds
 
         # Get all members of the AYON container, ensure they are unlocked
         # and delete everything
@@ -131,7 +144,6 @@ class LoadVDBtoRedShift(plugin.Loader):
                   path,
                   representation):
         """Apply the settings for the VDB path to the RedshiftVolumeShape"""
-        from maya import cmds
 
         if not os.path.exists(path):
             raise RuntimeError("Path does not exist: %s" % path)
@@ -141,3 +153,41 @@ class LoadVDBtoRedShift(plugin.Loader):
 
         # Set file path
         cmds.setAttr(grid_node + ".fileName", path, type="string")
+
+        # Force refresh with the use frame extension
+        # This makes sure we can directly retrieve the `.gridNames` attribute
+        # and avoids potential 'Failed to find volume file' warnings that
+        # appear once on load when Maya has not yet initialized use frame
+        # extension behavior correctly on load yet.
+        mel.eval(f'checkUseFrameExtension("{grid_node}")')
+
+    def _create_default_redshift_volume_shader(
+            self, volume_shape: str) -> List[str]:
+        """Create RedshiftStandardVolume shader and assign it to the volume"""
+        # TODO: Should this material become "managed" and get removed on
+        #  removing the Redshift Volume itself? Currently it is not and it
+        #  will linger in the scene as dangling unused material.
+
+        # Create shading engine with RedshiftStandardVolume
+        material = cmds.shadingNode("RedshiftStandardVolume", asShader=True)
+        sg = cmds.shadingNode(
+            "shadingEngine", asShader=True, name=f"{material}SG")
+        cmds.connectAttr(f"{material}.outColor",
+                         f"{sg}.volumeShader",
+                         force=True)
+
+        # Set default density name
+        channel = "density"
+        grid_names: List[str] = cmds.getAttr(f"{volume_shape}.gridNames")
+        if grid_names and channel not in grid_names:
+            channel = grid_names[0]
+        cmds.setAttr("{}.density_name".format(material),
+                     channel, type="string")
+
+        # Assign shader to the volume shape
+        cmds.sets(volume_shape, forceElement=sg)
+
+        self.log.info(
+            f"Created RedshiftStandardVolume: '{material}'"
+            f" using channel '{channel}'")
+        return [material, sg]
