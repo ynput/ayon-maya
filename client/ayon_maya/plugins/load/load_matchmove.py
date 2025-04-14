@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 from ayon_maya.api import plugin
-from maya import mel
+from maya import cmds
 
 
 class MatchmoveLoader(plugin.Loader):
@@ -32,7 +32,10 @@ class MatchmoveLoader(plugin.Loader):
             runpy.run_path(path.as_posix(), run_name="__main__")
 
         elif path.suffix.lower() == ".mel":
-            mel.eval(f'source "{path.as_posix()}"')
-
+            cmds.file(
+                path.as_posix(), type="mel",
+                renameAll=True, i=True, ignoreVersion=True,
+                importTimeRange="override",
+                options="v=0;", pr=True, loadReferenceDepth="all")
         else:
             self.log.error("Unsupported script type %s", path.suffix)
