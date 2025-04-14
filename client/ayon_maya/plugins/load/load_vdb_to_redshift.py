@@ -157,7 +157,7 @@ class LoadVDBtoRedShift(plugin.Loader):
         # Force refresh with the use frame extension
         # This makes sure we can directly retrieve the `.gridNames` attribute
         # and avoids potential 'Failed to find volume file' warnings that
-        # appear once on load whe Maya has not yet initialized use frame
+        # appear once on load when Maya has not yet initialized use frame
         # extension behavior correctly on load yet.
         mel.eval(f'checkUseFrameExtension("{grid_node}")')
 
