@@ -21,10 +21,19 @@ from .templated_workfile_settings import (
 )
 
 
+def maya_file_extensions_enum():
+    return [
+        {"value": "ma", "label": "Maya Ascii (.ma)"},
+        {"value": "mb", "label": "Maya Binary (.mb)"}
+    ]
+
+
 class ExtMappingItemModel(BaseSettingsModel):
     _layout = "compact"
     name: str = SettingsField(title="Product type")
-    value: str = SettingsField(title="Extension")
+    value: str = SettingsField(
+        title="Extension", enum_resolver=maya_file_extensions_enum
+    )
 
 
 class MayaSettings(BaseSettingsModel):
@@ -104,11 +113,14 @@ DEFAULT_MAYA_SETTING = {
     "mel_workspace": DEFAULT_MEL_WORKSPACE_SETTINGS,
     "ext_mapping": [
         {"name": "model", "value": "ma"},
-        {"name": "mayaAscii", "value": "ma"},
+        {"name": "mayaScene", "value": "ma"},
         {"name": "camera", "value": "ma"},
         {"name": "rig", "value": "ma"},
         {"name": "workfile", "value": "ma"},
-        {"name": "yetiRig", "value": "ma"}
+        {"name": "yetiRig", "value": "ma"},
+        {"name": "setdress", "value": "ma"},
+        {"name": "layout", "value": "ma"},
+        {"name": "camerarig", "value": "ma"},
     ],
     # `dirmap` was originally with dash - `maya-dirmap`
     "dirmap": DEFAULT_DIRMAP_SETTINGS,
