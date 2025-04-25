@@ -84,7 +84,7 @@ class RedshiftProxyLoader(plugin.Loader):
             cmds.setAttr("{}.fileName".format(rs_mesh),
                          filename,
                          type="string")
-            self._set_rs_proxy_file_type(rs_mesh, path)
+            self._set_rs_proxy_file_type(rs_mesh, filename)
 
         # Update metadata
         cmds.setAttr("{}.representation".format(node),
