@@ -12,7 +12,7 @@ from pyblish.api import ExtractorOrder
 
 class ExtractAnimCrv(plugin.MayaExtractorPlugin):
     order = ExtractorOrder
-    label = "Extract Animation curves (TEST)"
+    label = "Extract Animation curves"
     families = ["animation"]
     hosts = ["maya"]
 
