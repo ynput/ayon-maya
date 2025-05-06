@@ -2,15 +2,9 @@ import os
 import json
 import maya.cmds as cmds
 import ayon_api
-from ayon_core.pipeline import get_representation_path
-from ayon_core.settings import get_project_settings
-from ayon_maya.api.lib import unique_namespace
-from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
-from ayon_maya.api.plugin import get_load_color_for_product_type
 from ayon_core.pipeline.load.plugins import discover_loader_plugins
 from ayon_core.pipeline.load.utils import get_representation_context
-# from ayon_maya.plugins.load import load_referenece
 import logging
 import pymel.core as pm
 
@@ -45,7 +39,7 @@ class AnimLoader(plugin.Loader):
             self.log.info(f"assets: {assets}")
             current_asset = [asset for asset in assets if asset['asset_name'] in anim_file]
             if not current_asset:
-                self.log.warning(f"Asset not found in version data.")
+                self.log.warning("Asset not found in version data.")
                 return
             current_asset = current_asset[0]
             asset_data = ayon_api.get_folder_by_name(project_name=project_name, folder_name=current_asset['asset_name'])
@@ -60,7 +54,7 @@ class AnimLoader(plugin.Loader):
                 if rep['name'] == 'ma':
                     rep_id = rep['id']
                     break
-            context = get_representation_context("PRPT", rep_id)
+            context = get_representation_context(project_name, rep_id)
             options = {'attach_to_root': True}
             _plugin = plugins.get(LOADER_PLUGINS["reference"])()
             _plugin.load(context=context, name=context['product']['name'], namespace=name_space, options=options)
@@ -98,6 +92,7 @@ def read_anim(filepath='C:/temp/anim.anim', objects=pm.selected(), namespace=Non
             try:
                 cur_attr = getattr(obj, attrs)
             except AttributeError as e:
+                logger.warning(e)
                 logger.warning('skipping for {0} as attribute {1} was not found'.format(obj_shot_name, attrs))
                 continue
             key_type = ctrl_value[attrs]['type']
@@ -124,7 +119,7 @@ def read_anim(filepath='C:/temp/anim.anim', objects=pm.selected(), namespace=Non
                     tan2 = json.loads(keys.get('outAngle'))
                     weight1 = json.loads(keys.get('inWeight'))
                     weight2 = json.loads(keys.get('outWeight'))
-                    res = pm.setKeyframe(cur_attr, time=time, value=value, bd=breakdown)
+                    pm.setKeyframe(cur_attr, time=time, value=value, bd=breakdown)
                     if weighted_tangents:
                         pm.keyTangent(cur_attr, weightedTangents=True, edit=True)
                     try:
