@@ -3,17 +3,13 @@ import json
 import maya.cmds as cmds
 import ayon_api
 from ayon_maya.api import plugin
-from ayon_core.pipeline.load.plugins import discover_loader_plugins
 from ayon_core.pipeline.load.utils import get_representation_context
+from ayon_maya.plugins.load.load_reference import ReferenceLoader
 import logging
 import pymel.core as pm
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-
-LOADER_PLUGINS = {
-    "reference": "ReferenceLoader"
-}
 
 
 class AnimLoader(plugin.Loader):
@@ -31,7 +27,6 @@ class AnimLoader(plugin.Loader):
         project_name = context['project']['name']
         anim_file = context['representation']['attrib']['path']
         self.log.info(f"anim_file: {anim_file}")
-        plugins = {i.__name__: i for i in discover_loader_plugins(project_name)}
         name_space = context['representation']['data']['context']['product']['name'].replace(
             context['representation']['data']['context']['product']['type'], '')
         if not cmds.namespace(exists=name_space):
@@ -39,7 +34,7 @@ class AnimLoader(plugin.Loader):
             self.log.info(f"assets: {assets}")
             current_asset = [asset for asset in assets if asset['asset_name'] in anim_file]
             if not current_asset:
-                self.log.warning("Asset not found in version data.")
+                self.log.warning(f"Asset not found in version data.")
                 return
             current_asset = current_asset[0]
             asset_data = ayon_api.get_folder_by_name(project_name=project_name, folder_name=current_asset['asset_name'])
@@ -55,9 +50,10 @@ class AnimLoader(plugin.Loader):
                     rep_id = rep['id']
                     break
             context = get_representation_context(project_name, rep_id)
-            options = {'attach_to_root': True}
-            _plugin = plugins.get(LOADER_PLUGINS["reference"])()
-            _plugin.load(context=context, name=context['product']['name'], namespace=name_space, options=options)
+            options = {'attach_to_root': True, "group_name": f"{name_space}:_GRP"}
+            _plugin = ReferenceLoader()
+            _plugin.process_reference(context=context, name=context['product']['name'],
+                                      namespace=name_space, options=options)
         ctrl_set = pm.ls(name_space + ":rigMain_controls_SET")
         if not ctrl_set:
             self.log.warning("No control set found in instance data")
@@ -67,8 +63,9 @@ class AnimLoader(plugin.Loader):
             self.log.warning("No controls found in instance data")
             return
         self.log.debug(f"ctrls: {ctrls}")
-        self.log.info(f"namespace: {namespace}")
-        read_anim(filepath=anim_file, objects=ctrls, namespace=name_space)
+        self.log.debug(f"namespace: {namespace}")
+        self.log.debug(f"anim_file: {anim_file}")
+        read_anim(filepath=anim_file, objects=ctrls)
 
 
 def read_anim(filepath='C:/temp/anim.anim', objects=pm.selected(), namespace=None):

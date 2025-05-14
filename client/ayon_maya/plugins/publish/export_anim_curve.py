@@ -30,7 +30,7 @@ class ExtractAnimCrv(plugin.MayaExtractorPlugin):
         name_space = instance_data['variant']
         reference_node = [x for x in pm.listReferences() if x.namespace == name_space][0]
         self.log.info(f"controls: {controls}")
-        self.write_anim(objects=ctrls, filepath=os.path.realpath(out_path), namespace=name_space)
+        self.write_anim(objects=ctrls, filepath=os.path.realpath(out_path))
         if "representations" not in instance.data:
             instance.data["representations"] = []
         representation = {
