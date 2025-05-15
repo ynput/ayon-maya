@@ -473,7 +473,7 @@ class RenderSettingsModel(BaseSettingsModel):
         title="Renderman Renderer")
     mayahardware2_renderer: MayaHardwareSettingsModel = SettingsField(
         default_factory=MayaHardwareSettingsModel,
-        title="MayaHardware 2.0 Renderer"
+        title="Maya Hardware 2.0 Renderer"
     )
 
 
