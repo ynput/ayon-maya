@@ -49,7 +49,7 @@ class RenderSettings(object):
             "arnold": render_settings["arnold_renderer"]["image_prefix"],
             "renderman": render_settings["renderman_renderer"]["image_prefix"],
             "redshift": render_settings["redshift_renderer"]["image_prefix"],
-            "mayahardware2": render_settings["mayahardware_renderer"]["image_prefix"],
+            "mayahardware2": render_settings["mayahardware2_renderer"]["image_prefix"],
         }
 
         # TODO probably should be stored to more explicit attribute
@@ -90,7 +90,7 @@ class RenderSettings(object):
             start_frame = cmds.getAttr("defaultRenderGlobals.startFrame")
             cmds.currentTime(start_frame, edit=True)
 
-        if renderer in self._image_prefix_nodes:
+        if renderer in self._image_prefix_nodess:
             prefix = self._image_prefixes[renderer]
             prefix = prefix.replace("{aov_separator}", aov_separator)
             cmds.setAttr(self._image_prefix_nodes[renderer],

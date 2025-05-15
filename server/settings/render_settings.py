@@ -471,7 +471,7 @@ class RenderSettingsModel(BaseSettingsModel):
     renderman_renderer: RendermanSettingsModel = SettingsField(
         default_factory=RendermanSettingsModel,
         title="Renderman Renderer")
-    mayahardware_renderer: MayaHardwareSettingsModel = SettingsField(
+    mayahardware2_renderer: MayaHardwareSettingsModel = SettingsField(
         default_factory=MayaHardwareSettingsModel,
         title="MayaHardware 2.0 Renderer"
     )
@@ -520,7 +520,7 @@ DEFAULT_RENDER_SETTINGS = {
         "watermark_dir": "<imagedir>/<layer>{aov_separator}watermarkFilter.<f4>.<ext>",
         "additional_options": []
     },
-    "mayahardware_renderer":{
+    "mayahardware2_renderer":{
         "image_prefix": "<Scene>/<RenderLayer>/<RenderLayer>",
     }
 }
