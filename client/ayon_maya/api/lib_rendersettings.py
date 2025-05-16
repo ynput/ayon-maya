@@ -90,7 +90,7 @@ class RenderSettings(object):
             start_frame = cmds.getAttr("defaultRenderGlobals.startFrame")
             cmds.currentTime(start_frame, edit=True)
 
-        if renderer in self._image_prefix_nodess:
+        if renderer in self._image_prefix_nodes:
             prefix = self._image_prefixes[renderer]
             prefix = prefix.replace("{aov_separator}", aov_separator)
             cmds.setAttr(self._image_prefix_nodes[renderer],
