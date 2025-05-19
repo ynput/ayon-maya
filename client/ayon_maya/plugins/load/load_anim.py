@@ -52,7 +52,7 @@ class AnimLoader(plugin.Loader):
             context = get_representation_context(project_name, rep_id)
             options = {'attach_to_root': True, "group_name": f"{name_space}:_GRP"}
             _plugin = ReferenceLoader()
-            _plugin.process_reference(context=context, name=context['product']['name'],
+            _plugin.load(context=context, name=context['product']['name'],
                                       namespace=name_space, options=options)
         ctrl_set = pm.ls(name_space + ":rigMain_controls_SET")
         if not ctrl_set:
