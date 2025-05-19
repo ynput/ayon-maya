@@ -50,10 +50,10 @@ class AnimLoader(plugin.Loader):
                     rep_id = rep['id']
                     break
             context = get_representation_context(project_name, rep_id)
-            options = {'attach_to_root': True, "group_name": f"{name_space}:_GRP"}
+            data['attach_to_root'] = True
             _plugin = ReferenceLoader()
             _plugin.load(context=context, name=context['product']['name'],
-                                      namespace=name_space, options=options)
+                                      namespace=name_space, options=data)
         ctrl_set = pm.ls(name_space + ":rigMain_controls_SET")
         if not ctrl_set:
             self.log.warning("No control set found in instance data")
