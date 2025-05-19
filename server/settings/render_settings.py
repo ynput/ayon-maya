@@ -287,6 +287,10 @@ class AdditionalOptionsModel(BaseSettingsModel):
     value: str = SettingsField("", title="Value")
 
 
+class MayaHardwareSettingsModel(BaseSettingsModel):
+    image_prefix: str = SettingsField(title="Image prefix template")
+
+
 class ArnoldSettingsModel(BaseSettingsModel):
     image_prefix: str = SettingsField(title="Image prefix template")
     image_format: str = SettingsField(
@@ -467,6 +471,10 @@ class RenderSettingsModel(BaseSettingsModel):
     renderman_renderer: RendermanSettingsModel = SettingsField(
         default_factory=RendermanSettingsModel,
         title="Renderman Renderer")
+    mayahardware2_renderer: MayaHardwareSettingsModel = SettingsField(
+        default_factory=MayaHardwareSettingsModel,
+        title="Maya Hardware 2.0 Renderer"
+    )
 
 
 DEFAULT_RENDER_SETTINGS = {
@@ -511,5 +519,8 @@ DEFAULT_RENDER_SETTINGS = {
         "cryptomatte_dir": "<imagedir>/<layer>{aov_separator}cryptomatte.<f4>.<ext>",
         "watermark_dir": "<imagedir>/<layer>{aov_separator}watermarkFilter.<f4>.<ext>",
         "additional_options": []
+    },
+    "mayahardware2_renderer":{
+        "image_prefix": "<Scene>/<RenderLayer>/<RenderLayer>",
     }
 }

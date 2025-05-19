@@ -48,7 +48,8 @@ class RenderSettings(object):
             "vray": render_settings["vray_renderer"]["image_prefix"],
             "arnold": render_settings["arnold_renderer"]["image_prefix"],
             "renderman": render_settings["renderman_renderer"]["image_prefix"],
-            "redshift": render_settings["redshift_renderer"]["image_prefix"]
+            "redshift": render_settings["redshift_renderer"]["image_prefix"],
+            "mayahardware2": render_settings["mayahardware2_renderer"]["image_prefix"],
         }
 
         # TODO probably should be stored to more explicit attribute
