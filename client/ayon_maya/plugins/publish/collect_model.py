@@ -27,3 +27,9 @@ class CollectModelData(plugin.MayaInstancePlugin):
         frame = cmds.currentTime(query=True)
         instance.data["frameStart"] = frame
         instance.data["frameEnd"] = frame
+
+        # Explicitly set no handles at all
+        instance.data["handleStart"] = 0
+        instance.data["handleEnd"] = 0
+        instance.data["frameStartHandle"] = frame
+        instance.data["frameEndHandle"] = frame
