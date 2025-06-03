@@ -374,6 +374,10 @@ class MayaUSDReferenceLoader(ReferenceLoader):
             # "startTime=0",
             # "endTime=0",
             # "importUSDZTextures=0"
+            # Avoid any automatic up-axis and unit conversions
+            # TODO: Expose as optional options
+            "upAxis=0",
+            "unit=0"
         ])
         options["file_type"] = self.file_type
 
