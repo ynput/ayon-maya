@@ -1,6 +1,5 @@
 import os
 import json
-import logging
 
 import maya.cmds as cmds
 import pymel.core as pm
@@ -8,11 +7,7 @@ import pymel.core as pm
 from ayon_maya.api import plugin
 from ayon_core.pipeline.load.utils import get_representation_context
 from ayon_core.pipeline.load import get_loaders_by_name
-# from ayon_maya.plugins.load.load_reference import ReferenceLoader
 from ayon_maya.api import lib
-
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
 
 
 class AnimLoader(plugin.Loader):
@@ -28,7 +23,6 @@ class AnimLoader(plugin.Loader):
 
     def load(self, context, name, namespace, data):
         project_name = context['project']['name']
-        folder_name = context["folder"]["name"]
         anim_file = self.filepath_from_context(context)
         assets = context['version']['data'].get("assets", [])
         current_asset = [asset for asset in assets if asset['namespace'] in anim_file]
@@ -45,7 +39,7 @@ class AnimLoader(plugin.Loader):
             loader_classes = get_loaders_by_name()
             reference_loader = loader_classes.get('ReferenceLoader')()
             reference_loader.load(context=asset_context, name=asset_context['product']['name'],
-                         namespace=current_asset['namespace'], options=data)
+                                  namespace=current_asset['namespace'], options=data)
 
         ctrl_set = pm.ls(f"{current_asset['namespace']}:{current_asset['product_name']}_controls_SET")
         if not ctrl_set:

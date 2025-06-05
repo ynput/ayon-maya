@@ -1,11 +1,7 @@
 import os
 import json
-import logging
 import pymel.core as pm
 import maya.cmds as cmds
-
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
 
 from ayon_maya.api import plugin, pipeline
 from pyblish.api import ExtractorOrder
