@@ -2,15 +2,16 @@ import os
 import json
 import logging
 import pymel.core as pm
+import maya.cmds as cmds
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-from ayon_maya.api import plugin
+from ayon_maya.api import plugin, pipeline
 from pyblish.api import ExtractorOrder
 
 
-class ExtractAnimCrv(plugin.MayaExtractorPlugin):
+class ExtractAnimCurve(plugin.MayaExtractorPlugin):
     order = ExtractorOrder
     label = "Extract Animation curves"
     families = ["animation"]
@@ -18,11 +19,13 @@ class ExtractAnimCrv(plugin.MayaExtractorPlugin):
 
     def process(self, instance):
         instance_data = instance.data
+        self.log.info(f"instance_data: {instance_data}")
+
         # Define output path
         staging_dir = self.staging_dir(instance)
-        filename = "{0}.anim".format(instance_data['variant'])
+        filename = "{0}.anim".format(instance.data['variant'])
         out_path = os.path.join(staging_dir, filename)
-        controls = [x for x in instance_data['setMembers'] if x.endswith(":rigMain_controls_SET")]
+        controls = [x for x in instance.data['setMembers'] if x.endswith("controls_SET")]
         if not controls:
             self.log.warning("No controls found in instance data")
             return
@@ -34,7 +37,8 @@ class ExtractAnimCrv(plugin.MayaExtractorPlugin):
         if "representations" not in instance.data:
             instance.data["representations"] = []
         representation = {
-            'name': 'anim', 'ext': 'anim',
+            'name': 'anim',
+            'ext': 'anim',
             'files': os.path.basename(out_path),
             'stagingDir': staging_dir.replace("\\", "/")
         }
@@ -42,19 +46,28 @@ class ExtractAnimCrv(plugin.MayaExtractorPlugin):
         assets = version_data.get("assets", [])
         if not assets:
             version_data["assets"] = []
-        asset_data = {
-            "namespace": name_space,
-            "path": reference_node.path.__str__(),
-            "asset_name": name_space.split("_rigMain_")[0],
-        }
+        asset_data = self.get_asset_data(instance)
         version_data["assets"].append(asset_data)
-        instance_data["data"] = [name_space + ':' + reference_node.path.__str__()]
-        instance.data["assets"] = [name_space + ':' + reference_node.path.__str__()]
         instance.data["versionData"] = version_data
         self.log.info(f"representation: {representation}")
         instance.data["representations"].append(representation)
 
-    def write_anim(self, objects=pm.selected(), filepath='C:/temp/anim.anim', namespace=None):
+    @staticmethod
+    def get_asset_data(instance):
+        members = [member.lstrip('|') for member in instance.data['setMembers']]
+        grp_name = members[0].split(':')[0]
+        containers = cmds.ls("{}*_CON".format(grp_name))
+        rep_id = cmds.getAttr(containers[0] + '.representation')
+        name_space = cmds.getAttr(containers[0] + '.namespace')
+        product_name = cmds.getAttr(containers[0] + '.name')
+        asset_data = {
+            "namespace": name_space,
+            "product_name": product_name,
+            "representation_id": rep_id
+        }
+        return asset_data
+
+    def write_anim(self, objects, filepath, namespace=None):
         self.log.info(f"objects: {objects}")
         self.log.info(f"Writing animation curves to {filepath}")
         self.log.info(f"namespace: {namespace}")
@@ -130,7 +143,6 @@ class ExtractAnimCrv(plugin.MayaExtractorPlugin):
                     if not len(static_name) > 1:
                         continue
                     static_name = static_name[1]
-                # static_name = static_chan.name().split(obj_shot_name + '.')[1]
                 if static_name not in channel_dict:
                     channel_dict[static_name] = {'type': 'static'}
                 channel_dict[static_name]['value'] = static_chan.get()

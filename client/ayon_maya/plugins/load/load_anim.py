@@ -1,12 +1,15 @@
 import os
 import json
+import logging
+
 import maya.cmds as cmds
-import ayon_api
+import pymel.core as pm
+
 from ayon_maya.api import plugin
 from ayon_core.pipeline.load.utils import get_representation_context
-from ayon_maya.plugins.load.load_reference import ReferenceLoader
-import logging
-import pymel.core as pm
+from ayon_core.pipeline.load import get_loaders_by_name
+# from ayon_maya.plugins.load.load_reference import ReferenceLoader
+from ayon_maya.api import lib
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -25,36 +28,26 @@ class AnimLoader(plugin.Loader):
 
     def load(self, context, name, namespace, data):
         project_name = context['project']['name']
-        anim_file = context['representation']['attrib']['path']
-        self.log.info(f"anim_file: {anim_file}")
-        name_space = context['representation']['data']['context']['product']['name'].replace(
-            context['representation']['data']['context']['product']['type'], '')
-        if not cmds.namespace(exists=name_space):
-            assets = context['version']['data'].get("assets", [])
-            self.log.info(f"assets: {assets}")
-            current_asset = [asset for asset in assets if asset['asset_name'] in anim_file]
-            if not current_asset:
-                self.log.warning(f"Asset not found in version data.")
-                return
-            current_asset = current_asset[0]
-            asset_data = ayon_api.get_folder_by_name(project_name=project_name, folder_name=current_asset['asset_name'])
-            versions = ayon_api.get_last_version_by_product_name(project_name, "rigMain", asset_data['id'])
-            representations = ayon_api.get_representations(
-                project_name=project_name,
-                version_ids={versions['id']},
-                fields={"id", "name", "files.path"}
-            )
-            rep_id = None
-            for rep in representations:
-                if rep['name'] == 'ma':
-                    rep_id = rep['id']
-                    break
-            context = get_representation_context(project_name, rep_id)
+        folder_name = context["folder"]["name"]
+        anim_file = self.filepath_from_context(context)
+        assets = context['version']['data'].get("assets", [])
+        current_asset = [asset for asset in assets if asset['namespace'] in anim_file]
+        if not current_asset:
+            self.log.warning(f"Asset not found in version data for animation file: {anim_file}")
+            return
+        current_asset = current_asset[0]
+        # check if the asset is already loaded
+        if not cmds.namespace(exists=current_asset['namespace']):
+            self.log.info(f"Asset namespace {current_asset['namespace']} does not exist, loading asset.")
+            asset_context = get_representation_context(project_name, current_asset['representation_id'])
+            self.log.info(f"asset_context: {asset_context}")
             data['attach_to_root'] = True
-            _plugin = ReferenceLoader()
-            _plugin.load(context=context, name=context['product']['name'],
-                                      namespace=name_space, options=data)
-        ctrl_set = pm.ls(name_space + ":rigMain_controls_SET")
+            loader_classes = get_loaders_by_name()
+            reference_loader = loader_classes.get('ReferenceLoader')()
+            reference_loader.load(context=asset_context, name=asset_context['product']['name'],
+                         namespace=current_asset['namespace'], options=data)
+
+        ctrl_set = pm.ls(f"{current_asset['namespace']}:{current_asset['product_name']}_controls_SET")
         if not ctrl_set:
             self.log.warning("No control set found in instance data")
             return
@@ -62,13 +55,10 @@ class AnimLoader(plugin.Loader):
         if not ctrls:
             self.log.warning("No controls found in instance data")
             return
-        self.log.debug(f"ctrls: {ctrls}")
-        self.log.debug(f"namespace: {namespace}")
-        self.log.debug(f"anim_file: {anim_file}")
         read_anim(filepath=anim_file, objects=ctrls)
 
 
-def read_anim(filepath='C:/temp/anim.anim', objects=pm.selected(), namespace=None):
+def read_anim(filepath, objects, namespace=None):
     if not os.path.exists(filepath):
         return [False, 'invalid filepath']
     with open(filepath, "r", encoding='utf-8') as reader:
