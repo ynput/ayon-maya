@@ -14,10 +14,6 @@ class ExtractAnimCurve(plugin.MayaExtractorPlugin):
     hosts = ["maya"]
 
     def process(self, instance):
-        instance_data = instance.data
-        self.log.info(f"instance_data: {instance_data}")
-
-        # Define output path
         staging_dir = self.staging_dir(instance)
         filename = "{0}.anim".format(instance.data['variant'])
         out_path = os.path.join(staging_dir, filename)
@@ -26,8 +22,6 @@ class ExtractAnimCurve(plugin.MayaExtractorPlugin):
             self.log.warning("No controls found in instance data")
             return
         ctrls = pm.listConnections(controls[0], source=1, type='transform')
-        name_space = instance_data['variant']
-        reference_node = [x for x in pm.listReferences() if x.namespace == name_space][0]
         self.log.info(f"controls: {controls}")
         self.write_anim(objects=ctrls, filepath=os.path.realpath(out_path))
         if "representations" not in instance.data:
