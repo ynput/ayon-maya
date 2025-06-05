@@ -30,18 +30,16 @@ class AnimLoader(plugin.Loader):
             self.log.warning(f"Asset not found in version data for animation file: {anim_file}")
             return
         current_asset = current_asset[0]
+        asset_context = get_representation_context(project_name, current_asset['representation_id'])
         # check if the asset is already loaded
         if not cmds.namespace(exists=current_asset['namespace']):
             self.log.info(f"Asset namespace {current_asset['namespace']} does not exist, loading asset.")
-            asset_context = get_representation_context(project_name, current_asset['representation_id'])
-            self.log.info(f"asset_context: {asset_context}")
             data['attach_to_root'] = True
             loader_classes = get_loaders_by_name()
             reference_loader = loader_classes.get('ReferenceLoader')()
             reference_loader.load(context=asset_context, name=asset_context['product']['name'],
                                   namespace=current_asset['namespace'], options=data)
-
-        ctrl_set = pm.ls(f"{current_asset['namespace']}:{current_asset['product_name']}_controls_SET")
+        ctrl_set = pm.ls(f"{current_asset['namespace']}:{asset_context['product']['name']}_controls_SET")
         if not ctrl_set:
             self.log.warning("No control set found in instance data")
             return
