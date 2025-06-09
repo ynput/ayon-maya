@@ -1,4 +1,3 @@
-import os
 import pyblish.api
 from ayon_maya.api import plugin
 
@@ -16,8 +15,5 @@ class CollectDataforCache(plugin.MayaInstancePlugin):
         instance.data.update({
             # used in MayaCacheSubmitDeadline in ayon-deadline
             "plugin": "MayaBatch",
-            "publish": True,
-            "byFrameStep": instance.data.get(
-                "creator_attributes", {}).get(
-                    "step", 1.0)
+            "publish": True
         })
