@@ -23,6 +23,10 @@ class ExtractGPUCache(plugin.MayaExtractorPlugin,
         if not self.is_active(instance.data):
             return
 
+        if instance.data.get("farm"):
+            self.log.debug("Should be processed on farm, skipping.")
+            return
+
         cmds.loadPlugin("gpuCache", quiet=True)
 
         staging_dir = self.staging_dir(instance)
