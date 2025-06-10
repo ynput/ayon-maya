@@ -68,6 +68,9 @@ class ValidateClashingSiblingNames(plugin.MayaInstancePlugin,
         """Process all the nodes in the instance "objectSet"""
         if not self.is_active(instance.data):
             return
+        if instance.data.get("farm", False):
+            self.log.debug("Skipping validation check for farm submission.")
+            return
 
         if "publish_attributes" not in instance.data:
             # This is an instance generated at runtime, for example a USD
