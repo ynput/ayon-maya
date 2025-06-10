@@ -15,5 +15,6 @@ class CollectDataforCache(plugin.MayaInstancePlugin):
         instance.data.update({
             # used in MayaCacheSubmitDeadline in ayon-deadline
             "plugin": "MayaBatch",
+            "farm": False,
             "publish": True
         })
