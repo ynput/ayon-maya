@@ -12,7 +12,7 @@ class CollectPointcache(plugin.MayaInstancePlugin):
 
     def process(self, instance):
         if instance.data.get("farm"):
-            instance.data["families"].append("publish.farm")
+            instance.data["families"].append("workfile_publish_on_farm")
 
         proxy_set = None
         for node in cmds.ls(instance.data["setMembers"],
