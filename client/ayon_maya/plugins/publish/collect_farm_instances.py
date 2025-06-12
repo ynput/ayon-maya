@@ -3,8 +3,7 @@ from ayon_maya.api import plugin
 
 
 class CollectFarmInstances(plugin.MayaInstancePlugin):
-    """Collect Cache instances for publish, only works for headless mode
-
+    """Collect Farm Instances for remote publish
     """
 
     order = pyblish.api.CollectorOrder + 0.223
