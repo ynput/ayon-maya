@@ -33,4 +33,3 @@ class CollectRemoteCacheInstances(plugin.MayaInstancePlugin):
     def process(self, instance):
         self.log.debug("Processing Cache Farm Instances.")
         instance.data["farm"] = False
-        instance.data["publish"] = True
