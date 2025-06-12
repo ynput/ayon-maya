@@ -25,9 +25,6 @@ class CollectRemoteCacheInstances(plugin.MayaInstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.223
     label = "Collect Remote Cache Instances"
-    families = ["ass", "animation", "pointcache",
-                "oxcache", "proxyAbc", "redshiftproxy",
-                "vrayproxy", "xgen", "yeticache"]
     targets = ["remote"]
 
     def process(self, instance):
