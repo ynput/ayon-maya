@@ -6,7 +6,7 @@ from maya import cmds
 class CollectPointcache(plugin.MayaInstancePlugin):
     """Collect pointcache data for instance."""
 
-    order = pyblish.api.CollectorOrder + 0.224
+    order = pyblish.api.CollectorOrder + 0.4
     families = ["pointcache"]
     label = "Collect Pointcache"
 

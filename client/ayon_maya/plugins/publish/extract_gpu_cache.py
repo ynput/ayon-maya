@@ -11,6 +11,7 @@ class ExtractGPUCache(plugin.MayaExtractorPlugin,
 
     label = "GPU Cache"
     families = ["model", "animation", "pointcache"]
+    targets = ["local", "remote"]
     step = 1.0
     stepSave = 1
     optimize = True

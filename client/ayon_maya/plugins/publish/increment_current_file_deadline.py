@@ -13,7 +13,7 @@ class IncrementCurrentFileDeadline(plugin.MayaContextPlugin):
     order = pyblish.api.IntegratorOrder + 9.0
     families = ["workfile"]
     optional = True
-    targets = ["local", "remote"]
+    targets = ["local"]
 
     def process(self, context):
 
