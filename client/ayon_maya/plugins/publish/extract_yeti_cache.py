@@ -13,6 +13,7 @@ class ExtractYetiCache(plugin.MayaExtractorPlugin):
 
     label = "Extract Yeti Cache"
     families = ["yetiRig", "yeticache"]
+    targets = ["local", "remote"]
 
     def process(self, instance):
 

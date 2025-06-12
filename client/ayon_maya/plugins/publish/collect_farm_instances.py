@@ -8,7 +8,9 @@ class CollectFarmInstances(plugin.MayaInstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.223
     label = "Collect Farm Instances"
-    families = ["animation", "pointcache"]
+    families = ["ass", "animation", "pointcache",
+                "oxcache", "proxyAbc", "redshiftproxy",
+                "vrayproxy", "xgen", "yeticache"]
     targets = ["local"]
 
     def process(self, instance):
@@ -23,7 +25,9 @@ class CollectRemoteCacheInstances(plugin.MayaInstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.223
     label = "Collect Remote Cache Instances"
-    families = ["animation", "pointcache"]
+    families = ["ass", "animation", "pointcache",
+                "oxcache", "proxyAbc", "redshiftproxy",
+                "vrayproxy", "xgen", "yeticache"]
     targets = ["remote"]
 
     def process(self, instance):
