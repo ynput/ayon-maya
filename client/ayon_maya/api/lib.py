@@ -4442,7 +4442,7 @@ def force_shader_assignments_to_faces(shapes):
             cmds.sets(original_members, forceElement=shading_engine)
 
 
-def nodetype_exists(nodetype: str):
+def nodetype_exists(nodetype: str) -> bool:
     """Return whether node type exists in the current Maya session.
 
     This returns whether it's registered as a node type to maya, it does not
