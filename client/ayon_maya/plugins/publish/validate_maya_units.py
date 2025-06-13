@@ -35,21 +35,6 @@ class ValidateMayaUnits(plugin.MayaContextPlugin,
     )
     optional = False
 
-    @classmethod
-    def apply_settings(cls, project_settings):
-        """Apply project settings to creator"""
-        settings = (
-            project_settings["maya"]["publish"]["ValidateMayaUnits"]
-        )
-
-        cls.validate_linear_units = settings.get("validate_linear_units",
-                                                 cls.validate_linear_units)
-        cls.linear_units = settings.get("linear_units", cls.linear_units)
-        cls.validate_angular_units = settings.get("validate_angular_units",
-                                                  cls.validate_angular_units)
-        cls.angular_units = settings.get("angular_units", cls.angular_units)
-        cls.validate_fps = settings.get("validate_fps", cls.validate_fps)
-
     def process(self, context):
         if not self.is_active(context.data):
             return

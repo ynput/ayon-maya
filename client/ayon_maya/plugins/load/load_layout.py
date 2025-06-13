@@ -201,6 +201,22 @@ class LayoutLoader(plugin.Loader):
         )
 
 
+    def _get_asset_container_by_instance_name(self, container_node, element):
+        """Get existing asset container by instance name
+
+        Args:
+            container_node (dict): container_node
+            element (dict): element data
+
+        Returns:
+            list: asset container
+        """
+        container_nodes = cmds.sets(container_node, query=True)
+        instance_name = element.get("instance_name")
+        return [
+            node for node in container_nodes if instance_name in node
+        ]
+
     def load(self, context, name, namespace, options):
         path = self.filepath_from_context(context)
         self.log.info(f">>> loading json [ {path} ]")
@@ -236,11 +252,25 @@ class LayoutLoader(plugin.Loader):
         self.log.info(f">>> loading json [ {path} ]")
         with open(path, "r") as fp:
             data = json.load(fp)
-        # TODO: Supports to load non-existing containers
-        for element in data:
-            self.set_transformation(container["nodes"], element)
-        # Update metadata
+
+        # get the list of representations by using version id
+        repre_entities_by_version_id = self._get_repre_entities_by_version_id(
+            data
+        )
+
         node = container["objectName"]
+        for element in data:
+            asset_container = self._get_asset_container_by_instance_name(
+                node, element)
+            if asset_container:
+                self.set_transformation(asset_container, element)
+            else:
+                elements = self._process_element(
+                    element, repre_entities_by_version_id
+                )
+                cmds.sets(elements, add=node)
+
+        # Update metadata
         cmds.setAttr("{}.representation".format(node),
                      repre_entity["id"],
                      type="string")
