@@ -4440,3 +4440,23 @@ def force_shader_assignments_to_faces(shapes):
         for shading_engine, original_members in original_assignments.items():
             cmds.sets(clear=shading_engine)
             cmds.sets(original_members, forceElement=shading_engine)
+
+
+def nodetype_exists(nodetype: str) -> bool:
+    """Return whether node type exists in the current Maya session.
+
+    This returns whether it's registered as a node type to maya, it does not
+    check whether it exists in the current scene.
+
+    Args:
+        nodetype (str): The node type name to check for existence.
+
+    Returns:
+        bool: True if the node type exists, False otherwise.
+    """
+    # If the node type does not exist, Maya will raise a RuntimeError.
+    try:
+        cmds.nodeType(nodetype, isTypeName=True)
+        return True
+    except RuntimeError:
+        return False

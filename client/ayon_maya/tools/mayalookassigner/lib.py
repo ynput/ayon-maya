@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 import logging
 
@@ -17,8 +18,7 @@ from ayon_maya.api import lib
 log = logging.getLogger(__name__)
 
 
-def get_look_relationships(version_id):
-    # type: (str) -> dict
+def get_look_relationships(version_id: str) -> dict:
     """Get relations for the look.
 
     Args:
@@ -41,8 +41,7 @@ def get_look_relationships(version_id):
     return relationships
 
 
-def load_look(version_id):
-    # type: (str) -> list
+def load_look(version_id: str) -> tuple[list[str], str]:
     """Load look from version.
 
     Get look from version and invoke Loader for it.
@@ -51,7 +50,7 @@ def load_look(version_id):
         version_id (str): Version ID
 
     Returns:
-        list of shader nodes.
+        tuple[list[str], str]: List of loaded nodes and container node name.
 
     """
 

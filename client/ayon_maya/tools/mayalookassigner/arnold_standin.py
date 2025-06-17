@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import json
 import uuid
@@ -79,7 +80,7 @@ def get_nodes_by_id(standin):
             standin,
             shapes=True,
             noIntermediate=True,
-            type=("aiStandIn", "gpuCache"),
+            type=list(get_supported_node_types()),
             fullPath=True)
         if not shapes:
             return {}
@@ -203,7 +204,7 @@ class SetParameter:
             cmds.delete(self.node)
 
 
-def get_current_set_parameter_operators(standin: str) -> List[SetParameter]:
+def get_current_set_parameter_operators(standin: str) -> list[SetParameter]:
     """Return SetParameter operators for a aiStandIn node.
 
     Args:
@@ -253,13 +254,13 @@ def get_nodes_by_id_filtered(standin, include_selection_prefixes):
 
     Args:
         standin (string): aiStandIn node.
-        include_selection_prefixes (List[str] | None): If not None,
+        include_selection_prefixes (list[str] | None): If not None,
             only children to these object path prefixes will be considered.
             The paths are the full path from the root of the Alembic file,
             e.g. `/parent/child1/child2`.
 
     Returns:
-        Dict[str, List[str]]: Dictionary with `cbId` and object paths.
+        dict[str, list[str]]: Dictionary with `cbId` and object paths.
     """
     nodes_by_id = get_nodes_by_id(standin)
 
@@ -280,13 +281,13 @@ def get_nodes_by_id_filtered(standin, include_selection_prefixes):
 def assign_look(
         standin: str,
         product_name: str,
-        include_selection_prefixes: Optional[List[str]] = None):
+        include_selection_prefixes: Optional[list[str]] = None):
     """Assign a look to an aiStandIn node.
 
     Arguments:
         standin (str): The aiStandIn proxy shape.
         product_name (str): The product name to load.
-        include_selection_prefixes (Optional[List[str]]): If provided,
+        include_selection_prefixes (Optional[list[str]]): If provided,
             only children to these object path prefixes will be considered.
             The paths are the full path from the root of the Alembic file,
             e.g. `/parent/child1/child2`
@@ -337,7 +338,7 @@ def assign_look_by_version(
     Args:
         standin (str): aiStandIn node.
         version_id (str): Look product version id. 
-        nodes_by_id (Optional[Dict[str, List[str]]]): Pre-computed dictionary 
+        nodes_by_id (Optional[Dict[str, list[str]]]): Pre-computed dictionary
             with node ids and paths, as optimization or as filter to only
             consider a subset of the nodes using e.g. 
             `get_nodes_by_id_filtered`.
@@ -467,3 +468,15 @@ def assign_look_by_version(
             # Add it to the looks container so it is removed along
             # with it if needed.
             cmds.sets(operator, edit=True, addElement=container_node)
+
+
+def get_supported_node_types() -> set[str]:
+    """Get supported node types for look assignment."""
+    node_types: set[str] = {"aiStandIn", "gpuCache"}
+    # Return only the node types that exist in the current Maya session
+    # so that we can safely use these as node types to query for without
+    # Maya raising errors on unknown node types.
+    return {
+        node_type for node_type in node_types
+        if api.lib.nodetype_exists(node_type)
+    }
