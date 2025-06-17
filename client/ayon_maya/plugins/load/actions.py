@@ -1,8 +1,8 @@
 """A module containing generic loader actions that will display in the Loader.
 
 """
-import qargparse
 from ayon_core.pipeline import load
+from ayon_core.lib import BoolDef
 from ayon_maya.api.lib import (
     maintained_selection,
     get_custom_namespace
@@ -117,11 +117,14 @@ class ImportMayaLoader(ayon_maya.api.plugin.Loader):
     color = "#775555"
 
     options = [
-        qargparse.Boolean(
+        BoolDef(
             "clean_import",
-            label="Clean import",
+            label="Strip existing AYON asset metadata",
             default=False,
-            help="Should all occurrences of cbId be purged?"
+            tooltip=(
+                "When enabled, existing AYON 'cbId' attributes on nodes will "
+                "be removed upon import."
+            )
         )
     ]
 
