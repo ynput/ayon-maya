@@ -54,6 +54,10 @@ class GpuCacheLoader(plugin.Loader):
         path = self.filepath_from_context(context)
         cmds.setAttr(cache + '.cacheFileName', path, type="string")
         cmds.setAttr(cache + '.cacheGeomPath', "|", type="string")    # root
+        if cmds.attributeQuery("aiNamespace", node=cache, exists=True):
+            # Set Arnold namespace attribute to ensure shaders are loaded uniquely
+            # when a gpu cache is loaded multiple times
+            cmds.setAttr(cache + '.aiNamespace', namespace, type="string")
 
         # Lock parenting of the transform and cache
         cmds.lockNode([transform, cache], lock=True)
