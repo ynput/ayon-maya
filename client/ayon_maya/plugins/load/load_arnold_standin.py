@@ -99,7 +99,7 @@ class ArnoldStandinLoader(plugin.Loader):
             cmds.setAttr(standin_shape + ".dso", path, type="string")
             sequence = is_sequence(os.listdir(os.path.dirname(repre_path)))
             cmds.setAttr(standin_shape + ".useFrameExtension", sequence)
-            cmds.setAttr(standin_shape + ".aiNamespace", namespace)
+            cmds.setAttr(standin_shape + ".aiNamespace", namespace, type="string")
 
             fps = (
                 version_attributes.get("fps") or get_fps_for_current_context()
