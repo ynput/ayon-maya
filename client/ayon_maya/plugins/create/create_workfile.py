@@ -10,6 +10,7 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
     identifier = "io.openpype.creators.maya.workfile"
     label = "Workfile"
     product_type = "workfile"
+    product_base_type = "workfile"
     icon = "fa5.file"
 
     default_variant = "Main"
@@ -33,11 +34,12 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
 
         if current_instance is None:
             product_name = self.get_product_name(
-                project_name,
-                folder_entity,
-                task_entity,
-                variant,
-                host_name,
+                project_name=project_name,
+                folder_entity=folder_entity,
+                task_entity=task_entity,
+                variant=variant,
+                host_name=host_name,
+                product_base_type=self.product_base_type
             )
             data = {
                 "folderPath": folder_path,
@@ -55,7 +57,10 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
             )
             self.log.info("Auto-creating workfile instance...")
             current_instance = CreatedInstance(
-                self.product_type, product_name, data, self
+                product_type=self.product_type,
+                product_name=product_name,
+                data=data,
+                creator=self,
             )
             self._add_instance_to_context(current_instance)
         elif (
@@ -64,11 +69,12 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
         ):
             # Update instance context if is not the same
             product_name = self.get_product_name(
-                project_name,
-                folder_entity,
-                task_entity,
-                variant,
-                host_name,
+                project_name=project_name,
+                folder_entity=folder_entity,
+                task_entity=task_entity,
+                variant=variant,
+                host_name=host_name,
+                product_base_type=self.product_base_type
             )
 
             current_instance["folderPath"] = folder_path

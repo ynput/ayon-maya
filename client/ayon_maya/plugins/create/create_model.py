@@ -13,6 +13,7 @@ class CreateModel(plugin.MayaCreator):
     product_type = "model"
     icon = "cube"
     default_variants = ["Main", "Proxy", "_MD", "_HD", "_LD"]
+    product_base_type = "model"
 
     write_face_sets = True
     include_shaders = False

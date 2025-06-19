@@ -12,6 +12,7 @@ class CreateCamera(plugin.MayaCreator):
     label = "Camera"
     product_type = "camera"
     icon = "video-camera"
+    product_base_type = "camera"
 
     def get_instance_attr_defs(self):
 

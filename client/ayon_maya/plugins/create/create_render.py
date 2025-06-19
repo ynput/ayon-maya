@@ -25,6 +25,7 @@ class CreateRenderlayer(plugin.RenderlayerCreator):
 
     identifier = "io.openpype.creators.maya.renderlayer"
     product_type = "renderlayer"
+    prouct_base_type = "virtual"  # this won't be integrated
     label = "Render"
     icon = "eye"
 
