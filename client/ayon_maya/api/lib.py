@@ -2179,17 +2179,18 @@ def get_highest_in_hierarchy(nodes):
     """Return highest nodes in the hierarchy that are in the `nodes` list.
 
     The "highest in hierarchy" are the nodes closest to world: top-most level.
+    The result only contains DAG nodes.
 
     Args:
-        nodes (list): The nodes in which find the highest in hierarchies.
+        nodes (list[str]): The nodes in which find the highest in hierarchies.
 
     Returns:
-        list: The highest nodes from the input nodes.
+        list[str]: The highest DAG nodes from the input nodes.
 
     """
 
     # Ensure we use long names
-    nodes = cmds.ls(nodes, long=True)
+    nodes = cmds.ls(nodes, long=True, type="dagNode")
     lookup = set(nodes)
 
     highest = []
