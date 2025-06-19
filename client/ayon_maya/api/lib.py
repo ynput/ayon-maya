@@ -138,7 +138,7 @@ def maintained_selection():
 
     """
 
-    previous_selection = cmds.ls(selection=True)
+    previous_selection = cmds.ls(selection=True, long=True)
     try:
         yield
     finally:
