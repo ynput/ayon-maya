@@ -116,6 +116,7 @@ class CollectMayaRender(plugin.MayaInstancePlugin):
         expected_files = []
         multipart = False
         for product in render_products:
+            self.log.debug(f"Getting render product: {product}")
             if product.multipart:
                 multipart = True
             product_name = product.productName
