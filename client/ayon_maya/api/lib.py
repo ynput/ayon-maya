@@ -138,7 +138,7 @@ def maintained_selection():
 
     """
 
-    previous_selection = cmds.ls(selection=True)
+    previous_selection = cmds.ls(selection=True, long=True)
     try:
         yield
     finally:
@@ -2179,17 +2179,18 @@ def get_highest_in_hierarchy(nodes):
     """Return highest nodes in the hierarchy that are in the `nodes` list.
 
     The "highest in hierarchy" are the nodes closest to world: top-most level.
+    The result only contains DAG nodes.
 
     Args:
-        nodes (list): The nodes in which find the highest in hierarchies.
+        nodes (list[str]): The nodes in which find the highest in hierarchies.
 
     Returns:
-        list: The highest nodes from the input nodes.
+        list[str]: The highest DAG nodes from the input nodes.
 
     """
 
     # Ensure we use long names
-    nodes = cmds.ls(nodes, long=True)
+    nodes = cmds.ls(nodes, long=True, type="dagNode")
     lookup = set(nodes)
 
     highest = []
@@ -4047,7 +4048,7 @@ def get_capture_preset(
             plugin_settings["profiles"],
             filtering_criteria,
             logger=log
-        )
+        ) or {}
         capture_preset = profile.get("capture_preset")
     else:
         log.warning("No profiles present for Extract Playblast")
@@ -4057,7 +4058,8 @@ def get_capture_preset(
     if capture_preset is None:
         log.debug(
             "Falling back to deprecated Extract Playblast capture preset "
-            "because no new style playblast profiles are defined."
+            "because no new style playblast profiles are defined or no "
+            "profile matches for your current context."
         )
         capture_preset = plugin_settings.get("capture_preset")
 
@@ -4439,3 +4441,23 @@ def force_shader_assignments_to_faces(shapes):
         for shading_engine, original_members in original_assignments.items():
             cmds.sets(clear=shading_engine)
             cmds.sets(original_members, forceElement=shading_engine)
+
+
+def nodetype_exists(nodetype: str) -> bool:
+    """Return whether node type exists in the current Maya session.
+
+    This returns whether it's registered as a node type to maya, it does not
+    check whether it exists in the current scene.
+
+    Args:
+        nodetype (str): The node type name to check for existence.
+
+    Returns:
+        bool: True if the node type exists, False otherwise.
+    """
+    # If the node type does not exist, Maya will raise a RuntimeError.
+    try:
+        cmds.nodeType(nodetype, isTypeName=True)
+        return True
+    except RuntimeError:
+        return False

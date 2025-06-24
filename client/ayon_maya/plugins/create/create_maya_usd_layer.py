@@ -23,7 +23,7 @@ class CreateMayaUsdLayer(plugin.MayaCreator):
         # scene and the Sdf.Layer stack of the Usd.Stage per proxy.
         items = []
         for proxy in cmds.ls(type="mayaUsdProxyShape", long=True):
-            stage = mayaUsd.ufe.getStage("|world{}".format(proxy))
+            stage = mayaUsd.ufe.getStage(proxy)
             if not stage:
                 continue
 

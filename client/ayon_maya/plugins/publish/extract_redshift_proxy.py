@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Redshift Proxy extractor."""
+from __future__ import annotations
 import os
+from typing import Union
 
 from ayon_maya.api.lib import maintained_selection, renderlayer
 from ayon_maya.api import plugin
@@ -15,6 +17,7 @@ class ExtractRedshiftProxy(plugin.MayaExtractorPlugin):
 
     label = "Redshift Proxy (.rs)"
     families = ["redshiftproxy"]
+    targets = ["local", "remote"]
 
     def process(self, instance):
         """Extractor entry point."""
@@ -22,14 +25,18 @@ class ExtractRedshiftProxy(plugin.MayaExtractorPlugin):
         # Make sure Redshift is loaded
         cmds.loadPlugin("redshift4maya", quiet=True)
 
+        anim_on: bool = instance.data["animation"]
+        if anim_on:
+            # Add frame number #### placeholder for animated exports
+            file_name = "{}.####.rs".format(instance.name)
+        else:
+            file_name = "{}.rs".format(instance.name)
+
         staging_dir = self.staging_dir(instance)
-        file_name = "{}.rs".format(instance.name)
         file_path = os.path.join(staging_dir, file_name)
 
-        anim_on = instance.data["animation"]
         rs_options = "exportConnectivity=0;enableCompression=1;keepUnused=0;"
-        repr_files = file_name
-
+        repr_files: Union[str, list[str]] = file_name
         if not anim_on:
             # Remove animation information because it is not required for
             # non-animated products
@@ -49,23 +56,21 @@ class ExtractRedshiftProxy(plugin.MayaExtractorPlugin):
                 rs_options, start_frame,
                 end_frame, instance.data["step"]
             )
-
-            root, ext = os.path.splitext(file_path)
-            # Padding is taken from number of digits of the end_frame.
-            # Not sure where Redshift is taking it.
-            repr_files = [
-                "{}.{}{}".format(os.path.basename(root), str(frame).rjust(4, "0"), ext)     # noqa: E501
-                for frame in range(
+            repr_files: list[str] = []
+            for frame in range(
                     int(start_frame),
                     int(end_frame) + 1,
-                    int(instance.data["step"])
-            )]
-        # vertex_colors = instance.data.get("vertexColors", False)
+                    int(instance.data["step"])):
+                frame_padded = str(frame).rjust(4, "0")
+                frame_filename = file_name.replace(
+                    ".####.rs", f".{frame_padded}.rs"
+                )
+                repr_files.append(frame_filename)
 
         # Write out rs file
-        self.log.debug("Writing: '%s'" % file_path)
+        self.log.debug("Writing: '%s'", file_path)
 
-        # Allow overriding what renderlayer to export from. By default force
+        # Allow overriding what renderlayer to export from. By default, force
         # it to the default render layer. (Note that the renderlayer isn't
         # currently exposed as an attribute to artists)
         layer = instance.data.get("renderLayer", "defaultRenderLayer")
@@ -94,5 +99,6 @@ class ExtractRedshiftProxy(plugin.MayaExtractorPlugin):
         }
         instance.data["representations"].append(representation)
 
-        self.log.debug("Extracted instance '%s' to: %s"
-                       % (instance.name, staging_dir))
+        self.log.debug(
+            f"Extracted instance '{instance.name}' to: {staging_dir}"
+        )

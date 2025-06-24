@@ -30,7 +30,7 @@ class ExtractMayaUsdLayer(publish.Extractor):
         # TODO: The stage and layer should actually be retrieved during
         #  Collecting so that they can be validated upon and potentially that
         #  any 'child layers' can potentially be recursively exported along
-        stage = mayaUsd.ufe.getStage('|world' + proxy)
+        stage = mayaUsd.ufe.getStage(proxy)
         layers = stage.GetLayerStack(includeSessionLayers=False)
         layer = next(
             layer for layer in layers if layer.identifier == layer_identifier

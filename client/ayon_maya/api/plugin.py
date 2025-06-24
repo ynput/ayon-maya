@@ -278,6 +278,7 @@ class MayaCreatorBase:
 
             self.imprint_instance_node(node, data)
 
+    @lib.undo_chunk()
     def _default_remove_instances(self, instances):
         """Remove specified instance from the scene.
 
@@ -474,19 +475,15 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
                 # this instance will not have the `instance_node` data yet
                 # until it's been saved/persisted at least once.
                 project_name = self.create_context.get_current_project_name()
-                folder_path = self.create_context.get_current_folder_path()
-                task_name = self.create_context.get_current_task_name()
+                folder_entity = self.create_context.get_current_folder_entity()
+                folder_path: str = folder_entity["path"]
+                task_entity = self.create_context.get_current_task_entity()
+                task_name: str = task_entity["name"]
                 instance_data = {
                     "folderPath": folder_path,
                     "task": task_name,
                     "variant": layer.name(),
                 }
-                folder_entity = ayon_api.get_folder_by_path(
-                    project_name, folder_path
-                )
-                task_entity = ayon_api.get_task_by_name(
-                    project_name, folder_entity["id"], task_name
-                )
                 product_name = self.get_product_name(
                     project_name,
                     folder_entity,

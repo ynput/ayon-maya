@@ -86,6 +86,9 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
             created_instance = CreatedInstance.from_existing(node_data, self)
             self._add_instance_to_context(created_instance)
 
+    def remove_instances(self, instances):
+        self._default_remove_instances(instances)
+
     def update_instances(self, update_list):
         for created_inst, _changes in update_list:
             data = created_inst.data_to_store()

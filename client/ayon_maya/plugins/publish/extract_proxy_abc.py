@@ -16,6 +16,7 @@ class ExtractProxyAlembic(plugin.MayaExtractorPlugin):
 
     label = "Extract Proxy (Alembic)"
     families = ["proxyAbc"]
+    targets = ["local", "remote"]
 
     def process(self, instance):
         name_suffix = instance.data.get("nameSuffix")

@@ -26,6 +26,9 @@ class CreateOxCache(plugin.MayaCreator):
         ]
         defs.extend(
             [
+                BoolDef("farm",
+                        label="Submit to Farm",
+                        default=False),
                 EnumDef("format",
                         items={
                             0: "Ogawa",
