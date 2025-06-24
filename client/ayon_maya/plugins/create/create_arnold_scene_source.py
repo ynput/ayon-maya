@@ -47,6 +47,9 @@ class CreateArnoldSceneSource(plugin.MayaCreator):
         defs = lib.collect_animation_defs(create_context=self.create_context)
 
         defs.extend([
+            BoolDef("farm",
+                    label="Submit to Farm",
+                    default=False),
             BoolDef("motionBlur",
                     label="Motion Blur",
                     default=self.motionBlur),

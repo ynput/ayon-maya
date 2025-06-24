@@ -12,6 +12,7 @@ class ExtractGLB(plugin.MayaExtractorPlugin):
     order = pyblish.api.ExtractorOrder
     label = "Extract GLB"
     families = ["gltf"]
+    targets = ["local", "remote"]
 
     def process(self, instance):
         staging_dir = self.staging_dir(instance)
