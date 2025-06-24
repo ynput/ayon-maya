@@ -12,33 +12,11 @@ from .publish_playblast import (
 )
 
 
-def linear_unit_enum():
-    """Get linear units enumerator."""
-    return [
-        {"label": "millimeter", "value": "mm"},
-        {"label": "centimeter", "value": "cm"},
-        {"label": "meter", "value": "m"},
-        {"label": "kilometer", "value": "km"},
-        {"label": "inch", "value": "in"},
-        {"label": "foot", "value": "ft"},
-        {"label": "yard", "value": "yd"},
-        {"label": "mile", "value": "mi"}
-    ]
-
-
 def up_axis_enum():
     """Get Up Axis enumerator."""
     return [
         {"label": "y", "value": "y"},
         {"label": "z", "value": "z"},
-    ]
-
-
-def angular_unit_enum():
-    """Get angular units enumerator."""
-    return [
-        {"label": "degree", "value": "deg"},
-        {"label": "radian", "value": "rad"},
     ]
 
 
@@ -248,14 +226,8 @@ class ValidateMayaUnitsModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="ValidateMayaUnits")
     optional: bool = SettingsField(title="Optional")
     validate_linear_units: bool = SettingsField(title="Validate linear units")
-    linear_units: str = SettingsField(
-        enum_resolver=linear_unit_enum, title="Linear Units"
-    )
     validate_angular_units: bool = SettingsField(
         title="Validate angular units"
-    )
-    angular_units: str = SettingsField(
-        enum_resolver=angular_unit_enum, title="Angular units"
     )
     validate_fps: bool = SettingsField(title="Validate fps")
 
@@ -1175,9 +1147,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": False,
         "validate_linear_units": True,
-        "linear_units": "cm",
         "validate_angular_units": True,
-        "angular_units": "deg",
         "validate_fps": True
     },
     "ValidateUnrealStaticMeshName": {

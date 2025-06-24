@@ -7,6 +7,7 @@ from ayon_core.pipeline.publish import (
     ValidateSceneOrder,
 )
 from ayon_maya.api import plugin
+from ayon_maya.api.lib import get_unit_scale_unit_setting
 
 
 class ValidateMayaUnits(plugin.MayaContextPlugin,
@@ -18,10 +19,8 @@ class ValidateMayaUnits(plugin.MayaContextPlugin,
     actions = [RepairContextAction]
 
     validate_linear_units = True
-    linear_units = "cm"
 
     validate_angular_units = True
-    angular_units = "deg"
 
     validate_fps = True
 
@@ -53,11 +52,13 @@ class ValidateMayaUnits(plugin.MayaContextPlugin,
 
         invalid = []
 
+        linear_units, angular_units = get_unit_scale_unit_setting()
+
         # Check if units are correct
         if (
             self.validate_linear_units
             and linearunits
-            and linearunits != self.linear_units
+            and linearunits != linear_units
         ):
             invalid.append({
                 "setting": "Linear units",
@@ -68,7 +69,7 @@ class ValidateMayaUnits(plugin.MayaContextPlugin,
         if (
             self.validate_angular_units
             and angularunits
-            and angularunits != self.angular_units
+            and angularunits != angular_units
         ):
             invalid.append({
                 "setting": "Angular units",
@@ -101,15 +102,18 @@ class ValidateMayaUnits(plugin.MayaContextPlugin,
     def repair(cls, context):
         """Fix the current FPS setting of the scene, set to PAL(25.0 fps)"""
 
-        cls.log.info("Setting angular unit to '{}'".format(cls.angular_units))
-        cmds.currentUnit(angle=cls.angular_units)
-        current_angle = cmds.currentUnit(query=True, angle=True)
-        cls.log.debug(current_angle)
+        linear_units, angular_units = get_unit_scale_unit_setting()
+        if cls.validate_angular_units:
+            cls.log.info("Setting angular unit to '{}'".format(angular_units))
+            cmds.currentUnit(angle=angular_units)
+            current_angle = cmds.currentUnit(query=True, angle=True)
+            cls.log.debug(current_angle)
 
-        cls.log.info("Setting linear unit to '{}'".format(cls.linear_units))
-        cmds.currentUnit(linear=cls.linear_units)
-        current_linear = cmds.currentUnit(query=True, linear=True)
-        cls.log.debug(current_linear)
+        if cls.validate_linear_units:
+            cls.log.info("Setting linear unit to '{}'".format(linear_units))
+            cmds.currentUnit(linear=linear_units)
+            current_linear = cmds.currentUnit(query=True, linear=True)
+            cls.log.debug(current_linear)
 
         cls.log.info("Setting time unit to match project")
         folder_entity = context.data["folderEntity"]

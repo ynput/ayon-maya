@@ -2640,7 +2640,8 @@ def set_context_settings(
         fps=True,
         resolution=True,
         frame_range=True,
-        colorspace=True
+        colorspace=True,
+        unit_scale=True
 ):
     """Apply the project settings from the project definition
 
@@ -2672,6 +2673,8 @@ def set_context_settings(
     if colorspace:
         set_colorspace()
 
+    if unit_scale:
+        set_unit_scale()
 
 def prompt_reset_context():
     """Prompt the user what context settings to reset.
@@ -2718,6 +2721,12 @@ def prompt_reset_context():
             default=True
         ),
         BoolDef(
+            "unit_scale",
+            label="Unit Scale",
+            tooltip="Reset Workfile Linear and Angular Scale Unit",
+            default=True
+        ),
+        BoolDef(
             "instances",
             label="Publish instances",
             tooltip="Update all publish instance's folder and task to match "
@@ -2738,7 +2747,8 @@ def prompt_reset_context():
             fps=options["fps"],
             resolution=options["resolution"],
             frame_range=options["frame_range"],
-            colorspace=options["colorspace"]
+            colorspace=options["colorspace"],
+            unit_scale=options["unit_scale"]
         )
         if options["instances"]:
             update_content_on_context_change()
@@ -4461,3 +4471,54 @@ def nodetype_exists(nodetype: str) -> bool:
         return True
     except RuntimeError:
         return False
+
+
+def set_unit_scale():
+    linear_unit, angular_unit = get_unit_scale_unit_setting()
+    cmds.currentUnit(linear=linear_unit, angle=angular_unit)
+
+
+def validate_unit_scale():
+    linear_unit, angular_unit = get_unit_scale_unit_setting()
+    current_linear_unit = cmds.currentUnit(query=True, linear=True)
+    current_angular_unit = cmds.currentUnit(query=True, angular=True)
+    unit_match = (
+        current_linear_unit == linear_unit or
+        current_angular_unit == angular_unit
+    )
+    if not unit_match and not IS_HEADLESS:
+        from ayon_core.tools.utils import PopupUpdateKeys
+
+        parent = get_main_window()
+
+        dialog = PopupUpdateKeys(parent=parent)
+        dialog.setModal(True)
+        dialog.setWindowTitle("Maya scene does not match project unit scale")
+        message = (
+            f"Scene unit scale ({current_linear_unit},"
+            f"{current_angular_unit}) does not match "
+            f"project unit scale ({linear_unit}, {angular_unit})"
+        )
+        dialog.set_message(message)
+        dialog.set_button_text("Fix")
+
+        # Set new text for button (add optional argument for the popup?)
+        def on_click():
+            set_unit_scale()
+
+        dialog.on_clicked_state.connect(on_click)
+        dialog.show()
+
+        return False
+    return unit_match
+
+
+def get_unit_scale_unit_setting():
+    project_name = get_current_project_name()
+    unit_scale_setting = (
+        get_project_settings(project_name)["maya"]["unit_scale"]
+    )
+
+    linear_unit = unit_scale_setting.get("linear_unit", "cm")
+    angular_unit = unit_scale_setting.get("angular_unit", "deg")
+    return linear_unit, angular_unit
