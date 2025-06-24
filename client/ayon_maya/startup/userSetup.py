@@ -40,7 +40,11 @@ if bool(int(os.environ.get(key, "0"))):
     def _log_and_open():
         path = os.environ["AYON_LAST_WORKFILE"]
         print("Opening \"{}\"".format(path))
-        cmds.file(path, open=True, force=True)
+        if os.path.exists(path):
+            cmds.file(path, open=True, force=True)
+        else:
+            cmds.warning(f"{path} does not exist. Skipping Open Workfile...")
+
     cmds.evalDeferred(
         _log_and_open,
         lowestPriority=True
