@@ -48,7 +48,7 @@ from ayon_core.pipeline.workfile.lock_workfile import (
 from ayon_maya import MAYA_ROOT_DIR
 from ayon_maya.lib import create_workspace_mel
 
-from . import menu, lib
+from . import menu, lib, workfile_template_builder
 from .workio import (
     open_file,
     save_file,
@@ -661,6 +661,8 @@ def on_new():
     with lib.suspended_refresh():
         lib.set_context_settings()
 
+    workfile_template_builder.build_workfile_template(
+        workfile_creation_enabled=True)
     _remove_workfile_lock()
 
 
