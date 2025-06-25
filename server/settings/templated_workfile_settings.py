@@ -16,6 +16,13 @@ class WorkfileBuildProfilesModel(BaseSettingsModel):
         default_factory=list, title="Task names"
     )
     path: str = SettingsField("", title="Path to template")
+    keep_placeholder: bool = SettingsField(
+        False,
+        title="Keep placeholders")
+    create_first_version: bool = SettingsField(
+        True,
+        title="Create first version"
+    )
 
 
 class TemplatedProfilesModel(BaseSettingsModel):
