@@ -162,8 +162,15 @@ class CollectFbxAnimationModel(BaseSettingsModel):
         enum_resolver=up_axis_enum, title="Up Axis"
     )
 
+
 class CollectFbxCameraModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="CollectFbxCamera")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    input_connections: bool = SettingsField(True, title="Input Connections")
+    up_axis: str = SettingsField(
+        enum_resolver=up_axis_enum, title="Up Axis"
+    )
 
 
 class CollectGLTFModel(BaseSettingsModel):
@@ -639,8 +646,8 @@ class PublishersModel(BaseSettingsModel):
         default_factory=CollectFbxAnimationModel,
         title="Collect FBX Animation",
     )
-    CollectFbxCamera: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
+    CollectFbxCamera: CollectFbxCameraModel = SettingsField(
+        default_factory=CollectFbxCameraModel,
         title="Collect Camera for FBX export",
     )
     CollectFbxModel: BasicValidateModel = SettingsField(
@@ -1115,8 +1122,10 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "CollectFbxCamera": {
         "enabled": False,
-        "optional": True,
-        "active": True
+        "optional": False,
+        "active": True,
+        "input_connections": True,
+        "up_axis": "y"
     },
     "CollectFbxModel": {
         "enabled": False,
