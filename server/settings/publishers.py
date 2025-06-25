@@ -1122,7 +1122,7 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "CollectFbxCamera": {
         "enabled": False,
-        "optional": True,
+        "optional": False,
         "active": True,
         "input_connections": True,
         "up_axis": "y"
