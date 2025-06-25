@@ -4478,7 +4478,7 @@ def set_unit_scale():
     cmds.currentUnit(linear=linear_unit, angle=angular_unit)
 
 
-def validate_unit_scale():
+def validate_unit_scale() -> bool:
     linear_unit, angular_unit = get_unit_scale_unit_setting()
     current_linear_unit = cmds.currentUnit(query=True, linear=True)
     current_angular_unit = cmds.currentUnit(query=True, angular=True)
@@ -4513,7 +4513,7 @@ def validate_unit_scale():
     return unit_match
 
 
-def get_unit_scale_unit_setting():
+def get_unit_scale_unit_setting()-> tuple[str, str]:
     project_name = get_current_project_name()
     unit_scale_setting = (
         get_project_settings(project_name)["maya"]["unit_scale"]
