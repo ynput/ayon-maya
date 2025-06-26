@@ -52,7 +52,8 @@ class ValidateMayaUnits(plugin.MayaContextPlugin,
 
         invalid = []
 
-        linear_units, angular_units = get_unit_scale_unit_setting()
+        project_name = context.data["project_settings"]
+        linear_units, angular_units = get_unit_scale_unit_setting(project_name)
 
         # Check if units are correct
         if (
@@ -106,14 +107,10 @@ class ValidateMayaUnits(plugin.MayaContextPlugin,
         if cls.validate_angular_units:
             cls.log.info("Setting angular unit to '{}'".format(angular_units))
             cmds.currentUnit(angle=angular_units)
-            current_angle = cmds.currentUnit(query=True, angle=True)
-            cls.log.debug(current_angle)
 
         if cls.validate_linear_units:
             cls.log.info("Setting linear unit to '{}'".format(linear_units))
             cmds.currentUnit(linear=linear_units)
-            current_linear = cmds.currentUnit(query=True, linear=True)
-            cls.log.debug(current_linear)
 
         cls.log.info("Setting time unit to match project")
         folder_entity = context.data["folderEntity"]

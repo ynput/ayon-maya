@@ -2653,6 +2653,7 @@ def set_context_settings(
         resolution (bool): Whether to set the render resolution.
         frame_range (bool): Whether to reset the time slide frame ranges.
         colorspace (bool): Whether to reset the colorspace.
+        unit_scale (bool): Whether to reset the unit scale.
 
     Returns:
         None
@@ -4513,8 +4514,17 @@ def validate_unit_scale() -> bool:
     return unit_match
 
 
-def get_unit_scale_unit_setting()-> tuple[str, str]:
-    project_name = get_current_project_name()
+def get_unit_scale_unit_setting(project_name=None)-> tuple[str, str]:
+    """Function to return preferred linear unit and angular scale from settings
+
+    Args:
+        project_name (str, optional): Project Name. Defaults to None.
+
+    Returns:
+        tuple[str, str]: linear scene unit, angular scene unit
+    """
+    if project_name is not None:
+        project_name = get_current_project_name()
     unit_scale_setting = (
         get_project_settings(project_name)["maya"]["unit_scale"]
     )
