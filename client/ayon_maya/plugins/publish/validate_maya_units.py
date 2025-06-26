@@ -7,7 +7,7 @@ from ayon_core.pipeline.publish import (
     ValidateSceneOrder,
 )
 from ayon_maya.api import plugin
-from ayon_maya.api.lib import get_unit_scale_unit_setting
+from ayon_maya.api.lib import get_unit_setting
 
 
 class ValidateMayaUnits(plugin.MayaContextPlugin,
@@ -53,7 +53,7 @@ class ValidateMayaUnits(plugin.MayaContextPlugin,
         invalid = []
 
         project_name = context.data["project_settings"]
-        linear_units, angular_units = get_unit_scale_unit_setting(project_name)
+        linear_units, angular_units = get_unit_setting(project_name)
 
         # Check if units are correct
         if (
@@ -103,7 +103,7 @@ class ValidateMayaUnits(plugin.MayaContextPlugin,
     def repair(cls, context):
         """Fix the current FPS setting of the scene, set to PAL(25.0 fps)"""
 
-        linear_units, angular_units = get_unit_scale_unit_setting()
+        linear_units, angular_units = get_unit_setting()
         if cls.validate_angular_units:
             cls.log.info("Setting angular unit to '{}'".format(angular_units))
             cmds.currentUnit(angle=angular_units)

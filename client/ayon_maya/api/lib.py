@@ -4475,12 +4475,20 @@ def nodetype_exists(nodetype: str) -> bool:
 
 
 def set_unit_scale():
-    linear_unit, angular_unit = get_unit_scale_unit_setting()
+    """Set the unit scale"""
+    linear_unit, angular_unit = get_unit_setting()
     cmds.currentUnit(linear=linear_unit, angle=angular_unit)
 
 
 def validate_unit_scale() -> bool:
-    linear_unit, angular_unit = get_unit_scale_unit_setting()
+    """ Validate unit scale if it matches to the Ayon settings
+    If it does not match and it would call up pop-up dialog to set
+    accordingly to the setting
+
+    Returns:
+        bool: Whether unit scale is matched
+    """
+    linear_unit, angular_unit = get_unit_setting()
     current_linear_unit = cmds.currentUnit(query=True, linear=True)
     current_angular_unit = cmds.currentUnit(query=True, angle=True)
     unit_match = (
@@ -4514,7 +4522,7 @@ def validate_unit_scale() -> bool:
     return unit_match
 
 
-def get_unit_scale_unit_setting(project_name=None)-> tuple[str, str]:
+def get_unit_setting(project_name=None)-> tuple[str, str]:
     """Function to return preferred linear unit and angular scale from settings
 
     Args:
