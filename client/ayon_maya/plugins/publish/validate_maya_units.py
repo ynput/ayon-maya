@@ -63,7 +63,7 @@ class ValidateMayaUnits(plugin.MayaContextPlugin,
         ):
             invalid.append({
                 "setting": "Linear units",
-                "required_value": self.linear_units,
+                "required_value": linear_units,
                 "current_value": linearunits
             })
 
@@ -74,7 +74,7 @@ class ValidateMayaUnits(plugin.MayaContextPlugin,
         ):
             invalid.append({
                 "setting": "Angular units",
-                "required_value": self.angular_units,
+                "required_value": angular_units,
                 "current_value": angularunits
             })
 

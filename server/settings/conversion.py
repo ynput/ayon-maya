@@ -14,6 +14,27 @@ def _convert_dirmap_0_4_3(overrides):
     overrides["dirmap"] = overrides.pop("maya_dirmap")
 
 
+def _convert_scene_unit(overrides):
+    """Related unit scale keys have been moved to
+    have individual settings in 0.4.9"""
+    publish_settings = overrides.get("publish")
+    if publish_settings is None:
+        return
+
+    maya_units_settings = publish_settings.get("ValidateMayaUnits")
+    if maya_units_settings is None:
+        return
+    linear_settings = maya_units_settings.get("linear_units")
+    angular_settings = maya_units_settings.get("angular_units")
+
+    if "unit_scale" in overrides:
+        return
+    overrides["unit_scale"] = {}
+    scene_units_overrides = overrides["unit_scale"]
+    scene_units_overrides["linear_units"] = overrides.pop(linear_settings)
+    scene_units_overrides["angular_units"] = overrides.pop(angular_settings)
+
+
 def _convert_redshift_render_settings_gi_0_4_4(overrides):
     """The `render_settings.redshift_renderer` got a new `gi_enabled` key
      that was previously assumed enabled if either:
@@ -43,5 +64,6 @@ def convert_settings_overrides(
     overrides: dict[str, Any],
 ) -> dict[str, Any]:
     _convert_dirmap_0_4_3(overrides)
+    _convert_scene_unit(overrides)
     _convert_redshift_render_settings_gi_0_4_4(overrides)
     return overrides
