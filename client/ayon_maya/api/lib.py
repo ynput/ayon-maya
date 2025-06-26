@@ -4493,7 +4493,7 @@ def validate_unit_scale() -> bool:
     current_linear_unit = cmds.currentUnit(query=True, linear=True)
     current_angular_unit = cmds.currentUnit(query=True, angle=True)
     unit_match = (
-        current_linear_unit == linear_unit or
+        current_linear_unit == linear_unit and
         current_angular_unit == angular_unit
     )
     if not unit_match and not IS_HEADLESS:
