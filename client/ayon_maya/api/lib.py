@@ -4481,10 +4481,10 @@ def set_unit_scale():
 
 
 def validate_unit_scale() -> bool:
-    """Validate where scene unit scale matches AYON settings
+    """Validate whether scene units match AYON settings
     
     If not headless and it does not match, a pop-up dialog is
-    shown to the user to allow fixing it or not.
+    shown to the user with a choice to fix it automatically.
 
     Returns:
         bool: Whether unit scale is matched
