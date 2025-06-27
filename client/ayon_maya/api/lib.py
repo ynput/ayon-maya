@@ -3273,7 +3273,7 @@ def update_content_on_context_change():
 
     host = registered_host()
     create_context = CreateContext(host, discover_publish_plugins=False)
-    task_entity = get_current_task_entity(fields={"attrib"})
+    task_entity = create_context.get_current_task_entity()
 
     instance_values = {
         "folderPath": create_context.get_current_folder_path(),
