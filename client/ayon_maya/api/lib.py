@@ -3982,7 +3982,7 @@ def get_all_children(nodes, ignore_intermediate_objects=False):
     focus on a fast query.
 
     Args:
-        nodes (iterable): List of nodes to get children for.
+        nodes (iterable[str]): List of nodes to get children for.
         ignore_intermediate_objects (bool): Ignore any children that
             are intermediate objects.
 
@@ -3990,7 +3990,6 @@ def get_all_children(nodes, ignore_intermediate_objects=False):
         set: Children of input nodes.
 
     """
-
     sel = OpenMaya.MSelectionList()
     traversed = set()
     iterator = OpenMaya.MItDag(OpenMaya.MItDag.kDepthFirst)
@@ -4004,6 +4003,11 @@ def get_all_children(nodes, ignore_intermediate_objects=False):
 
         sel.clear()
         sel.add(node)
+        obj = sel.getDependNode(0)
+        if not obj.hasFn(OpenMaya.MFn.kDagNode):
+            # Not a dag node, skip
+            continue
+
         dag = sel.getDagPath(0)
 
         iterator.reset(dag)
