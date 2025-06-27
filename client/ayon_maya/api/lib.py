@@ -4476,7 +4476,7 @@ def nodetype_exists(nodetype: str) -> bool:
 
 def set_scene_units():
     """Set the Maya scene units"""
-    linear_unit, angular_unit = get_unit_setting()
+    linear_unit, angular_unit = get_scene_units_settings()
     cmds.currentUnit(linear=linear_unit, angle=angular_unit)
 
 
@@ -4489,7 +4489,7 @@ def validate_scene_units() -> bool:
     Returns:
         bool: Whether Maya scene units matches preferences from AYON settings
     """
-    linear_unit, angular_unit = get_unit_setting()
+    linear_unit, angular_unit = get_scene_units_settings()
     current_linear_unit = cmds.currentUnit(query=True, linear=True)
     current_angular_unit = cmds.currentUnit(query=True, angle=True)
     unit_match = (
@@ -4523,21 +4523,20 @@ def validate_scene_units() -> bool:
     return unit_match
 
 
-def get_unit_setting(project_name=None)-> tuple[str, str]:
+def get_scene_units_settings(project_settings=None)-> tuple[str, str]:
     """Function to return preferred linear unit and angular scale from settings
 
     Args:
-        project_name (str, optional): Project Name. Defaults to None.
+        project_settings (dict, optional): Project Name. Defaults to None.
 
     Returns:
         tuple[str, str]: linear scene unit, angular scene unit
     """
-    if project_name is not None:
+    if project_settings is None:
         project_name = get_current_project_name()
-    scene_units_setting = (
-        get_project_settings(project_name)["maya"]["scene_units"]
-    )
+        project_settings = get_project_settings(project_name)
 
-    linear_unit = scene_units_setting.get("linear_units", "cm")
-    angular_unit = scene_units_setting.get("angular_units", "deg")
+    scene_units = project_settings["maya"]["scene_units"]
+    linear_unit = scene_units.get("linear_units", "cm")
+    angular_unit = scene_units.get("angular_units", "deg")
     return linear_unit, angular_unit
