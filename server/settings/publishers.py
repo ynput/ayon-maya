@@ -12,25 +12,11 @@ from .publish_playblast import (
 )
 
 
-def linear_unit_enum():
-    """Get linear units enumerator."""
+def up_axis_enum():
+    """Get Up Axis enumerator."""
     return [
-        {"label": "millimeter", "value": "mm"},
-        {"label": "centimeter", "value": "cm"},
-        {"label": "meter", "value": "m"},
-        {"label": "kilometer", "value": "km"},
-        {"label": "inch", "value": "in"},
-        {"label": "foot", "value": "ft"},
-        {"label": "yard", "value": "yd"},
-        {"label": "mile", "value": "mi"}
-    ]
-
-
-def angular_unit_enum():
-    """Get angular units enumerator."""
-    return [
-        {"label": "degree", "value": "deg"},
-        {"label": "radian", "value": "rad"},
+        {"label": "y", "value": "y"},
+        {"label": "z", "value": "z"},
     ]
 
 
@@ -147,14 +133,44 @@ class CollectMayaRenderModel(BaseSettingsModel):
 
 class CollectFbxAnimationModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Collect Fbx Animation")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    input_connections: bool = SettingsField(True, title="Input Connections")
+    up_axis: str = SettingsField(
+        enum_resolver=up_axis_enum, title="Up Axis"
+    )
 
 
 class CollectFbxCameraModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="CollectFbxCamera")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    input_connections: bool = SettingsField(True, title="Input Connections")
+    up_axis: str = SettingsField(
+        enum_resolver=up_axis_enum, title="Up Axis"
+    )
 
 
 class CollectGLTFModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="CollectGLTF")
+
+
+class CollectMayaUsdFilterPropertiesModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Maya USD Export Chaser: Filter Properties")
+    default_filter: str = SettingsField(
+        title="Default Filter",
+        description=(
+            "Set the default filter for USD properties to export. It uses"
+            " [SideFX Houdini Pattern Matching in Parameters]"
+            "(https://www.sidefx.com/docs/houdini/network/patterns.html)."
+            "\nSome examples would include:\n"
+            "- Only include xforms: `xformOp*`\n"
+            "- Everything but xforms: `* ^xformOp*`\n"
+            "- Everything but mesh point data: `* ^extent ^points"
+            " ^faceVertexCounts ^faceVertexIndices ^primvars*`"
+        ),
+        default=""
+    )
 
 
 class ValidateFrameRangeModel(BaseSettingsModel):
@@ -216,17 +232,26 @@ class ValidateLoadedPluginModel(BaseSettingsModel):
 class ValidateMayaUnitsModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="ValidateMayaUnits")
     optional: bool = SettingsField(title="Optional")
-    validate_linear_units: bool = SettingsField(title="Validate linear units")
-    linear_units: str = SettingsField(
-        enum_resolver=linear_unit_enum, title="Linear Units"
+    validate_linear_units: bool = SettingsField(
+        title="Validate linear units",
+        description=(
+            "Whether to validate the Maya scene linear units against "
+            "the _Scene Unit_ settings"
+        ),
     )
     validate_angular_units: bool = SettingsField(
-        title="Validate angular units"
+        title="Validate angular units",
+        description=(
+            "Whether to validate the Maya scene angular units against "
+            "the _Scene Unit_ settings"
+        ),
     )
-    angular_units: str = SettingsField(
-        enum_resolver=angular_unit_enum, title="Angular units"
-    )
-    validate_fps: bool = SettingsField(title="Validate fps")
+    validate_fps: bool = SettingsField(
+        title="Validate FPS",
+        description=(
+            "Whether to validate the Maya scene FPS against the task "
+            "context's FPS"
+        ))
 
 
 class ValidateUnrealStaticMeshNameModel(BaseSettingsModel):
@@ -604,12 +629,12 @@ class PublishersModel(BaseSettingsModel):
         title="Collect Render Layers",
         section="Collectors"
     )
-    CollectFbxAnimation: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
+    CollectFbxAnimation: CollectFbxAnimationModel = SettingsField(
+        default_factory=CollectFbxAnimationModel,
         title="Collect FBX Animation",
     )
-    CollectFbxCamera: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
+    CollectFbxCamera: CollectFbxCameraModel = SettingsField(
+        default_factory=CollectFbxCameraModel,
         title="Collect Camera for FBX export",
     )
     CollectFbxModel: BasicValidateModel = SettingsField(
@@ -619,6 +644,12 @@ class PublishersModel(BaseSettingsModel):
     CollectGLTF: CollectGLTFModel = SettingsField(
         default_factory=CollectGLTFModel,
         title="Collect Assets for GLB/GLTF export"
+    )
+    CollectMayaUsdFilterProperties: CollectMayaUsdFilterPropertiesModel = (
+        SettingsField(
+            default_factory=CollectMayaUsdFilterPropertiesModel,
+            title="Maya USD Export Chaser: Filter Properties"
+        )
     )
     ValidateInstanceInContext: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -1051,6 +1082,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ExtractMayaUsdAnimModel,
         title="Extract Maya USD with Animation"
     )
+    ExtractSkeletonMesh: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Skeleton Mesh"
+    )
 
 
 DEFAULT_SUFFIX_NAMING = {
@@ -1068,12 +1103,16 @@ DEFAULT_PUBLISH_SETTINGS = {
     "CollectFbxAnimation": {
         "enabled": False,
         "optional": True,
-        "active": True
+        "active": True,
+        "input_connections": True,
+        "up_axis": "y"
     },
     "CollectFbxCamera": {
         "enabled": False,
-        "optional": True,
-        "active": True
+        "optional": False,
+        "active": True,
+        "input_connections": True,
+        "up_axis": "y"
     },
     "CollectFbxModel": {
         "enabled": False,
@@ -1082,6 +1121,10 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "CollectGLTF": {
         "enabled": False
+    },
+    "CollectMayaUsdFilterProperties": {
+        "enabled": False,
+        "default_filter": ""
     },
     "ValidateInstanceInContext": {
         "enabled": True,
@@ -1128,9 +1171,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": False,
         "validate_linear_units": True,
-        "linear_units": "cm",
         "validate_angular_units": True,
-        "angular_units": "deg",
         "validate_fps": True
     },
     "ValidateUnrealStaticMeshName": {
@@ -1694,5 +1735,10 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "active": False,
+    },
+    "ExtractSkeletonMesh": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
     }
 }

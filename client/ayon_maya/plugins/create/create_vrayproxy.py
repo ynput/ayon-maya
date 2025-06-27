@@ -19,6 +19,9 @@ class CreateVrayProxy(plugin.MayaCreator):
     def get_instance_attr_defs(self):
 
         defs = [
+            BoolDef("farm",
+                    label="Submit to Farm",
+                    default=False),
             BoolDef("animation",
                     label="Export Animation",
                     default=False)

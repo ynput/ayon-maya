@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating workfiles."""
-import ayon_api
-
 from ayon_core.pipeline import CreatedInstance, AutoCreator
 from ayon_maya.api import plugin
 from maya import cmds
@@ -25,22 +23,15 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
                 if instance.creator_identifier == self.identifier
             ), None)
 
-        project_name = self.project_name
-        folder_path = self.create_context.get_current_folder_path()
-        task_name = self.create_context.get_current_task_name()
+        project_entity = self.create_context.get_current_project_entity()
+        project_name = project_entity["name"]
+        folder_entity = self.create_context.get_current_folder_entity()
+        folder_path = folder_entity["path"]
+        task_entity = self.create_context.get_current_task_entity()
+        task_name = task_entity["name"]
         host_name = self.create_context.host_name
 
-        current_folder_path = None
-        if current_instance is not None:
-            current_folder_path = current_instance["folderPath"]
-
         if current_instance is None:
-            folder_entity = ayon_api.get_folder_by_path(
-                project_name, folder_path
-            )
-            task_entity = ayon_api.get_task_by_name(
-                project_name, folder_entity["id"], task_name
-            )
             product_name = self.get_product_name(
                 project_name,
                 folder_entity,
@@ -68,16 +59,10 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
             )
             self._add_instance_to_context(current_instance)
         elif (
-            current_folder_path != folder_path
+            current_instance["folderPath"] != folder_path
             or current_instance["task"] != task_name
         ):
             # Update instance context if is not the same
-            folder_entity = ayon_api.get_folder_by_path(
-                project_name, folder_path
-            )
-            task_entity = ayon_api.get_task_by_name(
-                project_name, folder_entity["id"], task_name
-            )
             product_name = self.get_product_name(
                 project_name,
                 folder_entity,
@@ -86,7 +71,7 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
                 host_name,
             )
 
-            current_instance["folderPath"] = folder_entity["path"]
+            current_instance["folderPath"] = folder_path
             current_instance["task"] = task_name
             current_instance["productName"] = product_name
 
@@ -100,6 +85,9 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
 
             created_instance = CreatedInstance.from_existing(node_data, self)
             self._add_instance_to_context(created_instance)
+
+    def remove_instances(self, instances):
+        self._default_remove_instances(instances)
 
     def update_instances(self, update_list):
         for created_inst, _changes in update_list:

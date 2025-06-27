@@ -68,7 +68,7 @@ class ValidateTransformZero(plugin.MayaInstancePlugin,
             return
         invalid = self.get_invalid(instance)
         if invalid:
-            names = "<br>".join(
+            names = "\n".join(
                 " - {}".format(node) for node in invalid
             )
 
@@ -76,8 +76,8 @@ class ValidateTransformZero(plugin.MayaInstancePlugin,
                 title="Transform Zero",
                 description=self.get_description(),
                 message="The model publish allows no transformations. You must"
-                        " <b>freeze transformations</b> to continue.<br><br>"
-                        "Nodes found with transform values:<br>"
+                        " 'freeze transformations'. to continue.\n\n"
+                        "Nodes found with transform values:\n"
                         "{0}".format(names))
 
     @staticmethod

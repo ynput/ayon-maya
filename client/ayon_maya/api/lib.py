@@ -5,15 +5,14 @@ import copy
 import sys
 import uuid
 import re
-
 import json
 import logging
 import contextlib
-import capture
-import clique
 from collections import OrderedDict, defaultdict
 from math import ceil
-from six import string_types
+
+import capture
+import clique
 
 from maya import cmds, mel
 from maya.api import OpenMaya
@@ -83,6 +82,15 @@ DISPLAY_LIGHTS_ENUM = [
 ]
 
 
+class RigSetsNotExistError(RuntimeError):
+    """Raised when required rig sets for animation instance are missing.
+
+    This is raised from `create_rig_animation_instance` when the required
+    `out_SET` or `controls_SET` are missing.
+    """
+    pass
+
+
 def get_main_window():
     """Acquire Maya's main window"""
     from qtpy import QtWidgets
@@ -130,7 +138,7 @@ def maintained_selection():
 
     """
 
-    previous_selection = cmds.ls(selection=True)
+    previous_selection = cmds.ls(selection=True, long=True)
     try:
         yield
     finally:
@@ -562,8 +570,6 @@ def float_round(num, places=0, direction=ceil):
 
 def pairwise(iterable):
     """s -> (s0,s1), (s2,s3), (s4, s5), ..."""
-    from six.moves import zip
-
     a = iter(iterable)
     return zip(a, a)
 
@@ -679,7 +685,7 @@ def imprint(node, data):
         if isinstance(value, bool):
             add_type = {"attributeType": "bool"}
             set_type = {"keyable": False, "channelBox": True}
-        elif isinstance(value, string_types):
+        elif isinstance(value, str):
             add_type = {"dataType": "string"}
             set_type = {"type": "string"}
         elif isinstance(value, int):
@@ -789,14 +795,14 @@ def attribute_values(attr_values):
     original = [(attr, cmds.getAttr(attr)) for attr in attr_values]
     try:
         for attr, value in attr_values.items():
-            if isinstance(value, string_types):
+            if isinstance(value, str):
                 cmds.setAttr(attr, value, type="string")
             else:
                 cmds.setAttr(attr, value)
         yield
     finally:
         for attr, value in original:
-            if isinstance(value, string_types):
+            if isinstance(value, str):
                 cmds.setAttr(attr, value, type="string")
             elif value is None and cmds.getAttr(attr, type=True) == "string":
                 # In some cases the maya.cmds.getAttr command returns None
@@ -2177,17 +2183,18 @@ def get_highest_in_hierarchy(nodes):
     """Return highest nodes in the hierarchy that are in the `nodes` list.
 
     The "highest in hierarchy" are the nodes closest to world: top-most level.
+    The result only contains DAG nodes.
 
     Args:
-        nodes (list): The nodes in which find the highest in hierarchies.
+        nodes (list[str]): The nodes in which find the highest in hierarchies.
 
     Returns:
-        list: The highest nodes from the input nodes.
+        list[str]: The highest DAG nodes from the input nodes.
 
     """
 
     # Ensure we use long names
-    nodes = cmds.ls(nodes, long=True)
+    nodes = cmds.ls(nodes, long=True, type="dagNode")
     lookup = set(nodes)
 
     highest = []
@@ -2637,7 +2644,8 @@ def set_context_settings(
         fps=True,
         resolution=True,
         frame_range=True,
-        colorspace=True
+        colorspace=True,
+        scene_units=True
 ):
     """Apply the project settings from the project definition
 
@@ -2649,6 +2657,7 @@ def set_context_settings(
         resolution (bool): Whether to set the render resolution.
         frame_range (bool): Whether to reset the time slide frame ranges.
         colorspace (bool): Whether to reset the colorspace.
+        scene_units (bool): Whether to reset the scene units.
 
     Returns:
         None
@@ -2669,6 +2678,8 @@ def set_context_settings(
     if colorspace:
         set_colorspace()
 
+    if scene_units:
+        set_scene_units()
 
 def prompt_reset_context():
     """Prompt the user what context settings to reset.
@@ -2715,6 +2726,12 @@ def prompt_reset_context():
             default=True
         ),
         BoolDef(
+            "scene_units",
+            label="Scene Units",
+            tooltip="Reset Workfile Linear and Angular Scale Unit",
+            default=True
+        ),
+        BoolDef(
             "instances",
             label="Publish instances",
             tooltip="Update all publish instance's folder and task to match "
@@ -2735,7 +2752,8 @@ def prompt_reset_context():
             fps=options["fps"],
             resolution=options["resolution"],
             frame_range=options["frame_range"],
-            colorspace=options["colorspace"]
+            colorspace=options["colorspace"],
+            scene_units=options["scene_units"]
         )
         if options["instances"]:
             update_content_on_context_change()
@@ -3968,7 +3986,7 @@ def get_all_children(nodes, ignore_intermediate_objects=False):
     focus on a fast query.
 
     Args:
-        nodes (iterable): List of nodes to get children for.
+        nodes (iterable[str]): List of nodes to get children for.
         ignore_intermediate_objects (bool): Ignore any children that
             are intermediate objects.
 
@@ -3976,7 +3994,6 @@ def get_all_children(nodes, ignore_intermediate_objects=False):
         set: Children of input nodes.
 
     """
-
     sel = OpenMaya.MSelectionList()
     traversed = set()
     iterator = OpenMaya.MItDag(OpenMaya.MItDag.kDepthFirst)
@@ -3990,6 +4007,11 @@ def get_all_children(nodes, ignore_intermediate_objects=False):
 
         sel.clear()
         sel.add(node)
+        obj = sel.getDependNode(0)
+        if not obj.hasFn(OpenMaya.MFn.kDagNode):
+            # Not a dag node, skip
+            continue
+
         dag = sel.getDagPath(0)
 
         iterator.reset(dag)
@@ -4045,7 +4067,7 @@ def get_capture_preset(
             plugin_settings["profiles"],
             filtering_criteria,
             logger=log
-        )
+        ) or {}
         capture_preset = profile.get("capture_preset")
     else:
         log.warning("No profiles present for Extract Playblast")
@@ -4055,7 +4077,8 @@ def get_capture_preset(
     if capture_preset is None:
         log.debug(
             "Falling back to deprecated Extract Playblast capture preset "
-            "because no new style playblast profiles are defined."
+            "because no new style playblast profiles are defined or no "
+            "profile matches for your current context."
         )
         capture_preset = plugin_settings.get("capture_preset")
 
@@ -4172,8 +4195,14 @@ def create_rig_animation_instance(
     controls = next((node for node in nodes if
                      node.endswith("controls_SET")), None)
     if name != "fbx":
-        assert output, "No out_SET in rig, this is a bug."
-        assert controls, "No controls_SET in rig, this is a bug."
+        if not output:
+            raise RigSetsNotExistError(
+                "No out_SET in rig. The loaded rig publish is lacking the "
+                "out_SET required for animation instances.")
+        if not controls:
+            raise RigSetsNotExistError(
+                "No controls_SET in rig. The loaded rig publish is lacking "
+                "the controls_SET required for animation instances.")
 
     anim_skeleton = next((node for node in nodes if
                           node.endswith("skeletonAnim_SET")), None)
@@ -4396,6 +4425,17 @@ def force_shader_assignments_to_faces(shapes):
             if "." not in member:
                 # Convert to face assignments
                 member = f"{member}.f[*]"
+                if not cmds.objExists(member):
+                    # It is possible for a mesh to have no faces at all
+                    # for which we cannot convert to face assignments anyway.
+                    # It is a `mesh` node type - it just would error on
+                    # 'No object matches name' when trying to assign to the
+                    # faces. So we skip the conversion
+                    log.debug(
+                        "Skipping face assignment conversion because "
+                        f"no mesh faces were found: {member}")
+                    continue
+
                 has_conversions = True
             override_assignments[shading_engine].append(member)
 
@@ -4420,3 +4460,91 @@ def force_shader_assignments_to_faces(shapes):
         for shading_engine, original_members in original_assignments.items():
             cmds.sets(clear=shading_engine)
             cmds.sets(original_members, forceElement=shading_engine)
+
+
+def nodetype_exists(nodetype: str) -> bool:
+    """Return whether node type exists in the current Maya session.
+
+    This returns whether it's registered as a node type to maya, it does not
+    check whether it exists in the current scene.
+
+    Args:
+        nodetype (str): The node type name to check for existence.
+
+    Returns:
+        bool: True if the node type exists, False otherwise.
+    """
+    # If the node type does not exist, Maya will raise a RuntimeError.
+    try:
+        cmds.nodeType(nodetype, isTypeName=True)
+        return True
+    except RuntimeError:
+        return False
+
+
+def set_scene_units():
+    """Set the Maya scene units"""
+    linear_unit, angular_unit = get_scene_units_settings()
+    cmds.currentUnit(linear=linear_unit, angle=angular_unit)
+
+
+def validate_scene_units() -> bool:
+    """Validate whether scene units match AYON settings
+    
+    If not headless and it does not match, a pop-up dialog is
+    shown to the user with a choice to fix it automatically.
+
+    Returns:
+        bool: Whether Maya scene units matches preferences from AYON settings
+    """
+    linear_unit, angular_unit = get_scene_units_settings()
+    current_linear_unit = cmds.currentUnit(query=True, linear=True)
+    current_angular_unit = cmds.currentUnit(query=True, angle=True)
+    unit_match = (
+        current_linear_unit == linear_unit and
+        current_angular_unit == angular_unit
+    )
+    if not unit_match and not IS_HEADLESS:
+        from ayon_core.tools.utils import PopupUpdateKeys
+
+        parent = get_main_window()
+
+        dialog = PopupUpdateKeys(parent=parent)
+        dialog.setModal(True)
+        dialog.setWindowTitle("Maya scene does not match project scene units")
+        message = (
+            f"Scene units ({current_linear_unit},"
+            f"{current_angular_unit}) does not match "
+            f"project scene units ({linear_unit}, {angular_unit})"
+        )
+        dialog.set_message(message)
+        dialog.set_button_text("Fix")
+
+        # Set new text for button (add optional argument for the popup?)
+        def on_click():
+            set_scene_units()
+
+        dialog.on_clicked_state.connect(on_click)
+        dialog.show()
+
+        return False
+    return unit_match
+
+
+def get_scene_units_settings(project_settings=None)-> tuple[str, str]:
+    """Function to return preferred linear unit and angular scale from settings
+
+    Args:
+        project_settings (dict, optional): Project Name. Defaults to None.
+
+    Returns:
+        tuple[str, str]: linear scene unit, angular scene unit
+    """
+    if project_settings is None:
+        project_name = get_current_project_name()
+        project_settings = get_project_settings(project_name)
+
+    scene_units = project_settings["maya"]["scene_units"]
+    linear_unit = scene_units.get("linear_units", "cm")
+    angular_unit = scene_units.get("angular_units", "deg")
+    return linear_unit, angular_unit

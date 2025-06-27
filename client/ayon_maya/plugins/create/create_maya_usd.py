@@ -18,10 +18,37 @@ class CreateMayaUsd(plugin.MayaCreator):
     description = "Create Maya USD Export"
     cache = {}
 
+    def register_callbacks(self):
+        self.create_context.add_value_changed_callback(self.on_values_changed)
+
+    def on_values_changed(self, event):
+        """Update instance attribute definitions on attribute changes."""
+
+        for instance_change in event["changes"]:
+            # First check if there's a change we want to respond to
+            instance = instance_change["instance"]
+            if instance is None:
+                # Change is on context
+                continue
+
+            if instance["creator_identifier"] != self.identifier:
+                continue
+
+            value_changes = instance_change["changes"]
+            if (
+                "exportAnimationData"
+                not in value_changes.get("creator_attributes", {})
+            ):
+                continue
+
+            # Update the attribute definitions
+            new_attrs = self.get_attr_defs_for_instance(instance)
+            instance.set_create_attr_defs(new_attrs)
+
     def get_publish_families(self):
         return ["usd", "mayaUsd"]
 
-    def get_instance_attr_defs(self):
+    def get_attr_defs_for_instance(self, instance):
 
         if "jobContextItems" not in self.cache:
             # Query once instead of per instance
@@ -80,17 +107,6 @@ class CreateMayaUsd(plugin.MayaCreator):
                         "following format: nameSpaceExample_pPlatonic1"
                     ),
                     default=True),
-            BoolDef("mergeTransformAndShape",
-                    label="Merge Transform and Shape",
-                    tooltip=(
-                        "Combine Maya transform and shape into a single USD"
-                        "prim that has transform and geometry, for all"
-                        " \"geometric primitives\" (gprims).\n"
-                        "This results in smaller and faster scenes. Gprims "
-                        "will be \"unpacked\" back into transform and shape "
-                        "nodes when imported into Maya from USD."
-                    ),
-                    default=True),
             BoolDef("includeUserDefinedAttributes",
                     label="Include User Defined Attributes",
                     tooltip=(
@@ -117,6 +133,18 @@ class CreateMayaUsd(plugin.MayaCreator):
                     ),
                     multiselection=True),
         ])
+
+        # Disable the frame range attributes if `exportAnimationData` is
+        # disabled.
+        use_anim = instance["creator_attributes"].get(
+            "exportAnimationData", True)
+        if not use_anim:
+            anim_defs = {
+                "frameStart", "frameEnd", "handleStart", "handleEnd", "step"
+            }
+            for attr_def in defs:
+                if attr_def.key in anim_defs:
+                    attr_def.disabled = True
 
         return defs
 
