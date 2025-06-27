@@ -14,10 +14,10 @@ def _convert_dirmap_0_4_3(overrides):
     overrides["dirmap"] = overrides.pop("maya_dirmap")
 
 
-def _convert_scene_unit(overrides):
+def _convert_scene_units(overrides):
     """Related unit scale keys have been moved to
     have individual settings in 0.4.9"""
-    if "unit_scale" in overrides:
+    if "scene_units" in overrides:
         # Already new settings
         return
 
@@ -36,11 +36,11 @@ def _convert_scene_unit(overrides):
         return
 
     # Apply overrides to the new unit scale settings if found in the old way
-    overrides["unit_scale"] = {}
+    overrides["scene_units"] = {}
     if linear_units is not None:
-        overrides["unit_scale"]["linear_units"] = linear_units
+        overrides["scene_units"]["linear_units"] = linear_units
     if angular_units is not None:
-        overrides["unit_scale"]["angular_units"] = angular_units
+        overrides["scene_units"]["angular_units"] = angular_units
 
 
 def _convert_redshift_render_settings_gi_0_4_4(overrides):
@@ -72,6 +72,6 @@ def convert_settings_overrides(
     overrides: dict[str, Any],
 ) -> dict[str, Any]:
     _convert_dirmap_0_4_3(overrides)
-    _convert_scene_unit(overrides)
     _convert_redshift_render_settings_gi_0_4_4(overrides)
+    _convert_scene_units(overrides)
     return overrides

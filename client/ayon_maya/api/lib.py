@@ -2641,7 +2641,7 @@ def set_context_settings(
         resolution=True,
         frame_range=True,
         colorspace=True,
-        unit_scale=True
+        scene_units=True
 ):
     """Apply the project settings from the project definition
 
@@ -2653,7 +2653,7 @@ def set_context_settings(
         resolution (bool): Whether to set the render resolution.
         frame_range (bool): Whether to reset the time slide frame ranges.
         colorspace (bool): Whether to reset the colorspace.
-        unit_scale (bool): Whether to reset the unit scale.
+        scene_units (bool): Whether to reset the unit scale.
 
     Returns:
         None
@@ -2674,8 +2674,8 @@ def set_context_settings(
     if colorspace:
         set_colorspace()
 
-    if unit_scale:
-        set_unit_scale()
+    if scene_units:
+        set_scene_units()
 
 def prompt_reset_context():
     """Prompt the user what context settings to reset.
@@ -2722,8 +2722,8 @@ def prompt_reset_context():
             default=True
         ),
         BoolDef(
-            "unit_scale",
-            label="Unit Scale",
+            "scene_units",
+            label="Scene Units",
             tooltip="Reset Workfile Linear and Angular Scale Unit",
             default=True
         ),
@@ -2749,7 +2749,7 @@ def prompt_reset_context():
             resolution=options["resolution"],
             frame_range=options["frame_range"],
             colorspace=options["colorspace"],
-            unit_scale=options["unit_scale"]
+            scene_units=options["scene_units"]
         )
         if options["instances"]:
             update_content_on_context_change()
@@ -4474,13 +4474,13 @@ def nodetype_exists(nodetype: str) -> bool:
         return False
 
 
-def set_unit_scale():
+def set_scene_units():
     """Set the unit scale"""
     linear_unit, angular_unit = get_unit_setting()
     cmds.currentUnit(linear=linear_unit, angle=angular_unit)
 
 
-def validate_unit_scale() -> bool:
+def validate_scene_units() -> bool:
     """Validate whether scene units match AYON settings
     
     If not headless and it does not match, a pop-up dialog is
@@ -4514,7 +4514,7 @@ def validate_unit_scale() -> bool:
 
         # Set new text for button (add optional argument for the popup?)
         def on_click():
-            set_unit_scale()
+            set_scene_units()
 
         dialog.on_clicked_state.connect(on_click)
         dialog.show()
@@ -4534,10 +4534,10 @@ def get_unit_setting(project_name=None)-> tuple[str, str]:
     """
     if project_name is not None:
         project_name = get_current_project_name()
-    unit_scale_setting = (
-        get_project_settings(project_name)["maya"]["unit_scale"]
+    scene_units_setting = (
+        get_project_settings(project_name)["maya"]["scene_units"]
     )
 
-    linear_unit = unit_scale_setting.get("linear_units", "cm")
-    angular_unit = unit_scale_setting.get("angular_units", "deg")
+    linear_unit = scene_units_setting.get("linear_units", "cm")
+    angular_unit = scene_units_setting.get("angular_units", "deg")
     return linear_unit, angular_unit

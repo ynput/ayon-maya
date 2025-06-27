@@ -91,7 +91,7 @@ class MayaSettings(BaseSettingsModel):
     )
     ext_mapping: list[ExtMappingItemModel] = SettingsField(
         default_factory=list, title="Extension Mapping")
-    unit_scale: UnitScaleModel = SettingsField(
+    scene_units: UnitScaleModel = SettingsField(
         default_factory=UnitScaleModel,
         title="Unit Scale"
     )
@@ -157,7 +157,7 @@ DEFAULT_MAYA_SETTING = {
         {"name": "layout", "value": "ma"},
         {"name": "camerarig", "value": "ma"},
     ],
-    "unit_scale": {
+    "scene_units": {
         "linear_units": "cm",
         "angular_units": "deg",
     },
