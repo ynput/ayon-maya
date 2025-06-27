@@ -3272,7 +3272,7 @@ def update_content_on_context_change():
     """
 
     host = registered_host()
-    create_context = CreateContext(host)
+    create_context = CreateContext(host, discover_publish_plugins=False)
     task_entity = get_current_task_entity(fields={"attrib"})
 
     instance_values = {
