@@ -3394,7 +3394,13 @@ def iter_shader_edits(relationships, shader_nodes, nodes_by_id, label=None):
 
 
 def set_colorspace(project_settings=None):
-    """Set Colorspace from project configuration"""
+    """Set Colorspace from project settings.
+
+    Arguments:
+        project_settings (dict, optional): Project settings to use.
+            If not provided, the current project settings are used.
+            This is mostly used for optimization purposes.
+    """
     if project_settings is None:
         project_settings = get_current_project_settings()
     imageio: dict = project_settings["maya"]["imageio"]
