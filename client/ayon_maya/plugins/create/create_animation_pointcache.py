@@ -2,10 +2,7 @@ from maya import cmds
 
 from ayon_maya.api import lib, plugin
 
-from ayon_core.lib import (
-    BoolDef,
-    NumberDef,
-)
+from ayon_core.lib import BoolDef
 
 
 def _get_animation_attr_defs(
@@ -17,7 +14,6 @@ def _get_animation_attr_defs(
     defs.extend(
         [
             BoolDef("farm", label="Submit to Farm"),
-            NumberDef("priority", label="Farm job Priority", default=50),
             BoolDef("refresh", label="Refresh viewport during export"),
             BoolDef(
                 "includeParentHierarchy",

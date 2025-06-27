@@ -553,7 +553,7 @@ def on_init():
 
 def on_before_save():
     """Run validation for scene's FPS prior to saving"""
-    return lib.validate_fps()
+    return lib.validate_fps() and lib.validate_scene_units()
 
 
 def on_after_save():
@@ -628,6 +628,7 @@ def on_open():
     # Validate FPS after update_task_from_path to
     # ensure it is using correct FPS for the folder
     lib.validate_fps()
+    lib.validate_scene_units()
     lib.fix_incompatible_containers()
 
     if any_outdated_containers():
