@@ -2653,7 +2653,7 @@ def set_context_settings(
         resolution (bool): Whether to set the render resolution.
         frame_range (bool): Whether to reset the time slide frame ranges.
         colorspace (bool): Whether to reset the colorspace.
-        scene_units (bool): Whether to reset the unit scale.
+        scene_units (bool): Whether to reset the scene units.
 
     Returns:
         None
@@ -4475,7 +4475,7 @@ def nodetype_exists(nodetype: str) -> bool:
 
 
 def set_scene_units():
-    """Set the unit scale"""
+    """Set the Maya scene units"""
     linear_unit, angular_unit = get_unit_setting()
     cmds.currentUnit(linear=linear_unit, angle=angular_unit)
 
@@ -4487,7 +4487,7 @@ def validate_scene_units() -> bool:
     shown to the user with a choice to fix it automatically.
 
     Returns:
-        bool: Whether unit scale is matched
+        bool: Whether Maya scene units matches preferences from AYON settings
     """
     linear_unit, angular_unit = get_unit_setting()
     current_linear_unit = cmds.currentUnit(query=True, linear=True)
@@ -4503,11 +4503,11 @@ def validate_scene_units() -> bool:
 
         dialog = PopupUpdateKeys(parent=parent)
         dialog.setModal(True)
-        dialog.setWindowTitle("Maya scene does not match project unit scale")
+        dialog.setWindowTitle("Maya scene does not match project scene units")
         message = (
-            f"Scene unit scale ({current_linear_unit},"
+            f"Scene units ({current_linear_unit},"
             f"{current_angular_unit}) does not match "
-            f"project unit scale ({linear_unit}, {angular_unit})"
+            f"project scene units ({linear_unit}, {angular_unit})"
         )
         dialog.set_message(message)
         dialog.set_button_text("Fix")

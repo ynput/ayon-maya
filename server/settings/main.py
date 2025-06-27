@@ -93,7 +93,8 @@ class MayaSettings(BaseSettingsModel):
         default_factory=list, title="Extension Mapping")
     scene_units: UnitScaleModel = SettingsField(
         default_factory=UnitScaleModel,
-        title="Unit Scale"
+        title="Scene Units",
+        description="Set preferred Maya Scene Units"
     )
     dirmap: DirmapModel = SettingsField(
         default_factory=DirmapModel, title="Maya dirmap Settings")

@@ -15,7 +15,7 @@ def _convert_dirmap_0_4_3(overrides):
 
 
 def _convert_scene_units(overrides):
-    """Related unit scale keys have been moved to
+    """Related scene units keys have been moved to
     have individual settings in 0.4.9"""
     if "scene_units" in overrides:
         # Already new settings
@@ -35,7 +35,7 @@ def _convert_scene_units(overrides):
         # No old overrides
         return
 
-    # Apply overrides to the new unit scale settings if found in the old way
+    # Apply overrides to the new scene units settings if found in the old way
     overrides["scene_units"] = {}
     if linear_units is not None:
         overrides["scene_units"]["linear_units"] = linear_units
