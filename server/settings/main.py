@@ -21,12 +21,43 @@ from .templated_workfile_settings import (
 )
 
 
+def linear_unit_enum():
+    """Get linear units enumerator."""
+    return [
+        {"label": "millimeter", "value": "mm"},
+        {"label": "centimeter", "value": "cm"},
+        {"label": "meter", "value": "m"},
+        {"label": "kilometer", "value": "km"},
+        {"label": "inch", "value": "in"},
+        {"label": "foot", "value": "ft"},
+        {"label": "yard", "value": "yd"},
+        {"label": "mile", "value": "mi"}
+    ]
+
+
+def angular_unit_enum():
+    """Get angular units enumerator."""
+    return [
+        {"label": "degree", "value": "deg"},
+        {"label": "radian", "value": "rad"},
+    ]
+
+
 def maya_file_extensions_enum():
     return [
         {"value": "ma", "label": "Maya Ascii (.ma)"},
         {"value": "mb", "label": "Maya Binary (.mb)"}
     ]
 
+
+class UnitScaleModel(BaseSettingsModel):
+    _isGroup: bool = True
+    linear_units: str = SettingsField(
+        enum_resolver=linear_unit_enum, title="Linear Units"
+    )
+    angular_units: str = SettingsField(
+        enum_resolver=angular_unit_enum, title="Angular units"
+    )
 
 class ExtMappingItemModel(BaseSettingsModel):
     _layout = "compact"
@@ -60,6 +91,11 @@ class MayaSettings(BaseSettingsModel):
     )
     ext_mapping: list[ExtMappingItemModel] = SettingsField(
         default_factory=list, title="Extension Mapping")
+    scene_units: UnitScaleModel = SettingsField(
+        default_factory=UnitScaleModel,
+        title="Scene Units",
+        description="Set preferred Maya Scene Units"
+    )
     dirmap: DirmapModel = SettingsField(
         default_factory=DirmapModel, title="Maya dirmap Settings")
     include_handles: IncludeHandlesModel = SettingsField(
@@ -122,6 +158,10 @@ DEFAULT_MAYA_SETTING = {
         {"name": "layout", "value": "ma"},
         {"name": "camerarig", "value": "ma"},
     ],
+    "scene_units": {
+        "linear_units": "cm",
+        "angular_units": "deg",
+    },
     # `dirmap` was originally with dash - `maya-dirmap`
     "dirmap": DEFAULT_DIRMAP_SETTINGS,
     "include_handles": DEFAULT_INCLUDE_HANDLES,
