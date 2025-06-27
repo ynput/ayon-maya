@@ -232,11 +232,26 @@ class ValidateLoadedPluginModel(BaseSettingsModel):
 class ValidateMayaUnitsModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="ValidateMayaUnits")
     optional: bool = SettingsField(title="Optional")
-    validate_linear_units: bool = SettingsField(title="Validate linear units")
-    validate_angular_units: bool = SettingsField(
-        title="Validate angular units"
+    validate_linear_units: bool = SettingsField(
+        title="Validate linear units",
+        description=(
+            "Whether to validate the Maya scene linear units against "
+            "the _Scene Unit_ settings"
+        ),
     )
-    validate_fps: bool = SettingsField(title="Validate fps")
+    validate_angular_units: bool = SettingsField(
+        title="Validate angular units",
+        description=(
+            "Whether to validate the Maya scene angular units against "
+            "the _Scene Unit_ settings"
+        ),
+    )
+    validate_fps: bool = SettingsField(
+        title="Validate FPS",
+        description=(
+            "Whether to validate the Maya scene FPS against the task "
+            "context's FPS"
+        ))
 
 
 class ValidateUnrealStaticMeshNameModel(BaseSettingsModel):
