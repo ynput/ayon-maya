@@ -2474,6 +2474,11 @@ def set_scene_resolution(width: int, height: int, pixel_aspect: float):
 def get_fps_for_current_context(task_entity=None):
     """Get fps that should be set for current context.
 
+    Arguments:
+        task_entity (dict, optional): Task entity to use.
+            If not provided, the current task entity is used.
+            This is mostly used for optimization purposes.
+
     Returns:
         Union[int, float]: FPS value.
     """
