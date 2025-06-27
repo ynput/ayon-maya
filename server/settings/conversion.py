@@ -17,6 +17,10 @@ def _convert_dirmap_0_4_3(overrides):
 def _convert_scene_unit(overrides):
     """Related unit scale keys have been moved to
     have individual settings in 0.4.9"""
+    if "unit_scale" in overrides:
+        # Already new settings
+        return
+
     publish_settings = overrides.get("publish")
     if publish_settings is None:
         return
@@ -24,15 +28,19 @@ def _convert_scene_unit(overrides):
     maya_units_settings = publish_settings.get("ValidateMayaUnits")
     if maya_units_settings is None:
         return
-    linear_settings = maya_units_settings.get("linear_units")
-    angular_settings = maya_units_settings.get("angular_units")
 
-    if "unit_scale" in overrides:
+    linear_units = maya_units_settings.pop("linear_units", None)
+    angular_units = maya_units_settings.pop("angular_units", None)
+    if linear_units is None and angular_units is None:
+        # No old overrides
         return
+
+    # Apply overrides to the new unit scale settings if found in the old way
     overrides["unit_scale"] = {}
-    scene_units_overrides = overrides["unit_scale"]
-    scene_units_overrides["linear_units"] = overrides.pop(linear_settings)
-    scene_units_overrides["angular_units"] = overrides.pop(angular_settings)
+    if linear_units is not None:
+        overrides["unit_scale"]["linear_units"] = linear_units
+    if angular_units is not None:
+        overrides["unit_scale"]["angular_units"] = angular_units
 
 
 def _convert_redshift_render_settings_gi_0_4_4(overrides):
