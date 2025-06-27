@@ -14,6 +14,35 @@ def _convert_dirmap_0_4_3(overrides):
     overrides["dirmap"] = overrides.pop("maya_dirmap")
 
 
+def _convert_scene_units(overrides):
+    """Related scene units keys have been moved to
+    have individual settings in 0.4.9"""
+    if "scene_units" in overrides:
+        # Already new settings
+        return
+
+    publish_settings = overrides.get("publish")
+    if publish_settings is None:
+        return
+
+    maya_units_settings = publish_settings.get("ValidateMayaUnits")
+    if maya_units_settings is None:
+        return
+
+    linear_units = maya_units_settings.pop("linear_units", None)
+    angular_units = maya_units_settings.pop("angular_units", None)
+    if linear_units is None and angular_units is None:
+        # No old overrides
+        return
+
+    # Apply overrides to the new scene units settings if found in the old way
+    overrides["scene_units"] = {}
+    if linear_units is not None:
+        overrides["scene_units"]["linear_units"] = linear_units
+    if angular_units is not None:
+        overrides["scene_units"]["angular_units"] = angular_units
+
+
 def _convert_redshift_render_settings_gi_0_4_4(overrides):
     """The `render_settings.redshift_renderer` got a new `gi_enabled` key
      that was previously assumed enabled if either:
@@ -44,4 +73,5 @@ def convert_settings_overrides(
 ) -> dict[str, Any]:
     _convert_dirmap_0_4_3(overrides)
     _convert_redshift_render_settings_gi_0_4_4(overrides)
+    _convert_scene_units(overrides)
     return overrides

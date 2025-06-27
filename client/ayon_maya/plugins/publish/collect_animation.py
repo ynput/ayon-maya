@@ -54,6 +54,3 @@ class CollectAnimationOutputGeometry(plugin.MayaInstancePlugin):
 
         # Store data in the instance for the validator
         instance.data["out_hierarchy"] = hierarchy
-
-        if instance.data.get("farm"):
-            instance.data["families"].append("publish.farm")

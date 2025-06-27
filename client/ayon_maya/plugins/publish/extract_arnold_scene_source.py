@@ -12,6 +12,7 @@ class ExtractArnoldSceneSource(plugin.MayaExtractorPlugin):
 
     label = "Extract Arnold Scene Source"
     families = ["ass"]
+    targets = ["local", "remote"]
     asciiAss = False
 
     def _pre_process(self, instance, staging_dir):
