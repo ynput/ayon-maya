@@ -19,14 +19,10 @@ from maya.api import OpenMaya
 
 import ayon_api
 
-from ayon_core.settings import (
-    get_project_settings,
-    get_current_project_settings
-)
+from ayon_core.settings import get_current_project_settings
 from ayon_core.pipeline import (
     get_current_project_name,
     get_current_folder_path,
-    get_current_task_name,
     discover_loader_plugins,
     loaders_from_representation,
     get_representation_path,
@@ -4568,8 +4564,7 @@ def get_scene_units_settings(project_settings=None)-> tuple[str, str]:
         tuple[str, str]: linear scene unit, angular scene unit
     """
     if project_settings is None:
-        project_name = get_current_project_name()
-        project_settings = get_project_settings(project_name)
+        project_settings = get_current_project_settings()
 
     scene_units = project_settings["maya"]["scene_units"]
     linear_unit = scene_units.get("linear_units", "cm")
