@@ -27,6 +27,7 @@ class ExtractXgen(plugin.MayaExtractorPlugin):
     label = "Extract Xgen"
     families = ["xgen"]
     scene_type = "ma"
+    targets = ["local", "remote"]
 
     def process(self, instance):
         if "representations" not in instance.data:

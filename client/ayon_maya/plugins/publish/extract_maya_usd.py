@@ -254,6 +254,10 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         if not self.is_active(instance.data):
             return
 
+        if instance.data.get("farm"):
+            self.log.debug("Should be processed on farm, skipping.")
+            return
+
         attr_values = self.get_attr_values_from_data(instance.data)
 
         # Load plugin first
