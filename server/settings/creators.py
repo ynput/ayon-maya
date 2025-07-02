@@ -5,6 +5,17 @@ from ayon_server.settings import (
 )
 
 
+class CreateWorkfileModel(BaseSettingsModel):
+    is_mandatory: bool = SettingsField(
+        False,
+        title="Mandatory workfile",
+        description=(
+            "Workfile cannot be disabled by user in UI."
+            " Requires core addon 1.4.1 or newer."
+        )
+    )
+
+
 class CreateLookModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     make_tx: bool = SettingsField(title="Make tx files")
@@ -152,6 +163,10 @@ class CreatorsModel(BaseSettingsModel):
         )
     )
 
+    CreateWorkfile: CreateWorkfileModel = SettingsField(
+        default_factory=CreateWorkfileModel,
+        title="Create Workfile"
+    )
     CreateLook: CreateLookModel = SettingsField(
         default_factory=CreateLookModel,
         title="Create Look"
