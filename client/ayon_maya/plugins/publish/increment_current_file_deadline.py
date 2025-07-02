@@ -26,7 +26,7 @@ class IncrementCurrentFileDeadline(plugin.MayaContextPlugin):
             folder_entity=context.data["folderEntity"],
             task_entity=context.data["taskEntity"],
             description=f"Incremented by publishing.",
-            # Optimize the save by not reducing needed queries for context
+            # Optimize the save by reducing needed queries for context
             prepared_data=SaveWorkfileOptionalData(
                 project_entity=context.data["projectEntity"],
                 project_settings=context.data["project_settings"],
