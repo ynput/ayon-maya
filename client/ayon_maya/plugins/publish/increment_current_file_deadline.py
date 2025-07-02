@@ -1,13 +1,14 @@
 import pyblish.api
+
+from ayon_core.lib import version_up
+from ayon_core.host import IWorkfileHost
+from ayon_core.host.interfaces import SaveWorkfileOptionalData
+from ayon_core.pipeline import registered_host
 from ayon_maya.api import plugin
 
 
 class IncrementCurrentFileDeadline(plugin.MayaContextPlugin):
-    """Increment the current file.
-
-    Saves the current maya scene with an increased version number.
-
-    """
+    """Saves the current maya scene with an increased version number."""
 
     label = "Increment current file"
     order = pyblish.api.IntegratorOrder + 9.0
@@ -16,25 +17,19 @@ class IncrementCurrentFileDeadline(plugin.MayaContextPlugin):
     targets = ["local"]
 
     def process(self, context):
-
-        from ayon_core.lib import version_up
-        from ayon_core.pipeline.publish import get_errored_plugins_from_context
-        from maya import cmds
-
-        errored_plugins = get_errored_plugins_from_context(context)
-        if any(plugin.__name__ == "MayaSubmitDeadline"
-                for plugin in errored_plugins):
-            raise RuntimeError("Skipping incrementing current file because "
-                               "submission to deadline failed.")
-
         current_filepath = context.data["currentFile"]
         new_filepath = version_up(current_filepath)
 
-        # # Ensure the suffix is .ma because we're saving to `mayaAscii` type
-        if new_filepath.endswith(".ma"):
-            fileType = "mayaAscii"
-        elif new_filepath.endswith(".mb"):
-            fileType = "mayaBinary"
-
-        cmds.file(rename=new_filepath)
-        cmds.file(save=True, force=True, type=fileType)
+        host: IWorkfileHost = registered_host()
+        host.save_workfile_with_context(
+            filepath=new_filepath,
+            folder_entity=context.data["folderEntity"],
+            task_entity=context.data["taskEntity"],
+            description=f"Incremented by publishing.",
+            # Optimize the save by not reducing needed queries for context
+            prepared_data=SaveWorkfileOptionalData(
+                project_entity=context.data["projectEntity"],
+                project_settings=context.data["project_settings"],
+                anatomy=context.data["anatomy"],
+            )
+        )
