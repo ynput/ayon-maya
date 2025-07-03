@@ -14,6 +14,7 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
 
     default_variant = "Main"
 
+    settings_category = "maya"
     is_mandatory = False
 
     def create(self):
