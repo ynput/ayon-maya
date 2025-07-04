@@ -473,6 +473,7 @@ class ExtractLook(plugin.MayaExtractorPlugin):
             self.log.debug("No sets found for the look")
             return
 
+        texture_objs = instance.data.get("textureObjects", [])
         # Specify texture processing executables to activate
         # TODO: Load these more dynamically once we support more processors
         processors = []
@@ -513,7 +514,7 @@ class ExtractLook(plugin.MayaExtractorPlugin):
                 with no_workspace_dir():
                     with lib.attribute_values(remap):
                         with lib.maintained_selection():
-                            cmds.select(sets, noExpand=True)
+                            cmds.select(sets + texture_objs, noExpand=True)
                             cmds.file(
                                 maya_path,
                                 force=True,
@@ -531,6 +532,8 @@ class ExtractLook(plugin.MayaExtractorPlugin):
             "attributes": lookdata["attributes"],
             "relationships": relationships
         }
+        if instance.data.get("textureRefObj"):
+            data.update({"reference_inputs": lookdata["reference_inputs"]})
 
         self.log.debug("Extracting json file: {}".format(json_path))
         with open(json_path, "w") as f:

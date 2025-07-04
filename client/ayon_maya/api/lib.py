@@ -2007,6 +2007,10 @@ def apply_shaders(relationships, shadernodes, nodes):
 
     attributes = relationships.get("attributes", [])
     shader_data = relationships.get("relationships", {})
+    # check if there is texture references input and connect the texture
+    # reference back to the nodes
+    texture_references_input = relationships.get("reference_inputs", [])
+    connect_texture_reference_objects(texture_references_input)
 
     shading_engines = cmds.ls(shadernodes, type="objectSet", long=True)
     assert shading_engines, "Error in retrieving objectSets from reference"
@@ -4544,3 +4548,78 @@ def get_scene_units_settings(project_settings=None)-> tuple[str, str]:
     linear_unit = scene_units.get("linear_units", "cm")
     angular_unit = scene_units.get("angular_units", "deg")
     return linear_unit, angular_unit
+
+
+def connect_texture_reference_objects(texture_reference_inputs):
+    """Connect texture reference object nodes to the target object
+    nodes if there is one.
+
+    Args:
+        texture_reference_inputs (list): list of texture reference
+        objects connection data
+    """
+    # Compare loaded connections to scene.
+    for reference_input in texture_reference_inputs:
+        source_node = source_ids.get(input["sourceID"])
+        target_node = target_ids.get(input["destinationID"])
+
+        if not source_node or not target_node:
+            self.log.debug(
+                "Could not find nodes for reference input:\n" +
+                json.dumps(reference_input, indent=4, sort_keys=True)
+            )
+            continue
+        source_attr, target_attr = reference_input["connections"]
+
+        if not cmds.attributeQuery(
+            source_attr, node=source_node, exists=True
+        ):
+            self.log.debug(
+                "Could not find attribute {} on node {} for "
+                "reference input:\n{}".format(
+                    source_attr,
+                    source_node,
+                    json.dumps(
+                        reference_input, indent=4, sort_keys=True
+                    )
+                )
+            )
+            continue
+
+        if not cmds.attributeQuery(
+            target_attr, node=target_node, exists=True
+        ):
+            self.log.debug(
+                "Could not find attribute {} on node {} for "
+                "reference input:\n{}".format(
+                    target_attr,
+                    target_node,
+                    json.dumps(
+                        reference_input, indent=4, sort_keys=True
+                    )
+                )
+            )
+            continue
+
+        source_plug = "{}.{}".format(
+            source_node, source_attr
+        )
+        target_plug = "{}.{}".format(
+            target_node, target_attr
+        )
+        if cmds.isConnected(
+            source_plug, target_plug, ignoreUnitConversion=True
+        ):
+            self.log.debug(
+                "Connection already exists: {} -> {}".format(
+                    source_plug, target_plug
+                )
+            )
+            continue
+
+        cmds.connectAttr(source_plug, target_plug, force=True)
+        self.log.debug(
+            "Connected attributes: {} -> {}".format(
+                source_plug, target_plug
+            )
+        )

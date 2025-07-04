@@ -344,7 +344,14 @@ class CollectLook(plugin.MayaInstancePlugin):
             "attributes": attributes,
             "relationships": sets
         }
-
+        if instance.data["textureRefObj"]:
+            input_collections, tx_object_nodes = (
+                self.collect_texture_reference_object_inputs(instance)
+            )
+            instance.data["lookData"].update(
+                {"reference_inputs": input_collections}
+            )
+            instance.data["textureObjects"] = tx_object_nodes
         # Collect file nodes used by shading engines (if we have any)
         files = []
         look_sets = list(sets.keys())
@@ -654,6 +661,55 @@ class CollectLook(plugin.MayaInstancePlugin):
                 "files": files,
                 "color_space": color_space
             }
+
+    def collect_texture_reference_object_inputs(self, instance):
+        """Collect the inputs for all nodes in the input_SET"""
+
+        # Get the input meshes information
+        input_content = instance.data["setMembers"]
+
+        # Include children
+        input_content += cmds.listRelatives(input_content,
+                                            allDescendents=True,
+                                            fullPath=True) or []
+
+        # Ignore intermediate objects
+        input_content = cmds.ls(input_content, long=True, noIntermediate=True)
+        if not input_content:
+            return []
+
+        # Store all connections
+        connections = cmds.listConnections(input_content,
+                                           source=True,
+                                           destination=False,
+                                           connections=True,
+                                           # Only allow inputs from dagNodes
+                                           # (avoid display layers, etc.)
+                                           type="dagNode",
+                                           plugs=True) or []
+        connections = cmds.ls(connections, long=True)      # Ensure long names
+
+        inputs = []
+        tx_ref_nodes = []
+        for dest, src in lib.pairwise(connections):
+            source_node, source_attr = src.split(".", 1)
+            dest_node, dest_attr = dest.split(".", 1)
+
+            # Ensure the source of the connection is not included in the
+            # current instance's hierarchy. If so, we ignore that connection
+            # as we will want to preserve it even over a publish.
+            if dest_attr != "referenceObject":
+                self.log.debug(
+                    "Ignoring input connection between non reference "
+                    "object nodes inside the instance: %s -> %s" % (src, dest))
+                continue
+
+            inputs.append({"connections": [source_attr, dest_attr],
+                           "sourceID": lib.get_id(source_node),
+                           "destinationID": lib.get_id(dest_node)})
+            tx_ref_nodes.append(source_node)
+
+        return inputs, tx_ref_nodes
 
 
 class CollectModelRenderSets(CollectLook):
