@@ -4558,12 +4558,12 @@ def connect_texture_reference_objects(texture_reference_inputs, nodes_by_id):
     Args:
         texture_reference_inputs (list): list of texture reference
         objects connection data
-        node_by_ids ()
+        node_by_id (dict): The dict with node ids.
     """
     # Compare loaded connections to scene.
     for reference_input in texture_reference_inputs:
-        source_node = nodes_by_ids.get(input["sourceID"])
-        target_node = nodes_by_ids.get(input["destinationID"])
+        source_node = node_by_id.get(input["sourceID"])
+        target_node = node_by_id.get(input["destinationID"])
 
         if not source_node or not target_node:
             self.log.debug(
