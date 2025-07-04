@@ -2007,10 +2007,6 @@ def apply_shaders(relationships, shadernodes, nodes):
 
     attributes = relationships.get("attributes", [])
     shader_data = relationships.get("relationships", {})
-    # check if there is texture references input and connect the texture
-    # reference back to the nodes
-    texture_references_input = relationships.get("reference_inputs", [])
-    connect_texture_reference_objects(texture_references_input)
 
     shading_engines = cmds.ls(shadernodes, type="objectSet", long=True)
     assert shading_engines, "Error in retrieving objectSets from reference"
@@ -2055,6 +2051,11 @@ def apply_shaders(relationships, shadernodes, nodes):
             cmds.sets(filtered_nodes, forceElement=id_shading_engines[0])
         except RuntimeError as rte:
             log.error("Error during shader assignment: {}".format(rte))
+
+    # check if there is texture references input and connect the texture
+    # reference back to the nodes
+    texture_references_input = relationships.get("reference_inputs", [])
+    connect_texture_reference_objects(texture_references_input, nodes_by_id)
 
     # endregion
 
@@ -4550,7 +4551,7 @@ def get_scene_units_settings(project_settings=None)-> tuple[str, str]:
     return linear_unit, angular_unit
 
 
-def connect_texture_reference_objects(texture_reference_inputs):
+def connect_texture_reference_objects(texture_reference_inputs, nodes_by_id):
     """Connect texture reference object nodes to the target object
     nodes if there is one.
 
@@ -4560,8 +4561,8 @@ def connect_texture_reference_objects(texture_reference_inputs):
     """
     # Compare loaded connections to scene.
     for reference_input in texture_reference_inputs:
-        source_node = source_ids.get(input["sourceID"])
-        target_node = target_ids.get(input["destinationID"])
+        source_node = nodes_by_ids.get(input["sourceID"])
+        target_node = nodes_by_ids.get(input["destinationID"])
 
         if not source_node or not target_node:
             self.log.debug(
