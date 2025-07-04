@@ -4601,12 +4601,8 @@ def connect_texture_reference_objects(texture_reference_inputs, nodes_by_id):
                     )
                 )
             )
-            continue
-
-        source_plug = "{}.{}".format(
-            source_node, source_attr
-        )
-        target_plug = "{}.{}".format(
+        source_plug = f"{source_node}.{source_attr}"
+        target_plug = f"{target_node}.{target_attr}"
             target_node, target_attr
         )
         if cmds.isConnected(
