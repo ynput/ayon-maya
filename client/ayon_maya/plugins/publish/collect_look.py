@@ -344,14 +344,14 @@ class CollectLook(plugin.MayaInstancePlugin):
             "attributes": attributes,
             "relationships": sets
         }
-        if instance.data["textureRefObj"]:
+        if instance.data["includeTextureReferenceObjects"]:
             input_collections, tx_object_nodes = (
                 self.collect_texture_reference_object_inputs(instance)
             )
             instance.data["lookData"].update(
-                {"reference_inputs": input_collections}
+                {"texture_connections": input_collections}
             )
-            instance.data["textureObjects"] = tx_object_nodes
+            instance.data["textureReferenceObjects"] = tx_object_nodes
         # Collect file nodes used by shading engines (if we have any)
         files = []
         look_sets = list(sets.keys())

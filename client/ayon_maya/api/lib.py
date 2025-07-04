@@ -2054,7 +2054,7 @@ def apply_shaders(relationships, shadernodes, nodes):
 
     # check if there is texture references input and connect the texture
     # reference back to the nodes
-    texture_references_input = relationships.get("reference_inputs", [])
+    texture_references_input = relationships.get("texture_connections", [])
     connect_texture_reference_objects(texture_references_input, nodes_by_id)
 
     # endregion
@@ -4491,7 +4491,7 @@ def set_scene_units():
 
 def validate_scene_units() -> bool:
     """Validate whether scene units match AYON settings
-    
+
     If not headless and it does not match, a pop-up dialog is
     shown to the user with a choice to fix it automatically.
 
@@ -4551,27 +4551,27 @@ def get_scene_units_settings(project_settings=None)-> tuple[str, str]:
     return linear_unit, angular_unit
 
 
-def connect_texture_reference_objects(texture_reference_inputs, nodes_by_id):
+def connect_texture_reference_objects(texture_connections, nodes_by_id):
     """Connect texture reference object nodes to the target object
     nodes if there is one.
 
     Args:
-        texture_reference_inputs (list): list of texture reference
+        texture_connections (list): list of texture reference
         objects connection data
-        node_by_id (dict): The dict with node ids.
+        nodes_by_id (dict): The dict with node ids.
     """
     # Compare loaded connections to scene.
-    for reference_input in texture_reference_inputs:
-        source_node = node_by_id.get(input["sourceID"])
-        target_node = node_by_id.get(input["destinationID"])
+    for texture_connection in texture_connections:
+        source_node = nodes_by_id.get(input["sourceID"])
+        target_node = nodes_by_id.get(input["destinationID"])
 
         if not source_node or not target_node:
             self.log.debug(
                 "Could not find nodes for reference input:\n" +
-                json.dumps(reference_input, indent=4, sort_keys=True)
+                json.dumps(texture_connection, indent=4, sort_keys=True)
             )
             continue
-        source_attr, target_attr = reference_input["connections"]
+        source_attr, target_attr = texture_connection["connections"]
 
         if not cmds.attributeQuery(
             source_attr, node=source_node, exists=True
@@ -4582,7 +4582,7 @@ def connect_texture_reference_objects(texture_reference_inputs, nodes_by_id):
                     source_attr,
                     source_node,
                     json.dumps(
-                        reference_input, indent=4, sort_keys=True
+                        texture_connection, indent=4, sort_keys=True
                     )
                 )
             )
@@ -4597,14 +4597,13 @@ def connect_texture_reference_objects(texture_reference_inputs, nodes_by_id):
                     target_attr,
                     target_node,
                     json.dumps(
-                        reference_input, indent=4, sort_keys=True
+                        texture_connection, indent=4, sort_keys=True
                     )
                 )
             )
         source_plug = f"{source_node}.{source_attr}"
         target_plug = f"{target_node}.{target_attr}"
-            target_node, target_attr
-        )
+
         if cmds.isConnected(
             source_plug, target_plug, ignoreUnitConversion=True
         ):

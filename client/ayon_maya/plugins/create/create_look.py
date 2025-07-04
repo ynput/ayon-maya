@@ -38,7 +38,7 @@ class CreateLook(plugin.MayaCreator):
                     tooltip="Whether to generate Redshift .rstex files for "
                             "your textures",
                     default=self.rs_tex),
-            BoolDef("textureRefObj",
+            BoolDef("includeTextureReferenceObjects",
                     label="Texture Reference Objects",
                     tooltip="Whether to use texture reference objects for "
                             "your textures",
