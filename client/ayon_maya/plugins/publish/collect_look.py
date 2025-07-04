@@ -704,9 +704,11 @@ class CollectLook(plugin.MayaInstancePlugin):
                     "object nodes inside the instance: %s -> %s" % (src, dest))
                 continue
 
-            inputs.append({"connections": [source_attr, dest_attr],
-                           "sourceID": lib.get_id(source_node),
-                           "destinationID": lib.get_id(dest_node)})
+            inputs.append({
+                "connections": [source_attr, dest_attr],
+                "sourceID": lib.get_id(source_node),
+                "destinationID": lib.get_id(dest_node)
+            })
             tx_ref_nodes.append(source_node)
 
         return inputs, tx_ref_nodes
