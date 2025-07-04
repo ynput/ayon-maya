@@ -4558,6 +4558,7 @@ def connect_texture_reference_objects(texture_reference_inputs, nodes_by_id):
     Args:
         texture_reference_inputs (list): list of texture reference
         objects connection data
+        node_by_ids ()
     """
     # Compare loaded connections to scene.
     for reference_input in texture_reference_inputs:
