@@ -110,7 +110,10 @@ class ConnectGeometry(InventoryAction):
             target_shapes = [target]
         else:
             target_shapes = cmds.listRelatives(
-                target, type="deformableShape", fullPath=True, noIntermediate=True
+                target,
+                type="deformableShape",
+                fullPath=True,
+                noIntermediate=True,
             ) or []
 
         # Add blendshape
