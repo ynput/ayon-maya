@@ -136,7 +136,7 @@ class ConnectGeometry(InventoryAction):
         if not cmds.referenceQuery(target_shape, isNodeReferenced=True):
             return
 
-        # Taret mesh has no ID to maintain, so we can skip this.
+        # Target mesh has no ID to maintain, so we can skip this.
         if not get_id(target_shape):
             return
 
