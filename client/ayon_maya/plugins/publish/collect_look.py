@@ -348,8 +348,8 @@ class CollectLook(plugin.MayaInstancePlugin):
             input_collections, tx_object_nodes = (
                 self.collect_texture_reference_object_inputs(instance)
             )
-            instance.data["lookData"].update(
-                {"texture_connections": input_collections}
+            instance.data["lookData"]["connections"] = (
+                input_collections
             )
             instance.data["textureReferenceObjects"] = tx_object_nodes
         # Collect file nodes used by shading engines (if we have any)

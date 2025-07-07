@@ -2054,7 +2054,7 @@ def apply_shaders(relationships, shadernodes, nodes):
 
     # check if there is texture references input and connect the texture
     # reference back to the nodes
-    texture_references_input = relationships.get("texture_connections", [])
+    texture_references_input = relationships.get("connections", [])
     connect_texture_reference_objects(texture_references_input, nodes_by_id)
 
     # endregion
@@ -4562,8 +4562,8 @@ def connect_texture_reference_objects(texture_connections, nodes_by_id):
     """
     # Compare loaded connections to scene.
     for texture_connection in texture_connections:
-        source_node = nodes_by_id.get(input["sourceID"])
-        target_node = nodes_by_id.get(input["destinationID"])
+        source_node = nodes_by_id.get(texture_connection["sourceID"])
+        target_node = nodes_by_id.get(texture_connection["destinationID"])
 
         if not source_node or not target_node:
             self.log.debug(

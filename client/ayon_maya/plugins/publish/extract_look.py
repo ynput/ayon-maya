@@ -536,7 +536,7 @@ class ExtractLook(plugin.MayaExtractorPlugin):
         }
         if instance.data.get("includeTextureReferenceObjects"):
             data.update({
-                "texture_connections": lookdata["texture_connections"]
+                "connections": lookdata["connections"]
             })
 
         self.log.debug("Extracting json file: {}".format(json_path))
