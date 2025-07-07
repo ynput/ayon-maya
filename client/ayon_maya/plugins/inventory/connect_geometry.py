@@ -1,7 +1,7 @@
 from maya import cmds
 
 from ayon_core.pipeline import InventoryAction, get_repres_contexts
-from ayon_maya.api.lib import get_id, get_container_members
+from ayon_maya.api.lib import get_id, get_container_members, set_id
 
 
 class ConnectGeometry(InventoryAction):
@@ -96,13 +96,59 @@ class ConnectGeometry(InventoryAction):
 
         # Setup live worldspace blendshape connection.
         for source, target in matches:
-            blendshape = cmds.blendShape(source, target)[0]
-            cmds.setAttr(blendshape + ".origin", 0)
-            cmds.setAttr(blendshape + "." + target.split(":")[-1], 1)
+            self.connect_geometry(source, target)
 
         # Update Xgen if in any of the containers.
         if "xgmPalette" in node_types:
             cmds.xgmPreview()
+
+    def connect_geometry(self, source: str, target: str):
+        # Get the target mesh shape before applying the blendshape,
+        # because we may need to validate the ID on the output mesh of
+        # the blendshape.
+        if cmds.objectType(target, isAType="deformableShape"):
+            target_shapes = [target]
+        else:
+            target_shapes = cmds.listRelatives(
+                target, type="deformableShape", fullPath=True, noIntermediate=True
+            ) or []
+
+        # Add blendshape
+        blendshape = cmds.blendShape(source, target)[0]
+        cmds.setAttr(blendshape + ".origin", 0)
+        cmds.setAttr(blendshape + "." + target.split(":")[-1], 1)
+
+        if not target_shapes:
+            self.log.warning(
+                "No shape found for target: {}".format(target)
+            )
+            return
+        target_shape = target_shapes[0]
+
+        # If the target was a referenced mesh then it may have generated
+        # a new "DeformedShape" node which may be lacking any custom
+        # attributes the original mesh had, like e.g. `cbId`. We will
+        # want to make sure to preserve those attributes so look
+        # assignments can still work.
+        if not cmds.referenceQuery(target_shape, isNodeReferenced=True):
+            return
+
+        # Taret mesh has no ID to maintain, so we can skip this.
+        if not get_id(target_shape):
+            return
+
+        output = cmds.listConnections(
+            blendshape + ".outputGeometry[0]",
+            source=False,
+            destination=True,
+            shapes=True
+        )[0]
+        if output != target_shape and not get_id(output):
+            self.log.info(
+                "Transferring ID from target shape to new output shape: "
+                f"{target_shape} -> {output}"
+            )
+            set_id(output, get_id(target_shape))
 
     def get_container_data(self, container):
         """Collects data about the container nodes.
