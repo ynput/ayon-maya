@@ -141,7 +141,7 @@ class ConnectGeometry(InventoryAction):
             return
 
         output = cmds.listConnections(
-            blendshape + ".outputGeometry[0]",
+            f"{blendshape}.outputGeometry[0]",
             source=False,
             destination=True,
             shapes=True
