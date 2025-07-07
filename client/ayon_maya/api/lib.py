@@ -4572,8 +4572,17 @@ def connect_texture_reference_objects(
     """
     # Compare loaded connections to scene.
     for texture_connection in texture_connections:
-        source_node = tx_ref_nodes_by_id.get(texture_connection["sourceID"])[0]
-        target_node = nodes_by_id.get(texture_connection["destinationID"])[0]
+        source_node = next(
+            iter(tx_ref_nodes_by_id.get(
+            texture_connection["sourceID"], [])
+            ), None
+        )
+
+        target_node = next(
+            iter(nodes_by_id.get(texture_connection["destinationID"], [])
+            ), None
+        )
+
 
         if not source_node or not target_node:
             self.log.debug(
