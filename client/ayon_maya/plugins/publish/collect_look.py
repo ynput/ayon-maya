@@ -685,7 +685,7 @@ class CollectLook(plugin.MayaInstancePlugin):
                                            connections=True,
                                            # Only allow inputs from dagNodes
                                            # (avoid display layers, etc.)
-                                           type="dagNode",
+                                           type="mesh",
                                            plugs=True) or []
         connections = cmds.ls(connections, long=True)      # Ensure long names
 

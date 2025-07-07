@@ -2011,6 +2011,7 @@ def apply_shaders(relationships, shadernodes, nodes):
     shading_engines = cmds.ls(shadernodes, type="objectSet", long=True)
     assert shading_engines, "Error in retrieving objectSets from reference"
 
+    tx_ref_nodes = cmds.ls(shadernodes, type="mesh", long=True)
     # region compute lookup
     nodes_by_id = defaultdict(list)
     for node in nodes:
@@ -2019,6 +2020,11 @@ def apply_shaders(relationships, shadernodes, nodes):
     shading_engines_by_id = defaultdict(list)
     for shad in shading_engines:
         shading_engines_by_id[get_id(shad)].append(shad)
+
+    tx_ref_nodes_by_id = defaultdict(list)
+    for tx_ref_node in tx_ref_nodes:
+        tx_ref_nodes_by_id[get_id(tx_ref_node)].append(tx_ref_node)
+
     # endregion
 
     # region assign shading engines and other sets
@@ -2055,7 +2061,9 @@ def apply_shaders(relationships, shadernodes, nodes):
     # check if there is texture references input and connect the texture
     # reference back to the nodes
     texture_references_input = relationships.get("connections", [])
-    connect_texture_reference_objects(texture_references_input, nodes_by_id)
+    connect_texture_reference_objects(
+        texture_references_input, nodes_by_id, tx_ref_nodes_by_id
+    )
 
     # endregion
 
@@ -4551,7 +4559,8 @@ def get_scene_units_settings(project_settings=None)-> tuple[str, str]:
     return linear_unit, angular_unit
 
 
-def connect_texture_reference_objects(texture_connections, nodes_by_id):
+def connect_texture_reference_objects(
+        texture_connections, nodes_by_id, tx_ref_nodes_by_id):
     """Connect texture reference object nodes to the target object
     nodes if there is one.
 
@@ -4559,11 +4568,12 @@ def connect_texture_reference_objects(texture_connections, nodes_by_id):
         texture_connections (list): list of texture reference
         objects connection data
         nodes_by_id (dict): The dict with node ids.
+        tx_ref_nodes_by_id (dict): The dict with texture reference node ids.
     """
     # Compare loaded connections to scene.
     for texture_connection in texture_connections:
-        source_node = nodes_by_id.get(texture_connection["sourceID"])
-        target_node = nodes_by_id.get(texture_connection["destinationID"])
+        source_node = tx_ref_nodes_by_id.get(texture_connection["sourceID"])[0]
+        target_node = nodes_by_id.get(texture_connection["destinationID"])[0]
 
         if not source_node or not target_node:
             self.log.debug(
