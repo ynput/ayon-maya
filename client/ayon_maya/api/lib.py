@@ -19,7 +19,7 @@ from maya.api import OpenMaya
 
 import ayon_api
 
-from ayon_core.settings import get_current_project_settings
+from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     get_current_project_name,
     get_current_folder_path,
@@ -2549,7 +2549,8 @@ def get_frame_range(
         # instance attributes for which we want to exclude the animation
         # keys. That is why these are excluded by default.
         if not project_settings:
-            project_settings = get_current_project_settings()
+            project_name = get_current_project_name()
+            project_settings = get_project_settings(project_name)
 
         task_type = task_entity["taskType"]
 
@@ -2684,7 +2685,8 @@ def set_context_settings(
         None
 
     """
-    project_settings = get_current_project_settings()
+    project_name = get_current_project_name()
+    project_settings = get_project_settings(project_name)
     task_entity = get_current_task_entity()
     reset_frame_range(
         fps=fps,
@@ -3403,7 +3405,8 @@ def set_colorspace(project_settings=None):
             This is mostly used for optimization purposes.
     """
     if project_settings is None:
-        project_settings = get_current_project_settings()
+        project_name = get_current_project_name()
+        project_settings = get_project_settings(project_name)
     imageio: dict = project_settings["maya"]["imageio"]
 
     if not imageio["workfile"]["enabled"]:
@@ -4569,7 +4572,8 @@ def get_scene_units_settings(project_settings=None)-> tuple[str, str]:
         tuple[str, str]: linear scene unit, angular scene unit
     """
     if project_settings is None:
-        project_settings = get_current_project_settings()
+        project_name = get_current_project_name()
+        project_settings = get_project_settings(project_name)
 
     scene_units = project_settings["maya"]["scene_units"]
     linear_unit = scene_units.get("linear_units", "cm")
