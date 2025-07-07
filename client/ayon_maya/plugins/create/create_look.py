@@ -40,8 +40,11 @@ class CreateLook(plugin.MayaCreator):
                     default=self.rs_tex),
             BoolDef("includeTextureReferenceObjects",
                     label="Texture Reference Objects",
-                    tooltip="Whether to use texture reference objects for "
-                            "your textures",
+                    tooltip=(
+                        "Whether to include texture reference objects "
+                        "with the published look to reconnect to geometry "
+                        "when assigning the look."
+                    ),
                     default=self.rs_tex)
         ]
 
