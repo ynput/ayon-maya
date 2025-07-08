@@ -45,6 +45,10 @@ from ayon_core.pipeline.workfile.lock_workfile import (
     is_workfile_locked,
     is_workfile_lock_enabled
 )
+from ayon_core.pipeline.workfile.workfile_template_builder import (
+    TemplateProfileNotFound
+)
+
 from ayon_maya import MAYA_ROOT_DIR
 from ayon_maya.lib import create_workspace_mel
 
@@ -661,8 +665,14 @@ def on_new():
     with lib.suspended_refresh():
         lib.set_context_settings()
 
-    workfile_template_builder.build_workfile_template(
-        workfile_creation_enabled=True)
+    try:
+        workfile_template_builder.build_workfile_template(
+            workfile_creation_enabled=True)
+    except TemplateProfileNotFound:
+        log.debug(
+            "No workfile template profile enabled for current context. "
+            "Skipping workfile creation."
+        )
     _remove_workfile_lock()
 
 
