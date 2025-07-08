@@ -4559,81 +4559,81 @@ def get_scene_units_settings(project_settings=None)-> tuple[str, str]:
     return linear_unit, angular_unit
 
 
-def apply_connections(texture_connections, nodes_by_id, texture_nodes_by_id):
+def apply_connections(connections, target_nodes_by_id, source_nodes_by_id):
     """Connect texture reference object nodes to the target object
     nodes if there is one.
 
     Args:
-        texture_connections (list): list of texture reference
+        connections (list): list of texture reference
         objects connection data
-        nodes_by_id (dict): The dict with node ids.
-        texture_nodes_by_id (dict): The dict with texture reference node ids.
+        target_nodes_by_id (dict): The dict with target shape node ids
+        source_nodes_by_id (dict): The dict with texture reference node ids.
     """
     # Compare loaded connections to scene.
-    for texture_connection in texture_connections:
-        texture_object_node = next(
-            iter(texture_nodes_by_id.get(
-            texture_connection["sourceID"], [])
+    for connection in connections:
+        source_node = next(
+            iter(source_nodes_by_id.get(
+            connections["sourceID"], [])
             ), None
         )
 
-        shape_nodes = nodes_by_id.get(texture_connection["destinationID"], [])
+        target_nodes = target_nodes_by_id.get(connections["destinationID"], [])
 
-        if not texture_object_node or not shape_nodes:
+        if not source_node or not target_nodes:
             self.log.debug(
                 "Could not find nodes for reference input:\n" +
-                json.dumps(texture_connection, indent=4, sort_keys=True)
+                json.dumps(connection, indent=4, sort_keys=True)
             )
             continue
-        texture_object_attr, shape_nodes_attr = texture_connection["connections"]
+        source_attr, target_attr = connection["connections"]
 
         if not cmds.attributeQuery(
-            texture_object_attr, node=texture_object_node, exists=True
+            source_attr, node=source_node, exists=True
         ):
             self.log.debug(
                 "Could not find attribute {} on node {} for "
                 "reference input:\n{}".format(
-                    texture_object_attr,
-                    texture_object_node,
+                    source_attr,
+                    source_node,
                     json.dumps(
-                        texture_connection, indent=4, sort_keys=True
+                        connection, indent=4, sort_keys=True
                     )
                 )
             )
             continue
 
-        for shape_node in shape_nodes:
+        for target_node in target_nodes:
             if not cmds.attributeQuery(
-                shape_nodes_attr, node=shape_node, exists=True
+                target_attr, node=target_node, exists=True
             ):
                 self.log.debug(
                     "Could not find attribute {} on node {} for "
                     "reference input:\n{}".format(
-                        shape_nodes_attr,
-                        shape_node,
+                        target_attr,
+                        target_node,
                         json.dumps(
-                            texture_connection, indent=4, sort_keys=True
+                            connection, indent=4, sort_keys=True
                         )
                     )
                 )
                 continue
 
-            texture_obj_plug = f"{texture_object_node}.{texture_object_attr}"
-            shape_plug = f"{shape_node}.{shape_nodes_attr}"
+            source_plug = f"{source_node}.{source_attr}"
+            target_plug = f"{target_node}.{target_attr}"
 
             if cmds.isConnected(
-                texture_obj_plug, shape_plug, ignoreUnitConversion=True
+                source_plug, target_plug, ignoreUnitConversion=True
             ):
                 self.log.debug(
                     "Connection already exists: {} -> {}".format(
-                        texture_obj_plug, shape_plug
+                        source_plug, target_plug
                     )
                 )
                 continue
 
-            cmds.connectAttr(texture_obj_plug, shape_plug, force=True)
+            cmds.connectAttr(source_plug, target_plug, force=True)
             self.log.debug(
                 "Connected attributes: {} -> {}".format(
-                    texture_obj_plug, shape_plug
+                    source_plug, target_plug
                 )
             )
