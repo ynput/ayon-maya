@@ -2021,9 +2021,9 @@ def apply_shaders(relationships, shadernodes, nodes):
     for shad in shading_engines:
         shading_engines_by_id[get_id(shad)].append(shad)
 
-    target_nodes_by_id = defaultdict(list)
+    texture_nodes_by_id = defaultdict(list)
     for mesh_node in shader_mesh_nodes:
-        target_nodes_by_id[get_id(mesh_node)].append(mesh_node)
+        texture_nodes_by_id[get_id(mesh_node)].append(mesh_node)
 
     # endregion
 
@@ -2062,7 +2062,7 @@ def apply_shaders(relationships, shadernodes, nodes):
     # reference back to the nodes
     texture_references_input = relationships.get("connections", [])
     apply_connections(
-        texture_references_input, nodes_by_id, target_nodes_by_id
+        texture_references_input, nodes_by_id, texture_nodes_by_id
     )
 
     # endregion
@@ -4559,7 +4559,7 @@ def get_scene_units_settings(project_settings=None)-> tuple[str, str]:
     return linear_unit, angular_unit
 
 
-def apply_connections(texture_connections, nodes_by_id, target_nodes_by_id):
+def apply_connections(texture_connections, nodes_by_id, texture_nodes_by_id):
     """Connect texture reference object nodes to the target object
     nodes if there is one.
 
@@ -4567,34 +4567,34 @@ def apply_connections(texture_connections, nodes_by_id, target_nodes_by_id):
         texture_connections (list): list of texture reference
         objects connection data
         nodes_by_id (dict): The dict with node ids.
-        target_nodes_by_id (dict): The dict with texture reference node ids.
+        texture_nodes_by_id (dict): The dict with texture reference node ids.
     """
     # Compare loaded connections to scene.
     for texture_connection in texture_connections:
-        source_node = next(
-            iter(target_nodes_by_id.get(
+        texture_object_node = next(
+            iter(texture_nodes_by_id.get(
             texture_connection["sourceID"], [])
             ), None
         )
 
-        target_nodes = nodes_by_id.get(texture_connection["destinationID"], [])
+        shape_nodes = nodes_by_id.get(texture_connection["destinationID"], [])
 
-        if not source_node or not target_nodes:
+        if not texture_object_node or not shape_nodes:
             self.log.debug(
                 "Could not find nodes for reference input:\n" +
                 json.dumps(texture_connection, indent=4, sort_keys=True)
             )
             continue
-        source_attr, target_attr = texture_connection["connections"]
+        texture_object_attr, shape_nodes_attr = texture_connection["connections"]
 
         if not cmds.attributeQuery(
-            source_attr, node=source_node, exists=True
+            texture_object_attr, node=texture_object_node, exists=True
         ):
             self.log.debug(
                 "Could not find attribute {} on node {} for "
                 "reference input:\n{}".format(
-                    source_attr,
-                    source_node,
+                    texture_object_attr,
+                    texture_object_node,
                     json.dumps(
                         texture_connection, indent=4, sort_keys=True
                     )
@@ -4602,15 +4602,15 @@ def apply_connections(texture_connections, nodes_by_id, target_nodes_by_id):
             )
             continue
 
-        for target_node in target_nodes:
+        for shape_node in shape_nodes:
             if not cmds.attributeQuery(
-                target_attr, node=target_node, exists=True
+                shape_nodes_attr, node=shape_node, exists=True
             ):
                 self.log.debug(
                     "Could not find attribute {} on node {} for "
                     "reference input:\n{}".format(
-                        target_attr,
-                        target_node,
+                        shape_nodes_attr,
+                        shape_node,
                         json.dumps(
                             texture_connection, indent=4, sort_keys=True
                         )
@@ -4618,22 +4618,22 @@ def apply_connections(texture_connections, nodes_by_id, target_nodes_by_id):
                 )
                 continue
 
-            source_plug = f"{source_node}.{source_attr}"
-            target_plug = f"{target_node}.{target_attr}"
+            texture_obj_plug = f"{texture_object_node}.{texture_object_attr}"
+            shape_plug = f"{shape_node}.{shape_nodes_attr}"
 
             if cmds.isConnected(
-                source_plug, target_plug, ignoreUnitConversion=True
+                texture_obj_plug, shape_plug, ignoreUnitConversion=True
             ):
                 self.log.debug(
                     "Connection already exists: {} -> {}".format(
-                        source_plug, target_plug
+                        texture_obj_plug, shape_plug
                     )
                 )
                 continue
 
-            cmds.connectAttr(source_plug, target_plug, force=True)
+            cmds.connectAttr(texture_obj_plug, shape_plug, force=True)
             self.log.debug(
                 "Connected attributes: {} -> {}".format(
-                    source_plug, target_plug
+                    texture_obj_plug, shape_plug
                 )
             )
