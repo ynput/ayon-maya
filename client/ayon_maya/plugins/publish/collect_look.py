@@ -676,7 +676,7 @@ class CollectLook(plugin.MayaInstancePlugin):
         if not input_content:
             return []
 
-        attrs = [f"{mesh}.referenceObject" for mesh in input_content]
+        attrs = [f"{mesh}.referenceObject" for mesh in set(input_content)]
         # Store all connections
         connections = cmds.listConnections(attrs,
                                            source=True,
