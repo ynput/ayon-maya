@@ -535,9 +535,7 @@ class ExtractLook(plugin.MayaExtractorPlugin):
             "relationships": relationships
         }
         if instance.data.get("includeTextureReferenceObjects"):
-            data.update({
-                "connections": lookdata["connections"]
-            })
+            data["connections"] = lookdata["connections"]
 
         self.log.debug("Extracting json file: {}".format(json_path))
         with open(json_path, "w") as f:
