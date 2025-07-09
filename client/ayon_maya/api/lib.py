@@ -3280,7 +3280,7 @@ def update_content_on_context_change():
 
     instance_values = {
         "folderPath": create_context.get_current_folder_path(),
-        "task": create_context.get_current_task_name(),
+        "task": task_entity["name"],
     }
     creator_attribute_values = {
         "frameStart": float(task_entity["attrib"]["frameStart"]),
