@@ -18,6 +18,7 @@ class CreateLook(plugin.MayaCreator):
 
     make_tx = True
     rs_tex = False
+    include_texture_reference_objects = False
 
     def get_instance_attr_defs(self):
 
@@ -45,7 +46,7 @@ class CreateLook(plugin.MayaCreator):
                         "with the published look to reconnect to geometry "
                         "when assigning the look."
                     ),
-                    default=self.rs_tex)
+                    default=self.include_texture_reference_objects)
         ]
 
     def get_pre_create_attr_defs(self):
