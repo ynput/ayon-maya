@@ -4573,7 +4573,7 @@ def apply_connections(connections, target_nodes_by_id, source_nodes_by_id):
     for connection in connections:
         source_node = next(
             iter(source_nodes_by_id.get(
-            connections["sourceID"], [])
+            connection["sourceID"], [])
             ), None
         )
 
