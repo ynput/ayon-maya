@@ -23,7 +23,6 @@ from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     get_current_project_name,
     get_current_folder_path,
-    get_current_task_name,
     discover_loader_plugins,
     loaders_from_representation,
     get_representation_path,
@@ -2447,12 +2446,13 @@ def set_scene_fps(fps, update=True):
     cmds.file(modified=True)
 
 
-def set_scene_resolution(width, height, pixelAspect):
+def set_scene_resolution(width: int, height: int, pixel_aspect: float):
     """Set the render resolution
 
     Args:
-        width(int): value of the width
-        height(int): value of the height
+        width (int): resolution width
+        height (int): resolution height
+        pixel_aspect (float): pixel aspect ratio
 
     Returns:
         None
@@ -2474,82 +2474,76 @@ def set_scene_resolution(width, height, pixelAspect):
                       "named: `%s`" % vray_node)
 
     log.info("Setting scene resolution to: %s x %s" % (width, height))
-    cmds.setAttr("%s.width" % control_node, width)
-    cmds.setAttr("%s.height" % control_node, height)
+    cmds.setAttr(f"{control_node}.width", width)
+    cmds.setAttr(f"{control_node}.height", height)
 
-    deviceAspectRatio = ((float(width) / float(height)) * float(pixelAspect))
-    cmds.setAttr(
-        "{}.{}".format(control_node, aspect_ratio_attr), deviceAspectRatio)
-    cmds.setAttr("%s.pixelAspect" % control_node, pixelAspect)
+    device_aspect_ratio: float = (
+            (float(width) / float(height)) * float(pixel_aspect)
+    )
+    cmds.setAttr(f"{control_node}.{aspect_ratio_attr}", device_aspect_ratio)
+    cmds.setAttr(f"{control_node}.pixelAspect", pixel_aspect)
 
 
-def get_fps_for_current_context():
+def get_fps_for_current_context(task_entity=None):
     """Get fps that should be set for current context.
 
-    Todos:
-        - Skip project value.
-        - Merge logic with 'get_frame_range' and 'reset_scene_resolution' ->
-            all the values in the functions can be collected at one place as
-            they have same requirements.
+    Arguments:
+        task_entity (dict, optional): Task entity to use.
+            If not provided, the current task entity is used.
+            This is mostly used for optimization purposes.
 
     Returns:
         Union[int, float]: FPS value.
     """
-    task_entity = get_current_task_entity(fields={"attrib"})
-    fps = task_entity.get("attrib", {}).get("fps")
-    if not fps:
-        project_name = get_current_project_name()
-        folder_path = get_current_folder_path()
-        folder_entity = ayon_api.get_folder_by_path(
-            project_name, folder_path, fields={"attrib.fps"}
-        ) or {}
-
-        fps = folder_entity.get("attrib", {}).get("fps")
-        if not fps:
-            project_entity = ayon_api.get_project(
-                project_name, fields=["attrib.fps"]
-            ) or {}
-            fps = project_entity.get("attrib", {}).get("fps")
-
-            if not fps:
-                fps = 25
-
+    if task_entity is None:
+        task_entity = get_current_task_entity(fields={"attrib.fps"})
+    fps = task_entity.get("attrib", {}).get("fps", 25)
     return convert_to_maya_fps(fps)
 
 
-def get_frame_range(include_animation_range=False):
+def get_frame_range(
+        include_animation_range=False,
+        task_entity=None,
+        project_settings=None
+):
     """Get the current task frame range and handles.
+
+    Note: This does *not* return the Maya time slider range.
 
     Args:
         include_animation_range (bool, optional): Whether to include
             `animationStart` and `animationEnd` keys to define the outer
             range of the timeline. It is excluded by default.
+        task_entity (dict, optional): Task entity to use.
+            If not provided, the current task entity is used.
+            This is mostly used for optimization purposes.
+        project_settings (dict, optional): Project settings to use.
+            If not provided, the current project settings are used.
+            This is mostly used for optimization purposes.
 
     Returns:
         dict: Task's expected frame range values.
 
     """
-
-    # Set frame start/end
-    project_name = get_current_project_name()
-    folder_path = get_current_folder_path()
-    task_name = get_current_task_name()
-
-    folder_entity = ayon_api.get_folder_by_path(
-        project_name,
-        folder_path,
-        fields={"id"})
-    task_entity = ayon_api.get_task_by_name(
-            project_name, folder_entity["id"], task_name
+    if task_entity is None:
+        task_entity = get_current_task_entity(
+            fields={
+                "taskType",
+                "attrib.frameStart",
+                "attrib.frameEnd",
+                "attrib.handleStart",
+                "attrib.handleEnd",
+            }
         )
-
     task_attributes = task_entity["attrib"]
 
     frame_start = task_attributes.get("frameStart")
     frame_end = task_attributes.get("frameEnd")
-
     if frame_start is None or frame_end is None:
-        cmds.warning("No edit information found for '{}'".format(folder_path))
+        # This should never happen because attributes always exist on tasks
+        cmds.warning(
+            "No frame start and frame end information found for current task."
+        )
         return
 
     handle_start = task_attributes.get("handleStart") or 0
@@ -2567,12 +2561,13 @@ def get_frame_range(include_animation_range=False):
         # Some usages of this function use the full dictionary to define
         # instance attributes for which we want to exclude the animation
         # keys. That is why these are excluded by default.
-
-        settings = get_project_settings(project_name)
+        if not project_settings:
+            project_name = get_current_project_name()
+            project_settings = get_project_settings(project_name)
 
         task_type = task_entity["taskType"]
 
-        include_handles_settings = settings["maya"]["include_handles"]
+        include_handles_settings = project_settings["maya"]["include_handles"]
 
         animation_start = frame_start
         animation_end = frame_end
@@ -2592,7 +2587,13 @@ def get_frame_range(include_animation_range=False):
     return frame_range
 
 
-def reset_frame_range(playback=True, render=True, fps=True):
+def reset_frame_range(
+    playback=True,
+    render=True,
+    fps=True,
+    task_entity=None,
+    project_settings=None
+):
     """Set frame range to current folder.
 
     Args:
@@ -2601,11 +2602,24 @@ def reset_frame_range(playback=True, render=True, fps=True):
         render (bool, Optional): Whether to set the maya render frame range.
             Defaults to True.
         fps (bool, Optional): Whether to set scene FPS. Defaults to True.
+        task_entity (dict, optional): Task entity to use.
+            If not provided, the current task entity is used.
+            This is mostly used for optimization purposes.
+        project_settings (dict, optional): Project settings to use.
+            If not provided, the current project settings are used.
+            This is mostly used for optimization purposes.
     """
     if fps:
-        set_scene_fps(get_fps_for_current_context())
+        set_scene_fps(get_fps_for_current_context(task_entity))
 
-    frame_range = get_frame_range(include_animation_range=True)
+    if not playback and not render:
+        return
+
+    frame_range = get_frame_range(
+        include_animation_range=True,
+        project_settings=project_settings,
+        task_entity=task_entity
+    )
     if not frame_range:
         # No frame range data found for folder
         return
@@ -2629,17 +2643,29 @@ def reset_frame_range(playback=True, render=True, fps=True):
         cmds.setAttr("defaultRenderGlobals.endFrame", animation_end)
 
 
-def reset_scene_resolution():
+def reset_scene_resolution(task_entity=None):
     """Apply the scene resolution  from the project definition
 
-    The scene resolution will be retrieved from the current task entity's
-    attributes.
+    The scene resolution will be retrieved from the task entity.
+
+    Arguments:
+        task_entity (dict, optional): Task entity to use.
+            If not provided, the current task entity is used.
+            This is mostly used for optimization purposes.
 
     Returns:
         None
     """
+    if task_entity is None:
+        task_entity = get_current_task_entity(
+            fields={
+                "attrib.resolutionWidth",
+                "attrib.resolutionHeight",
+                "attrib.pixelAspect",
+            }
+        )
 
-    task_attributes = get_current_task_entity(fields={"attrib"})["attrib"]
+    task_attributes = task_entity["attrib"]
 
     # Set resolution
     width = task_attributes.get("resolutionWidth", 1920)
@@ -2672,23 +2698,23 @@ def set_context_settings(
         None
 
     """
-    if fps:
-        # Set project fps
-        set_scene_fps(get_fps_for_current_context())
-
+    project_name = get_current_project_name()
+    project_settings = get_project_settings(project_name)
+    task_entity = get_current_task_entity()
+    reset_frame_range(
+        fps=fps,
+        playback=frame_range,
+        render=frame_range,
+        project_settings=project_settings,
+        task_entity=task_entity
+    )
     if resolution:
-        reset_scene_resolution()
-
-    # Set frame range.
-    if frame_range:
-        reset_frame_range(fps=False)
-
-    # Set colorspace
+        reset_scene_resolution(task_entity=task_entity)
     if colorspace:
-        set_colorspace()
-
+        set_colorspace(project_settings=project_settings)
     if scene_units:
-        set_scene_units()
+        set_scene_units(project_settings=project_settings)
+
 
 def prompt_reset_context():
     """Prompt the user what context settings to reset.
@@ -3262,12 +3288,12 @@ def update_content_on_context_change():
     """
 
     host = registered_host()
-    create_context = CreateContext(host)
-    task_entity = get_current_task_entity(fields={"attrib"})
+    create_context = CreateContext(host, discover_publish_plugins=False)
+    task_entity = create_context.get_current_task_entity()
 
     instance_values = {
         "folderPath": create_context.get_current_folder_path(),
-        "task": create_context.get_current_task_name(),
+        "task": task_entity["name"],
     }
     creator_attribute_values = {
         "frameStart": float(task_entity["attrib"]["frameStart"]),
@@ -3383,11 +3409,18 @@ def iter_shader_edits(relationships, shader_nodes, nodes_by_id, label=None):
                "attributes": attr_value}
 
 
-def set_colorspace():
-    """Set Colorspace from project configuration"""
+def set_colorspace(project_settings=None):
+    """Set Colorspace from project settings.
 
-    project_name = get_current_project_name()
-    imageio = get_project_settings(project_name)["maya"]["imageio"]
+    Arguments:
+        project_settings (dict, optional): Project settings to use.
+            If not provided, the current project settings are used.
+            This is mostly used for optimization purposes.
+    """
+    if project_settings is None:
+        project_name = get_current_project_name()
+        project_settings = get_project_settings(project_name)
+    imageio: dict = project_settings["maya"]["imageio"]
 
     if not imageio["workfile"]["enabled"]:
         log.info(
@@ -4491,9 +4524,11 @@ def nodetype_exists(nodetype: str) -> bool:
         return False
 
 
-def set_scene_units():
+def set_scene_units(project_settings=None):
     """Set the Maya scene units"""
-    linear_unit, angular_unit = get_scene_units_settings()
+    linear_unit, angular_unit = get_scene_units_settings(
+        project_settings=project_settings
+    )
     cmds.currentUnit(linear=linear_unit, angle=angular_unit)
 
 
