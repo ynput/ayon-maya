@@ -4566,8 +4566,8 @@ def apply_connections(connections, target_nodes_by_id, source_nodes_by_id):
     Args:
         connections (list): list of texture reference
         objects connection data
-        target_nodes_by_id (dict): The dict with target shape node ids
-        source_nodes_by_id (dict): The dict with texture reference node ids.
+        target_nodes_by_id (dict[str, list[str]]): The dict with target shape node ids
+        source_nodes_by_id (dict[str, list[str]]): The dict with texture reference node ids.
     """
     # Compare loaded connections to scene.
     for connection in connections:
