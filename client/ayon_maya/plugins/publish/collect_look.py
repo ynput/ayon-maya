@@ -672,7 +672,12 @@ class CollectLook(plugin.MayaInstancePlugin):
                                             fullPath=True) or []
 
         # Ignore intermediate objects
-        input_content = cmds.ls(input_content, long=True, noIntermediate=True)
+        input_content = cmds.ls(
+            input_content, 
+            long=True, 
+            noIntermediate=True,
+            type="mesh"
+        )
         if not input_content:
             return []
 
