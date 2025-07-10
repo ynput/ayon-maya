@@ -4577,7 +4577,7 @@ def apply_connections(connections, target_nodes_by_id, source_nodes_by_id):
             ), None
         )
 
-        target_nodes = target_nodes_by_id.get(connections["destinationID"], [])
+        target_nodes = target_nodes_by_id.get(connection["destinationID"], [])
 
         if not source_node or not target_nodes:
             self.log.debug(
