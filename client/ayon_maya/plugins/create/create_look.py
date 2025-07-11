@@ -6,6 +6,9 @@ from ayon_core.lib import (
     BoolDef,
     TextDef
 )
+from ayon_core.pipeline import CreatedInstance
+import maya.cmds as cmds
+
 
 
 class CreateLook(plugin.MayaCreator):
@@ -19,6 +22,42 @@ class CreateLook(plugin.MayaCreator):
     make_tx = True
     rs_tex = False
     include_texture_reference_objects = False
+
+    def create(self, product_name, instance_data, pre_create_data):
+        creator_attributes = instance_data.setdefault(
+            "creator_attributes", dict())
+        for key in [
+            "maketx",
+            "rstex",
+            "includeTextureReferenceObjects"
+        ]:
+            if key in pre_create_data:
+                creator_attributes[key] = pre_create_data[key]
+        members = list()
+        if pre_create_data.get("use_selection"):
+            members = cmds.ls(selection=True)
+
+        # Allow a Creator to define multiple families
+        publish_families = self.get_publish_families()
+        if publish_families:
+            families = instance_data.setdefault("families", [])
+            for family in self.get_publish_families():
+                if family not in families:
+                    families.append(family)
+
+        with lib.undo_chunk():
+            instance_node = cmds.sets(members, name=product_name)
+            instance_data["instance_node"] = instance_node
+            instance = CreatedInstance(
+                self.product_type,
+                product_name,
+                instance_data,
+                self)
+            self._add_instance_to_context(instance)
+
+            self.imprint_instance_node(instance_node,
+                                       data=instance.data_to_store())
+            return instance
 
     def get_instance_attr_defs(self):
 
@@ -46,7 +85,8 @@ class CreateLook(plugin.MayaCreator):
                         "with the published look to reconnect to geometry "
                         "when assigning the look."
                     ),
-                    default=self.include_texture_reference_objects)
+                    default=self.include_texture_reference_objects
+                    )
         ]
 
     def get_pre_create_attr_defs(self):
