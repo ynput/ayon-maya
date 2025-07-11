@@ -4641,8 +4641,8 @@ def apply_connections(connections, target_nodes_by_id, source_nodes_by_id):
         for target_node in target_nodes:
             if target_node == source_node:
                 self.log.debug(
-                    "Skipping connection to itself for {source_node} "
-                    "connection {source_attr}->{target_attr}."
+                    f"Skipping connection to itself for {source_node} "
+                    f"connection {source_attr}->{target_attr}."
                 )
                 continue
 
