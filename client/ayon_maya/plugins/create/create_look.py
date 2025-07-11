@@ -6,9 +6,6 @@ from ayon_core.lib import (
     BoolDef,
     TextDef
 )
-from ayon_core.pipeline import CreatedInstance
-import maya.cmds as cmds
-
 
 
 class CreateLook(plugin.MayaCreator):
@@ -61,8 +58,7 @@ class CreateLook(plugin.MayaCreator):
                         "with the published look to reconnect to geometry "
                         "when assigning the look."
                     ),
-                    default=self.include_texture_reference_objects
-                    )
+                    default=self.include_texture_reference_objects)
         ]
 
     def get_pre_create_attr_defs(self):

@@ -4621,11 +4621,6 @@ def apply_connections(connections, target_nodes_by_id, source_nodes_by_id):
             )
             continue
 
-        # Skip if source node is one of our target shapes
-        if source_node in target_nodes:
-            log.debug("Skipping connection to source target: %s", connection)
-            continue
-
         source_attr, target_attr = connection["connections"]
 
         if not cmds.attributeQuery(
@@ -4644,6 +4639,13 @@ def apply_connections(connections, target_nodes_by_id, source_nodes_by_id):
             continue
 
         for target_node in target_nodes:
+            if target_node == source_node:
+                self.log.debug(
+                    "Skipping connection to itself for {source_node} "
+                    "connection {source_attr}->{target_attr}."
+                )
+                continue
+
             if not cmds.attributeQuery(
                 target_attr, node=target_node, exists=True
             ):
