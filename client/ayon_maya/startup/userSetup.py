@@ -2,7 +2,10 @@ import os
 
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import install_host, get_current_project_name
-from ayon_maya.api import MayaHost
+from ayon_maya.api import MayaHost, workfile_template_builder
+from ayon_core.pipeline.workfile.workfile_template_builder import (
+    TemplateProfileNotFound
+)
 
 from maya import cmds
 
@@ -39,8 +42,19 @@ key = "AYON_OPEN_WORKFILE_POST_INITIALIZATION"
 if bool(int(os.environ.get(key, "0"))):
     def _log_and_open():
         path = os.environ["AYON_LAST_WORKFILE"]
-        print("Opening \"{}\"".format(path))
-        cmds.file(path, open=True, force=True)
+        if os.path.exists(path):
+            print("Opening \"{}\"".format(path))
+            cmds.file(path, open=True, force=True)
+        else:
+            try:
+                workfile_template_builder.build_workfile_template(
+                    workfile_creation_enabled=True)
+            except TemplateProfileNotFound:
+                print(
+                    "No workfile template profile enabled for current context. "
+                    "Skipping workfile creation."
+                )
+            
     cmds.evalDeferred(
         _log_and_open,
         lowestPriority=True
