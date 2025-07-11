@@ -4620,6 +4620,12 @@ def apply_connections(connections, target_nodes_by_id, source_nodes_by_id):
                 json.dumps(connection, indent=4, sort_keys=True)
             )
             continue
+
+        # Skip if source node is one of our target shapes
+        if source_node in target_nodes:
+            log.debug("Skipping connection to source target: %s", connection)
+            continue
+
         source_attr, target_attr = connection["connections"]
 
         if not cmds.attributeQuery(
