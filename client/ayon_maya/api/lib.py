@@ -2010,6 +2010,7 @@ def apply_shaders(relationships, shadernodes, nodes):
     shading_engines = cmds.ls(shadernodes, type="objectSet", long=True)
     assert shading_engines, "Error in retrieving objectSets from reference"
 
+    shader_mesh_nodes = cmds.ls(shadernodes, type="mesh", long=True)
     # region compute lookup
     nodes_by_id = defaultdict(list)
     for node in nodes:
@@ -2018,6 +2019,11 @@ def apply_shaders(relationships, shadernodes, nodes):
     shading_engines_by_id = defaultdict(list)
     for shad in shading_engines:
         shading_engines_by_id[get_id(shad)].append(shad)
+
+    texture_nodes_by_id = defaultdict(list)
+    for mesh_node in shader_mesh_nodes:
+        texture_nodes_by_id[get_id(mesh_node)].append(mesh_node)
+
     # endregion
 
     # region assign shading engines and other sets
@@ -2050,6 +2056,13 @@ def apply_shaders(relationships, shadernodes, nodes):
             cmds.sets(filtered_nodes, forceElement=id_shading_engines[0])
         except RuntimeError as rte:
             log.error("Error during shader assignment: {}".format(rte))
+
+    # check if there is texture references input and connect the texture
+    # reference back to the nodes
+    texture_references_input = relationships.get("connections", [])
+    apply_connections(
+        texture_references_input, nodes_by_id, texture_nodes_by_id
+    )
 
     # endregion
 
@@ -4521,7 +4534,7 @@ def set_scene_units(project_settings=None):
 
 def validate_scene_units() -> bool:
     """Validate whether scene units match AYON settings
-    
+
     If not headless and it does not match, a pop-up dialog is
     shown to the user with a choice to fix it automatically.
 
@@ -4579,3 +4592,91 @@ def get_scene_units_settings(project_settings=None)-> tuple[str, str]:
     linear_unit = scene_units.get("linear_units", "cm")
     angular_unit = scene_units.get("angular_units", "deg")
     return linear_unit, angular_unit
+
+
+def apply_connections(connections, target_nodes_by_id, source_nodes_by_id):
+    """Connect texture reference object nodes to the target object
+    nodes if there is one.
+
+    Args:
+        connections (list[dict[str, Any]]): list of texture reference
+        objects connection data
+        target_nodes_by_id (dict[str, list[str]]): The dict with target shape node ids
+        source_nodes_by_id (dict[str, list[str]]): The dict with texture reference node ids.
+    """
+    # Compare loaded connections to scene.
+    for connection in connections:
+        source_node = next(
+            iter(source_nodes_by_id.get(
+            connection["sourceID"], [])
+            ), None
+        )
+
+        target_nodes = target_nodes_by_id.get(connection["destinationID"], [])
+
+        if not source_node or not target_nodes:
+            self.log.debug(
+                "Could not find nodes for reference input:\n" +
+                json.dumps(connection, indent=4, sort_keys=True)
+            )
+            continue
+
+        source_attr, target_attr = connection["connections"]
+
+        if not cmds.attributeQuery(
+            source_attr, node=source_node, exists=True
+        ):
+            self.log.debug(
+                "Could not find attribute {} on node {} for "
+                "reference input:\n{}".format(
+                    source_attr,
+                    source_node,
+                    json.dumps(
+                        connection, indent=4, sort_keys=True
+                    )
+                )
+            )
+            continue
+
+        for target_node in target_nodes:
+            if target_node == source_node:
+                self.log.debug(
+                    f"Skipping connection to itself for {source_node} "
+                    f"connection {source_attr}->{target_attr}."
+                )
+                continue
+
+            if not cmds.attributeQuery(
+                target_attr, node=target_node, exists=True
+            ):
+                self.log.debug(
+                    "Could not find attribute {} on node {} for "
+                    "reference input:\n{}".format(
+                        target_attr,
+                        target_node,
+                        json.dumps(
+                            connection, indent=4, sort_keys=True
+                        )
+                    )
+                )
+                continue
+
+            source_plug = f"{source_node}.{source_attr}"
+            target_plug = f"{target_node}.{target_attr}"
+
+            if cmds.isConnected(
+                source_plug, target_plug, ignoreUnitConversion=True
+            ):
+                self.log.debug(
+                    "Connection already exists: {} -> {}".format(
+                        source_plug, target_plug
+                    )
+                )
+                continue
+
+            cmds.connectAttr(source_plug, target_plug, force=True)
+            self.log.debug(
+                "Connected attributes: {} -> {}".format(
+                    source_plug, target_plug
+                )
+            )

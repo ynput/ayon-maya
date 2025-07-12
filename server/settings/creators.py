@@ -20,6 +20,7 @@ class CreateLookModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     make_tx: bool = SettingsField(title="Make tx files")
     rs_tex: bool = SettingsField(title="Make Redshift texture files")
+    include_texture_reference_objects: bool = SettingsField(title="Texture Reference Objects")
     default_variants: list[str] = SettingsField(
         default_factory=list, title="Default Products"
     )
@@ -281,6 +282,7 @@ DEFAULT_CREATORS_SETTINGS = {
         "enabled": True,
         "make_tx": True,
         "rs_tex": False,
+        "include_texture_reference_objects": False,
         "default_variants": [
             "Main"
         ]
