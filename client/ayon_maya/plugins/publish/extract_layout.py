@@ -94,6 +94,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 continue
 
             container_dict = self.process_containers(containers)
+            allow_obj_transforms = instance.data.get("allowObjectTransforms", False)
             for container, container_root in container_dict.items():
                 representation_id = cmds.getAttr(
                     "{}.representation".format(container))
@@ -136,7 +137,6 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                     "extension": repre_context["ext"],
                     "host": self.hosts
                 }
-
                 local_matrix = cmds.xform(
                     container_root, query=True, matrix=True)
                 local_rotation = cmds.xform(
@@ -168,6 +168,15 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                     "y": local_rotation[1],
                     "z": local_rotation[2]
                 }
+                if allow_obj_transforms:
+                    container_objects = cmds.listRelatives(
+                        container_root, allDescendents=True, type='transform'
+                    ) or []
+                    for container_object in container_objects:
+                        json_element = (
+                            self.parse_objects_transform_as_json_element(
+                                container_object, json_element)
+                        )
                 json_data.append(json_element)
         json_filename = "{}.json".format(instance.name)
         json_path = os.path.join(stagingdir, json_filename)
@@ -245,3 +254,35 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         convert_transform.setScale([convert_scale[0], convert_scale[2], convert_scale[1]], om.MSpace.kWorld)
 
         return convert_transform.asMatrix()
+
+    def parse_objects_transform_as_json_element(self, container_object, json_element):
+        """Parse transform data of the container objects and add it as json element
+
+        Args:
+            container_object (str): Objects inside the container
+            json_element (dict): Json element
+
+        Returns:
+            dict: json element with the added transform data of the container object
+        """
+        if container_object:
+            if container_object not in json_element:
+                json_element[container_object] = {}
+            local_matrix = cmds.xform(
+                container_object, query=True, matrix=True)
+            local_rotation = cmds.xform(
+                container_object, query=True, rotation=True, euler=True)
+
+            t_matrix = self.create_transformation_matrix(local_matrix, local_rotation)
+
+            json_element[container_object]["transform_matrix"] = [
+                list(row)
+                for row in t_matrix
+            ]
+            json_element[container_object]["rotation"] = {
+                "x": local_rotation[0],
+                "y": local_rotation[1],
+                "z": local_rotation[2]
+            }
+
+        return json_element
