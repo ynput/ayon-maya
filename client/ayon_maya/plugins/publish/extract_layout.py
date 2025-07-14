@@ -6,7 +6,11 @@ from typing import List
 
 from ayon_api import get_representation_by_id
 from ayon_maya.api import plugin, pipeline
-from ayon_maya.api.lib import get_highest_in_hierarchy, get_container_members
+from ayon_maya.api.lib import (
+    get_highest_in_hierarchy,
+    get_container_members,
+    get_all_children
+)
 from maya import cmds
 from maya.api import OpenMaya as om
 
@@ -169,13 +173,13 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                     "z": local_rotation[2]
                 }
                 if allow_obj_transforms:
-                    container_objects = cmds.listRelatives(
-                        container_root, allDescendents=True, type='transform'
-                    ) or []
-                    for container_object in container_objects:
+                    child_transforms = cmds.listRelatives(
+                        get_all_children([container_root]), type="transform"
+                    )
+                    for child_transform in child_transforms:
                         json_element = (
                             self.parse_objects_transform_as_json_element(
-                                container_object, json_element)
+                                child_transform, json_element)
                         )
                 json_data.append(json_element)
         json_filename = "{}.json".format(instance.name)
@@ -255,31 +259,31 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
         return convert_transform.asMatrix()
 
-    def parse_objects_transform_as_json_element(self, container_object, json_element):
+    def parse_objects_transform_as_json_element(self, child_transform, json_element):
         """Parse transform data of the container objects and add it as json element
 
         Args:
-            container_object (str): Objects inside the container
+            child_transform (str): all child transform from container
             json_element (dict): Json element
 
         Returns:
             dict: json element with the added transform data of the container object
         """
-        if container_object:
-            if container_object not in json_element:
-                json_element[container_object] = {}
+        if child_transform:
+            if child_transform not in json_element:
+                json_element[child_transform] = {}
             local_matrix = cmds.xform(
-                container_object, query=True, matrix=True)
+                child_transform, query=True, matrix=True)
             local_rotation = cmds.xform(
-                container_object, query=True, rotation=True, euler=True)
+                child_transform, query=True, rotation=True, euler=True)
 
             t_matrix = self.create_transformation_matrix(local_matrix, local_rotation)
 
-            json_element[container_object]["transform_matrix"] = [
+            json_element[child_transform]["transform_matrix"] = [
                 list(row)
                 for row in t_matrix
             ]
-            json_element[container_object]["rotation"] = {
+            json_element[child_transform]["rotation"] = {
                 "x": local_rotation[0],
                 "y": local_rotation[1],
                 "z": local_rotation[2]
