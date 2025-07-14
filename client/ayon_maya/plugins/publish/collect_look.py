@@ -344,7 +344,7 @@ class CollectLook(plugin.MayaInstancePlugin):
             "attributes": attributes,
             "relationships": sets
         }
-        if instance.data["includeTextureReferenceObjects"]:
+        if instance.data.get("includeTextureReferenceObjects", False):
             collections, texture_object_nodes = (
                 self.collect_texture_reference_object_inputs(instance)
             )
