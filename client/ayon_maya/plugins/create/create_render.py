@@ -12,7 +12,7 @@ from ayon_core.lib import (
 )
 
 
-class CreateRenderlayer(plugin.RenderlayerCreator):
+class CreateRender(plugin.RenderlayerCreator):
     """Create and manages renderlayer product per renderLayer in workfile.
 
     This generates a single node in the scene which tells the Creator to if
