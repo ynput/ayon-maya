@@ -13,7 +13,6 @@ class IncrementCurrentFileMaya(plugin.MayaContextPlugin):
     label = "Increment current file"
     order = pyblish.api.IntegratorOrder + 9.0
     families = ["*"]
-    optional = True
     targets = ["local"]
 
     def process(self, context):
