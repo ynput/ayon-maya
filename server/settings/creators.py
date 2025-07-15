@@ -366,6 +366,7 @@ DEFAULT_CREATORS_SETTINGS = {
         "write_color_sets": False,
         "write_face_sets": False,
     },
+    "CreateRedshiftProxy": {"default_variants": ["Main"], "enabled": True},
     "CreateRender": {"default_variants": ["Main"], "enabled": True},
     "CreateRenderSetup": {"default_variants": ["Main"], "enabled": True},
     "CreateReview": {
@@ -405,5 +406,7 @@ DEFAULT_CREATORS_SETTINGS = {
         "vrmesh": True,
     },
     "CreateVRayScene": {"default_variants": ["Main"], "enabled": True},
+    "CreateXgen": {"default_variants": ["Main"], "enabled": True},
+    "CreateYetiCache": {"default_variants": ["Main"], "enabled": True},
     "CreateYetiRig": {"default_variants": ["Main"], "enabled": True},
 }
