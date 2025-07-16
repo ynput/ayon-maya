@@ -12,7 +12,7 @@ from ayon_core.lib import (
 )
 
 
-class CreateRenderlayer(plugin.RenderlayerCreator):
+class CreateRender(plugin.RenderlayerCreator):
     """Create and manages renderlayer product per renderLayer in workfile.
 
     This generates a single node in the scene which tells the Creator to if
@@ -54,9 +54,7 @@ class CreateRenderlayer(plugin.RenderlayerCreator):
         if self.render_settings.get("apply_render_settings"):
             lib_rendersettings.RenderSettings().set_default_renderer_settings()
 
-        super(CreateRenderlayer, self).create(product_name,
-                                              instance_data,
-                                              pre_create_data)
+        super().create(product_name, instance_data, pre_create_data)
 
     def get_instance_attr_defs(self):
         """Create instance settings."""
