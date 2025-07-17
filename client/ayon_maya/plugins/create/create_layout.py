@@ -17,5 +17,10 @@ class CreateLayout(plugin.MayaCreator):
                     label="Group Loaded Assets",
                     tooltip="Enable this when you want to publish group of "
                             "loaded asset",
-                    default=False)
+                    default=False),
+            BoolDef("allowObjectTransforms",
+                    label="Allow Object Transforms",
+                    tooltip="Enable this when include all the transform data"
+                            "of objects"
+                    )
         ]
