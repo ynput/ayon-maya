@@ -148,6 +148,16 @@ class LayoutLoader(plugin.Loader):
             # flatten matrix to a list
             maya_transform_matrix = [element for row in transform for element in row]
             self._set_transformation_by_matrix(asset, maya_transform_matrix)
+            for obj in element.get("object_transform", []):
+                obj_transform_name = obj["name"]
+                obj_transforms = cmds.ls(obj_transform_name, transforms=True)
+                obj_root = next(iter(obj_transforms), None)
+                transform_matrix = obj["transform_matrix"]
+                # flatten matrix to a list
+                maya_transform_matrix = [
+                    element for row in transform_matrix for element in row
+                ]
+                self._set_transformation_by_matrix(obj_root, maya_transform_matrix)
 
     def _set_transformation(self, asset, transform):
         translation = [

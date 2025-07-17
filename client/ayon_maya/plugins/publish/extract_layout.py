@@ -260,7 +260,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         return convert_transform.asMatrix()
 
     def parse_objects_transform_as_json_element(self, child_transform, json_element):
-        """Parse transform data of the container objects and add it as json element
+        """Parse transform data of the container objects and add it as a json element
 
         Args:
             child_transform (str): all child transform from container
@@ -270,23 +270,22 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             dict: json element with the added transform data of the container object
         """
         if child_transform:
-            if child_transform not in json_element:
-                json_element[child_transform] = {}
-            local_matrix = cmds.xform(
-                child_transform, query=True, matrix=True)
-            local_rotation = cmds.xform(
-                child_transform, query=True, rotation=True, euler=True)
+            local_matrix = cmds.xform(child_transform, query=True, matrix=True)
+            local_rotation = cmds.xform(child_transform, query=True, rotation=True, euler=True)
 
             t_matrix = self.create_transformation_matrix(local_matrix, local_rotation)
 
-            json_element[child_transform]["transform_matrix"] = [
-                list(row)
-                for row in t_matrix
-            ]
-            json_element[child_transform]["rotation"] = {
-                "x": local_rotation[0],
-                "y": local_rotation[1],
-                "z": local_rotation[2]
+            additional_transformation_data = {
+                "name": child_transform,
+                "transform_matrix": [list(row) for row in t_matrix],
+                "rotation": {
+                    "x": local_rotation[0],
+                    "y": local_rotation[1],
+                    "z": local_rotation[2]
+                }
             }
+            if "object_transform" not in json_element:
+                json_element["object_transform"] = []
+            json_element["object_transform"].append(additional_transformation_data)
 
         return json_element
