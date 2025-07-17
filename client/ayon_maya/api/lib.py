@@ -1449,13 +1449,32 @@ def get_id_required_nodes(referenced_nodes=False,
     def _add_to_result_if_valid(obj):
         """Add to `result` if the object should be included"""
         fn_dep.setObject(obj)
-        if (
-                not existing_ids
-                and fn_dep.hasAttribute("cbId")
-                # May not be an empty value
-                and fn_dep.findPlug("cbId", True).asString()
-        ):
-            return
+        if not existing_ids and fn_dep.hasAttribute("cbId"):
+            # If not including existing ids, skip nodes with `cbId` attribute
+            plug = fn_dep.findPlug("cbId", True)
+            try:
+                value = plug.asString()
+                if value:
+                    return
+            except RuntimeError:
+                # Likely not a string attribute which we will consider as
+                # not having a `cbId` attribute - however we do log a warning
+                if obj.hasFn(OpenMaya.MFn.kDagNode):
+                    fn_dag.setObject(obj)
+                    name = fn_dag.fullPathName()
+                else:
+                    name = fn_dep.name()
+
+                type_name = cmds.getAttr(f"{name}.cbId", type=True)
+                if type_name == "string":
+                    # Type is correct so the issue must be something else,
+                    # so we re-raise the exception
+                    raise
+                # If the attribute is not a string, we log a warning
+                log.warning(
+                    f"\"{name}.cbId\" is not a string attribute. "
+                    f"Attribute type: '{type_name}'."
+                )
 
         if not referenced_nodes and fn_dep.isFromReferencedFile:
             return
