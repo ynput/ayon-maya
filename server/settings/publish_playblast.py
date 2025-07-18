@@ -220,7 +220,7 @@ class CameraOptionsSetting(BaseSettingsModel):
     displaySafeTitle: bool = SettingsField(False, title="Display Safe Title")
     displayFilmPivot: bool = SettingsField(False, title="Display Film Pivot")
     displayFilmOrigin: bool = SettingsField(False, title="Display Film Origin")
-    overscan: int = SettingsField(1.0, title="Overscan")
+    overscan: float = SettingsField(1.0, title="Overscan")
 
 
 class CapturePresetSetting(BaseSettingsModel):
