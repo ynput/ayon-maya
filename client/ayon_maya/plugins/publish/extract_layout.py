@@ -173,14 +173,19 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                     "z": local_rotation[2]
                 }
                 if allow_obj_transforms:
-                    child_transforms = cmds.listRelatives(
-                        get_all_children([container_root]), type="transform"
+                    child_transforms = cmds.ls(
+                        get_all_children([container_root]), 
+                        type="transform",
+                        long=True
                     )
-                    for child_transform in child_transforms:
-                        json_element = (
-                            self.parse_objects_transform_as_json_element(
-                                child_transform, json_element)
-                        )
+                    if child_transforms:
+                        object_transforms = json_element.setdefault("object_transform", [])
+                        for child_transform in child_transforms:
+                            object_transforms.append(
+                                self.parse_objects_transform_as_json_element(
+                                    child_transform
+                                )
+                            )
                 json_data.append(json_element)
         json_filename = "{}.json".format(instance.name)
         json_path = os.path.join(stagingdir, json_filename)
