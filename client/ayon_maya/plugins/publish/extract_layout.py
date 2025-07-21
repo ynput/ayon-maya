@@ -174,7 +174,10 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 }
                 if allow_obj_transforms:
                     child_transforms = cmds.ls(
-                        get_all_children([container_root]), 
+                        get_all_children(
+                            [container_root],
+                            ignore_intermediate_objects=True
+                        ),
                         type="transform",
                         long=True
                     )
@@ -264,33 +267,23 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
         return convert_transform.asMatrix()
 
-    def parse_objects_transform_as_json_element(self, child_transform, json_element):
-        """Parse transform data of the container objects and add it as a json element
-
+    def parse_objects_transform_as_json_element(self, child_transform):
+        """Parse transform data of the container objects.
         Args:
-            child_transform (str): all child transform from container
-            json_element (dict): Json element
-
+            child_transform (str): transform node.
         Returns:
-            dict: json element with the added transform data of the container object
+            dict: transform data of the transform object
         """
-        if child_transform:
-            local_matrix = cmds.xform(child_transform, query=True, matrix=True)
-            local_rotation = cmds.xform(child_transform, query=True, rotation=True, euler=True)
-
-            t_matrix = self.create_transformation_matrix(local_matrix, local_rotation)
-
-            additional_transformation_data = {
-                "name": child_transform,
-                "transform_matrix": [list(row) for row in t_matrix],
-                "rotation": {
-                    "x": local_rotation[0],
-                    "y": local_rotation[1],
-                    "z": local_rotation[2]
-                }
+        local_matrix = cmds.xform(child_transform, query=True, matrix=True)
+        local_rotation = cmds.xform(child_transform, query=True, rotation=True)
+        t_matrix = self.create_transformation_matrix(local_matrix, local_rotation)
+        transform_data = {
+            "name": child_transform,
+            "transform_matrix": [list(row) for row in t_matrix],
+            "rotation": {
+                "x": local_rotation[0],
+                "y": local_rotation[1],
+                "z": local_rotation[2]
             }
-            if "object_transform" not in json_element:
-                json_element["object_transform"] = []
-            json_element["object_transform"].append(additional_transformation_data)
-
-        return json_element
+        }
+        return transform_data

@@ -84,6 +84,8 @@ class LayoutLoader(plugin.Loader):
             root = next(iter(roots), None)
             if root is not None:
                 return root
+            else:
+                self.log.error("No container root found.")
 
     def _process_element(self, element, repre_entities_by_version_id):
         repre_id = None
@@ -108,7 +110,6 @@ class LayoutLoader(plugin.Loader):
         if not repr_format:
             self.log.warning(f"Representation name not defined for element: {element}")
             return
-
 
         instance_name: str = element['instance_name']
         all_loaders = discover_loader_plugins()
@@ -209,7 +210,6 @@ class LayoutLoader(plugin.Loader):
             rotation=rotation_degrees,
             scale=[convert_scale[0], convert_scale[2], convert_scale[1]]
         )
-
 
     def _get_asset_container_by_instance_name(self, container_node, element):
         """Get existing asset container by instance name
