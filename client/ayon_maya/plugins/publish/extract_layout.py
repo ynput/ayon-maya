@@ -178,7 +178,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                             [container_root],
                         ignore_intermediate_objects=True
                         ),
-                        type="transform"
+                        type="transform",
+                        fullPath=True
                     )
                     if child_transforms:
                         object_transforms = json_element.setdefault("object_transform", [])
