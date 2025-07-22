@@ -128,14 +128,12 @@ class LayoutLoader(plugin.Loader):
         options = {
             # "asset_dir": asset_dir
         }
-        assets = cmds.ls(f"{instance_name}*_CON", type="objectSet")
-        if not assets:
-            assets = load_container(
-                loader,
-                repre_id,
-                namespace=instance_name,
-                options=options
-            )
+        assets = load_container(
+            loader,
+            repre_id,
+            namespace=instance_name,
+            options=options
+        )
         self.set_transformation(assets, element)
         return assets
 
@@ -150,7 +148,6 @@ class LayoutLoader(plugin.Loader):
             # flatten matrix to a list
             maya_transform_matrix = [element for row in transform for element in row]
             self._set_transformation_by_matrix(asset, maya_transform_matrix)
-            namespace = element["instance_name"]
             for object_data in element.get("object_transform", []):
                 for obj_name, transform_matrix in object_data.items():
                     obj_transforms = cmds.ls(
