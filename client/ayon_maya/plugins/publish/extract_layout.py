@@ -294,7 +294,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         local_matrix = cmds.xform(child_transform, query=True, matrix=True)
         local_rotation = cmds.xform(child_transform, query=True, rotation=True)
         transform_matrix = self.create_transformation_matrix(local_matrix, local_rotation)
-        child_transform_name = child_transform.split(":")[-1]
+        child_transform_name = child_transform.rsplit(":", 1)[-1]
         return {
             child_transform_name: transform_matrix
         }
