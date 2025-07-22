@@ -71,7 +71,7 @@ class LayoutLoader(plugin.Loader):
 
         return None
 
-    def get_asset(self, containers):
+    def get_asset(self, containers, element):
         # TODO: Improve this logic to support multiples of same asset
         #  and to avoid bugs with containers getting renamed by artists
         # Find container names that starts with 'instance name'
@@ -83,6 +83,13 @@ class LayoutLoader(plugin.Loader):
             roots = get_highest_in_hierarchy(transforms)
             root = next(iter(roots), None)
             if root is not None:
+                # For loading multiple layouts with the same namespaces
+                # Once namespace is already found, it would be replaced
+                # by new namespace but still applies the correct
+                # transformation data
+                namespace = cmds.getAttr(f"{container}.namespace")
+                if element["instance_name"] != namespace:
+                    element["instance_name"] = namespace
                 return root
             else:
                 self.log.error("No container root found.")
@@ -138,7 +145,7 @@ class LayoutLoader(plugin.Loader):
         return assets
 
     def set_transformation(self, assets, element):
-        asset = self.get_asset(assets)
+        asset = self.get_asset(assets, element)
         unreal_import = True if "unreal" in element.get("host", []) else False
         if unreal_import:
             transform = element["transform"]
@@ -148,15 +155,17 @@ class LayoutLoader(plugin.Loader):
             # flatten matrix to a list
             maya_transform_matrix = [element for row in transform for element in row]
             self._set_transformation_by_matrix(asset, maya_transform_matrix)
+
+            instance_name = element["instance_name"]
             for object_data in element.get("object_transform", []):
                 for obj_name, transform_matrix in object_data.items():
                     obj_transforms = cmds.ls(
-                        obj_name,
-                        transforms=True,
+                        f"{instance_name}:{obj_name}",
+                        type="transform",
                         long=True
                     )
                     obj_root = next(iter(obj_transforms), None)
-                    if obj_root is not None:
+                    if obj_root is not None and obj_root != asset:
                         # flatten matrix to a list
                         maya_transform_matrix = [
                             element for row in transform_matrix for element in row

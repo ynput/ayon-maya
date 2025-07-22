@@ -1,6 +1,7 @@
 import json
 import math
 import os
+import re
 import uuid
 from typing import List
 
@@ -22,6 +23,19 @@ def is_valid_uuid(value) -> bool:
     except ValueError:
         return False
     return True
+
+
+def extract_number_from_namespace(namespace):
+    """Extracts a number from the namespace.
+
+    Args:
+        namespace (str): namespace
+
+    Returns:
+        int: namespace number
+    """
+    match = re.search(r'(\d+)', namespace)
+    return int(match.group(1)) if match else 0
 
 
 def convert_matrix_to_4x4_list(
@@ -63,6 +77,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             instance.data["representations"] = []
 
         json_data = []
+        container_order = 0
         # TODO representation queries can be refactored to be faster
         project_name = instance.context.data["projectName"]
         members = [member.lstrip('|') for member in instance.data["setMembers"]]
@@ -99,7 +114,9 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
             container_dict = self.process_containers(containers)
             allow_obj_transforms = instance.data.get("allowObjectTransforms", False)
+
             for container, container_root in container_dict.items():
+                container_order += 1
                 representation_id = cmds.getAttr(
                     "{}.representation".format(container))
 
@@ -131,7 +148,6 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 product_type = repre_context.get("product", {}).get("type")
                 if not product_type:
                     product_type = repre_context.get("family")
-
                 json_element = {
                     "product_type": product_type,
                     "instance_name": cmds.getAttr(
@@ -179,7 +195,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                             ignore_intermediate_objects=True
                         ),
                         type="transform",
-                        long=True
+                        shortNames=True
                     )
                     if child_transforms:
                         object_transforms = json_element.setdefault("object_transform", [])
@@ -190,6 +206,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                                 )
                             )
                 json_data.append(json_element)
+        json_data = sorted(json_data, key=lambda x: x["instance_name"])
         json_filename = "{}.json".format(instance.name)
         json_path = os.path.join(stagingdir, json_filename)
 
@@ -277,6 +294,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         local_matrix = cmds.xform(child_transform, query=True, matrix=True)
         local_rotation = cmds.xform(child_transform, query=True, rotation=True)
         transform_matrix = self.create_transformation_matrix(local_matrix, local_rotation)
+        child_transform_name = child_transform.split(":")[-1]
         return {
-            child_transform: transform_matrix
+            child_transform_name: transform_matrix
         }
