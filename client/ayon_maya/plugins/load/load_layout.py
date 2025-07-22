@@ -87,9 +87,7 @@ class LayoutLoader(plugin.Loader):
                 # Once namespace is already found, it would be replaced
                 # by new namespace but still applies the correct
                 # transformation data
-                namespace = cmds.getAttr(f"{container}.namespace")
-                if element["instance_name"] != namespace:
-                    element["instance_name"] = namespace
+                element["instance_name"] = cmds.getAttr(f"{container}.namespace")
                 return root
             else:
                 self.log.error("No container root found.")
