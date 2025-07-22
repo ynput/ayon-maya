@@ -128,13 +128,14 @@ class LayoutLoader(plugin.Loader):
         options = {
             # "asset_dir": asset_dir
         }
-        assets = load_container(
-            loader,
-            repre_id,
-            namespace=instance_name,
-            options=options
-        )
-
+        assets = cmds.ls(f"{instance_name}*_CON", type="objectSet")
+        if not assets:
+            assets = load_container(
+                loader,
+                repre_id,
+                namespace=instance_name,
+                options=options
+            )
         self.set_transformation(assets, element)
         return assets
 
@@ -149,20 +150,21 @@ class LayoutLoader(plugin.Loader):
             # flatten matrix to a list
             maya_transform_matrix = [element for row in transform for element in row]
             self._set_transformation_by_matrix(asset, maya_transform_matrix)
-            for obj in element.get("object_transform", []):
-                obj_transform_name = obj["name"]
-                obj_transforms = cmds.ls(
-                    obj_transform_name,
-                    transforms=True,
-                    long=True
-                )
-                obj_root = next(iter(obj_transforms), None)
-                transform_matrix = obj["transform_matrix"]
-                # flatten matrix to a list
-                maya_transform_matrix = [
-                    element for row in transform_matrix for element in row
-                ]
-                self._set_transformation_by_matrix(obj_root, maya_transform_matrix)
+            namespace = element["instance_name"]
+            for object_data in element.get("object_transform", []):
+                for obj_name, transform_matrix in object_data.items():
+                    obj_transforms = cmds.ls(
+                        obj_name,
+                        transforms=True,
+                        long=True
+                    )
+                    obj_root = next(iter(obj_transforms), None)
+                    if obj_root is not None:
+                        # flatten matrix to a list
+                        maya_transform_matrix = [
+                            element for row in transform_matrix for element in row
+                        ]
+                        self._set_transformation_by_matrix(obj_root, maya_transform_matrix)
 
     def _set_transformation(self, asset, transform):
         translation = [
@@ -214,6 +216,7 @@ class LayoutLoader(plugin.Loader):
             rotation=rotation_degrees,
             scale=[convert_scale[0], convert_scale[2], convert_scale[1]]
         )
+        print(f"{asset} applied the transform {translation} {rotation_degrees}")
 
     def _get_asset_container_by_instance_name(self, container_node, element):
         """Get existing asset container by instance name
