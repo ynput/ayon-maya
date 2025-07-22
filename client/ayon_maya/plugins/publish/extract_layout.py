@@ -173,13 +173,13 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                     "z": local_rotation[2]
                 }
                 if allow_obj_transforms:
-                    child_transforms = cmds.listRelatives(
+                    child_transforms = cmds.ls(
                         get_all_children(
                             [container_root],
-                        ignore_intermediate_objects=True
+                            ignore_intermediate_objects=True
                         ),
                         type="transform",
-                        fullPath=True
+                        long=True
                     )
                     if child_transforms:
                         object_transforms = json_element.setdefault("object_transform", [])
