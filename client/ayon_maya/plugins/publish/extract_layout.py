@@ -34,8 +34,8 @@ def extract_number_from_namespace(namespace):
     Returns:
         int: namespace number
     """
-    match = re.search(r'(\d+)', namespace)
-    return int(match.group(1)) if match else 0
+    matches = re.findall(r'(\d+)', namespace)
+    return int(matches[-1]) if matches else 0
 
 
 def convert_matrix_to_4x4_list(
@@ -195,7 +195,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                             ignore_intermediate_objects=True
                         ),
                         type="transform",
-                        shortNames=True
+                        long=True
                     )
                     if child_transforms:
                         object_transforms = json_element.setdefault("object_transform", [])

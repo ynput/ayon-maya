@@ -162,6 +162,11 @@ class LayoutLoader(plugin.Loader):
                         type="transform",
                         long=True
                     )
+                    if len(obj_transforms) > 1:
+                        self.log.warning(
+                            f"Multiple transforms found for {instance_name}:{obj_name}. "
+                            "Using the first one instead."
+                        )
                     obj_root = next(iter(obj_transforms), None)
                     if obj_root is not None and obj_root != asset:
                         # flatten matrix to a list
@@ -220,7 +225,6 @@ class LayoutLoader(plugin.Loader):
             rotation=rotation_degrees,
             scale=[convert_scale[0], convert_scale[2], convert_scale[1]]
         )
-        print(f"{asset} applied the transform {translation} {rotation_degrees}")
 
     def _get_asset_container_by_instance_name(self, container_node, element):
         """Get existing asset container by instance name
