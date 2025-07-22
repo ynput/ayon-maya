@@ -72,6 +72,19 @@ class LayoutLoader(plugin.Loader):
         return None
 
     def get_asset(self, containers, element):
+        """Get the container root and check with the
+        namespace of the root aligning to the instance_name
+        from element.
+        If it does not match, the instance_name from the element
+        is set to the namespace of the container root.
+
+        Args:
+            containers (list): containers
+            element (Dict): element data from layout json
+
+        Returns:
+            str: container root
+        """
         # TODO: Improve this logic to support multiples of same asset
         #  and to avoid bugs with containers getting renamed by artists
         # Find container names that starts with 'instance name'
