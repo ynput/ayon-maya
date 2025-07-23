@@ -430,11 +430,13 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         # would only ever be called to say, 'hey, please refresh collect'
         self.create_singleton_node()
 
+        variant_name: str = instance_data.get("variant", "Main")
+
         # if no render layers are present, create default one with
-        # asterisk selector
+        # asterisk selector using the chosen variant name
         rs = renderSetup.instance()
         if not rs.getRenderLayers():
-            render_layer = rs.createRenderLayer("Main")
+            render_layer = rs.createRenderLayer(variant_name)
             collection = render_layer.createCollection("defaultCollection")
             collection.getSelector().setPattern('*')
 
