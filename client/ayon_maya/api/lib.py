@@ -23,7 +23,6 @@ from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     get_current_project_name,
     get_current_folder_path,
-    get_current_task_name,
     discover_loader_plugins,
     loaders_from_representation,
     get_representation_path,
@@ -2030,6 +2029,7 @@ def apply_shaders(relationships, shadernodes, nodes):
     shading_engines = cmds.ls(shadernodes, type="objectSet", long=True)
     assert shading_engines, "Error in retrieving objectSets from reference"
 
+    shader_mesh_nodes = cmds.ls(shadernodes, type="mesh", long=True)
     # region compute lookup
     nodes_by_id = defaultdict(list)
     for node in nodes:
@@ -2038,6 +2038,11 @@ def apply_shaders(relationships, shadernodes, nodes):
     shading_engines_by_id = defaultdict(list)
     for shad in shading_engines:
         shading_engines_by_id[get_id(shad)].append(shad)
+
+    texture_nodes_by_id = defaultdict(list)
+    for mesh_node in shader_mesh_nodes:
+        texture_nodes_by_id[get_id(mesh_node)].append(mesh_node)
+
     # endregion
 
     # region assign shading engines and other sets
@@ -2070,6 +2075,13 @@ def apply_shaders(relationships, shadernodes, nodes):
             cmds.sets(filtered_nodes, forceElement=id_shading_engines[0])
         except RuntimeError as rte:
             log.error("Error during shader assignment: {}".format(rte))
+
+    # check if there is texture references input and connect the texture
+    # reference back to the nodes
+    texture_references_input = relationships.get("connections", [])
+    apply_connections(
+        texture_references_input, nodes_by_id, texture_nodes_by_id
+    )
 
     # endregion
 
@@ -2453,12 +2465,13 @@ def set_scene_fps(fps, update=True):
     cmds.file(modified=True)
 
 
-def set_scene_resolution(width, height, pixelAspect):
+def set_scene_resolution(width: int, height: int, pixel_aspect: float):
     """Set the render resolution
 
     Args:
-        width(int): value of the width
-        height(int): value of the height
+        width (int): resolution width
+        height (int): resolution height
+        pixel_aspect (float): pixel aspect ratio
 
     Returns:
         None
@@ -2480,82 +2493,76 @@ def set_scene_resolution(width, height, pixelAspect):
                       "named: `%s`" % vray_node)
 
     log.info("Setting scene resolution to: %s x %s" % (width, height))
-    cmds.setAttr("%s.width" % control_node, width)
-    cmds.setAttr("%s.height" % control_node, height)
+    cmds.setAttr(f"{control_node}.width", width)
+    cmds.setAttr(f"{control_node}.height", height)
 
-    deviceAspectRatio = ((float(width) / float(height)) * float(pixelAspect))
-    cmds.setAttr(
-        "{}.{}".format(control_node, aspect_ratio_attr), deviceAspectRatio)
-    cmds.setAttr("%s.pixelAspect" % control_node, pixelAspect)
+    device_aspect_ratio: float = (
+            (float(width) / float(height)) * float(pixel_aspect)
+    )
+    cmds.setAttr(f"{control_node}.{aspect_ratio_attr}", device_aspect_ratio)
+    cmds.setAttr(f"{control_node}.pixelAspect", pixel_aspect)
 
 
-def get_fps_for_current_context():
+def get_fps_for_current_context(task_entity=None):
     """Get fps that should be set for current context.
 
-    Todos:
-        - Skip project value.
-        - Merge logic with 'get_frame_range' and 'reset_scene_resolution' ->
-            all the values in the functions can be collected at one place as
-            they have same requirements.
+    Arguments:
+        task_entity (dict, optional): Task entity to use.
+            If not provided, the current task entity is used.
+            This is mostly used for optimization purposes.
 
     Returns:
         Union[int, float]: FPS value.
     """
-    task_entity = get_current_task_entity(fields={"attrib"})
-    fps = task_entity.get("attrib", {}).get("fps")
-    if not fps:
-        project_name = get_current_project_name()
-        folder_path = get_current_folder_path()
-        folder_entity = ayon_api.get_folder_by_path(
-            project_name, folder_path, fields={"attrib.fps"}
-        ) or {}
-
-        fps = folder_entity.get("attrib", {}).get("fps")
-        if not fps:
-            project_entity = ayon_api.get_project(
-                project_name, fields=["attrib.fps"]
-            ) or {}
-            fps = project_entity.get("attrib", {}).get("fps")
-
-            if not fps:
-                fps = 25
-
+    if task_entity is None:
+        task_entity = get_current_task_entity(fields={"attrib.fps"})
+    fps = task_entity.get("attrib", {}).get("fps", 25)
     return convert_to_maya_fps(fps)
 
 
-def get_frame_range(include_animation_range=False):
+def get_frame_range(
+        include_animation_range=False,
+        task_entity=None,
+        project_settings=None
+):
     """Get the current task frame range and handles.
+
+    Note: This does *not* return the Maya time slider range.
 
     Args:
         include_animation_range (bool, optional): Whether to include
             `animationStart` and `animationEnd` keys to define the outer
             range of the timeline. It is excluded by default.
+        task_entity (dict, optional): Task entity to use.
+            If not provided, the current task entity is used.
+            This is mostly used for optimization purposes.
+        project_settings (dict, optional): Project settings to use.
+            If not provided, the current project settings are used.
+            This is mostly used for optimization purposes.
 
     Returns:
         dict: Task's expected frame range values.
 
     """
-
-    # Set frame start/end
-    project_name = get_current_project_name()
-    folder_path = get_current_folder_path()
-    task_name = get_current_task_name()
-
-    folder_entity = ayon_api.get_folder_by_path(
-        project_name,
-        folder_path,
-        fields={"id"})
-    task_entity = ayon_api.get_task_by_name(
-            project_name, folder_entity["id"], task_name
+    if task_entity is None:
+        task_entity = get_current_task_entity(
+            fields={
+                "taskType",
+                "attrib.frameStart",
+                "attrib.frameEnd",
+                "attrib.handleStart",
+                "attrib.handleEnd",
+            }
         )
-
     task_attributes = task_entity["attrib"]
 
     frame_start = task_attributes.get("frameStart")
     frame_end = task_attributes.get("frameEnd")
-
     if frame_start is None or frame_end is None:
-        cmds.warning("No edit information found for '{}'".format(folder_path))
+        # This should never happen because attributes always exist on tasks
+        cmds.warning(
+            "No frame start and frame end information found for current task."
+        )
         return
 
     handle_start = task_attributes.get("handleStart") or 0
@@ -2573,12 +2580,13 @@ def get_frame_range(include_animation_range=False):
         # Some usages of this function use the full dictionary to define
         # instance attributes for which we want to exclude the animation
         # keys. That is why these are excluded by default.
-
-        settings = get_project_settings(project_name)
+        if not project_settings:
+            project_name = get_current_project_name()
+            project_settings = get_project_settings(project_name)
 
         task_type = task_entity["taskType"]
 
-        include_handles_settings = settings["maya"]["include_handles"]
+        include_handles_settings = project_settings["maya"]["include_handles"]
 
         animation_start = frame_start
         animation_end = frame_end
@@ -2598,7 +2606,13 @@ def get_frame_range(include_animation_range=False):
     return frame_range
 
 
-def reset_frame_range(playback=True, render=True, fps=True):
+def reset_frame_range(
+    playback=True,
+    render=True,
+    fps=True,
+    task_entity=None,
+    project_settings=None
+):
     """Set frame range to current folder.
 
     Args:
@@ -2607,11 +2621,24 @@ def reset_frame_range(playback=True, render=True, fps=True):
         render (bool, Optional): Whether to set the maya render frame range.
             Defaults to True.
         fps (bool, Optional): Whether to set scene FPS. Defaults to True.
+        task_entity (dict, optional): Task entity to use.
+            If not provided, the current task entity is used.
+            This is mostly used for optimization purposes.
+        project_settings (dict, optional): Project settings to use.
+            If not provided, the current project settings are used.
+            This is mostly used for optimization purposes.
     """
     if fps:
-        set_scene_fps(get_fps_for_current_context())
+        set_scene_fps(get_fps_for_current_context(task_entity))
 
-    frame_range = get_frame_range(include_animation_range=True)
+    if not playback and not render:
+        return
+
+    frame_range = get_frame_range(
+        include_animation_range=True,
+        project_settings=project_settings,
+        task_entity=task_entity
+    )
     if not frame_range:
         # No frame range data found for folder
         return
@@ -2635,17 +2662,29 @@ def reset_frame_range(playback=True, render=True, fps=True):
         cmds.setAttr("defaultRenderGlobals.endFrame", animation_end)
 
 
-def reset_scene_resolution():
+def reset_scene_resolution(task_entity=None):
     """Apply the scene resolution  from the project definition
 
-    The scene resolution will be retrieved from the current task entity's
-    attributes.
+    The scene resolution will be retrieved from the task entity.
+
+    Arguments:
+        task_entity (dict, optional): Task entity to use.
+            If not provided, the current task entity is used.
+            This is mostly used for optimization purposes.
 
     Returns:
         None
     """
+    if task_entity is None:
+        task_entity = get_current_task_entity(
+            fields={
+                "attrib.resolutionWidth",
+                "attrib.resolutionHeight",
+                "attrib.pixelAspect",
+            }
+        )
 
-    task_attributes = get_current_task_entity(fields={"attrib"})["attrib"]
+    task_attributes = task_entity["attrib"]
 
     # Set resolution
     width = task_attributes.get("resolutionWidth", 1920)
@@ -2678,23 +2717,23 @@ def set_context_settings(
         None
 
     """
-    if fps:
-        # Set project fps
-        set_scene_fps(get_fps_for_current_context())
-
+    project_name = get_current_project_name()
+    project_settings = get_project_settings(project_name)
+    task_entity = get_current_task_entity()
+    reset_frame_range(
+        fps=fps,
+        playback=frame_range,
+        render=frame_range,
+        project_settings=project_settings,
+        task_entity=task_entity
+    )
     if resolution:
-        reset_scene_resolution()
-
-    # Set frame range.
-    if frame_range:
-        reset_frame_range(fps=False)
-
-    # Set colorspace
+        reset_scene_resolution(task_entity=task_entity)
     if colorspace:
-        set_colorspace()
-
+        set_colorspace(project_settings=project_settings)
     if scene_units:
-        set_scene_units()
+        set_scene_units(project_settings=project_settings)
+
 
 def prompt_reset_context():
     """Prompt the user what context settings to reset.
@@ -3268,12 +3307,12 @@ def update_content_on_context_change():
     """
 
     host = registered_host()
-    create_context = CreateContext(host)
-    task_entity = get_current_task_entity(fields={"attrib"})
+    create_context = CreateContext(host, discover_publish_plugins=False)
+    task_entity = create_context.get_current_task_entity()
 
     instance_values = {
         "folderPath": create_context.get_current_folder_path(),
-        "task": create_context.get_current_task_name(),
+        "task": task_entity["name"],
     }
     creator_attribute_values = {
         "frameStart": float(task_entity["attrib"]["frameStart"]),
@@ -3389,11 +3428,18 @@ def iter_shader_edits(relationships, shader_nodes, nodes_by_id, label=None):
                "attributes": attr_value}
 
 
-def set_colorspace():
-    """Set Colorspace from project configuration"""
+def set_colorspace(project_settings=None):
+    """Set Colorspace from project settings.
 
-    project_name = get_current_project_name()
-    imageio = get_project_settings(project_name)["maya"]["imageio"]
+    Arguments:
+        project_settings (dict, optional): Project settings to use.
+            If not provided, the current project settings are used.
+            This is mostly used for optimization purposes.
+    """
+    if project_settings is None:
+        project_name = get_current_project_name()
+        project_settings = get_project_settings(project_name)
+    imageio: dict = project_settings["maya"]["imageio"]
 
     if not imageio["workfile"]["enabled"]:
         log.info(
@@ -4497,15 +4543,17 @@ def nodetype_exists(nodetype: str) -> bool:
         return False
 
 
-def set_scene_units():
+def set_scene_units(project_settings=None):
     """Set the Maya scene units"""
-    linear_unit, angular_unit = get_scene_units_settings()
+    linear_unit, angular_unit = get_scene_units_settings(
+        project_settings=project_settings
+    )
     cmds.currentUnit(linear=linear_unit, angle=angular_unit)
 
 
 def validate_scene_units() -> bool:
     """Validate whether scene units match AYON settings
-    
+
     If not headless and it does not match, a pop-up dialog is
     shown to the user with a choice to fix it automatically.
 
@@ -4563,3 +4611,91 @@ def get_scene_units_settings(project_settings=None)-> tuple[str, str]:
     linear_unit = scene_units.get("linear_units", "cm")
     angular_unit = scene_units.get("angular_units", "deg")
     return linear_unit, angular_unit
+
+
+def apply_connections(connections, target_nodes_by_id, source_nodes_by_id):
+    """Connect texture reference object nodes to the target object
+    nodes if there is one.
+
+    Args:
+        connections (list[dict[str, Any]]): list of texture reference
+        objects connection data
+        target_nodes_by_id (dict[str, list[str]]): The dict with target shape node ids
+        source_nodes_by_id (dict[str, list[str]]): The dict with texture reference node ids.
+    """
+    # Compare loaded connections to scene.
+    for connection in connections:
+        source_node = next(
+            iter(source_nodes_by_id.get(
+            connection["sourceID"], [])
+            ), None
+        )
+
+        target_nodes = target_nodes_by_id.get(connection["destinationID"], [])
+
+        if not source_node or not target_nodes:
+            self.log.debug(
+                "Could not find nodes for reference input:\n" +
+                json.dumps(connection, indent=4, sort_keys=True)
+            )
+            continue
+
+        source_attr, target_attr = connection["connections"]
+
+        if not cmds.attributeQuery(
+            source_attr, node=source_node, exists=True
+        ):
+            self.log.debug(
+                "Could not find attribute {} on node {} for "
+                "reference input:\n{}".format(
+                    source_attr,
+                    source_node,
+                    json.dumps(
+                        connection, indent=4, sort_keys=True
+                    )
+                )
+            )
+            continue
+
+        for target_node in target_nodes:
+            if target_node == source_node:
+                self.log.debug(
+                    f"Skipping connection to itself for {source_node} "
+                    f"connection {source_attr}->{target_attr}."
+                )
+                continue
+
+            if not cmds.attributeQuery(
+                target_attr, node=target_node, exists=True
+            ):
+                self.log.debug(
+                    "Could not find attribute {} on node {} for "
+                    "reference input:\n{}".format(
+                        target_attr,
+                        target_node,
+                        json.dumps(
+                            connection, indent=4, sort_keys=True
+                        )
+                    )
+                )
+                continue
+
+            source_plug = f"{source_node}.{source_attr}"
+            target_plug = f"{target_node}.{target_attr}"
+
+            if cmds.isConnected(
+                source_plug, target_plug, ignoreUnitConversion=True
+            ):
+                self.log.debug(
+                    "Connection already exists: {} -> {}".format(
+                        source_plug, target_plug
+                    )
+                )
+                continue
+
+            cmds.connectAttr(source_plug, target_plug, force=True)
+            self.log.debug(
+                "Connected attributes: {} -> {}".format(
+                    source_plug, target_plug
+                )
+            )
