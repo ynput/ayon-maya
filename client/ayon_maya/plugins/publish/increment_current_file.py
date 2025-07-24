@@ -1,3 +1,4 @@
+import os
 import pyblish.api
 
 from ayon_core.pipeline import registered_host
@@ -17,11 +18,16 @@ class IncrementCurrentFileMaya(plugin.MayaContextPlugin):
     targets = ["local"]
 
     def process(self, context):
+        current_filepath: str = context.data["currentFile"]
         try:
             from ayon_core.pipeline.workfile import save_next_version
             from ayon_core.host.interfaces import SaveWorkfileOptionalData
+
+            current_filename = os.path.basename(current_filepath)
             save_next_version(
-                description="Incremented by publishing.",
+                description=(
+                    f"Incremented by publishing from {current_filename}."
+                ),
                 # Optimize the save by reducing needed queries for context
                 prepared_data=SaveWorkfileOptionalData(
                     project_entity=context.data["projectEntity"],
@@ -35,7 +41,6 @@ class IncrementCurrentFileMaya(plugin.MayaContextPlugin):
                 "Using legacy `version_up`. Update AYON core addon to "
                 "use newer `save_next_version` function."
             )
-            current_filepath = context.data["currentFile"]
             new_filepath = version_up(current_filepath)
             host: IWorkfileHost = registered_host()
             host.save_workfile(new_filepath)
