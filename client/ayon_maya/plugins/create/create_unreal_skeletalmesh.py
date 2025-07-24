@@ -46,7 +46,6 @@ class CreateUnrealSkeletalMesh(plugin.MayaCreator):
             {
                 "asset": folder_entity["name"],
                 "folder": {
-                            "label": folder_entity["label"],
                             "name": folder_entity["name"]
                 }
             }
