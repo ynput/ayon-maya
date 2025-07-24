@@ -15,6 +15,16 @@ from ayon_core.pipeline import (
 )
 from ayon_core.pipeline.workfile import BuildWorkfile
 from ayon_core.tools.utils import host_tools
+from ayon_core.tools.workfile_template_build import open_template_ui
+
+# Function 'save_next_version' was introduced in ayon-core 1.5.0
+try:
+    from ayon_core.pipeline.workfile import save_next_version
+except ImportError:
+    from ayon_core.pipeline.context_tools import (
+        version_up_current_workfile as save_next_version
+    )
+
 from ayon_maya.api import lib, lib_rendersettings
 from .lib import get_main_window, IS_HEADLESS
 from ..tools import show_look_assigner
@@ -25,8 +35,6 @@ from .workfile_template_builder import (
     build_workfile_template,
     update_workfile_template
 )
-from ayon_core.pipeline.context_tools import version_up_current_workfile
-from ayon_core.tools.workfile_template_build import open_template_ui
 from .workfile_template_builder import MayaTemplateBuilder
 
 log = logging.getLogger(__name__)
@@ -81,7 +89,7 @@ def install(project_settings):
                     cmds.menuItem(divider=True)
                     cmds.menuItem(
                         "Version Up Workfile",
-                        command=lambda *args: version_up_current_workfile()
+                        command=lambda *args: save_next_version()
                     )
         except KeyError:
             print("Version Up Workfile setting not found in "
