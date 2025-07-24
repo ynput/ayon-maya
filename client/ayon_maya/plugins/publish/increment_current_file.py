@@ -26,7 +26,7 @@ class IncrementCurrentFileMaya(plugin.MayaContextPlugin):
             current_filename = os.path.basename(current_filepath)
             save_next_version(
                 description=(
-                    f"Incremented by publishing from {current_filename}."
+                    f"Incremented by publishing from {current_filename}"
                 ),
                 # Optimize the save by reducing needed queries for context
                 prepared_data=SaveWorkfileOptionalData(
