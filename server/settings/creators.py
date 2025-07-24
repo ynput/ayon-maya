@@ -1,7 +1,6 @@
 from ayon_server.settings import (
     BaseSettingsModel,
     SettingsField,
-    task_types_enum,
 )
 
 
@@ -143,16 +142,6 @@ class CreateSetDressModel(BaseSettingsModel):
         default_factory=list, title="Default Products")
 
 
-class CreateMultishotLayout(BasicCreatorModel):
-    shotParent: str = SettingsField(title="Shot Parent Folder")
-    groupLoadedAssets: bool = SettingsField(title="Group Loaded Assets")
-    task_type: list[str] = SettingsField(
-        title="Task types",
-        enum_resolver=task_types_enum
-    )
-    task_name: str = SettingsField(title="Task name (regex)")
-
-
 class CreatorsModel(BaseSettingsModel):
     use_entity_attributes_as_defaults: bool = SettingsField(
         False,
@@ -163,48 +152,61 @@ class CreatorsModel(BaseSettingsModel):
             "disabled it will default to Maya's current timeline."
         )
     )
-
-    CreateWorkfile: CreateWorkfileModel = SettingsField(
-        default_factory=CreateWorkfileModel,
-        title="Create Workfile"
+    CreateAnimation: CreateAnimationModel = SettingsField(
+        default_factory=CreateAnimationModel,
+        title="Create Animation"
+    )
+    CreateAss: CreateAssModel = SettingsField(
+        default_factory=CreateAssModel,
+        title="Create Arnold Scene Source",
+    )
+    CreateAssembly: BasicCreatorModel = SettingsField(
+        default_factory=BasicCreatorModel,
+        title="Create Assembly"
+    )
+    CreateCamera: BasicCreatorModel = SettingsField(
+        default_factory=BasicCreatorModel,
+        title="Create Camera"
+    )
+    CreateCameraRig: BasicCreatorModel = SettingsField(
+        default_factory=BasicCreatorModel,
+        title="Create Camera Rig"
+    )
+    CreateLayout: BasicCreatorModel = SettingsField(
+        default_factory=BasicCreatorModel,
+        title="Create Layout"
     )
     CreateLook: CreateLookModel = SettingsField(
         default_factory=CreateLookModel,
         title="Create Look"
     )
-    CreateRender: BasicCreatorModel = SettingsField(
+    CreateMatchmove: BasicCreatorModel = SettingsField(
         default_factory=BasicCreatorModel,
-        title="Create Render"
+        title="Create Matchmove"
     )
-    # "-" is not compatible in the new model
-    CreateUnrealStaticMesh: CreateUnrealStaticMeshModel = SettingsField(
-        default_factory=CreateUnrealStaticMeshModel,
-        title="Create Unreal_Static Mesh"
+    CreateMayaScene: BasicCreatorModel = SettingsField(
+        default_factory=BasicCreatorModel,
+        title="Create Maya Scene"
     )
-    # "-" is not compatible in the new model
-    CreateUnrealSkeletalMesh: CreateUnrealSkeletalMeshModel = SettingsField(
-        default_factory=CreateUnrealSkeletalMeshModel,
-        title="Create Unreal_Skeletal Mesh"
+    CreateMayaUsd: BasicCreatorModel = SettingsField(
+        default_factory=BasicCreatorModel,
+        title="Create Maya USD"
     )
-    CreateMultiverseLook: CreateMultiverseLookModel = SettingsField(
-        default_factory=CreateMultiverseLookModel,
-        title="Create Multiverse Look"
-    )
-    CreateAnimation: CreateAnimationModel = SettingsField(
-        default_factory=CreateAnimationModel,
-        title="Create Animation"
+    CreateMayaUsdLayer: BasicCreatorModel = SettingsField(
+        default_factory=BasicCreatorModel,
+        title="Create Maya USD Export Layer"
     )
     CreateModel: BasicExportMeshModel = SettingsField(
         default_factory=BasicExportMeshModel,
         title="Create Model"
     )
-    CreatePointCache: CreatePointCacheModel = SettingsField(
-        default_factory=CreatePointCacheModel,
-        title="Create Point Cache"
+    CreateMultishotLayout: BasicCreatorModel = SettingsField(
+        default_factory=BasicCreatorModel,
+        title="Create Multi-shot Layout"
     )
-    CreateProxyAlembic: CreateProxyAlembicModel = SettingsField(
-        default_factory=CreateProxyAlembicModel,
-        title="Create Proxy Alembic"
+    CreateMultiverseLook: CreateMultiverseLookModel = SettingsField(
+        default_factory=CreateMultiverseLookModel,
+        title="Create Multiverse Look"
     )
     CreateMultiverseUsd: BasicCreatorModel = SettingsField(
         default_factory=BasicCreatorModel,
@@ -218,37 +220,33 @@ class CreatorsModel(BaseSettingsModel):
         default_factory=BasicCreatorModel,
         title="Create Multiverse USD Override"
     )
-    CreateAss: CreateAssModel = SettingsField(
-        default_factory=CreateAssModel,
-        title="Create Ass"
-    )
-    CreateAssembly: BasicCreatorModel = SettingsField(
+    CreateOxCache: BasicCreatorModel = SettingsField(
         default_factory=BasicCreatorModel,
-        title="Create Assembly"
-    )
-    CreateCamera: BasicCreatorModel = SettingsField(
-        default_factory=BasicCreatorModel,
-        title="Create Camera"
-    )
-    CreateLayout: BasicCreatorModel = SettingsField(
-        default_factory=BasicCreatorModel,
-        title="Create Layout"
-    )
-    CreateMayaScene: BasicCreatorModel = SettingsField(
-        default_factory=BasicCreatorModel,
-        title="Create Maya Scene"
+        title="Create Ornatrix Cache"
     )
     CreateOxRig: BasicCreatorModel = SettingsField(
         default_factory=BasicCreatorModel,
         title="Create Ornatrix Rig"
     )
-    CreateOxCache: BasicCreatorModel = SettingsField(
+    CreatePointCache: CreatePointCacheModel = SettingsField(
+        default_factory=CreatePointCacheModel,
+        title="Create Point Cache"
+    )
+    CreateProxyAlembic: CreateProxyAlembicModel = SettingsField(
+        default_factory=CreateProxyAlembicModel,
+        title="Create Proxy Alembic"
+    )
+    CreateRedshiftProxy: BasicCreatorModel = SettingsField(
         default_factory=BasicCreatorModel,
-        title="Create Ornatrix Cache"
+        title="Create Redshift Proxy"
+    )
+    CreateRender: BasicCreatorModel = SettingsField(
+        default_factory=BasicCreatorModel,
+        title="Create Render"
     )
     CreateRenderSetup: BasicCreatorModel = SettingsField(
         default_factory=BasicCreatorModel,
-        title="Create Render Setup"
+        title="Create Render Setup Preset"
     )
     CreateReview: CreateReviewModel = SettingsField(
         default_factory=CreateReviewModel,
@@ -262,6 +260,18 @@ class CreatorsModel(BaseSettingsModel):
         default_factory=CreateSetDressModel,
         title="Create Set Dress"
     )
+    CreateUnrealSkeletalMesh: CreateUnrealSkeletalMeshModel = SettingsField(
+        default_factory=CreateUnrealSkeletalMeshModel,
+        title="Create Unreal- Skeletal Mesh"
+    )
+    CreateUnrealStaticMesh: CreateUnrealStaticMeshModel = SettingsField(
+        default_factory=CreateUnrealStaticMeshModel,
+        title="Create Unreal - Static Mesh"
+    )
+    CreateUnrealYetiCache: BasicCreatorModel = SettingsField(
+        default_factory=BasicCreatorModel,
+        title="Create Unreal - Yeti Cache"
+    )
     CreateVrayProxy: CreateVrayProxyModel = SettingsField(
         default_factory=CreateVrayProxyModel,
         title="Create VRay Proxy"
@@ -269,6 +279,18 @@ class CreatorsModel(BaseSettingsModel):
     CreateVRayScene: BasicCreatorModel = SettingsField(
         default_factory=BasicCreatorModel,
         title="Create VRay Scene"
+    )
+    CreateWorkfile: CreateWorkfileModel = SettingsField(
+        default_factory=CreateWorkfileModel,
+        title="Create Workfile"
+    )
+    CreateXgen: BasicCreatorModel = SettingsField(
+        default_factory=BasicCreatorModel,
+        title="Create Xgen"
+    )
+    CreateYetiCache: BasicCreatorModel = SettingsField(
+        default_factory=BasicCreatorModel,
+        title="Create Yeti Cache"
     )
     CreateYetiRig: BasicCreatorModel = SettingsField(
         default_factory=BasicCreatorModel,
@@ -278,203 +300,112 @@ class CreatorsModel(BaseSettingsModel):
 
 DEFAULT_CREATORS_SETTINGS = {
     "use_entity_attributes_as_defaults": False,
-    "CreateLook": {
-        "enabled": True,
-        "make_tx": True,
-        "rs_tex": False,
-        "include_texture_reference_objects": False,
-        "default_variants": [
-            "Main"
-        ]
-    },
-    "CreateRender": {
-        "enabled": True,
-        "default_variants": [
-            "Main"
-        ]
-    },
-    "CreateUnrealStaticMesh": {
-        "enabled": True,
-        "default_variants": [
-            "",
-            "_Main"
-        ],
-        "static_mesh_prefix": "S",
-        "collision_prefixes": [
-            "UBX",
-            "UCP",
-            "USP",
-            "UCX"
-        ]
-    },
-    "CreateUnrealSkeletalMesh": {
-        "enabled": True,
-        "default_variants": [
-            "Main",
-        ],
-        "joint_hints": "jnt_org"
-    },
-    "CreateMultiverseLook": {
-        "enabled": True,
-        "publish_mip_map": True
-    },
     "CreateAnimation": {
+        "default_variants": ["Main"],
         "include_parent_hierarchy": False,
         "include_user_defined_attributes": False,
-        "default_variants": [
-            "Main"
-        ]
-    },
-    "CreateModel": {
-        "enabled": True,
-        "write_face_sets": True,
-        "default_variants": [
-            "Main",
-            "Proxy",
-            "Sculpt"
-        ],
-        "include_shaders": False,
-    },
-    "CreatePointCache": {
-        "enabled": True,
-        "include_user_defined_attributes": False,
-        "default_variants": [
-            "Main"
-        ]
-    },
-    "CreateProxyAlembic": {
-        "enabled": True,
-        "write_color_sets": False,
-        "write_face_sets": False,
-        "default_variants": [
-            "Main"
-        ]
-    },
-    "CreateMultiverseUsd": {
-        "enabled": True,
-        "default_variants": [
-            "Main"
-        ]
-    },
-    "CreateMultiverseUsdComp": {
-        "enabled": True,
-        "default_variants": [
-            "Main"
-        ]
-    },
-    "CreateMultiverseUsdOver": {
-        "enabled": True,
-        "default_variants": [
-            "Main"
-        ]
     },
     "CreateAss": {
+        "boundingBox": True,
+        "compressed": False,
+        "default_variants": ["Main"],
         "enabled": True,
-        "default_variants": [
-            "Main"
-        ],
         "expandProcedurals": False,
+        "maskCamera": False,
+        "maskColor_manager": False,
+        "maskDriver": False,
+        "maskFilter": False,
+        "maskImager": False,
+        "maskLight": False,
+        "maskOperator": False,
+        "maskOptions": False,
+        "maskOverride": False,
+        "maskShader": False,
+        "maskShape": False,
         "motionBlur": True,
         "motionBlurKeys": 2,
         "motionBlurLength": 0.5,
-        "maskOptions": False,
-        "maskCamera": False,
-        "maskLight": False,
-        "maskShape": False,
-        "maskShader": False,
-        "maskOverride": False,
-        "maskDriver": False,
-        "maskFilter": False,
-        "maskColor_manager": False,
-        "maskOperator": False,
-        "maskImager": False,
-        "boundingBox": True,
-        "compressed": False
     },
-    "CreateAssembly": {
+    "CreateAssembly": {"default_variants": ["Main"], "enabled": True},
+    "CreateCamera": {"default_variants": ["Main"], "enabled": True},
+    "CreateCameraRig": {"default_variants": ["Main"], "enabled": True},
+    "CreateLayout": {"default_variants": ["Main"], "enabled": True},
+    "CreateLook": {
+        "default_variants": ["Main"],
         "enabled": True,
-        "default_variants": [
-            "Main"
-        ]
+        "include_texture_reference_objects": False,
+        "make_tx": True,
+        "rs_tex": False,
     },
-    "CreateCamera": {
+    "CreateMatchmove": {"default_variants": ["Main"], "enabled": True},
+    "CreateMayaScene": {"default_variants": ["Main"], "enabled": True},
+    "CreateMayaUsd": {"default_variants": ["Main"], "enabled": True},
+    "CreateMayaUsdLayer": {"default_variants": ["Main"], "enabled": True},
+    "CreateModel": {
+        "default_variants": ["Main", "Proxy", "Sculpt"],
         "enabled": True,
-        "default_variants": [
-            "Main"
-        ]
+        "include_shaders": False,
+        "write_face_sets": True,
     },
-    "CreateLayout": {
+    "CreateMultishotLayout": {"default_variants": ["Main"], "enabled": True},
+    "CreateMultiverseLook": {"enabled": True, "publish_mip_map": True},
+    "CreateMultiverseUsd": {"default_variants": ["Main"], "enabled": True},
+    "CreateMultiverseUsdComp": {"default_variants": ["Main"], "enabled": True},
+    "CreateMultiverseUsdOver": {"default_variants": ["Main"], "enabled": True},
+    "CreateOxCache": {"default_variants": ["Main"], "enabled": False},
+    "CreateOxRig": {"default_variants": ["Main"], "enabled": False},
+    "CreatePointCache": {
+        "default_variants": ["Main"],
         "enabled": True,
-        "default_variants": [
-            "Main"
-        ]
+        "include_user_defined_attributes": False,
     },
-    "CreateMayaScene": {
+    "CreateProxyAlembic": {
+        "default_variants": ["Main"],
         "enabled": True,
-        "default_variants": [
-            "Main"
-        ]
+        "write_color_sets": False,
+        "write_face_sets": False,
     },
-    "CreateOxRig": {
-        "enabled": False,
-        "default_variants": [
-            "Main"
-        ]
-    },
-    "CreateOxCache": {
-        "enabled": False,
-        "default_variants": [
-            "Main"
-        ]
-    },
-    "CreateRenderSetup": {
-        "enabled": True,
-        "default_variants": [
-            "Main"
-        ]
-    },
+    "CreateRedshiftProxy": {"default_variants": ["Main"], "enabled": True},
+    "CreateRender": {"default_variants": ["Main"], "enabled": True},
+    "CreateRenderSetup": {"default_variants": ["Main"], "enabled": True},
     "CreateReview": {
+        "default_variants": ["Main"],
         "enabled": True,
-        "default_variants": [
-            "Main"
-        ],
-        "useMayaTimeline": True
+        "useMayaTimeline": True,
     },
     "CreateRig": {
+        "default_variants": ["Main", "Sim", "Cloth"],
         "enabled": True,
-        "default_variants": [
-            "Main",
-            "Sim",
-            "Cloth"
-        ]
     },
     "CreateSetDress": {
+        "default_variants": ["Main", "Anim"],
         "enabled": True,
         "exactSetMembersOnly": True,
         "shader": True,
-        "default_variants": [
-            "Main",
-            "Anim"
-        ]
+    },
+    "CreateUnrealSkeletalMesh": {
+        "default_variants": ["Main"],
+        "enabled": True,
+        "joint_hints": "jnt_org",
+    },
+    "CreateUnrealStaticMesh": {
+        "collision_prefixes": ["UBX", "UCP", "USP", "UCX"],
+        "default_variants": ["", "_Main"],
+        "enabled": True,
+        "static_mesh_prefix": "S",
+    },
+    "CreateUnrealYetiCache": {
+        "default_variants": ["Main", "Sim", "Cloth"],
+        "enabled": True,
     },
     "CreateVrayProxy": {
+        "alembic": True,
+        "default_variants": ["Main"],
         "enabled": True,
         "vrmesh": True,
-        "alembic": True,
-        "default_variants": [
-            "Main"
-        ]
     },
-    "CreateVRayScene": {
-        "enabled": True,
-        "default_variants": [
-            "Main"
-        ]
-    },
-    "CreateYetiRig": {
-        "enabled": True,
-        "default_variants": [
-            "Main"
-        ]
-    }
+    "CreateVRayScene": {"default_variants": ["Main"], "enabled": True},
+    "CreateXgen": {"default_variants": ["Main"], "enabled": True},
+    "CreateYetiCache": {"default_variants": ["Main"], "enabled": True},
+    "CreateYetiRig": {"default_variants": ["Main"], "enabled": True},
 }
