@@ -93,9 +93,7 @@ class LayoutLoader(plugin.Loader):
         for container in containers:
             members = get_container_members(container)
             transforms = cmds.ls(members, transforms=True)
-            print(transforms)
             roots = get_highest_in_hierarchy(transforms)
-            print(f"Roots found: {roots}")
             root = next(iter(
                 cmds.listRelatives(
                     root, parent=True, fullPath=True, type="transform"
