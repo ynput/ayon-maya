@@ -93,8 +93,13 @@ class LayoutLoader(plugin.Loader):
         for container in containers:
             members = get_container_members(container)
             transforms = cmds.ls(members, transforms=True)
+            print(transforms)
             roots = get_highest_in_hierarchy(transforms)
-            root = next(iter(roots), None)
+            print(f"Roots found: {roots}")
+            root = next(iter(
+                cmds.listRelatives(
+                    root, parent=True, fullPath=True, type="transform"
+                ) for root in roots), None)
             if root is not None:
                 # For loading multiple layouts with the same namespaces
                 # Once namespace is already found, it would be replaced
@@ -181,7 +186,7 @@ class LayoutLoader(plugin.Loader):
                             "Using the first one instead."
                         )
                     obj_root = next(iter(obj_transforms), None)
-                    if obj_root is not None and obj_root != asset:
+                    if obj_root is not None:
                         # flatten matrix to a list
                         maya_transform_matrix = [
                             element for row in transform_matrix for element in row
