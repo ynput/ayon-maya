@@ -6,9 +6,7 @@ import qargparse
 
 from ayon_core.lib import BoolDef, Logger
 from ayon_core.pipeline import (
-    AVALON_CONTAINER_ID,
     AVALON_INSTANCE_ID,
-    AYON_CONTAINER_ID,
     AYON_INSTANCE_ID,
     Anatomy,
     AutoCreator,
