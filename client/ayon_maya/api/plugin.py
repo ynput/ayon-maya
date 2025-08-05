@@ -6,9 +6,7 @@ import qargparse
 
 from ayon_core.lib import BoolDef, Logger
 from ayon_core.pipeline import (
-    AVALON_CONTAINER_ID,
     AVALON_INSTANCE_ID,
-    AYON_CONTAINER_ID,
     AYON_INSTANCE_ID,
     Anatomy,
     AutoCreator,
@@ -827,7 +825,6 @@ class ReferenceLoader(Loader):
                 loader=self.__class__.__name__
             )
             loaded_containers.append(container)
-            self._organize_containers(nodes, container)
             c += 1
 
         return loaded_containers
@@ -909,7 +906,6 @@ class ReferenceLoader(Loader):
 
             self.log.warning("Ignoring file read error:\n%s", exc)
 
-        self._organize_containers(content, container["objectName"])
 
         # Reapply alembic settings.
         if repre_entity["name"] == "abc" and alembic_data:
@@ -1044,19 +1040,6 @@ class ReferenceLoader(Loader):
             file_url = anatomy.replace_root_with_env_key(file_url, '${{{}}}')
 
         return file_url
-
-    @staticmethod
-    def _organize_containers(nodes, container):
-        # type: (list, str) -> None
-        """Put containers in loaded data to correct hierarchy."""
-        for node in nodes:
-            id_attr = "{}.id".format(node)
-            if not cmds.attributeQuery("id", node=node, exists=True):
-                continue
-            if cmds.getAttr(id_attr) not in {
-                AYON_CONTAINER_ID, AVALON_CONTAINER_ID
-            }:
-                cmds.sets(node, forceElement=container)
 
     @classmethod
     def get_representation_name_aliases(cls, representation_name):
