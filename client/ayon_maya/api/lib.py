@@ -90,6 +90,15 @@ class RigSetsNotExistError(RuntimeError):
     pass
 
 
+class CameraInstanceCreationError(RuntimeError):
+    """Raised when camera instance creation fails.
+
+    This is raised from `create_camera_instance` when the required
+    camera nodes are missing or invalid.
+    """
+    pass
+
+
 def get_main_window():
     """Acquire Maya's main window"""
     from qtpy import QtWidgets
@@ -4314,6 +4323,63 @@ def create_rig_animation_instance(
     rig_sets = [s for s in rig_sets if s is not None]
     with maintained_selection():
         cmds.select(rig_sets + roots, noExpand=True)
+        create_context.create(
+            creator_identifier=creator_identifier,
+            variant=namespace,
+            pre_create_data={"use_selection": True}
+        )
+
+
+def create_camera_instance(
+        nodes, context, namespace, options=None, log=None
+):
+    """Create a camera instance from the loaded camera nodes.
+
+    Args:
+        nodes (list): The loaded camera nodes.
+        context (dict): Representation context of the camera container.
+        namespace (str): The namespace for the new camera instance.
+        options (dict, optional): Additional options for the camera instance.
+        log (logging.Logger, optional): Logger to log to if provided.
+    """
+    if options is None:
+        options = {}
+
+    # How to make sure it is camera?
+    camera_nodes = [
+        node for node in nodes if cmds.referenceQuery(
+            node, isNodeReferenced=True
+        )
+    ]
+    assert camera_nodes, "No camera nodes in camera, this is a bug."
+
+    if log:
+        log.info("Creating product: {}".format(namespace))
+
+    custom_product_name = options.get("cameraProductName")
+    if custom_product_name:
+        formatting_data = {
+            "folder": {
+                "name": folder_entity["name"]
+            },
+            "product": {
+                "type": product_type,
+                "name": product_name,
+            },
+            "asset": folder_entity["name"],
+            "subset": product_name,
+            "family": product_type
+        }
+        namespace = get_custom_namespace(
+            custom_product_name.format(**formatting_data)
+        )
+    # Fill creator identifier
+    creator_identifier = "io.openpype.creators.maya.camera"
+
+    host = registered_host()
+    create_context = CreateContext(host)
+    with maintained_selection():
+        cmds.select(camera_nodes, noExpand=True)
         create_context.create(
             creator_identifier=creator_identifier,
             variant=namespace,
