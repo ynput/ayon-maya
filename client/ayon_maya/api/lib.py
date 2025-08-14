@@ -4353,8 +4353,10 @@ def create_camera_instance(
     ]
     assert camera_nodes, "No camera nodes in camera, this is a bug."
 
-    if log:
-        log.info("Creating product: {}".format(namespace))
+    folder_entity = context["folder"]
+    product_entity = context["product"]
+    product_type = product_entity["productType"]
+    product_name = product_entity["name"]
 
     custom_product_name = options.get("cameraProductName")
     if custom_product_name:
@@ -4370,6 +4372,10 @@ def create_camera_instance(
             "subset": product_name,
             "family": product_type
         }
+
+    if log:
+        log.info("Creating product: {}".format(namespace))
+
         namespace = get_custom_namespace(
             custom_product_name.format(**formatting_data)
         )
