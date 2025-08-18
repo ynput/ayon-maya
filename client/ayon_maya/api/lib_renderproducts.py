@@ -551,16 +551,12 @@ class RenderProductsArnold(ARenderProducts):
         """Return whether AOVs are rendered as multipart files."""
         # Arnold AOVs are always rendered as multipart files
         # when the `multipart` option is enabled.
-        multipart = False
         if aov_driver is None:
-            multipart = self.multipart
-            return multipart
+            return self.multipart
 
         multilayer = bool(self._get_attr(f"{aov_driver}.multipart"))
-        merge_AOVs = bool(self._get_attr(f"{aov_driver}.mergeAOVs"))
-        if multilayer or merge_AOVs:
-            multipart = True
-        return multipart
+        merge_aovs = bool(self._get_attr(f"{aov_driver}.mergeAOVs"))
+        return multilayer or merge_aovs
 
     def _get_aov_render_products(self, aov, cameras=None):
         """Return all render products for the AOV"""
