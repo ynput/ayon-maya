@@ -118,7 +118,7 @@ class CollectMayaRender(plugin.MayaInstancePlugin):
         for product in render_products:
             self.log.debug(f"Getting render product: {product}")
             if product.multipart:
-                multipart = product.multipart
+                multipart = True
             product_name = product.productName
             if product.camera and layer_render_products.has_camera_token():
                 product_name = "{}{}".format(

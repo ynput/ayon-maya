@@ -237,10 +237,7 @@ class ValidateRenderSettings(plugin.MayaInstancePlugin,
                     dir_prefix))
 
         if renderer == "arnold":
-            multipart = (
-                cmds.getAttr("defaultArnoldDriver.mergeAOVs") or
-                cmds.getAttr("defaultArnoldDriver.multipart")
-            )
+            multipart = cmds.getAttr("defaultArnoldDriver.mergeAOVs")
             if multipart:
                 if re.search(cls.R_AOV_TOKEN, prefix):
                     invalid = True
@@ -392,10 +389,7 @@ class ValidateRenderSettings(plugin.MayaInstancePlugin,
 
             # Repair prefix
             if renderer == "arnold":
-                multipart = (
-                    cmds.getAttr("defaultArnoldDriver.mergeAOVs") or
-                    cmds.getAttr("defaultArnoldDriver.multipart")
-                )
+                multipart = cmds.getAttr("defaultArnoldDriver.mergeAOVs")
                 if multipart:
                     separator_variations = [
                         "_<RenderPass>",
