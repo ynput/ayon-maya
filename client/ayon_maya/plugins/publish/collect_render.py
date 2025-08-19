@@ -118,7 +118,7 @@ class CollectMayaRender(plugin.MayaInstancePlugin):
         for product in render_products:
             self.log.debug(f"Getting render product: {product}")
             if product.multipart:
-                multipart = True
+                multipart = product.multipart
             product_name = product.productName
             if product.camera and layer_render_products.has_camera_token():
                 product_name = "{}{}".format(
@@ -314,6 +314,7 @@ class CollectMayaRender(plugin.MayaInstancePlugin):
 
         # Update the instance
         instance.data.update(data)
+        self.log.debug(f"multipart: {data.get('multipart')}")
 
     @staticmethod
     def get_render_attribute(attr, layer):
