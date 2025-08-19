@@ -314,7 +314,6 @@ class CollectMayaRender(plugin.MayaInstancePlugin):
 
         # Update the instance
         instance.data.update(data)
-        self.log.debug(f"multipart: {data.get('multipart')}")
 
     @staticmethod
     def get_render_attribute(attr, layer):
