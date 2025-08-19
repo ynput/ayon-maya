@@ -2199,7 +2199,7 @@ def get_container_transforms(container, members=None, root=False):
         root (bool): return highest node in hierarchy if True
 
     Returns:
-        root (list[str] | str): List of highest nodes, or first entry if
+        list[str] | str: List of highest nodes, or first entry if
             root argument is True
     """
 
