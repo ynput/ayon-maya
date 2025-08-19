@@ -1821,6 +1821,14 @@ def is_valid_reference_node(reference_node):
 def get_container_members(container):
     """Returns the members of a container.
     This includes the nodes from any loaded references in the container.
+
+    Arguments:
+        container (str | dict): The container name or a container dictionary
+            with the "objectName" key.
+
+    Returns:
+        list[str]: The container nodes.
+
     """
     if isinstance(container, dict):
         # Assume it's a container dictionary
@@ -2186,12 +2194,13 @@ def get_container_transforms(container, members=None, root=False):
     transform is stored in the container information
 
     Args:
-        container (dict): the container
+        container (dict | str): the container
         members (list): optional and convenience argument
         root (bool): return highest node in hierarchy if True
 
     Returns:
-        root (list / str):
+        root (list[str] | str): List of highest nodes, or first entry if
+            root argument is True
     """
 
     if not members:
@@ -2311,7 +2320,15 @@ def remove_other_uv_sets(mesh):
 
 
 def get_node_parent(node):
-    """Return full path name for parent of node"""
+    """Return full path name for parent of node
+
+    Arguments:
+        node (str): The node path of the node to get the parent for.
+
+    Returns:
+        str | None: The full path name of the parent node or None.
+
+    """
     parents = cmds.listRelatives(node, parent=True, fullPath=True)
     return parents[0] if parents else None
 
