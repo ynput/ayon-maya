@@ -13,6 +13,7 @@ from ayon_core.pipeline import (
     get_current_task_name,
     registered_host
 )
+from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.pipeline.workfile import BuildWorkfile
 from ayon_core.tools.utils import host_tools
 from ayon_core.tools.workfile_template_build import open_template_ui
@@ -64,7 +65,7 @@ def install(project_settings):
         return
 
     def add_menu():
-        pyblish_icon = host_tools.get_pyblish_icon()
+        ayon_icon = get_ayon_icon_filepath()
         parent_widget = get_main_window()
         cmds.menu(
             MENU_NAME,
@@ -119,7 +120,7 @@ def install(project_settings):
                 parent=parent_widget,
                 tab="publish"
             ),
-            image=pyblish_icon
+            image=ayon_icon
         )
 
         cmds.menuItem(
