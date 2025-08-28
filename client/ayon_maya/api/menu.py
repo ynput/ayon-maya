@@ -191,12 +191,12 @@ def install(project_settings):
             parent=MENU_NAME
         )
         cmds.menuItem(
-            dividerLabel="From Links",
+            dividerLabel="From Context & Links",
             divider=True,
             parent=builder_menu
         )
         cmds.menuItem(
-            "Build Workfile from Links",
+            "Build Workfile (Context/Links)",
             parent=builder_menu,
             command=lambda *args: BuildWorkfile().process()
         )
@@ -206,12 +206,12 @@ def install(project_settings):
             parent=builder_menu
         )
         cmds.menuItem(
-            "Build Workfile from template",
+            "Build Workfile (Template)",
             parent=builder_menu,
             command=build_workfile_template
         )
         cmds.menuItem(
-            "Update Workfile from template",
+            "Update Workfile (Template)",
             parent=builder_menu,
             command=update_workfile_template
         )
