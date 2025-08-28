@@ -96,6 +96,13 @@ def install(project_settings):
             print("Version Up Workfile setting not found in "
                   "Core Settings. Please update Core Addon")
 
+        cmds.menuItem(
+            "Work Files...",
+            command=lambda *args: host_tools.show_workfiles(
+                parent=parent_widget
+            ),
+        )
+        
         cmds.menuItem(divider=True)
 
         cmds.menuItem(
@@ -123,6 +130,8 @@ def install(project_settings):
             image=ayon_icon
         )
 
+        cmds.menuItem(divider=True)
+
         cmds.menuItem(
             "Manage...",
             command=lambda *args: host_tools.show_scene_inventory(
@@ -131,38 +140,42 @@ def install(project_settings):
         )
 
         cmds.menuItem(
-            "Library...",
-            command=lambda *args: host_tools.show_library_loader(
-                parent=parent_widget
+            "Look assigner...",
+            command=lambda *args: show_look_assigner(
+                parent_widget
             )
         )
 
         cmds.menuItem(divider=True)
 
-        cmds.menuItem(
-            "Work Files...",
-            command=lambda *args: host_tools.show_workfiles(
-                parent=parent_widget
-            ),
+        set_defaults_menu = cmds.menuItem(
+            "Set Defaults",
+            subMenu=True,
+            tearOff=True,
+            parent=MENU_NAME
         )
 
         cmds.menuItem(
             "Set Frame Range",
+            parent=set_defaults_menu,
             command=lambda *args: lib.reset_frame_range()
         )
 
         cmds.menuItem(
             "Set Resolution",
+            parent=set_defaults_menu,
             command=lambda *args: lib.reset_scene_resolution()
         )
 
         cmds.menuItem(
             "Set Colorspace",
+            parent=set_defaults_menu,
             command=lambda *args: lib.set_colorspace(),
         )
 
         cmds.menuItem(
             "Set Render Settings",
+            parent=set_defaults_menu,
             command=lambda *args: lib_rendersettings.RenderSettings().set_default_renderer_settings()    # noqa
         )
 
@@ -173,22 +186,8 @@ def install(project_settings):
             command=lambda *args: BuildWorkfile().process()
         )
 
-        cmds.menuItem(
-            "Look assigner...",
-            command=lambda *args: show_look_assigner(
-                parent_widget
-            )
-        )
-
-        cmds.menuItem(
-            "Experimental tools...",
-            command=lambda *args: host_tools.show_experimental_tools_dialog(
-                parent_widget
-            )
-        )
-
         builder_menu = cmds.menuItem(
-            "Template Builder",
+            "Workfile Templates",
             subMenu=True,
             tearOff=True,
             parent=MENU_NAME
@@ -224,8 +223,17 @@ def install(project_settings):
             parent=builder_menu,
             command=update_placeholder
         )
-
+        
         cmds.setParent(MENU_NAME, menu=True)
+
+        cmds.menuItem(divider=True)
+        
+        cmds.menuItem(
+            "Experimental tools...",
+            command=lambda *args: host_tools.show_experimental_tools_dialog(
+                parent_widget
+            )
+        )
 
     def add_scripts_menu(project_settings):
         try:
