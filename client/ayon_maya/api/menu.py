@@ -154,29 +154,25 @@ def install(project_settings):
             tearOff=True,
             parent=MENU_NAME
         )
-
         cmds.menuItem(
-            "Set Frame Range",
-            parent=set_defaults_menu,
-            command=lambda *args: lib.reset_frame_range()
-        )
-
-        cmds.menuItem(
-            "Set Resolution",
-            parent=set_defaults_menu,
-            command=lambda *args: lib.reset_scene_resolution()
-        )
-
-        cmds.menuItem(
-            "Set Colorspace",
+            "Colorspace",
             parent=set_defaults_menu,
             command=lambda *args: lib.set_colorspace(),
         )
-
         cmds.menuItem(
-            "Set Render Settings",
+            "Frame Range",
+            parent=set_defaults_menu,
+            command=lambda *args: lib.reset_frame_range()
+        )         
+        cmds.menuItem(
+            "Render Settings",
             parent=set_defaults_menu,
             command=lambda *args: lib_rendersettings.RenderSettings().set_default_renderer_settings()    # noqa
+        )
+        cmds.menuItem(
+            "Resolution",
+            parent=set_defaults_menu,
+            command=lambda *args: lib.reset_scene_resolution()
         )
 
         cmds.menuItem(
