@@ -185,41 +185,38 @@ def install(project_settings):
         )
 
         builder_menu = cmds.menuItem(
-            "Workfile Builder",
+            "Build Workfile",
             subMenu=True,
             tearOff=True,
             parent=MENU_NAME
         )
         cmds.menuItem(
-            dividerLabel="From Context & Links",
+            dividerLabel="Using Context & Links Presets",
             divider=True,
             parent=builder_menu
         )
         cmds.menuItem(
-            "Build Workfile (Context/Links)",
+            "Update from Context/Links",
             parent=builder_menu,
             command=lambda *args: BuildWorkfile().process()
         )
         cmds.menuItem(
-            dividerLabel="From Template", 
+            dividerLabel="Using a Template", 
             divider=True, 
             parent=builder_menu
         )
         cmds.menuItem(
-            "Build Workfile (Template)",
+            "Build from Template",
             parent=builder_menu,
             command=build_workfile_template
         )
         cmds.menuItem(
-            "Update Workfile (Template)",
+            "Update from Template",
             parent=builder_menu,
             command=update_workfile_template
         )
-        # Adding a divider with an empty label. This adds an empty space
-        # before the line, which indicates that the following section belongs
-        # to the previous one. It helps improving readability.
         cmds.menuItem(
-            dividerLabel=" ",
+            dividerLabel="Create & Adjust Templates",
             divider=True,
             parent=builder_menu
         )
