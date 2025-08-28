@@ -181,7 +181,7 @@ def install(project_settings):
 
         cmds.menuItem(divider=True, parent=MENU_NAME)
         cmds.menuItem(
-            "Build First Workfile",
+            "Build Workfile from Links",
             parent=MENU_NAME,
             command=lambda *args: BuildWorkfile().process()
         )
