@@ -179,18 +179,31 @@ def install(project_settings):
             command=lambda *args: lib_rendersettings.RenderSettings().set_default_renderer_settings()    # noqa
         )
 
-        cmds.menuItem(divider=True, parent=MENU_NAME)
         cmds.menuItem(
-            "Build Workfile from Links",
-            parent=MENU_NAME,
-            command=lambda *args: BuildWorkfile().process()
+            divider=True,
+            parent=MENU_NAME
         )
 
         builder_menu = cmds.menuItem(
-            "Workfile Templates",
+            "Workfile Builder",
             subMenu=True,
             tearOff=True,
             parent=MENU_NAME
+        )
+        cmds.menuItem(
+            dividerLabel="From Links",
+            divider=True,
+            parent=builder_menu
+        )
+        cmds.menuItem(
+            "Build Workfile from Links",
+            parent=builder_menu,
+            command=lambda *args: BuildWorkfile().process()
+        )
+        cmds.menuItem(
+            dividerLabel="From Template", 
+            divider=True, 
+            parent=builder_menu
         )
         cmds.menuItem(
             "Build Workfile from template",
@@ -202,7 +215,11 @@ def install(project_settings):
             parent=builder_menu,
             command=update_workfile_template
         )
+        # Adding a divider with an empty label. This adds an empty space
+        # before the line, which indicates that the following section belongs
+        # to the previous one. It helps improving readability.
         cmds.menuItem(
+            dividerLabel=" ",
             divider=True,
             parent=builder_menu
         )
