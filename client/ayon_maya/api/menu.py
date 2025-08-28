@@ -79,7 +79,8 @@ def install(project_settings):
             "currentContext",
             label=get_context_label(),
             parent=MENU_NAME,
-            enable=False
+            enable=False,
+            image=ayon_icon
         )
 
         cmds.setParent("..", menu=True)
@@ -126,8 +127,7 @@ def install(project_settings):
             command=lambda *args: host_tools.show_publisher(
                 parent=parent_widget,
                 tab="publish"
-            ),
-            image=ayon_icon
+            )
         )
 
         cmds.menuItem(divider=True)
