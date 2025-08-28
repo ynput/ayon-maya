@@ -223,7 +223,7 @@ def install(project_settings):
             parent=builder_menu,
             command=update_placeholder
         )
-        
+
         cmds.setParent(MENU_NAME, menu=True)
 
         cmds.menuItem(divider=True)
