@@ -189,15 +189,13 @@ def install(project_settings):
         )
 
         cmds.setParent(MENU_NAME, menu=True)
-        cmds.menuItem(divider=True)
         cmds.menuItem(
             "Experimental tools...",
             command=lambda *args: host_tools.show_experimental_tools_dialog(
                 parent_widget
             )
         )
-
-        cmds.setParent(MENU_NAME, menu=True)
+        
         cmds.menuItem(divider=True)
         set_defaults_menu = cmds.menuItem(
             "Set workfile attributes",
