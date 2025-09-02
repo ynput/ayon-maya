@@ -6,7 +6,9 @@ from ayon_core.settings import get_project_settings
 from ayon_maya.api import plugin
 from ayon_maya.api.lib import (
     RigSetsNotExistError,
+    CameraInstanceCreationError,
     create_rig_animation_instance,
+    create_camera_instance,
     get_container_members,
     maintained_selection,
     parent_nodes,
@@ -214,8 +216,14 @@ class ReferenceLoader(plugin.ReferenceLoader):
                 if display_handle:
                     self._set_display_handle(group_name)
 
+            create_camera_instance_on_load = settings['maya']['load'].get(
+                'reference_loader', {}
+            ).get('create_camera_instance_on_load', False)
+
             if product_type == "rig":
                 self._post_process_rig(namespace, context, options)
+            elif create_camera_instance_on_load and product_type == "camera":
+                self._post_process_camera(namespace, context, options)
             else:
                 if "translate" in options:
                     if not attach_to_root and new_nodes:
@@ -249,6 +257,17 @@ class ReferenceLoader(plugin.ReferenceLoader):
         except RigSetsNotExistError as exc:
             self.log.warning(
                 "Missing rig sets for animation instance creation: %s", exc)
+
+    def _post_process_camera(self, namespace, context, options):
+        nodes = self[:]
+        try:
+            create_camera_instance(
+                nodes, context, namespace, options=options, log=self.log
+            )
+        except CameraInstanceCreationError as exc:
+            self.log.warning(
+                "Failed to create camera instance: %s", exc
+            )
 
     def _lock_camera_transforms(self, nodes):
         cameras = cmds.ls(nodes, type="camera")
