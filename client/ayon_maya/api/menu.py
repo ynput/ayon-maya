@@ -105,7 +105,6 @@ def install(project_settings):
         )
         
         cmds.menuItem(divider=True)
-
         cmds.menuItem(
             "Create...",
             command=lambda *args: host_tools.show_publisher(
@@ -113,15 +112,6 @@ def install(project_settings):
                 tab="create"
             )
         )
-
-        cmds.menuItem(
-            "Load...",
-            command=lambda *args: host_tools.show_loader(
-                parent=parent_widget,
-                use_context=True
-            )
-        )
-
         cmds.menuItem(
             "Publish...",
             command=lambda *args: host_tools.show_publisher(
@@ -129,9 +119,13 @@ def install(project_settings):
                 tab="publish"
             )
         )
-
-        cmds.menuItem(divider=True)
-
+        cmds.menuItem(
+            "Load...",
+            command=lambda *args: host_tools.show_loader(
+                parent=parent_widget,
+                use_context=True
+            )
+        )
         cmds.menuItem(
             "Manage...",
             command=lambda *args: host_tools.show_scene_inventory(
@@ -139,17 +133,74 @@ def install(project_settings):
             )
         )
 
+        cmds.menuItem(divider=True)     
         cmds.menuItem(
             "Look assigner...",
             command=lambda *args: show_look_assigner(
                 parent_widget
             )
         )
+        cmds.menuItem(
+            "Build Workfile (Legacy)",
+            command=lambda *args: BuildWorkfile().process()
+        )
+        builder_menu = cmds.menuItem(
+            "Build Workfile",
+            subMenu=True,
+            tearOff=True,
+            parent=MENU_NAME
+        )
+        cmds.menuItem(
+            dividerLabel="From Template", 
+            divider=True, 
+            parent=builder_menu
+        )
+        cmds.menuItem(
+            "Build from Template",
+            parent=builder_menu,
+            command=build_workfile_template
+        )
+        cmds.menuItem(
+            "Update from Template",
+            parent=builder_menu,
+            command=update_workfile_template
+        )
+        cmds.menuItem(
+            dividerLabel="Adjust Templates",
+            divider=True,
+            parent=builder_menu
+        )
+        cmds.menuItem(
+            "Open Template",
+            parent=builder_menu,
+            command=lambda *args: open_template_ui(
+                MayaTemplateBuilder(registered_host()), get_main_window()
+            ),
+        )
+        cmds.menuItem(
+            "Create Placeholder",
+            parent=builder_menu,
+            command=create_placeholder
+        )
+        cmds.menuItem(
+            "Update Placeholder",
+            parent=builder_menu,
+            command=update_placeholder
+        )
 
+        cmds.setParent(MENU_NAME, menu=True)
         cmds.menuItem(divider=True)
+        cmds.menuItem(
+            "Experimental tools...",
+            command=lambda *args: host_tools.show_experimental_tools_dialog(
+                parent_widget
+            )
+        )
 
+        cmds.setParent(MENU_NAME, menu=True)
+        cmds.menuItem(divider=True)
         set_defaults_menu = cmds.menuItem(
-            "Set Defaults",
+            "Set workfile attributes",
             subMenu=True,
             tearOff=True,
             parent=MENU_NAME
@@ -173,76 +224,6 @@ def install(project_settings):
             "Resolution",
             parent=set_defaults_menu,
             command=lambda *args: lib.reset_scene_resolution()
-        )
-
-        cmds.menuItem(
-            divider=True,
-            parent=MENU_NAME
-        )
-
-        builder_menu = cmds.menuItem(
-            "Build Workfile",
-            subMenu=True,
-            tearOff=True,
-            parent=MENU_NAME
-        )
-        cmds.menuItem(
-            dividerLabel="Using Context & Links Presets",
-            divider=True,
-            parent=builder_menu
-        )
-        cmds.menuItem(
-            "Update from Context/Links",
-            parent=builder_menu,
-            command=lambda *args: BuildWorkfile().process()
-        )
-        cmds.menuItem(
-            dividerLabel="Using a Template", 
-            divider=True, 
-            parent=builder_menu
-        )
-        cmds.menuItem(
-            "Build from Template",
-            parent=builder_menu,
-            command=build_workfile_template
-        )
-        cmds.menuItem(
-            "Update from Template",
-            parent=builder_menu,
-            command=update_workfile_template
-        )
-        cmds.menuItem(
-            dividerLabel="Create & Adjust Templates",
-            divider=True,
-            parent=builder_menu
-        )
-        cmds.menuItem(
-            "Open Template",
-            parent=builder_menu,
-            command=lambda *args: open_template_ui(
-                MayaTemplateBuilder(registered_host()), get_main_window()
-            ),
-        )
-        cmds.menuItem(
-            "Create Placeholder",
-            parent=builder_menu,
-            command=create_placeholder
-        )
-        cmds.menuItem(
-            "Update Placeholder",
-            parent=builder_menu,
-            command=update_placeholder
-        )
-
-        cmds.setParent(MENU_NAME, menu=True)
-
-        cmds.menuItem(divider=True)
-        
-        cmds.menuItem(
-            "Experimental tools...",
-            command=lambda *args: host_tools.show_experimental_tools_dialog(
-                parent_widget
-            )
         )
 
     def add_scripts_menu(project_settings):
