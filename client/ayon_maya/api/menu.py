@@ -145,13 +145,13 @@ def install(project_settings):
             command=lambda *args: BuildWorkfile().process()
         )
         builder_menu = cmds.menuItem(
-            "Build Workfile",
+            "Build Workfile (Templates)",
             subMenu=True,
             tearOff=True,
             parent=MENU_NAME
         )
         cmds.menuItem(
-            dividerLabel="From Template", 
+            dividerLabel="Use Template", 
             divider=True, 
             parent=builder_menu
         )
@@ -166,7 +166,7 @@ def install(project_settings):
             command=update_workfile_template
         )
         cmds.menuItem(
-            dividerLabel="Adjust Templates",
+            dividerLabel="Adjust Template",
             divider=True,
             parent=builder_menu
         )
