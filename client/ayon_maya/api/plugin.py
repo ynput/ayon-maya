@@ -992,6 +992,11 @@ class ReferenceLoader(Loader):
         """
         from maya import cmds
 
+        locknode_namespace = container["namespace"]
+        # check if the node has been locked and unlocked it
+        if cmds.lockNode(f"*{locknode_namespace}", query=True, lock=True):
+            cmds.lockNode(f"*{locknode_namespace}", lock=False)
+
         node = container["objectName"]
 
         # Assume asset has been referenced
@@ -1006,6 +1011,7 @@ class ReferenceLoader(Loader):
         namespace = cmds.referenceQuery(reference_node, namespace=True)
         fname = cmds.referenceQuery(reference_node, filename=True)
         cmds.file(fname, removeReference=True)
+
 
         try:
             cmds.delete(node)

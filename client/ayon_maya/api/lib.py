@@ -4230,7 +4230,8 @@ def get_reference_node_parents(ref):
 
 
 def create_rig_animation_instance(
-    nodes, context, namespace, options=None, log=None
+    nodes, context, namespace, options=None, log=None,
+    lock_set_on_load=False
 ):
     """Create an animation publish instance for loaded rigs.
 
@@ -4243,6 +4244,7 @@ def create_rig_animation_instance(
         namespace (str): Namespace of the rig container
         options (dict, optional): Additional loader data
         log (logging.Logger, optional): Logger to log to if provided
+        lock_set_on_load (bool, optional): Whether to lock the set on load
 
     Returns:
         None
@@ -4319,6 +4321,8 @@ def create_rig_animation_instance(
             variant=namespace,
             pre_create_data={"use_selection": True}
         )
+
+    cmds.lockNode(f"*{namespace}", lock=lock_set_on_load)
 
 
 def get_node_index_under_parent(node: str) -> int:
