@@ -103,6 +103,29 @@ def get_main_window():
 
 
 @contextlib.contextmanager
+def unlocked_node(node, product_type):
+    """Unlock a node for the duration of the context.
+
+    Args:
+        node (str): The name of the node to unlock.
+        product_type (str): The type of product being processed.
+    """
+    if product_type != "animation":
+        yield
+        return
+
+    has_locked = False
+    if cmds.lockNode(node, query=True, lock=True):
+        has_locked = True
+        cmds.lockNode(node, lock=False)
+
+    try:
+        yield
+    finally:
+        cmds.lockNode(node, lock=has_locked)
+
+
+@contextlib.contextmanager
 def suspended_refresh(suspend=True):
     """Suspend viewport refreshes
 
@@ -4231,7 +4254,7 @@ def get_reference_node_parents(ref):
 
 def create_rig_animation_instance(
     nodes, context, namespace, options=None, log=None,
-    lock_set_on_load=False
+    settings=None
 ):
     """Create an animation publish instance for loaded rigs.
 
@@ -4244,7 +4267,7 @@ def create_rig_animation_instance(
         namespace (str): Namespace of the rig container
         options (dict, optional): Additional loader data
         log (logging.Logger, optional): Logger to log to if provided
-        lock_set_on_load (bool, optional): Whether to lock the set on load
+        settings (dict, optional): Loader settings from Ayon
 
     Returns:
         None
@@ -4314,15 +4337,20 @@ def create_rig_animation_instance(
     rig_sets = [output, controls, anim_skeleton, skeleton_mesh]
     # Remove sets that this particular rig does not have
     rig_sets = [s for s in rig_sets if s is not None]
+
     with maintained_selection():
         cmds.select(rig_sets + roots, noExpand=True)
-        create_context.create(
+        node = create_context.create(
             creator_identifier=creator_identifier,
             variant=namespace,
             pre_create_data={"use_selection": True}
         )
 
-    cmds.lockNode(f"*{namespace}", lock=lock_set_on_load)
+        if settings is not None:
+            lock_set_on_load = settings['maya']['load'].get(
+                'reference_loader', {}
+            ).get('lock_set_on_load', False)
+            cmds.lockNode(node.product_name, lock=lock_set_on_load)
 
 
 def get_node_index_under_parent(node: str) -> int:

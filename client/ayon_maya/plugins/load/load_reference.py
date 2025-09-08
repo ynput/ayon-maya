@@ -215,15 +215,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
                     self._set_display_handle(group_name)
 
             if product_type == "rig":
-                lock_set_on_load = settings['maya']['load'].get(
-                    'reference_loader', {}
-                ).get('lock_set_on_load', False)
-                self._post_process_rig(
-                    namespace,
-                    context,
-                    options,
-                    lock_set_on_load=lock_set_on_load
-                )
+                self._post_process_rig(namespace, context, options, settings)
             else:
                 if "translate" in options:
                     if not attach_to_root and new_nodes:
@@ -247,14 +239,14 @@ class ReferenceLoader(plugin.ReferenceLoader):
         members = get_container_members(container)
         self._lock_camera_transforms(members)
 
-    def _post_process_rig(self, namespace, context, options, lock_set_on_load=False):
+    def _post_process_rig(self, namespace, context, options, settings):
 
         nodes = self[:]
         try:
             create_rig_animation_instance(
                 nodes, context, namespace,
                 options=options, log=self.log,
-                lock_set_on_load=lock_set_on_load
+                settings=settings
             )
         except RigSetsNotExistError as exc:
             self.log.warning(
