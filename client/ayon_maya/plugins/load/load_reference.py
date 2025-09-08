@@ -136,7 +136,6 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
     def process_reference(self, context, name, namespace, options):
         import maya.cmds as cmds
-
         product_type = context["product"]["productType"]
         project_name = context["project"]["name"]
         # True by default to keep legacy behaviours
@@ -215,7 +214,12 @@ class ReferenceLoader(plugin.ReferenceLoader):
                     self._set_display_handle(group_name)
 
             if product_type == "rig":
-                self._post_process_rig(namespace, context, options, settings)
+                options["lock_animation_instance_on_load"] = (
+                        settings['maya']['load'].get(
+                        'reference_loader', {}
+                    ).get('lock_animation_instance_on_load', False)
+                )
+                self._post_process_rig(namespace, context, options)
             else:
                 if "translate" in options:
                     if not attach_to_root and new_nodes:
@@ -239,14 +243,12 @@ class ReferenceLoader(plugin.ReferenceLoader):
         members = get_container_members(container)
         self._lock_camera_transforms(members)
 
-    def _post_process_rig(self, namespace, context, options, settings):
+    def _post_process_rig(self, namespace, context, options):
 
         nodes = self[:]
         try:
             create_rig_animation_instance(
-                nodes, context, namespace,
-                options=options, log=self.log,
-                settings=settings
+                nodes, context, namespace, options=options, log=self.log,
             )
         except RigSetsNotExistError as exc:
             self.log.warning(

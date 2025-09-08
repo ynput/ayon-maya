@@ -27,7 +27,7 @@ from maya.app.renderSetup.model import renderSetup
 from pyblish.api import ContextPlugin, InstancePlugin
 
 from . import lib
-from .lib import imprint, read, unlocked_node
+from .lib import imprint, read, unlocked
 from .pipeline import containerise
 
 log = Logger.get_logger()
@@ -274,7 +274,7 @@ class MayaCreatorBase:
         for created_inst, _changes in update_list:
             data = created_inst.data_to_store()
             node = data.get("instance_node")
-            with unlocked_node(node, data.get("productType")):
+            with unlocked(node):
                 self.imprint_instance_node(node, data)
 
     @lib.undo_chunk()
@@ -288,8 +288,7 @@ class MayaCreatorBase:
         for instance in instances:
             node = instance.data.get("instance_node")
             if node:
-                if cmds.lockNode(node, query=True, lock=True):
-                    cmds.lockNode(node, lock=False)
+                cmds.lockNode(node, lock=False)
                 cmds.delete(node)
 
             self._remove_instance_from_context(instance)
@@ -996,14 +995,9 @@ class ReferenceLoader(Loader):
         from maya import cmds
 
         node = container["objectName"]
-        namespace = container["namespace"]
-        associated_namespace_node = next((
-            associated_node for associated_node
-            in cmds.ls(f"*{namespace}", type="objectSet")),
-            None
-        )
-        if associated_namespace_node:
-            cmds.lockNode(associated_namespace_node, lock=False)
+        if "rig" in node.lower():
+            self._remove_linked_animation_instance(container)
+
         # Assume asset has been referenced
         members = cmds.sets(node, query=True)
         reference_node = lib.get_reference_node(members, self.log)
@@ -1019,7 +1013,7 @@ class ReferenceLoader(Loader):
 
         try:
             cmds.delete(node)
-            print(node)
+
         except ValueError:
             # Already implicitly deleted by Maya upon removing reference
             pass
@@ -1028,9 +1022,19 @@ class ReferenceLoader(Loader):
             # If container is not automatically cleaned up by May (issue #118)
             cmds.namespace(removeNamespace=namespace,
                            deleteNamespaceContent=True)
-            print(namespace)
+
         except RuntimeError:
             pass
+
+    def _remove_linked_animation_instance(self, container):
+        namespace = container["namespace"]
+        node = next((
+            node for node
+            in cmds.ls(f"*{namespace}", type="objectSet")),
+            None
+        )
+        if node:
+            cmds.lockNode(node, lock=False)
 
     def prepare_root_value(self, file_url, project_name):
         """Replace root value with env var placeholder.

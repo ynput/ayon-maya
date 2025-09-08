@@ -103,17 +103,12 @@ def get_main_window():
 
 
 @contextlib.contextmanager
-def unlocked_node(node, product_type):
+def unlocked(node):
     """Unlock a node for the duration of the context.
 
     Args:
         node (str): The name of the node to unlock.
-        product_type (str): The type of product being processed.
     """
-    if product_type != "animation":
-        yield
-        return
-
     has_locked = False
     if cmds.lockNode(node, query=True, lock=True):
         has_locked = True
@@ -4253,8 +4248,7 @@ def get_reference_node_parents(ref):
 
 
 def create_rig_animation_instance(
-    nodes, context, namespace, options=None, log=None,
-    settings=None
+    nodes, context, namespace, options=None, log=None
 ):
     """Create an animation publish instance for loaded rigs.
 
@@ -4267,7 +4261,6 @@ def create_rig_animation_instance(
         namespace (str): Namespace of the rig container
         options (dict, optional): Additional loader data
         log (logging.Logger, optional): Logger to log to if provided
-        settings (dict, optional): Loader settings from Ayon
 
     Returns:
         None
@@ -4346,11 +4339,13 @@ def create_rig_animation_instance(
             pre_create_data={"use_selection": True}
         )
 
-        if settings is not None:
-            lock_set_on_load = settings['maya']['load'].get(
-                'reference_loader', {}
-            ).get('lock_set_on_load', False)
-            cmds.lockNode(node.product_name, lock=lock_set_on_load)
+        cmds.lockNode(
+            node.product_name,
+            lock=options.get(
+                "lock_animation_instance_on_load",
+                False
+            )
+        )
 
 
 def get_node_index_under_parent(node: str) -> int:
