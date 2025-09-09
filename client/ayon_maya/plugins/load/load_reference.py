@@ -218,9 +218,11 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
             if product_type == "rig":
                 options["lock_instance"] = (
-                        settings['maya']['load'].get(
-                        'reference_loader', {}
-                    ).get('lock_animation_instance_on_load', False)
+                    settings
+                    ["maya"]
+                    ["load"]
+                    ["reference_loader"]
+                    ["lock_animation_instance_on_load"]
                 )
                 self._post_process_rig(namespace, context, options)
             else:
@@ -258,10 +260,14 @@ class ReferenceLoader(plugin.ReferenceLoader):
             )
             product_type: str = context["product"]["productType"]
 
-        if product_type != "rig":
+        if product_type == "rig":
             # No special handling needed for non-rig containers
-            super().remove(container)
+            self._remove_rig(container)
+            return
 
+        super().remove(container)
+
+    def _remove_rig(self, container):
         members = get_container_members(container)
         object_sets = set()
         for member in members:
