@@ -4330,22 +4330,32 @@ def create_rig_animation_instance(
     rig_sets = [output, controls, anim_skeleton, skeleton_mesh]
     # Remove sets that this particular rig does not have
     rig_sets = [s for s in rig_sets if s is not None]
-
+    print("options:", options)
     with maintained_selection():
         cmds.select(rig_sets + roots, noExpand=True)
-        node = create_context.create(
+        create_context.create(
             creator_identifier=creator_identifier,
             variant=namespace,
-            pre_create_data={"use_selection": True}
+            pre_create_data={
+                "use_selection": True,
+                "lock_instance": options.get("lock_instance", False)
+            }
         )
 
-        cmds.lockNode(
-            node.product_name,
-            lock=options.get(
-                "lock_animation_instance_on_load",
-                False
-            )
-        )
+
+def is_animation_instance(objectset: str) -> bool:
+    """Check if the given object set is an animation instance.
+
+    Arguments:
+        objectset (str): The name of the object set to check.
+
+    Returns:
+        bool: True if the object set is an animation instance, False otherwise.
+    """
+    creator_identifier = cmds.getAttr(f"{objectset}.creator_identifier")
+    if creator_identifier == "io.openpype.creators.maya.animation":
+        return True
+    return False
 
 
 def get_node_index_under_parent(node: str) -> int:

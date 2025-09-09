@@ -3,12 +3,15 @@ import difflib
 
 import qargparse
 from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import get_current_project_name
+from ayon_core.pipeline.load import get_representation_context
 from ayon_maya.api import plugin
 from ayon_maya.api.lib import (
     RigSetsNotExistError,
     create_rig_animation_instance,
     get_container_members,
     maintained_selection,
+    is_animation_instance,
     parent_nodes,
 )
 from maya import cmds
@@ -214,7 +217,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
                     self._set_display_handle(group_name)
 
             if product_type == "rig":
-                options["lock_animation_instance_on_load"] = (
+                options["lock_instance"] = (
                         settings['maya']['load'].get(
                         'reference_loader', {}
                     ).get('lock_animation_instance_on_load', False)
@@ -242,6 +245,58 @@ class ReferenceLoader(plugin.ReferenceLoader):
         # reference or for a camera which might have changed names.
         members = get_container_members(container)
         self._lock_camera_transforms(members)
+
+    def remove(self, container):
+        representation_id: str = container["representation"]
+        project_name: str = container.get(
+            "project_name", get_current_project_name()
+        )
+        product_type = None
+        if representation_id:
+            context: dict = get_representation_context(
+                project_name, representation_id
+            )
+            product_type: str = context["product"]["productType"]
+
+        if product_type != "rig":
+            # No special handling needed for non-rig containers
+            super().remove(container)
+
+        members = get_container_members(container)
+        object_sets = set()
+        for member in members:
+            object_sets.update(
+                cmds.listSets(object=member,
+                            extendToShape=False,
+                            type=2) or []
+            )
+
+        super().remove(container)
+        # After the deletion, we check which object sets are still existing
+        # because maya may auto-delete empty object sets if they are not locked
+        # This way we can clean up remaining animation instances that were
+        # locked
+        object_sets = cmds.ls(object_sets, type="objectSet")
+        for object_set in object_sets:
+            # Only consider empty object sets
+            members = cmds.sets(object_set, query=True)
+            if members:
+                continue
+
+            # Only consider locked object sets
+            locked = cmds.lockNode(object_set, query=True)
+            if not locked:
+                continue
+
+            # Ignore referenced object sets
+            if cmds.referenceQuery(isNodeReferenced=object_set):
+                continue
+
+            # Then only here confirm whether this is an animation instance, if so
+            # then we will want to auto-remove the instance
+            if is_animation_instance(object_set):
+                cmds.lockNode(object_set, lock=False)
+                cmds.delete(object_set)
 
     def _post_process_rig(self, namespace, context, options):
 

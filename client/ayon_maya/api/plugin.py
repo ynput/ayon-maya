@@ -324,6 +324,10 @@ class MayaCreator(Creator, MayaCreatorBase):
 
             self.imprint_instance_node(instance_node,
                                        data=instance.data_to_store())
+
+            if pre_create_data.get("lock_instance", False):
+                cmds.lockNode(instance_node, lock=True)
+
             return instance
 
     def collect_instances(self):

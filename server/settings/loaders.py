@@ -111,7 +111,7 @@ class ReferenceLoaderModel(BaseSettingsModel):
         title="Display Handle On Load References"
     )
     lock_animation_instance_on_load: bool = SettingsField(
-        title="Lock animation instance on rig load."
+        title="Lock Animation Instance on Rig Load"
     )
 
 
