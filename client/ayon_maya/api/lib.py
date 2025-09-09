@@ -109,10 +109,8 @@ def unlocked(node):
     Args:
         node (str): The name of the node to unlock.
     """
-    has_locked = False
-    if cmds.lockNode(node, query=True, lock=True):
-        has_locked = True
-        cmds.lockNode(node, lock=False)
+    has_locked = cmds.lockNode(node, query=True, lock=True)
+    cmds.lockNode(node, lock=False)
 
     try:
         yield
@@ -4340,21 +4338,6 @@ def create_rig_animation_instance(
                 "lock_instance": options.get("lock_instance", False)
             }
         )
-
-
-def is_animation_instance(objectset: str) -> bool:
-    """Check if the given object set is an animation instance.
-
-    Arguments:
-        objectset (str): The name of the object set to check.
-
-    Returns:
-        bool: True if the object set is an animation instance, False otherwise.
-    """
-    creator_identifier = cmds.getAttr(f"{objectset}.creator_identifier")
-    if creator_identifier == "io.openpype.creators.maya.animation":
-        return True
-    return False
 
 
 def get_node_index_under_parent(node: str) -> int:

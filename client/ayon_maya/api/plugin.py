@@ -999,8 +999,6 @@ class ReferenceLoader(Loader):
         from maya import cmds
 
         node = container["objectName"]
-        if "rig" in node.lower():
-            self._remove_linked_animation_instance(container)
 
         # Assume asset has been referenced
         members = cmds.sets(node, query=True)
@@ -1029,16 +1027,6 @@ class ReferenceLoader(Loader):
 
         except RuntimeError:
             pass
-
-    def _remove_linked_animation_instance(self, container):
-        namespace = container["namespace"]
-        node = next((
-            node for node
-            in cmds.ls(f"*{namespace}", type="objectSet")),
-            None
-        )
-        if node:
-            cmds.lockNode(node, lock=False)
 
     def prepare_root_value(self, file_url, project_name):
         """Replace root value with env var placeholder.
