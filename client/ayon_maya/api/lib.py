@@ -4330,7 +4330,6 @@ def create_rig_animation_instance(
     rig_sets = [output, controls, anim_skeleton, skeleton_mesh]
     # Remove sets that this particular rig does not have
     rig_sets = [s for s in rig_sets if s is not None]
-    print("options:", options)
     with maintained_selection():
         cmds.select(rig_sets + roots, noExpand=True)
         create_context.create(
