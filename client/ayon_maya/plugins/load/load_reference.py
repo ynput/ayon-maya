@@ -11,7 +11,6 @@ from ayon_maya.api.lib import (
     create_rig_animation_instance,
     get_container_members,
     maintained_selection,
-    is_animation_instance,
     parent_nodes,
 )
 from maya import cmds
