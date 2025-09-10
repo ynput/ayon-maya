@@ -109,13 +109,12 @@ def unlocked(node):
     Args:
         node (str): The name of the node to unlock.
     """
-    has_locked = False
-    if cmds.lockNode(node, query=True, lock=True):
-        has_locked = True
-        cmds.lockNode(node, lock=False)
+    has_locked = cmds.lockNode(node, query=True, lock=True)[0]
+    cmds.lockNode(node, lock=False)
 
     try:
         yield
+
     finally:
         cmds.lockNode(node, lock=has_locked)
 
@@ -4247,7 +4246,7 @@ def get_reference_node_parents(ref):
     return parents
 
 
-def get_attr(node, attr, default=None):
+def get_instance_node_attr(node, attr, default=None):
     """Helper to get attribute which allows attribute to not exist."""
     if not cmds.attributeQuery(attr, node=node, exists=True):
         return default
@@ -4263,12 +4262,12 @@ def get_creator_identifier(node: str) -> str | None:
     Returns:
         str | None: The creator identifier of the instance or None if not found.
     """
-    if get_attr(node, attr="id") not in {
+    if get_instance_node_attr(node, attr="id") not in {
         AYON_INSTANCE_ID, AVALON_INSTANCE_ID
     }:
         return None
 
-    return get_attr(node, "creator_identifier")
+    return get_instance_node_attr(node, "creator_identifier")
 
 
 def is_animation_instance(objectset: str) -> bool:
@@ -4280,10 +4279,9 @@ def is_animation_instance(objectset: str) -> bool:
     Returns:
         bool: True if the object set is an animation instance, False otherwise.
     """
-    creator_id = get_creator_identifier(objectset)
-    if creator_id is None:
-        return False
-    return creator_id == "io.openpype.creators.maya.animation"
+    return (
+        get_creator_identifier(objectset) == "io.openpype.creators.maya.animation"
+    )
 
 
 def create_rig_animation_instance(

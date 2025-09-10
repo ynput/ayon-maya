@@ -27,7 +27,7 @@ from maya.app.renderSetup.model import renderSetup
 from pyblish.api import ContextPlugin, InstancePlugin
 
 from . import lib
-from .lib import imprint, read, unlocked, get_attr
+from .lib import imprint, read, unlocked, get_instance_node_attr
 from .pipeline import containerise
 
 log = Logger.get_logger()
@@ -122,18 +122,18 @@ class MayaCreatorBase:
 
             for node in cmds.ls(type="objectSet"):
 
-                if get_attr(node, attr="id") not in {
+                if get_instance_node_attr(node, attr="id") not in {
                     AYON_INSTANCE_ID, AVALON_INSTANCE_ID
                 }:
                     continue
 
-                creator_id = get_attr(node, attr="creator_identifier")
+                creator_id = get_instance_node_attr(node, attr="creator_identifier")
                 if creator_id is not None:
                     # creator instance
                     cache.setdefault(creator_id, []).append(node)
                 else:
                     # legacy instance
-                    family = get_attr(node, attr="family")
+                    family = get_instance_node_attr(node, attr="family")
                     if family is None:
                         # must be a broken instance
                         continue
