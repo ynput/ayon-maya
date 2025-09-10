@@ -1049,7 +1049,6 @@ class ReferenceLoader(Loader):
 
         return file_url
 
-
     def is_animation_instance(self, objectset: str) -> bool:
         """Check if the given object set is an animation instance.
 
