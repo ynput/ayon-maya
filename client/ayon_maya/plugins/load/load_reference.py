@@ -10,6 +10,7 @@ from ayon_maya.api.lib import (
     RigSetsNotExistError,
     create_rig_animation_instance,
     get_container_members,
+    is_animation_instance,
     maintained_selection,
     parent_nodes,
 )
@@ -261,7 +262,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
         if product_type == "rig":
             # Special handling needed for rig containers
-            self._removed_linked_animation_instance(container)
+            self._remove_rig(container)
             return
 
         super().remove(container)
@@ -305,7 +306,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
             # Then only here confirm whether this is an animation instance, if so
             # then we will want to auto-remove the instance
-            if self.is_animation_instance(object_set):
+            if is_animation_instance(object_set):
                 cmds.lockNode(object_set, lock=False)
                 cmds.delete(object_set)
 

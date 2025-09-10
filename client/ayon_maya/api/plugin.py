@@ -28,18 +28,11 @@ from maya.app.renderSetup.model import renderSetup
 from pyblish.api import ContextPlugin, InstancePlugin
 
 from . import lib
-from .lib import imprint, read, unlocked
+from .lib import imprint, read, unlocked, get_attr
 from .pipeline import containerise
 
 log = Logger.get_logger()
 SETTINGS_CATEGORY = "maya"
-
-
-def _get_attr(node, attr, default=None):
-    """Helper to get attribute which allows attribute to not exist."""
-    if not cmds.attributeQuery(attr, node=node, exists=True):
-        return default
-    return cmds.getAttr("{}.{}".format(node, attr))
 
 
 # Backwards compatibility: these functions has been moved to lib.
@@ -130,18 +123,18 @@ class MayaCreatorBase:
 
             for node in cmds.ls(type="objectSet"):
 
-                if _get_attr(node, attr="id") not in {
+                if get_attr(node, attr="id") not in {
                     AYON_INSTANCE_ID, AVALON_INSTANCE_ID
                 }:
                     continue
 
-                creator_id = _get_attr(node, attr="creator_identifier")
+                creator_id = get_attr(node, attr="creator_identifier")
                 if creator_id is not None:
                     # creator instance
                     cache.setdefault(creator_id, []).append(node)
                 else:
                     # legacy instance
-                    family = _get_attr(node, attr="family")
+                    family = get_attr(node, attr="family")
                     if family is None:
                         # must be a broken instance
                         continue
@@ -1050,26 +1043,6 @@ class ReferenceLoader(Loader):
             file_url = anatomy.replace_root_with_env_key(file_url, '${{{}}}')
 
         return file_url
-
-    def is_animation_instance(self, objectset: str) -> bool:
-        """Check if the given object set is an animation instance.
-
-        Arguments:
-            objectset (str): The name of the object set to check.
-
-        Returns:
-            bool: True if the object set is an animation instance, False otherwise.
-        """
-        if _get_attr(node, attr="id") not in {
-            AYON_INSTANCE_ID, AVALON_INSTANCE_ID
-        }:
-            return False
-
-        creator_id = _get_attr(objectset, "creator_identifier")
-        if creator_id is None:
-            return False
-
-        return creator_id == "io.openpype.creators.maya.animation"
 
     @classmethod
     def get_representation_name_aliases(cls, representation_name):

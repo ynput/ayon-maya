@@ -4247,6 +4247,45 @@ def get_reference_node_parents(ref):
     return parents
 
 
+def get_attr(node, attr, default=None):
+    """Helper to get attribute which allows attribute to not exist."""
+    if not cmds.attributeQuery(attr, node=node, exists=True):
+        return default
+    return cmds.getAttr("{}.{}".format(node, attr))
+
+
+def get_creator_identifier(node: str) -> str | None:
+    """Get the creator identifier of an instance node.
+
+    Arguments:
+        node (str): The name of the instance node.
+
+    Returns:
+        str | None: The creator identifier of the instance or None if not found.
+    """
+    if get_attr(node, attr="id") not in {
+        AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+    }:
+        return None
+
+    return get_attr(node, "creator_identifier")
+
+
+def is_animation_instance(objectset: str) -> bool:
+    """Check if the given object set is an animation instance.
+
+    Arguments:
+        objectset (str): The name of the object set to check.
+
+    Returns:
+        bool: True if the object set is an animation instance, False otherwise.
+    """
+    creator_id = get_creator_identifier(objectset)
+    if creator_id is None:
+        return False
+    return creator_id == "io.openpype.creators.maya.animation"
+
+
 def create_rig_animation_instance(
     nodes, context, namespace, options=None, log=None
 ):
