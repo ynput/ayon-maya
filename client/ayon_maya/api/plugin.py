@@ -264,8 +264,8 @@ class MayaCreatorBase:
         cached_instances = (
             self.collection_shared_data["maya_cached_instance_data"]
         )
-        for node in cached_instances.get(self.identifier, []):
-            node_data = self.read_instance_node(node)
+        for instance_node in cached_instances.get(self.identifier, []):
+            node_data = self.read_instance_node(instance_node)
 
             created_instance = CreatedInstance.from_existing(node_data, self)
             self._add_instance_to_context(created_instance)
@@ -517,16 +517,18 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
             type="objectSet"
         ) or []
 
-        for node in connected_sets:
+        for layer_instance_node in connected_sets:
             if not cmds.attributeQuery("creator_identifier",
-                                       node=node,
+                                       node=layer_instance_node,
                                        exists=True):
                 continue
 
-            creator_identifier = cmds.getAttr(node + ".creator_identifier")
+            creator_identifier = cmds.getAttr(
+                layer_instance_node + ".creator_identifier"
+            )
             if creator_identifier == self.identifier:
-                self.log.info("Found node: {}".format(node))
-                return node
+                self.log.info("Found node: {}".format(layer_instance_node))
+                return layer_instance_node
 
     def _create_layer_instance_node(self, layer):
 
