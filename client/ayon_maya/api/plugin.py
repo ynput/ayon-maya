@@ -1,5 +1,6 @@
 import json
 import os
+from platform import node
 
 import ayon_api
 import qargparse
@@ -1012,7 +1013,6 @@ class ReferenceLoader(Loader):
         fname = cmds.referenceQuery(reference_node, filename=True)
         cmds.file(fname, removeReference=True)
 
-
         try:
             cmds.delete(node)
 
@@ -1048,6 +1048,27 @@ class ReferenceLoader(Loader):
             file_url = anatomy.replace_root_with_env_key(file_url, '${{{}}}')
 
         return file_url
+
+
+    def is_animation_instance(self, objectset: str) -> bool:
+        """Check if the given object set is an animation instance.
+
+        Arguments:
+            objectset (str): The name of the object set to check.
+
+        Returns:
+            bool: True if the object set is an animation instance, False otherwise.
+        """
+        if _get_attr(node, attr="id") not in {
+            AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+        }:
+            return False
+
+        creator_id = _get_attr(objectset, "creator_identifier")
+        if creator_id is None:
+            return False
+
+        return creator_id == "io.openpype.creators.maya.animation"
 
     @classmethod
     def get_representation_name_aliases(cls, representation_name):

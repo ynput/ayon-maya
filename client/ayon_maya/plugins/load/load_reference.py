@@ -261,13 +261,14 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
         if product_type == "rig":
             # Special handling needed for rig containers
-            self._remove_rig(container)
+            self._removed_linked_animation_instance(container)
             return
 
         super().remove(container)
 
-    def _remove_rig(self, container):
-        """Remove rig container.
+    def _removed_linked_animation_instance(self, container):
+        """Remove linked animation instance no matter if it
+        is locked or not.
 
         Args:
             container (dict): The container to remove.
@@ -307,20 +308,6 @@ class ReferenceLoader(plugin.ReferenceLoader):
             if self.is_animation_instance(object_set):
                 cmds.lockNode(object_set, lock=False)
                 cmds.delete(object_set)
-
-    def is_animation_instance(self, objectset: str) -> bool:
-        """Check if the given object set is an animation instance.
-
-        Arguments:
-            objectset (str): The name of the object set to check.
-
-        Returns:
-            bool: True if the object set is an animation instance, False otherwise.
-        """
-        creator_identifier = cmds.getAttr(f"{objectset}.creator_identifier")
-        if creator_identifier == "io.openpype.creators.maya.animation":
-            return True
-        return False
 
     def _post_process_rig(self, namespace, context, options):
 
