@@ -266,7 +266,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
         super().remove(container)
 
-    def _removed_linked_animation_instance(self, container):
+    def _remove_rig(self, container):
         """Remove linked animation instance no matter if it
         is locked or not.
 

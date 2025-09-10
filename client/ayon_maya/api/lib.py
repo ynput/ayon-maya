@@ -109,8 +109,10 @@ def unlocked(node):
     Args:
         node (str): The name of the node to unlock.
     """
-    has_locked = cmds.lockNode(node, query=True, lock=True)
-    cmds.lockNode(node, lock=False)
+    has_locked = False
+    if cmds.lockNode(node, query=True, lock=True):
+        has_locked = True
+        cmds.lockNode(node, lock=False)
 
     try:
         yield
