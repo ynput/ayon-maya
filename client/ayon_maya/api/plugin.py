@@ -27,11 +27,18 @@ from maya.app.renderSetup.model import renderSetup
 from pyblish.api import ContextPlugin, InstancePlugin
 
 from . import lib
-from .lib import imprint, read, unlocked, get_instance_node_attr
+from .lib import imprint, read, unlocked
 from .pipeline import containerise
 
 log = Logger.get_logger()
 SETTINGS_CATEGORY = "maya"
+
+
+def _get_attr(node, attr, default=None):
+    """Helper to get attribute which allows attribute to not exist."""
+    if not cmds.attributeQuery(attr, node=node, exists=True):
+        return default
+    return cmds.getAttr("{}.{}".format(node, attr))
 
 
 # Backwards compatibility: these functions has been moved to lib.
@@ -122,18 +129,18 @@ class MayaCreatorBase:
 
             for node in cmds.ls(type="objectSet"):
 
-                if get_instance_node_attr(node, attr="id") not in {
+                if _get_attr(node, attr="id") not in {
                     AYON_INSTANCE_ID, AVALON_INSTANCE_ID
                 }:
                     continue
 
-                creator_id = get_instance_node_attr(node, attr="creator_identifier")
+                creator_id = _get_attr(node, attr="creator_identifier")
                 if creator_id is not None:
                     # creator instance
                     cache.setdefault(creator_id, []).append(node)
                 else:
                     # legacy instance
-                    family = get_instance_node_attr(node, attr="family")
+                    family = _get_attr(node, attr="family")
                     if family is None:
                         # must be a broken instance
                         continue

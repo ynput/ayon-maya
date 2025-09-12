@@ -278,9 +278,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
         object_sets = set()
         for member in members:
             object_sets.update(
-                cmds.listSets(object=member,
-                            extendToShape=False,
-                            type=2) or []
+                cmds.listSets(object=member, extendToShape=False) or []
             )
 
         super().remove(container)

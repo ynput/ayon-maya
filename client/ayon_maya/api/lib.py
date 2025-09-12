@@ -4246,13 +4246,6 @@ def get_reference_node_parents(ref):
     return parents
 
 
-def get_instance_node_attr(node, attr, default=None):
-    """Helper to get attribute which allows attribute to not exist."""
-    if not cmds.attributeQuery(attr, node=node, exists=True):
-        return default
-    return cmds.getAttr("{}.{}".format(node, attr))
-
-
 def get_creator_identifier(node: str) -> str | None:
     """Get the creator identifier of an instance node.
 
@@ -4262,12 +4255,11 @@ def get_creator_identifier(node: str) -> str | None:
     Returns:
         str | None: The creator identifier of the instance or None if not found.
     """
-    if get_instance_node_attr(node, attr="id") not in {
+    if get_attribute(f"{node}.id") not in {
         AYON_INSTANCE_ID, AVALON_INSTANCE_ID
     }:
         return None
-
-    return get_instance_node_attr(node, "creator_identifier")
+    return get_attribute(f"{node}.creator_identifier")
 
 
 def is_animation_instance(objectset: str) -> bool:
