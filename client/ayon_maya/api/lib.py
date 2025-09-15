@@ -103,6 +103,23 @@ def get_main_window():
 
 
 @contextlib.contextmanager
+def unlocked(node):
+    """Unlock a node for the duration of the context.
+
+    Args:
+        node (str): The name of the node to unlock.
+    """
+    has_locked = cmds.lockNode(node, query=True, lock=True)[0]
+    cmds.lockNode(node, lock=False)
+
+    try:
+        yield
+
+    finally:
+        cmds.lockNode(node, lock=has_locked)
+
+
+@contextlib.contextmanager
 def suspended_refresh(suspend=True):
     """Suspend viewport refreshes
 
@@ -4229,6 +4246,22 @@ def get_reference_node_parents(ref):
     return parents
 
 
+def get_creator_identifier(node: str) -> str | None:
+    """Get the creator identifier of an instance node.
+
+    Arguments:
+        node (str): The name of the instance node.
+
+    Returns:
+        str | None: The creator identifier of the instance or None if not found.
+    """
+    if get_attribute(f"{node}.id") not in {
+        AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+    }:
+        return None
+    return get_attribute(f"{node}.creator_identifier")
+
+
 def create_rig_animation_instance(
     nodes, context, namespace, options=None, log=None
 ):
@@ -4317,7 +4350,10 @@ def create_rig_animation_instance(
         create_context.create(
             creator_identifier=creator_identifier,
             variant=namespace,
-            pre_create_data={"use_selection": True}
+            pre_create_data={
+                "use_selection": True,
+                "lock_instance": options.get("lock_instance", False)
+            }
         )
 
 
