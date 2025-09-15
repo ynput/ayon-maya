@@ -4262,20 +4262,6 @@ def get_creator_identifier(node: str) -> str | None:
     return get_attribute(f"{node}.creator_identifier")
 
 
-def is_animation_instance(objectset: str) -> bool:
-    """Check if the given object set is an animation instance.
-
-    Arguments:
-        objectset (str): The name of the object set to check.
-
-    Returns:
-        bool: True if the object set is an animation instance, False otherwise.
-    """
-    return (
-        get_creator_identifier(objectset) == "io.openpype.creators.maya.animation"
-    )
-
-
 def create_rig_animation_instance(
     nodes, context, namespace, options=None, log=None
 ):

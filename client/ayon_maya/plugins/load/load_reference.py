@@ -10,7 +10,7 @@ from ayon_maya.api.lib import (
     RigSetsNotExistError,
     create_rig_animation_instance,
     get_container_members,
-    is_animation_instance,
+    get_creator_identifier,
     maintained_selection,
     parent_nodes,
 )
@@ -304,7 +304,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
             # Then only here confirm whether this is an animation instance, if so
             # then we will want to auto-remove the instance
-            if is_animation_instance(object_set):
+            if get_creator_identifier(object_set) == "io.openpype.creators.maya.animation":
                 cmds.lockNode(object_set, lock=False)
                 cmds.delete(object_set)
 
