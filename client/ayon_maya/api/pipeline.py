@@ -80,6 +80,13 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         super(MayaHost, self).__init__()
         self._op_events = {}
 
+    def get_app_information(self):
+        from ayon_core.host import ApplicationInformation
+
+        version = cmds.about(version=True)
+
+        return ApplicationInformation("Maya", version)
+
     def install(self):
         project_name = get_current_project_name()
         project_settings = get_project_settings(project_name)
