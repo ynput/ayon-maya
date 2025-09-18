@@ -85,7 +85,10 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         version = cmds.about(version=True)
 
-        return ApplicationInformation("Maya", version)
+        return ApplicationInformation(
+            app_name="Maya",
+            app_version=version,
+        )
 
     def install(self):
         project_name = get_current_project_name()
