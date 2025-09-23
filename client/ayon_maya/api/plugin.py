@@ -6,9 +6,7 @@ import qargparse
 
 from ayon_core.lib import BoolDef, Logger
 from ayon_core.pipeline import (
-    AVALON_CONTAINER_ID,
     AVALON_INSTANCE_ID,
-    AYON_CONTAINER_ID,
     AYON_INSTANCE_ID,
     Anatomy,
     AutoCreator,
@@ -29,7 +27,7 @@ from maya.app.renderSetup.model import renderSetup
 from pyblish.api import ContextPlugin, InstancePlugin
 
 from . import lib
-from .lib import imprint, read
+from .lib import imprint, read, unlocked
 from .pipeline import containerise
 
 log = Logger.get_logger()
@@ -272,11 +270,12 @@ class MayaCreatorBase:
             self._add_instance_to_context(created_instance)
 
     def _default_update_instances(self, update_list):
+
         for created_inst, _changes in update_list:
             data = created_inst.data_to_store()
             node = data.get("instance_node")
-
-            self.imprint_instance_node(node, data)
+            with unlocked(node):
+                self.imprint_instance_node(node, data)
 
     @lib.undo_chunk()
     def _default_remove_instances(self, instances):
@@ -289,6 +288,7 @@ class MayaCreatorBase:
         for instance in instances:
             node = instance.data.get("instance_node")
             if node:
+                cmds.lockNode(node, lock=False)
                 cmds.delete(node)
 
             self._remove_instance_from_context(instance)
@@ -324,6 +324,10 @@ class MayaCreator(Creator, MayaCreatorBase):
 
             self.imprint_instance_node(instance_node,
                                        data=instance.data_to_store())
+
+            if pre_create_data.get("lock_instance", False):
+                cmds.lockNode(instance_node, lock=True)
+
             return instance
 
     def collect_instances(self):
@@ -430,11 +434,13 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         # would only ever be called to say, 'hey, please refresh collect'
         self.create_singleton_node()
 
+        variant_name: str = instance_data.get("variant", "Main")
+
         # if no render layers are present, create default one with
-        # asterisk selector
+        # asterisk selector using the chosen variant name
         rs = renderSetup.instance()
         if not rs.getRenderLayers():
-            render_layer = rs.createRenderLayer("Main")
+            render_layer = rs.createRenderLayer(variant_name)
             collection = render_layer.createCollection("defaultCollection")
             collection.getSelector().setPattern('*')
 
@@ -825,7 +831,6 @@ class ReferenceLoader(Loader):
                 loader=self.__class__.__name__
             )
             loaded_containers.append(container)
-            self._organize_containers(nodes, container)
             c += 1
 
         return loaded_containers
@@ -907,7 +912,6 @@ class ReferenceLoader(Loader):
 
             self.log.warning("Ignoring file read error:\n%s", exc)
 
-        self._organize_containers(content, container["objectName"])
 
         # Reapply alembic settings.
         if repre_entity["name"] == "abc" and alembic_data:
@@ -999,7 +1003,6 @@ class ReferenceLoader(Loader):
         # Assume asset has been referenced
         members = cmds.sets(node, query=True)
         reference_node = lib.get_reference_node(members, self.log)
-
         assert reference_node, ("Imported container not supported; "
                                 "container must be referenced.")
 
@@ -1011,6 +1014,7 @@ class ReferenceLoader(Loader):
 
         try:
             cmds.delete(node)
+
         except ValueError:
             # Already implicitly deleted by Maya upon removing reference
             pass
@@ -1019,6 +1023,7 @@ class ReferenceLoader(Loader):
             # If container is not automatically cleaned up by May (issue #118)
             cmds.namespace(removeNamespace=namespace,
                            deleteNamespaceContent=True)
+
         except RuntimeError:
             pass
 
@@ -1042,19 +1047,6 @@ class ReferenceLoader(Loader):
             file_url = anatomy.replace_root_with_env_key(file_url, '${{{}}}')
 
         return file_url
-
-    @staticmethod
-    def _organize_containers(nodes, container):
-        # type: (list, str) -> None
-        """Put containers in loaded data to correct hierarchy."""
-        for node in nodes:
-            id_attr = "{}.id".format(node)
-            if not cmds.attributeQuery("id", node=node, exists=True):
-                continue
-            if cmds.getAttr(id_attr) not in {
-                AYON_CONTAINER_ID, AVALON_CONTAINER_ID
-            }:
-                cmds.sets(node, forceElement=container)
 
     @classmethod
     def get_representation_name_aliases(cls, representation_name):

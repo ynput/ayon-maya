@@ -14,6 +14,9 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
 
     default_variant = "Main"
 
+    settings_category = "maya"
+    is_mandatory = False
+
     def create(self):
 
         variant = self.default_variant
@@ -74,6 +77,11 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
             current_instance["folderPath"] = folder_path
             current_instance["task"] = task_name
             current_instance["productName"] = product_name
+
+        # The 'mandatory' functionality is available since ayon-core 1.4.1
+        #   or later.
+        if hasattr(current_instance, "set_mandatory"):
+            current_instance.set_mandatory(self.is_mandatory)
 
     def collect_instances(self):
         self.cache_instance_data(self.collection_shared_data)

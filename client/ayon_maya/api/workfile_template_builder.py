@@ -26,8 +26,6 @@ PLACEHOLDER_SET = "PLACEHOLDERS_SET"
 class MayaTemplateBuilder(AbstractTemplateBuilder):
     """Concrete implementation of AbstractTemplateBuilder for maya"""
 
-    use_legacy_creators = True
-
     def import_template(self, path):
         """Import template into current scene.
         Block if a template is already loaded.

@@ -1,12 +1,17 @@
 import json
 import math
 import os
+import re
 import uuid
 from typing import List
 
 from ayon_api import get_representation_by_id
 from ayon_maya.api import plugin, pipeline
-from ayon_maya.api.lib import get_highest_in_hierarchy, get_container_members
+from ayon_maya.api.lib import (
+    get_highest_in_hierarchy,
+    get_container_members,
+    get_all_children
+)
 from maya import cmds
 from maya.api import OpenMaya as om
 
@@ -18,6 +23,19 @@ def is_valid_uuid(value) -> bool:
     except ValueError:
         return False
     return True
+
+
+def extract_number_from_namespace(namespace):
+    """Extracts a number from the namespace.
+
+    Args:
+        namespace (str): namespace
+
+    Returns:
+        int: namespace number
+    """
+    matches = re.findall(r'(\d+)', namespace)
+    return int(matches[-1]) if matches else 0
 
 
 def convert_matrix_to_4x4_list(
@@ -59,6 +77,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             instance.data["representations"] = []
 
         json_data = []
+        container_order = 0
         # TODO representation queries can be refactored to be faster
         project_name = instance.context.data["projectName"]
         members = [member.lstrip('|') for member in instance.data["setMembers"]]
@@ -94,7 +113,10 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 continue
 
             container_dict = self.process_containers(containers)
+            allow_obj_transforms = instance.data.get("allowObjectTransforms", False)
+
             for container, container_root in container_dict.items():
+                container_order += 1
                 representation_id = cmds.getAttr(
                     "{}.representation".format(container))
 
@@ -126,7 +148,6 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 product_type = repre_context.get("product", {}).get("type")
                 if not product_type:
                     product_type = repre_context.get("family")
-
                 json_element = {
                     "product_type": product_type,
                     "instance_name": cmds.getAttr(
@@ -136,7 +157,6 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                     "extension": repre_context["ext"],
                     "host": self.hosts
                 }
-
                 local_matrix = cmds.xform(
                     container_root, query=True, matrix=True)
                 local_rotation = cmds.xform(
@@ -168,7 +188,25 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                     "y": local_rotation[1],
                     "z": local_rotation[2]
                 }
+                if allow_obj_transforms:
+                    child_transforms = cmds.ls(
+                        get_all_children(
+                            [container_root],
+                            ignore_intermediate_objects=True
+                        ),
+                        type="transform",
+                        long=True
+                    )
+                    if child_transforms:
+                        object_transforms = json_element.setdefault("object_transform", [])
+                        for child_transform in child_transforms:
+                            object_transforms.append(
+                                self.parse_objects_transform_as_json_element(
+                                    child_transform
+                                )
+                            )
                 json_data.append(json_element)
+        json_data = sorted(json_data, key=lambda x: x["instance_name"])
         json_filename = "{}.json".format(instance.name)
         json_path = os.path.join(stagingdir, json_filename)
 
@@ -245,3 +283,18 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         convert_transform.setScale([convert_scale[0], convert_scale[2], convert_scale[1]], om.MSpace.kWorld)
 
         return convert_transform.asMatrix()
+
+    def parse_objects_transform_as_json_element(self, child_transform):
+        """Parse transform data of the container objects.
+        Args:
+            child_transform (str): transform node.
+        Returns:
+            dict: transform data of the transform object
+        """
+        local_matrix = cmds.xform(child_transform, query=True, matrix=True)
+        local_rotation = cmds.xform(child_transform, query=True, rotation=True)
+        transform_matrix = self.create_transformation_matrix(local_matrix, local_rotation)
+        child_transform_name = child_transform.rsplit(":", 1)[-1]
+        return {
+            child_transform_name: transform_matrix
+        }
