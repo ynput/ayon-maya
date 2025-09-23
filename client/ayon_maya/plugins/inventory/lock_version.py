@@ -1,5 +1,5 @@
 from ayon_core.pipeline import InventoryAction
-from ayon_maya.api.lib import imprint, get_container_members
+from ayon_maya.api.lib import imprint
 
 
 class LockVersions(InventoryAction):
