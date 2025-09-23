@@ -16,7 +16,6 @@ class LockVersions(InventoryAction):
         for container in containers:
             if container.get("version_locked") is True:
                 continue
-            container["version_locked"] = True
             node = container["objectName"]
             imprint(node, {"version_locked": True})
         return True
@@ -36,7 +35,6 @@ class UnlockVersions(InventoryAction):
         for container in containers:
             if container.get("version_locked") is not True:
                 continue
-            container["version_locked"] = False
             node = container["objectName"]
             imprint(node, {"version_locked": False})
         return True
