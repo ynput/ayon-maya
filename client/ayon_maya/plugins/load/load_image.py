@@ -7,7 +7,6 @@ from ayon_core.pipeline.colorspace import (
     get_imageio_file_rules,
     get_imageio_file_rules_colorspace_from_filepath,
 )
-from ayon_core.pipeline.load.utils import get_representation_path_from_context
 from ayon_core.settings import get_project_settings
 from ayon_maya.api.lib import namespaced, unique_namespace
 from ayon_maya.api.pipeline import containerise
@@ -276,7 +275,7 @@ class FileNodeLoader(plugin.Loader):
             project_settings=project_settings
         )
 
-        path = get_representation_path_from_context(context)
+        path = self.filepath_from_context(context)
         colorspace = get_imageio_file_rules_colorspace_from_filepath(
             path,
             host_name,
@@ -296,7 +295,7 @@ class FileNodeLoader(plugin.Loader):
         template = representation.get("attrib", {}).get("template")
         if not template:
             # No template to find token locations for
-            return get_representation_path_from_context(context)
+            return self.filepath_from_context(context)
 
         def _placeholder(key):
             # Substitute with a long placeholder value so that potential
@@ -324,7 +323,7 @@ class FileNodeLoader(plugin.Loader):
 
         # Replace with our custom template that has the tokens set
         representation["attrib"]["template"] = template
-        path = get_representation_path_from_context(context)
+        path = self.filepath_from_context(context)
 
         if has_tokens:
             for key, token in tokens.items():

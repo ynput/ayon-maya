@@ -103,7 +103,7 @@ class VRayProxyLoader(plugin.Loader):
             context["project"]["name"], context["version"]["id"]
         )
         if not filename:
-            filename = get_representation_path(repre_entity)
+            filename = self.filepath_from_context(context)
 
         for vray_mesh in vraymeshes:
             cmds.setAttr("{}.fileName".format(vray_mesh),

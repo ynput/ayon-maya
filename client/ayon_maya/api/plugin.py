@@ -16,7 +16,6 @@ from ayon_core.pipeline import (
     HiddenCreator,
     LoaderPlugin,
     get_current_project_name,
-    get_representation_path,
     publish,
 )
 from ayon_core.pipeline.create import get_product_name
@@ -848,8 +847,7 @@ class ReferenceLoader(Loader):
         project_name = context["project"]["name"]
         repre_entity = context["representation"]
 
-        path = get_representation_path(repre_entity)
-
+        path = self.filepath_from_context(context)
         # Get reference node from container members
         members = get_container_members(node)
         reference_node = lib.get_reference_node(members, self.log)
