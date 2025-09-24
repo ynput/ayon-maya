@@ -67,8 +67,8 @@ class ConnectXgen(InventoryAction):
 
         # Validate source representation is an alembic.
         source_path = get_representation_path_by_project(
-            repre_contexts_by_id[source_repre_id]["representation"],
-            source_project
+            source_project,
+            repre_contexts_by_id[source_repre_id]["representation"]
         ).replace("\\", "/")
         message = "Animation container \"{}\" is not an alembic:\n{}".format(
             source_container["namespace"], source_path

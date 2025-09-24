@@ -344,7 +344,7 @@ def update_package(set_container, context):
     )
 
     current_file = get_representation_path_by_project(
-        current_representation, project_name
+        project_name, current_representation
     )
     assert current_file.endswith(".json")
     with open(current_file, "r") as fp:
@@ -352,7 +352,7 @@ def update_package(set_container, context):
 
     # Load the new package data
     new_file = get_representation_path_by_project(
-        repre_entity, project_name
+        project_name, repre_entity
     )
     assert new_file.endswith(".json")
     with open(new_file, "r") as fp:

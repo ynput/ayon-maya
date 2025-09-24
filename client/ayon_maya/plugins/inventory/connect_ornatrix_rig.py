@@ -97,8 +97,8 @@ class ConnectOrnatrixRig(InventoryAction):
 
         # Validate source representation is an alembic.
         source_path = get_representation_path_by_project(
-            repre_contexts_by_id[source_repre_id]["representation"],
-            source_project
+            source_project,
+            repre_contexts_by_id[source_repre_id]["representation"]
         ).replace("\\", "/")
         message = "Animation container \"{}\" is not an alembic:\n{}".format(
             source_container["namespace"], source_path
@@ -132,7 +132,7 @@ class ConnectOrnatrixRig(InventoryAction):
             if not settings_repre:
                 continue
             settings_file = get_representation_path_by_project(
-                settings_repre, project_name
+                project_name, settings_repre
             )
             if not os.path.exists(settings_file):
                 continue

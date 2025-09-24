@@ -34,7 +34,7 @@ def get_look_relationships(version_id: str) -> dict:
 
     # Load relationships
     shader_relation = lib.get_representation_path_by_project(
-        json_representation, project_name
+        project_name, json_representation
     )
     with open(shader_relation, "r") as f:
         relationships = json.load(f)

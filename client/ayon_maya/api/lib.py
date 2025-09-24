@@ -1879,18 +1879,16 @@ def get_container_members(container):
     return list(all_members)
 
 
-def get_representation_path_by_project(repre_entity, project_name=None):
+def get_representation_path_by_project(project_name, repre_entity):
     """Get the representation path for a given representation entity.
 
     Args:
+        project_name (str): The project name.
         repre_entity (dict): The representation entity.
-        project_name (str, optional): The project name. Defaults to None.
 
     Returns:
         str: The representation path.
     """
-    if project_name is None:
-        project_name = get_current_project_name()
     anatomy = Anatomy(project_name)
     return get_representation_path_from_anatomy(repre_entity, anatomy)
 
@@ -1964,7 +1962,7 @@ def assign_look_by_version(nodes, version_id):
 
     # Load relationships
     shader_relation = get_representation_path_by_project(
-        json_representation, project_name
+        project_name, json_representation
     )
     with open(shader_relation, "r") as f:
         relationships = json.load(f)

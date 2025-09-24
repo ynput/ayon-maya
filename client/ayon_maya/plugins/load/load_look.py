@@ -83,7 +83,7 @@ class LookLoader(ayon_maya.api.plugin.ReferenceLoader):
 
         # Load relationships
         shader_relation = get_representation_path_by_project(
-            json_representation, project_name
+            project_name, json_representation
         )
         with open(shader_relation, "r") as f:
             json_data = json.load(f)

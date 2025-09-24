@@ -86,8 +86,8 @@ class ConnectYetiRig(InventoryAction):
             repre_id = container["representation"]
 
             maya_file = get_representation_path_by_project(
-                repre_contexts_by_id[repre_id]["representation"],
-                source_project
+                source_project,
+                repre_contexts_by_id[repre_id]["representation"]
             )
             _, ext = os.path.splitext(maya_file)
             settings_file = maya_file.replace(ext, ".rigsettings")

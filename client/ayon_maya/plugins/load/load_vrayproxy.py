@@ -189,7 +189,7 @@ class VRayProxyLoader(plugin.Loader):
         )
         if abc_rep:
             self.log.debug("Found, we'll link alembic to vray proxy.")
-            file_name = get_representation_path_by_project(abc_rep, project_name)
+            file_name = get_representation_path_by_project(project_name, abc_rep)
             self.log.debug("File: {}".format(file_name))
             return file_name
 
