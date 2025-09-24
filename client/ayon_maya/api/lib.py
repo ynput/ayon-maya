@@ -25,7 +25,6 @@ from ayon_core.pipeline import (
     get_current_folder_path,
     discover_loader_plugins,
     loaders_from_representation,
-    get_representation_path_from_anatomy,
     load_container,
     registered_host,
     AVALON_CONTAINER_ID,
@@ -34,6 +33,7 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
     Anatomy,
 )
+from ayon_core.pipeline.load import get_representation_path_from_anatomy
 from ayon_core.lib import NumberDef
 from ayon_core.pipeline.context_tools import get_current_task_entity
 from ayon_core.pipeline.create import CreateContext
