@@ -4,8 +4,9 @@ import xgenm
 from ayon_core.pipeline import (
     InventoryAction,
     get_repres_contexts,
-    get_representation_path,
+    get_current_project_name,
 )
+from ayon_maya.api.lib import get_representation_path_by_project
 
 
 class ConnectXgen(InventoryAction):
@@ -60,10 +61,14 @@ class ConnectXgen(InventoryAction):
         source_container = source_containers[0]
         source_repre_id = source_container["representation"]
         source_object = source_container["objectName"]
+        source_project = source_container.get(
+            "project_name", get_current_project_name()
+        )
 
         # Validate source representation is an alembic.
-        source_path = get_representation_path(
-            repre_contexts_by_id[source_repre_id]["representation"]
+        source_path = get_representation_path_by_project(
+            repre_contexts_by_id[source_repre_id]["representation"],
+            source_project
         ).replace("\\", "/")
         message = "Animation container \"{}\" is not an alembic:\n{}".format(
             source_container["namespace"], source_path

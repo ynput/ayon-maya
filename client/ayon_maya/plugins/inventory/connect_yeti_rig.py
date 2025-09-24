@@ -7,9 +7,13 @@ from maya import cmds
 from ayon_core.pipeline import (
     InventoryAction,
     get_repres_contexts,
-    get_representation_path,
+    get_current_project_name,
 )
-from ayon_maya.api.lib import get_container_members, get_id
+from ayon_maya.api.lib import (
+    get_container_members,
+    get_id,
+    get_representation_path_by_project,
+)
 
 
 class ConnectYetiRig(InventoryAction):
@@ -62,6 +66,9 @@ class ConnectYetiRig(InventoryAction):
 
         source_container = source_containers[0]
         source_ids = self.nodes_by_id(source_container)
+        source_project = source_container.get(
+            "project_name", get_current_project_name()
+        )
 
         # Target containers.
         target_ids = {}
@@ -78,8 +85,9 @@ class ConnectYetiRig(InventoryAction):
             target_ids.update(self.nodes_by_id(container))
             repre_id = container["representation"]
 
-            maya_file = get_representation_path(
-                repre_contexts_by_id[repre_id]["representation"]
+            maya_file = get_representation_path_by_project(
+                repre_contexts_by_id[repre_id]["representation"],
+                source_project
             )
             _, ext = os.path.splitext(maya_file)
             settings_file = maya_file.replace(ext, ".rigsettings")

@@ -15,13 +15,13 @@ from ayon_core.pipeline import (
     load_container,
     update_container,
     remove_container,
-    get_representation_path,
     get_current_project_name,
 )
 from ayon_maya.api.lib import (
     matrix_equals,
     unique_namespace,
     get_container_transforms,
+    get_representation_path_by_project,
     DEFAULT_MATRIX
 )
 
@@ -343,13 +343,17 @@ def update_package(set_container, context):
         project_name, set_container["representation"]
     )
 
-    current_file = get_representation_path(current_representation)
+    current_file = get_representation_path_by_project(
+        current_representation, project_name
+    )
     assert current_file.endswith(".json")
     with open(current_file, "r") as fp:
         current_data = json.load(fp)
 
     # Load the new package data
-    new_file = get_representation_path(repre_entity)
+    new_file = get_representation_path_by_project(
+        repre_entity, project_name
+    )
     assert new_file.endswith(".json")
     with open(new_file, "r") as fp:
         new_data = json.load(fp)

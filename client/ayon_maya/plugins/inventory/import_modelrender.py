@@ -145,7 +145,7 @@ class ImportModelRender(InventoryAction):
             print("No model render sets for this model version..")
             return
 
-        # TODO use 'get_representation_path_with_anatomy' instead
+        # TODO use 'get_representation_path_by_project_with_anatomy' instead
         #   of 'filepath_from_context'
         context = contexts_by_repre_id.get(look_repre["id"])
         maya_file = self.filepath_from_context(context)
