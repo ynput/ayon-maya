@@ -6,11 +6,10 @@ from collections import defaultdict
 import ayon_maya.api.plugin
 from ayon_api import get_representation_by_name
 from ayon_core.tools.utils import ScrollMessageBox
+from ayon_core.pipeline.load import get_representation_path_v2
 from ayon_maya.api import lib
-from ayon_maya.api.lib import (
-    get_reference_node,
-    get_representation_path_v2
-)
+from ayon_maya.api.lib import get_reference_node
+
 from qtpy import QtWidgets
 
 
