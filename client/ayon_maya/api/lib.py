@@ -31,7 +31,6 @@ from ayon_core.pipeline import (
     AVALON_INSTANCE_ID,
     AYON_INSTANCE_ID,
     AYON_CONTAINER_ID,
-    Anatomy,
 )
 from ayon_core.pipeline.load import get_representation_path_v2
 from ayon_core.lib import NumberDef
