@@ -1891,7 +1891,7 @@ def get_representation_path_by_project(repre_entity, project_name=None):
     """
     if project_name is None:
         project_name = get_current_project_name()
-    anatomy = Anatomy
+    anatomy = Anatomy(project_name)
     return get_representation_path_from_anatomy(repre_entity, anatomy)
 
 
