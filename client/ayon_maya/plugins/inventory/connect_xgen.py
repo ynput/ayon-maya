@@ -6,7 +6,7 @@ from ayon_core.pipeline import (
     get_repres_contexts,
     get_current_project_name,
 )
-from ayon_maya.api.lib import get_representation_path_by_project
+from ayon_core.pipeline.load import get_representation_path_v2
 
 
 class ConnectXgen(InventoryAction):
@@ -66,7 +66,7 @@ class ConnectXgen(InventoryAction):
         )
 
         # Validate source representation is an alembic.
-        source_path = get_representation_path_by_project(
+        source_path = get_representation_path_v2(
             source_project,
             repre_contexts_by_id[source_repre_id]["representation"]
         ).replace("\\", "/")

@@ -33,7 +33,7 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
     Anatomy,
 )
-from ayon_core.pipeline.load import get_representation_path_from_anatomy
+from ayon_core.pipeline.load import get_representation_path_v2
 from ayon_core.lib import NumberDef
 from ayon_core.pipeline.context_tools import get_current_task_entity
 from ayon_core.pipeline.create import CreateContext
@@ -1879,20 +1879,6 @@ def get_container_members(container):
     return list(all_members)
 
 
-def get_representation_path_by_project(project_name, repre_entity):
-    """Get the representation path for a given representation entity.
-
-    Args:
-        project_name (str): The project name.
-        repre_entity (dict): The representation entity.
-
-    Returns:
-        str: The representation path.
-    """
-    anatomy = Anatomy(project_name)
-    return get_representation_path_from_anatomy(repre_entity, anatomy)
-
-
 # region LOOKDEV
 def list_looks(project_name, folder_id):
     """Return all look products for the given folder.
@@ -1961,7 +1947,7 @@ def assign_look_by_version(nodes, version_id):
     shader_nodes = get_container_members(container_node)
 
     # Load relationships
-    shader_relation = get_representation_path_by_project(
+    shader_relation = get_representation_path_v2(
         project_name, json_representation
     )
     with open(shader_relation, "r") as f:

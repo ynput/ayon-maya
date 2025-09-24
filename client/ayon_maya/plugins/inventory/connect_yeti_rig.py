@@ -9,10 +9,10 @@ from ayon_core.pipeline import (
     get_repres_contexts,
     get_current_project_name,
 )
+from ayon_core.pipeline.load import get_representation_path_v2
 from ayon_maya.api.lib import (
     get_container_members,
     get_id,
-    get_representation_path_by_project,
 )
 
 
@@ -85,7 +85,7 @@ class ConnectYetiRig(InventoryAction):
             target_ids.update(self.nodes_by_id(container))
             repre_id = container["representation"]
 
-            maya_file = get_representation_path_by_project(
+            maya_file = get_representation_path_v2(
                 source_project,
                 repre_contexts_by_id[repre_id]["representation"]
             )
