@@ -9,10 +9,10 @@ from ayon_core.pipeline import (
     get_repres_contexts,
     get_current_project_name
 )
-from ayon_core.pipeline.load import get_representation_path_v2
 from ayon_maya.api.lib import (
     get_container_members,
-    get_node_name
+    get_node_name,
+    get_representation_path_by_project,
 )
 from ayon_api import (
     get_representation_by_id,
@@ -96,7 +96,7 @@ class ConnectOrnatrixRig(InventoryAction):
         )
 
         # Validate source representation is an alembic.
-        source_path = get_representation_path_v2(
+        source_path = get_representation_path_by_project(
             source_project,
             repre_contexts_by_id[source_repre_id]["representation"]
         ).replace("\\", "/")
@@ -131,7 +131,7 @@ class ConnectOrnatrixRig(InventoryAction):
                 representation_name="rigsettings")
             if not settings_repre:
                 continue
-            settings_file = get_representation_path_v2(
+            settings_file = get_representation_path_by_project(
                 project_name, settings_repre
             )
             if not os.path.exists(settings_file):

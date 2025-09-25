@@ -11,7 +11,6 @@ from ayon_core.pipeline import (
     loaders_from_representation,
     load_container
 )
-from ayon_core.pipeline.load import get_representation_path_v2
 from ayon_maya.api import lib
 
 
@@ -34,7 +33,7 @@ def get_look_relationships(version_id: str) -> dict:
     )
 
     # Load relationships
-    shader_relation = get_representation_path_v2(
+    shader_relation = lib.get_representation_path_by_project(
         project_name, json_representation
     )
     with open(shader_relation, "r") as f:

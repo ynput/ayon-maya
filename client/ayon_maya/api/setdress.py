@@ -17,12 +17,12 @@ from ayon_core.pipeline import (
     remove_container,
     get_current_project_name,
 )
-from ayon_core.pipeline.load import get_representation_path_v2
 from ayon_maya.api.lib import (
     matrix_equals,
     unique_namespace,
     get_container_transforms,
-    DEFAULT_MATRIX
+    DEFAULT_MATRIX,
+    get_representation_path_by_project,
 )
 
 log = logging.getLogger("PackageLoader")
@@ -343,7 +343,7 @@ def update_package(set_container, context):
         project_name, set_container["representation"]
     )
 
-    current_file = get_representation_path_v2(
+    current_file = get_representation_path_by_project(
         project_name, current_representation
     )
     assert current_file.endswith(".json")
@@ -351,7 +351,7 @@ def update_package(set_container, context):
         current_data = json.load(fp)
 
     # Load the new package data
-    new_file = get_representation_path_v2(
+    new_file = get_representation_path_by_project(
         project_name, repre_entity
     )
     assert new_file.endswith(".json")

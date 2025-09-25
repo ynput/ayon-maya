@@ -10,11 +10,11 @@ import os
 import ayon_api
 import maya.cmds as cmds
 from ayon_core.settings import get_project_settings
-from ayon_core.pipeline.load import get_representation_path_v2
 from ayon_maya.api.lib import (
     maintained_selection,
     namespaced,
-    unique_namespace
+    unique_namespace,
+    get_representation_path_by_project
 )
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
@@ -189,7 +189,7 @@ class VRayProxyLoader(plugin.Loader):
         )
         if abc_rep:
             self.log.debug("Found, we'll link alembic to vray proxy.")
-            file_name = get_representation_path_v2(project_name, abc_rep)
+            file_name = get_representation_path_by_project(project_name, abc_rep)
             self.log.debug("File: {}".format(file_name))
             return file_name
 
