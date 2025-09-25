@@ -33,7 +33,7 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
     Anatomy,
 )
-from ayon_core.pipeline.load import get_representation_path_from_anatomy
+from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.lib import NumberDef
 from ayon_core.pipeline.context_tools import get_current_task_entity
 from ayon_core.pipeline.create import CreateContext
@@ -1893,7 +1893,7 @@ def get_representation_path_by_project(project_name, repre_entity):
     if project_name is None:
         project_name = get_current_project_name()
     anatomy = Anatomy(project_name)
-    return get_representation_path_from_anatomy(repre_entity, anatomy)
+    return get_representation_path_with_anatomy(repre_entity, anatomy)
 
 
 # region LOOKDEV
