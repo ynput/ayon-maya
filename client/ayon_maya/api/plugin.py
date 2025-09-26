@@ -16,7 +16,6 @@ from ayon_core.pipeline import (
     HiddenCreator,
     LoaderPlugin,
     get_current_project_name,
-    get_representation_path,
     publish,
 )
 from ayon_core.pipeline.create import get_product_name
@@ -629,12 +628,12 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
             task_type = task_entity["taskType"]
         # creator.product_type != 'render' as expected
         return get_product_name(
-            project_name,
-            task_name,
-            task_type,
-            host_name,
-            self.layer_instance_prefix or self.product_type,
-            variant,
+            project_name=project_name,
+            task_name=task_name,
+            task_type=task_type,
+            host_name=host_name,
+            product_type=self.layer_instance_prefix or self.product_type,
+            variant=variant,
             dynamic_data=dynamic_data,
             project_settings=self.project_settings
         )
@@ -848,8 +847,7 @@ class ReferenceLoader(Loader):
         project_name = context["project"]["name"]
         repre_entity = context["representation"]
 
-        path = get_representation_path(repre_entity)
-
+        path = self.filepath_from_context(context)
         # Get reference node from container members
         members = get_container_members(node)
         reference_node = lib.get_reference_node(members, self.log)
