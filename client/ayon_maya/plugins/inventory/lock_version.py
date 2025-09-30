@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any
+
 from maya import cmds
 
 from ayon_core.pipeline import InventoryAction
@@ -10,10 +14,10 @@ class LockVersions(InventoryAction):
     order = -1
 
     @staticmethod
-    def is_compatible(container):
+    def is_compatible(container: dict[str, Any]) -> bool:
         return container.get("version_locked") is not True
 
-    def process(self, containers):
+    def process(self, containers: list[dict[str, Any]]) -> bool:
         for container in containers:
             if container.get("version_locked") is True:
                 continue
@@ -34,10 +38,10 @@ class UnlockVersions(InventoryAction):
     order = -1
 
     @staticmethod
-    def is_compatible(container):
+    def is_compatible(container: dict[str, Any]) -> bool:
         return container.get("version_locked") is True
 
-    def process(self, containers):
+    def process(self, containers: list[dict[str, Any]]) -> bool:
         for container in containers:
             if container.get("version_locked") is not True:
                 continue
