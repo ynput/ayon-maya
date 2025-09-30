@@ -1,4 +1,3 @@
-from ayon_core.pipeline import get_representation_path
 from ayon_maya.api.lib import get_container_members, unique_namespace
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
@@ -58,7 +57,7 @@ class AudioLoader(plugin.Loader):
         )
         activate_sound = current_sound == audio_node
 
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
 
         cmds.sound(
             audio_node,

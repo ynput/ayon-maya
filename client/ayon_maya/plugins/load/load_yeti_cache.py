@@ -4,7 +4,6 @@ import re
 from collections import defaultdict
 
 import clique
-from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
 from ayon_maya.api import lib
 from ayon_maya.api.pipeline import containerise
@@ -132,7 +131,7 @@ class YetiCacheLoader(plugin.Loader):
         namespace = container["namespace"]
         container_node = container["objectName"]
 
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         settings = self.read_settings(path)
 
         # Collect scene information of asset
