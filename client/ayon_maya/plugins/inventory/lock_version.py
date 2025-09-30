@@ -23,8 +23,9 @@ class LockVersions(InventoryAction):
                 continue
             node = container["objectName"]
             key = "version_locked"
-            if not cmds.attributeQuery(key, node=node, exists=True):
-                cmds.addAttr(node, longName=key, attributeType=bool)
+            if cmds.attributeQuery(key, node=node, exists=True):
+                cmds.deleteAttr(f"{node}.{key}")
+            cmds.addAttr(node, longName=key, attributeType=bool)
             cmds.setAttr(
                 f"{node}.{key}", True, keyable=False, channelBox=True
             )
@@ -48,7 +49,5 @@ class UnlockVersions(InventoryAction):
             node = container["objectName"]
             key = "version_locked"
             if cmds.attributeQuery(key, node=node, exists=True):
-                cmds.setAttr(
-                    f"{node}.{key}", False, keyable=False, channelBox=True
-                )
+                cmds.deleteAttr(f"{node}.{key}")
         return True
