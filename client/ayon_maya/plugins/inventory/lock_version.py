@@ -1,5 +1,6 @@
+from maya import cmds
+
 from ayon_core.pipeline import InventoryAction
-from ayon_maya.api.lib import imprint
 
 
 class LockVersions(InventoryAction):
@@ -17,7 +18,12 @@ class LockVersions(InventoryAction):
             if container.get("version_locked") is True:
                 continue
             node = container["objectName"]
-            imprint(node, {"version_locked": True})
+            key = "version_locked"
+            if not cmds.attributeQuery(key, node=node, exists=True):
+                cmds.addAttr(node, longName=key, attributeType=bool)
+            cmds.setAttr(
+                f"{node}.{key}", True, keyable=False, channelBox=True
+            )
         return True
 
 
@@ -36,5 +42,9 @@ class UnlockVersions(InventoryAction):
             if container.get("version_locked") is not True:
                 continue
             node = container["objectName"]
-            imprint(node, {"version_locked": False})
+            key = "version_locked"
+            if cmds.attributeQuery(key, node=node, exists=True):
+                cmds.setAttr(
+                    f"{node}.{key}", False, keyable=False, channelBox=True
+                )
         return True
