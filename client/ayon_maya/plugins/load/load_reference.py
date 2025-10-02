@@ -183,6 +183,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
             self[:] = new_nodes
 
+            settings = get_project_settings(project_name)
             if attach_to_root:
                 group_name = "|" + group_name
                 roots = cmds.listRelatives(group_name,
@@ -196,7 +197,6 @@ class ReferenceLoader(plugin.ReferenceLoader):
                     with parent_nodes(roots, parent=None):
                         cmds.xform(group_name, zeroTransformPivots=True)
 
-                settings = get_project_settings(project_name)
                 color = plugin.get_load_color_for_product_type(
                     product_type, settings
                 )
