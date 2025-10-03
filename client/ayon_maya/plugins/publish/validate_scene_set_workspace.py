@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import maya.cmds as cmds
 from ayon_core.pipeline.publish import (
@@ -8,10 +9,32 @@ from ayon_core.pipeline.publish import (
 from ayon_maya.api import plugin
 
 
+def strip_extended_prefix(path):
+    """
+    Remove Windows extended-length prefixes:
+      - '\\\\?\\C:\\...' -> 'C:\\...'
+      - '\\\\?\\UNC\\server\\share\\...' -> '\\\\server\\share\\...'
+    Accepts str or pathlib.Path and tolerates forward slashes.
+    """
+    if isinstance(path, Path):
+        path = str(path)
+    if not isinstance(path, str):
+        raise TypeError("path must be str or pathlib.Path")
+
+    p = path.replace('/', '\\')        # normalize forward slashes -> backslashes
+    p_low = p.lower()
+
+    if p_low.startswith('\\\\?\\unc\\'):      # extended UNC -> normal UNC
+        return '\\\\' + p[8:]
+    if p_low.startswith('\\\\?\\'):           # extended local path -> drop prefix
+        return p[4:]
+    return p
+
+
 def is_subdir(path, root_dir):
     """ Returns whether path is a subdirectory (or file) within root_dir """
-    path = os.path.realpath(path)
-    root_dir = os.path.realpath(root_dir)
+    path = strip_extended_prefix(os.path.realpath(path))
+    root_dir = strip_extended_prefix(os.path.realpath(root_dir))
 
     # If not on same drive
     if os.path.splitdrive(path)[0].lower() != os.path.splitdrive(root_dir)[0].lower():  # noqa: E501
