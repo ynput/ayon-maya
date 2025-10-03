@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import maya.cmds as cmds  # noqa
-from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
 from ayon_maya.api.lib import maintained_selection, namespaced, unique_namespace
 from ayon_maya.api.pipeline import containerise
@@ -72,7 +71,7 @@ class VRaySceneLoader(plugin.Loader):
         assert vraymeshes, "Cannot find VRayScene in container"
 
         repre_entity = context["representation"]
-        filename = get_representation_path(repre_entity)
+        filename = self.filepath_from_context(context)
 
         for vray_mesh in vraymeshes:
             cmds.setAttr("{}.FilePath".format(vray_mesh),

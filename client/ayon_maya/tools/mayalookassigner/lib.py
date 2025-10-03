@@ -6,7 +6,6 @@ from ayon_api import get_representation_by_name
 
 from ayon_core.pipeline import (
     get_current_project_name,
-    get_representation_path,
     registered_host,
     discover_loader_plugins,
     loaders_from_representation,
@@ -34,7 +33,9 @@ def get_look_relationships(version_id: str) -> dict:
     )
 
     # Load relationships
-    shader_relation = get_representation_path(json_representation)
+    shader_relation = lib.get_representation_path_by_project(
+        project_name, json_representation
+    )
     with open(shader_relation, "r") as f:
         relationships = json.load(f)
 
