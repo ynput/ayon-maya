@@ -17,7 +17,10 @@ class CreateArnoldSceneSource(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.ass"
     label = "Arnold Scene Source"
-    product_type = "ass"
+    # product_type to be defined in the project settings
+    # use product_base_type instead
+    # see https://github.com/ynput/ayon-core/issues/1297
+    product_base_type = product_type = "ass"
     icon = "cube"
     settings_name = "CreateAss"
 

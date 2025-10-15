@@ -29,7 +29,10 @@ class CreateMultishotLayout(plugin.MayaCreator):
     """
     identifier = "io.openpype.creators.maya.multishotlayout"
     label = "Multi-shot Layout"
-    product_type = "layout"
+    # product_type to be defined in the project settings
+    # use product_base_type instead
+    # see https://github.com/ynput/ayon-core/issues/1297
+    product_base_type = product_type = "layout"
     icon = "project-diagram"
 
     def get_pre_create_attr_defs(self):

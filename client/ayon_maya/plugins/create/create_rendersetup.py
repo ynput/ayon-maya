@@ -7,7 +7,10 @@ class CreateRenderSetup(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.rendersetup"
     label = "Render Setup Preset"
-    product_type = "rendersetup"
+    # product_type to be defined in the project settings
+    # use product_base_type instead
+    # see https://github.com/ynput/ayon-core/issues/1297
+    product_base_type = product_type = "rendersetup"
     icon = "tablet"
 
     def get_pre_create_attr_defs(self):

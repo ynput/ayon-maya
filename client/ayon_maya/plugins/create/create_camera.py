@@ -10,7 +10,10 @@ class CreateCamera(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.camera"
     label = "Camera"
-    product_type = "camera"
+    # product_type to be defined in the project settings
+    # use product_base_type instead
+    # see https://github.com/ynput/ayon-core/issues/1297
+    product_base_type = product_type = "camera"
     icon = "video-camera"
 
     def get_instance_attr_defs(self):

@@ -13,7 +13,10 @@ class CreateMayaUsd(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.mayausd"
     label = "Maya USD"
-    product_type = "usd"
+    # product_type to be defined in the project settings
+    # use product_base_type instead
+    # see https://github.com/ynput/ayon-core/issues/1297
+    product_base_type = product_type = "usd"
     icon = "cubes"
     description = "Create Maya USD Export"
     cache = {}

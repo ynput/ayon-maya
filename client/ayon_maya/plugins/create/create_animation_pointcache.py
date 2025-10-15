@@ -84,7 +84,10 @@ class CreateAnimation(plugin.MayaHiddenCreator):
     identifier = "io.openpype.creators.maya.animation"
     name = "animationDefault"
     label = "Animation"
-    product_type = "animation"
+    # product_type to be defined in the project settings
+    # use product_base_type instead
+    # see https://github.com/ynput/ayon-core/issues/1297
+    product_base_type = product_type = "animation"
     icon = "male"
 
     include_parent_hierarchy = False
@@ -108,7 +111,7 @@ class CreatePointCache(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.pointcache"
     label = "Pointcache"
-    product_type = "pointcache"
+    product_base_type = "pointcache"
     icon = "gears"
     include_user_defined_attributes = False
 

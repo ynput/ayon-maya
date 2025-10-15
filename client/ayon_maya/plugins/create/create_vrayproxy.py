@@ -10,7 +10,10 @@ class CreateVrayProxy(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.vrayproxy"
     label = "VRay Proxy"
-    product_type = "vrayproxy"
+    # product_type to be defined in the project settings
+    # use product_base_type instead
+    # see https://github.com/ynput/ayon-core/issues/1297
+    product_base_type = product_type = "vrayproxy"
     icon = "gears"
 
     vrmesh = True

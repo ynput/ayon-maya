@@ -24,7 +24,10 @@ class CreateRender(plugin.RenderlayerCreator):
     """
 
     identifier = "io.openpype.creators.maya.renderlayer"
-    product_type = "renderlayer"
+    # product_type to be defined in the project settings
+    # use product_base_type instead
+    # see https://github.com/ynput/ayon-core/issues/1297
+    product_base_type = product_type = "renderlayer"
     label = "Render"
     icon = "eye"
 

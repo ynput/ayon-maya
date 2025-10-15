@@ -10,7 +10,10 @@ class CreateYetiCache(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.yeticache"
     label = "Yeti Cache"
-    product_type = "yeticache"
+    # product_type to be defined in the project settings
+    # use product_base_type instead
+    # see https://github.com/ynput/ayon-core/issues/1297
+    product_base_type = product_type = "yeticache"
     icon = "pagelines"
 
     def get_instance_attr_defs(self):

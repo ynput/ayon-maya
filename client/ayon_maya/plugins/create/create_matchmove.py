@@ -15,7 +15,10 @@ class CreateMatchmove(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.matchmove"
     label = "Matchmove"
-    product_type = "matchmove"
+    # product_type to be defined in the project settings
+    # use product_base_type instead
+    # see https://github.com/ynput/ayon-core/issues/1297
+    product_base_type = product_type = "matchmove"
     icon = "video-camera"
 
     def get_instance_attr_defs(self):

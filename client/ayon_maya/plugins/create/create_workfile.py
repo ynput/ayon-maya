@@ -9,7 +9,10 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
     """Workfile auto-creator."""
     identifier = "io.openpype.creators.maya.workfile"
     label = "Workfile"
-    product_type = "workfile"
+    # product_type to be defined in the project settings
+    # use product_base_type instead
+    # see https://github.com/ynput/ayon-core/issues/1297
+    product_base_type = product_type = "workfile"
     icon = "fa5.file"
 
     default_variant = "Main"
