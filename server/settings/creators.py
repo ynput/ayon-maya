@@ -21,7 +21,7 @@ class CreateLookModel(BaseSettingsModel):
     rs_tex: bool = SettingsField(title="Make Redshift texture files")
     include_texture_reference_objects: bool = SettingsField(title="Texture Reference Objects")
     default_variants: list[str] = SettingsField(
-        default_factory=list, title="Default Products"
+        default_factory=list, title="Default Variants"
     )
 
 
@@ -29,7 +29,7 @@ class BasicCreatorModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     default_variants: list[str] = SettingsField(
         default_factory=list,
-        title="Default Products"
+        title="Default Variants"
     )
 
 
@@ -37,7 +37,7 @@ class CreateUnrealStaticMeshModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     default_variants: list[str] = SettingsField(
         default_factory=list,
-        title="Default Products"
+        title="Default Variants"
     )
     static_mesh_prefix: str = SettingsField("S", title="Static Mesh Prefix")
     collision_prefixes: list[str] = SettingsField(
@@ -49,7 +49,7 @@ class CreateUnrealStaticMeshModel(BaseSettingsModel):
 class CreateUnrealSkeletalMeshModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     default_variants: list[str] = SettingsField(
-        default_factory=list, title="Default Products")
+        default_factory=list, title="Default Variants")
     joint_hints: str = SettingsField("jnt_org", title="Joint root hint")
 
 
@@ -63,7 +63,7 @@ class BasicExportMeshModel(BaseSettingsModel):
     write_face_sets: bool = SettingsField(title="Write Face Sets")
     default_variants: list[str] = SettingsField(
         default_factory=list,
-        title="Default Products"
+        title="Default Variants"
     )
     include_shaders: bool = SettingsField(title="Include Shaders")
 
@@ -75,7 +75,7 @@ class CreateAnimationModel(BaseSettingsModel):
         title="Include User Defined Attributes")
     default_variants: list[str] = SettingsField(
         default_factory=list,
-        title="Default Products"
+        title="Default Variants"
     )
 
 
@@ -86,7 +86,7 @@ class CreatePointCacheModel(BaseSettingsModel):
     )
     default_variants: list[str] = SettingsField(
         default_factory=list,
-        title="Default Products"
+        title="Default Variants"
     )
 
 
@@ -96,7 +96,7 @@ class CreateProxyAlembicModel(BaseSettingsModel):
     write_face_sets: bool = SettingsField(title="Write Face Sets")
     default_variants: list[str] = SettingsField(
         default_factory=list,
-        title="Default Products"
+        title="Default Variants"
     )
 
 
@@ -131,7 +131,7 @@ class CreateVrayProxyModel(BaseSettingsModel):
     vrmesh: bool = SettingsField(title="VrMesh")
     alembic: bool = SettingsField(title="Alembic")
     default_variants: list[str] = SettingsField(
-        default_factory=list, title="Default Products")
+        default_factory=list, title="Default Variants")
 
 
 class CreateSetDressModel(BaseSettingsModel):
@@ -139,7 +139,7 @@ class CreateSetDressModel(BaseSettingsModel):
     exactSetMembersOnly: bool = SettingsField(title="Exact Set Members Only")
     shader: bool = SettingsField(title="Include shader")
     default_variants: list[str] = SettingsField(
-        default_factory=list, title="Default Products")
+        default_factory=list, title="Default Variants")
 
 
 class CreatorsModel(BaseSettingsModel):
