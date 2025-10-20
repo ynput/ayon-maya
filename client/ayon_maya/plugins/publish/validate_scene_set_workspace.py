@@ -32,6 +32,7 @@ class ValidateSceneSetWorkspace(plugin.MayaContextPlugin):
 
     order = ValidatePipelineOrder
     label = 'Maya Workspace Set'
+    label = "Maya Workspace Set"
 
     def process(self, context):
 
