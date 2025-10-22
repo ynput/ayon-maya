@@ -1,7 +1,6 @@
 import os
 from typing import List
 
-from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import BoolDef
 
@@ -106,7 +105,7 @@ class LoadVDBtoRedShift(plugin.Loader):
     def update(self, container, context):
 
         repre_entity = context["representation"]
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
 
         # Find VRayVolumeGrid
         members = cmds.sets(container['objectName'], query=True)
