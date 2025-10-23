@@ -1,3 +1,4 @@
+from __future__ import annotations
 from maya import cmds
 
 from ayon_core.pipeline.workfile.workfile_template_builder import (
@@ -90,17 +91,20 @@ class MayaPlaceholderLoadPlugin(MayaPlaceholderPlugin, PlaceholderLoadMixin):
         if not container:
             return
 
-        # TODO: This currently returns only a single root but a loaded scene
-        #   could technically load more than a single root
-        container_root = get_container_transforms(container, root=True)
+        container_roots: list[str] = get_container_transforms(
+            container, root=True
+        )
 
-        # Bugfix: The get_container_transforms does not recognize the load
-        # reference group currently
-        # TODO: Remove this when it does
-        parent = get_node_parent(container_root)
-        if parent:
-            container_root = parent
-        roots = [container_root]
+        roots: list[str] = []
+        for container_root in container_roots:
+            # Bugfix: The get_container_transforms does not recognize the load
+            # reference group currently
+            # TODO: Remove this when it does
+            parent = get_node_parent(container_root)
+            if parent:
+                container_root = parent
+
+            roots.append(container_root)
 
         # Add the loaded roots to the holding sets if they exist
         holding_sets = cmds.listSets(object=placeholder.scene_identifier) or []
