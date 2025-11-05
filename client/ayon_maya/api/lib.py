@@ -4409,10 +4409,10 @@ def create_camera_instance(
     ]
     assert camera_nodes, "No camera nodes in camera, this is a bug."
 
-    folder_entity = context["folder"]
-    product_entity = context["product"]
-    product_type = product_entity["productType"]
-    product_name = product_entity["name"]
+    folder_entity: dict = context["folder"]
+    product_entity: dict = context["product"]
+    product_type: str = product_entity["productType"]
+    product_name: str = product_entity["name"]
 
     custom_product_name = options.get("cameraProductName")
     if custom_product_name:
