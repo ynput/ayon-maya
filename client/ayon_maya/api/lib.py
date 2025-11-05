@@ -4401,7 +4401,7 @@ def create_camera_instance(
     if options is None:
         options = {}
 
-    cameras = cmds.ls(nodes, type="camera")
+    cameras = cmds.ls(nodes, type="camera", long=True)
     camera_nodes = [
         node for node in nodes if cmds.referenceQuery(
             cameras, isNodeReferenced=True
