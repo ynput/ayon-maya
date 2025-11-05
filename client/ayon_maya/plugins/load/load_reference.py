@@ -241,7 +241,9 @@ class ReferenceLoader(plugin.ReferenceLoader):
                     cmds.setAttr("{}.translate".format(group_name),
                                  *options["translate"])
 
-            if create_camera_instance_on_load and product_type == "camera":
+            if create_camera_instance_on_load and (
+                product_type in {"camera", "camerarig"}
+            ):
                 self._post_process_camera(namespace, context, options)
 
             return new_nodes
