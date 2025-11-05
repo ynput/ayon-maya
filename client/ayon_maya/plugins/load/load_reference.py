@@ -231,8 +231,6 @@ class ReferenceLoader(plugin.ReferenceLoader):
                     ["lock_animation_instance_on_load"]
                 )
                 self._post_process_rig(namespace, context, options)
-            if create_camera_instance_on_load and product_type == "camera":
-                self._post_process_camera(namespace, context, options)
             else:
                 if "translate" in options:
                     if not attach_to_root and new_nodes:
@@ -242,6 +240,10 @@ class ReferenceLoader(plugin.ReferenceLoader):
                         group_name = root_nodes[0]
                     cmds.setAttr("{}.translate".format(group_name),
                                  *options["translate"])
+
+            if create_camera_instance_on_load and product_type == "camera":
+                self._post_process_camera(namespace, context, options)
+
             return new_nodes
 
     def switch(self, container, context):
