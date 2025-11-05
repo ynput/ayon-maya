@@ -4431,7 +4431,7 @@ def create_camera_instance(
             custom_product_name.format(**formatting_data)
         )
     if log:
-        log.info("Creating product: {}".format(namespace))
+        log.info(f"Creating product: {namespace}")
 
     # Fill creator identifier
     creator_identifier = "io.openpype.creators.maya.camera"
