@@ -4403,8 +4403,8 @@ def create_camera_instance(
 
     cameras = cmds.ls(nodes, type="camera", long=True)
     camera_nodes = [
-        node for node in nodes if cmds.referenceQuery(
-            cameras, isNodeReferenced=True
+        node for node in cameras if cmds.referenceQuery(
+            node, isNodeReferenced=True
         )
     ]
     assert camera_nodes, "No camera nodes in camera, this is a bug."
