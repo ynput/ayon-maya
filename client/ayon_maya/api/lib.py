@@ -4400,10 +4400,11 @@ def create_camera_instance(
     """
     if options is None:
         options = {}
-    # How to make sure it is camera?
+
+    cameras = cmds.ls(nodes, type="camera")
     camera_nodes = [
         node for node in nodes if cmds.referenceQuery(
-            node, isNodeReferenced=True
+            cameras, isNodeReferenced=True
         )
     ]
     assert camera_nodes, "No camera nodes in camera, this is a bug."

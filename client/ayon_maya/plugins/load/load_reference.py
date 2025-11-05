@@ -231,7 +231,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
                     ["lock_animation_instance_on_load"]
                 )
                 self._post_process_rig(namespace, context, options)
-            elif create_camera_instance_on_load and product_type == "camera":
+            if create_camera_instance_on_load and product_type == "camera":
                 self._post_process_camera(namespace, context, options)
             else:
                 if "translate" in options:
