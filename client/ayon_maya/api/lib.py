@@ -4400,7 +4400,7 @@ def create_camera_instance(
     """
     if options is None:
         options = {}
-
+    print(f"nodes: {nodes}")
     # How to make sure it is camera?
     camera_nodes = [
         node for node in nodes if cmds.referenceQuery(
@@ -4428,13 +4428,12 @@ def create_camera_instance(
             "subset": product_name,
             "family": product_type
         }
-
-    if log:
-        log.info("Creating product: {}".format(namespace))
-
         namespace = get_custom_namespace(
             custom_product_name.format(**formatting_data)
         )
+    if log:
+        log.info("Creating product: {}".format(namespace))
+
     # Fill creator identifier
     creator_identifier = "io.openpype.creators.maya.camera"
 
