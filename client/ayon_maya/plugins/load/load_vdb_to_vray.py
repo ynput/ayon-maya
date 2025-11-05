@@ -1,6 +1,5 @@
 import os
 
-from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
 from ayon_maya.api import plugin
 from ayon_maya.api.plugin import get_load_color_for_product_type
@@ -251,7 +250,7 @@ class LoadVDBtoVRay(plugin.Loader):
     def update(self, container, context):
         repre_entity = context["representation"]
 
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
 
         # Find VRayVolumeGrid
         members = cmds.sets(container['objectName'], query=True)

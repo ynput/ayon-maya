@@ -3,6 +3,8 @@ import difflib
 
 import qargparse
 from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import get_current_project_name
+from ayon_core.pipeline.load import get_representation_context
 from ayon_maya.api import plugin
 from ayon_maya.api.lib import (
     RigSetsNotExistError,
@@ -10,6 +12,7 @@ from ayon_maya.api.lib import (
     create_rig_animation_instance,
     create_camera_instance,
     get_container_members,
+    get_creator_identifier,
     maintained_selection,
     parent_nodes,
 )
@@ -138,7 +141,6 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
     def process_reference(self, context, name, namespace, options):
         import maya.cmds as cmds
-
         product_type = context["product"]["productType"]
         project_name = context["project"]["name"]
         # True by default to keep legacy behaviours
@@ -183,6 +185,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
             self[:] = new_nodes
 
+            settings = get_project_settings(project_name)
             if attach_to_root:
                 group_name = "|" + group_name
                 roots = cmds.listRelatives(group_name,
@@ -196,7 +199,6 @@ class ReferenceLoader(plugin.ReferenceLoader):
                     with parent_nodes(roots, parent=None):
                         cmds.xform(group_name, zeroTransformPivots=True)
 
-                settings = get_project_settings(project_name)
                 color = plugin.get_load_color_for_product_type(
                     product_type, settings
                 )
@@ -221,6 +223,13 @@ class ReferenceLoader(plugin.ReferenceLoader):
             ).get('create_camera_instance_on_load', False)
 
             if product_type == "rig":
+                options["lock_instance"] = (
+                    settings
+                    ["maya"]
+                    ["load"]
+                    ["reference_loader"]
+                    ["lock_animation_instance_on_load"]
+                )
                 self._post_process_rig(namespace, context, options)
             elif create_camera_instance_on_load and product_type == "camera":
                 self._post_process_camera(namespace, context, options)
@@ -247,12 +256,72 @@ class ReferenceLoader(plugin.ReferenceLoader):
         members = get_container_members(container)
         self._lock_camera_transforms(members)
 
+    def remove(self, container):
+        representation_id: str = container["representation"]
+        project_name: str = container.get(
+            "project_name", get_current_project_name()
+        )
+        product_type = None
+        if representation_id:
+            context: dict = get_representation_context(
+                project_name, representation_id
+            )
+            product_type: str = context["product"]["productType"]
+
+        if product_type == "rig":
+            # Special handling needed for rig containers
+            self._remove_rig(container)
+            return
+
+        super().remove(container)
+
+    def _remove_rig(self, container):
+        """Remove linked animation instance no matter if it
+        is locked or not.
+
+        Args:
+            container (dict): The container to remove.
+        """
+        members = get_container_members(container)
+        object_sets = set()
+        for member in members:
+            object_sets.update(
+                cmds.listSets(object=member, extendToShape=False) or []
+            )
+
+        super().remove(container)
+        # After the deletion, we check which object sets are still existing
+        # because maya may auto-delete empty object sets if they are not locked
+        # This way we can clean up remaining animation instances that were
+        # locked
+        object_sets = cmds.ls(object_sets, type="objectSet")
+        for object_set in object_sets:
+            # Only consider empty object sets
+            members = cmds.sets(object_set, query=True)
+            if members:
+                continue
+
+            # Only consider locked object sets
+            locked = cmds.lockNode(object_set, query=True)
+            if not locked:
+                continue
+
+            # Ignore referenced object sets
+            if cmds.referenceQuery(isNodeReferenced=object_set):
+                continue
+
+            # Then only here confirm whether this is an animation instance, if so
+            # then we will want to auto-remove the instance
+            if get_creator_identifier(object_set) == "io.openpype.creators.maya.animation":
+                cmds.lockNode(object_set, lock=False)
+                cmds.delete(object_set)
+
     def _post_process_rig(self, namespace, context, options):
 
         nodes = self[:]
         try:
             create_rig_animation_instance(
-                nodes, context, namespace, options=options, log=self.log
+                nodes, context, namespace, options=options, log=self.log,
             )
         except RigSetsNotExistError as exc:
             self.log.warning(

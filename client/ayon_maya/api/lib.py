@@ -1,5 +1,5 @@
 """Standalone helper functions"""
-
+from __future__ import annotations
 import os
 import copy
 import sys
@@ -25,14 +25,15 @@ from ayon_core.pipeline import (
     get_current_folder_path,
     discover_loader_plugins,
     loaders_from_representation,
-    get_representation_path,
     load_container,
     registered_host,
     AVALON_CONTAINER_ID,
     AVALON_INSTANCE_ID,
     AYON_INSTANCE_ID,
     AYON_CONTAINER_ID,
+    Anatomy,
 )
+from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.lib import NumberDef
 from ayon_core.pipeline.context_tools import get_current_task_entity
 from ayon_core.pipeline.create import CreateContext
@@ -109,6 +110,23 @@ def get_main_window():
             for widget in QtWidgets.QApplication.topLevelWidgets()
         }["MayaWindow"]
     return self._parent
+
+
+@contextlib.contextmanager
+def unlocked(node):
+    """Unlock a node for the duration of the context.
+
+    Args:
+        node (str): The name of the node to unlock.
+    """
+    has_locked = cmds.lockNode(node, query=True, lock=True)[0]
+    cmds.lockNode(node, lock=False)
+
+    try:
+        yield
+
+    finally:
+        cmds.lockNode(node, lock=has_locked)
 
 
 @contextlib.contextmanager
@@ -1870,6 +1888,23 @@ def get_container_members(container):
     return list(all_members)
 
 
+def get_representation_path_by_project(project_name, repre_entity):
+    """Get the representation path for a given representation entity.
+    This function would be used temporarily until the version from
+    the core addon is available.
+    Args:
+        project_name (str): The project name.
+        repre_entity (dict): The representation entity.
+        project_name (str, optional): The project name. Defaults to None.
+    Returns:
+        str: The representation path.
+    """
+    if project_name is None:
+        project_name = get_current_project_name()
+    anatomy = Anatomy(project_name)
+    return get_representation_path_with_anatomy(repre_entity, anatomy)
+
+
 # region LOOKDEV
 def list_looks(project_name, folder_id):
     """Return all look products for the given folder.
@@ -1938,7 +1973,9 @@ def assign_look_by_version(nodes, version_id):
     shader_nodes = get_container_members(container_node)
 
     # Load relationships
-    shader_relation = get_representation_path(json_representation)
+    shader_relation = get_representation_path_by_project(
+        project_name, json_representation
+    )
     with open(shader_relation, "r") as f:
         relationships = json.load(f)
 
@@ -4238,6 +4275,22 @@ def get_reference_node_parents(ref):
     return parents
 
 
+def get_creator_identifier(node: str) -> str | None:
+    """Get the creator identifier of an instance node.
+
+    Arguments:
+        node (str): The name of the instance node.
+
+    Returns:
+        str | None: The creator identifier of the instance or None if not found.
+    """
+    if get_attribute(f"{node}.id") not in {
+        AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+    }:
+        return None
+    return get_attribute(f"{node}.creator_identifier")
+
+
 def create_rig_animation_instance(
     nodes, context, namespace, options=None, log=None
 ):
@@ -4326,7 +4379,10 @@ def create_rig_animation_instance(
         create_context.create(
             creator_identifier=creator_identifier,
             variant=namespace,
-            pre_create_data={"use_selection": True}
+            pre_create_data={
+                "use_selection": True,
+                "lock_instance": options.get("lock_instance", False)
+            }
         )
 
 
