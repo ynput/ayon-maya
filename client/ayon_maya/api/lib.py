@@ -4400,7 +4400,6 @@ def create_camera_instance(
     """
     if options is None:
         options = {}
-    print(f"nodes: {nodes}")
     # How to make sure it is camera?
     camera_nodes = [
         node for node in nodes if cmds.referenceQuery(
