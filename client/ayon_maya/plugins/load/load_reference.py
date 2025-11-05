@@ -242,7 +242,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
                                  *options["translate"])
 
             if create_camera_instance_on_load and (
-                product_type in {"camera", "camerarig"}
+                product_type == "camerarig"
             ):
                 self._post_process_camera(namespace, context, options)
 
