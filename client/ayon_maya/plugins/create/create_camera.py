@@ -36,7 +36,7 @@ class CreateCameraRig(plugin.MayaCreator):
     icon = "video-camera"
 
     def create(self, product_name, instance_data, pre_create_data):
-
+        from maya import cmds
         instance = super(CreateCameraRig, self).create(product_name,
                                                        instance_data,
                                                        pre_create_data)
