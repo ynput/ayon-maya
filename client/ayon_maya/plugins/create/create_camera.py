@@ -34,3 +34,15 @@ class CreateCameraRig(plugin.MayaCreator):
     label = "Camera Rig"
     product_type = "camerarig"
     icon = "video-camera"
+
+    def create(self, product_name, instance_data, pre_create_data):
+
+        instance = super(CreateCameraRig, self).create(product_name,
+                                                       instance_data,
+                                                       pre_create_data)
+
+        instance_node = instance.get("instance_node")
+
+        self.log.info("Creating Camera Rig instance set up ...")
+        cameras = cmds.sets(name=product_name + "_cam", empty=True)
+        cmds.sets([cameras], forceElement=instance_node)
