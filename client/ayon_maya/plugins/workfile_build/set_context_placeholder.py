@@ -5,7 +5,6 @@ from ayon_maya.api.workfile_template_builder import (
 )
 from ayon_maya.api.lib import set_context_settings
 from ayon_core.lib import BoolDef
-from ayon_core.lib.events import weakref_partial
 
 
 class SetContextMayaPlaceholderPlugin(MayaPlaceholderPlugin):
