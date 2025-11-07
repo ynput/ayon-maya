@@ -9,9 +9,9 @@ from ayon_core.lib.events import weakref_partial
 
 
 class SetContextMayaPlaceholderPlugin(MayaPlaceholderPlugin):
-    """Set context variables at different stages of workfile build.
-    This placeholder allows to run scripts at different stages of the
-    workfile build process to set context variables dynamically.
+    """Set context variables for the workfile build.
+    This placeholder allows the workfile build process to
+    set context variables dynamically.
 
     """
 
@@ -23,12 +23,6 @@ class SetContextMayaPlaceholderPlugin(MayaPlaceholderPlugin):
     def get_placeholder_options(self, options=None):
         options = options or {}
         return [
-            BoolDef(
-                "set_context",
-                label="Set Context",
-                tooltip="Enable setting context variables",
-                default=options.get("set_context", False)
-            ),
             BoolDef("fps",
                     label="Set FPS",
                     tooltip="Set FPS context variable "
@@ -91,9 +85,6 @@ class SetContextMayaPlaceholderPlugin(MayaPlaceholderPlugin):
         Args:
             placeholder (dict): placeholder data
         """
-        if not placeholder.data.get("set_context", False):
-            return
-
         placeholder_context_data = {
             "fps": placeholder.data.get("fps", True),
             "resolution": placeholder.data.get("resolution", True),
