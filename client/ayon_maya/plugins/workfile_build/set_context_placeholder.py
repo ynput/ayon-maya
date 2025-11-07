@@ -59,13 +59,6 @@ class SetContextMayaPlaceholderPlugin(MayaPlaceholderPlugin):
             )
         ]
 
-    def prepare_placeholders(self, placeholders):
-        super(SetContextMayaPlaceholderPlugin, self).prepare_placeholders(
-            placeholders
-        )
-
-        for placeholder in placeholders:
-            self.set_context_settings(placeholder)
 
     def populate_placeholder(self, placeholder):
         callback = weakref_partial(self.set_context_settings, placeholder)
