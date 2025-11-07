@@ -4401,11 +4401,13 @@ def create_camera_instance(
     if options is None:
         options = {}
 
-    camera_nodes = [
-        node for node in nodes if cmds.referenceQuery(
-        node, isNodeReferenced=True) and
-        cmds.listRelatives(node, children=True, type="camera")
+    referenced_nodes: list[str] = [
+        node for node in nodes 
+        if cmds.referenceQuery(node, isNodeReferenced=True)
     ]
+    camera_nodes: list[str] = cmds.listRelatives(
+        referenced_nodes, children=True, type="camera", fullPath=True
+    ) or []
 
     folder_entity: dict = context["folder"]
     product_entity: dict = context["product"]
