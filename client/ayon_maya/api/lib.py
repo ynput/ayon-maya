@@ -4401,10 +4401,11 @@ def create_camera_instance(
     if options is None:
         options = {}
 
-    # cameras = cmds.ls(nodes, type="camera", long=True)
-    camera_node = next((node for node in nodes if
-                          node.endswith("_cam")), None)
-    assert camera_node, "No camera nodes in camera, this is a bug."
+    camera_nodes = [
+        node for node in nodes if cmds.referenceQuery(
+        node, isNodeReferenced=True) and
+        cmds.listRelatives(node, children=True, type="camera")
+    ]
 
     folder_entity: dict = context["folder"]
     product_entity: dict = context["product"]
@@ -4437,10 +4438,10 @@ def create_camera_instance(
     host = registered_host()
     create_context = CreateContext(host)
     with maintained_selection():
-        cmds.select(camera_node, noExpand=True)
+        cmds.select(camera_nodes, noExpand=True)
         create_context.create(
             creator_identifier=creator_identifier,
-            variant=namespace,
+            variant=namespace if custom_product_name else "Main",
             pre_create_data={"use_selection": True}
         )
 
