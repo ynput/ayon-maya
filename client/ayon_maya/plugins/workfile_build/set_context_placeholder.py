@@ -59,18 +59,10 @@ class SetContextMayaPlaceholderPlugin(MayaPlaceholderPlugin):
             )
         ]
 
-
     def populate_placeholder(self, placeholder):
-        callback = weakref_partial(self.set_context_settings, placeholder)
-        self.builder.add_on_depth_processed_callback(
-            callback, order=placeholder.order)
-
-        # If placeholder should be deleted, delete it after finish
+        self.set_context(placeholder)
         if not placeholder.data.get("keep_placeholder", True):
-            delete_callback = weakref_partial(self.delete_placeholder,
-                                              placeholder)
-            self.builder.add_on_finished_callback(
-                delete_callback, order=placeholder.order)
+            self.delete_placeholder(placeholder)
 
     def set_context_settings(self, placeholder):
         """Set context settings for the placeholder.
