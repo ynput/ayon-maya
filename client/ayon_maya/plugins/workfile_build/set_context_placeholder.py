@@ -59,7 +59,7 @@ class SetContextMayaPlaceholderPlugin(MayaPlaceholderPlugin):
         ]
 
     def populate_placeholder(self, placeholder):
-        self.set_context(placeholder)
+        self.set_context_settings(placeholder)
         if not placeholder.data.get("keep_placeholder", True):
             self.delete_placeholder(placeholder)
 
