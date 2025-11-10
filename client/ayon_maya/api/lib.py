@@ -4443,7 +4443,7 @@ def create_camera_instance(
         cmds.select(camera_nodes, noExpand=True)
         create_context.create(
             creator_identifier=creator_identifier,
-            variant=namespace if custom_product_name else "Main",
+            variant=product_name if custom_product_name else "Main",
             pre_create_data={"use_selection": True}
         )
 
