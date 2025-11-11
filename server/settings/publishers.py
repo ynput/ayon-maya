@@ -543,7 +543,7 @@ class ExtractMayaUsdModel(BaseSettingsModel):
             "setting this to `userProperties:` would make custom attribute "
             "`myAttr` exported as `userProperties:myAttr` in the resulting "
             "USD file.\n\n"
-            "Note that you can still use Maya USD Exporter's built-in"
+            "Note that you can still use Maya USD Exporter's built-in "
             "custom attribute mapping using a [custom attribute "
             "`USD_UserExportedAttributesJson` on the node](https://github.com/Autodesk/maya-usd/blob/dev/lib/mayaUsd/commands/Readme.md#specifying-arbitrary-attributes-for-export)."  # noqa
         )
