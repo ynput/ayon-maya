@@ -532,6 +532,24 @@ class ExtractModelModel(BaseSettingsModel):
     active: bool = SettingsField(title="Active")
 
 
+class ExtractMayaUsdModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    custom_attr_prefix: str = SettingsField(
+        title="Custom Attribute Prefix",
+        description=(
+            "Prefix for custom attributes to be exported to USD. For example, "
+            "setting this to `userProperties:` would make custom attribute "
+            "`myAttr` exported as `userProperties:myAttr` in the resulting "
+            "USD file.\n\n"
+            "Note that you can still use Maya USD Exporter's built-in"
+            "custom attribute mapping using a [custom attribute "
+            "`USD_UserExportedAttributesJson` on the node](https://github.com/Autodesk/maya-usd/blob/dev/lib/mayaUsd/commands/Readme.md#specifying-arbitrary-attributes-for-export)."  # noqa
+        )
+    )
+
+
 class ExtractMayaUsdModelModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
@@ -1069,6 +1087,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Extract Animation (Alembic)",
         description="Alembic extractor for loaded rigs"
+    )
+    ExtractMayaUsd: ExtractMayaUsdModel = SettingsField(
+        default_factory=ExtractMayaUsdModel,
+        title="Extract Maya USD"
     )
     ExtractMayaUsdModel: ExtractMayaUsdModelModel = SettingsField(
         default_factory=ExtractMayaUsdModelModel,
@@ -1720,6 +1742,12 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": False,
         "active": True,
+    },
+    "ExtractMayaUsd": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
+        "custom_attr_prefix": "",
     },
     "ExtractMayaUsdModel": {
         "enabled": True,
