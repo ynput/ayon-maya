@@ -54,19 +54,18 @@ class LayoutLoader(plugin.Loader):
         return output
 
     @staticmethod
-    def _get_loader(loaders, product_type):
-        name = ""
-        if product_type in {
-            "rig", "model", "camera",
-            "animation", "staticMesh",
-            "skeletalMesh"}:
-                name = "ReferenceLoader"
-
-        if name == "":
-            return None
+    def _get_loader(loaders, product_type, loader_name):
+        if not loader_name:
+            if product_type in {
+                "rig", "model", "camera",
+                "animation", "staticMesh",
+                "skeletalMesh"}:
+                    loader_name = "ReferenceLoader"
+            else:
+                return None
 
         for loader in loaders:
-            if loader.__name__ == name:
+            if loader.__name__ == loader_name:
                 return loader
 
         return None
@@ -140,7 +139,7 @@ class LayoutLoader(plugin.Loader):
         loaders = loaders_from_representation(
             all_loaders, repre_id)
 
-        loader = self._get_loader(loaders, product_type)
+        loader = self._get_loader(loaders, product_type, element.get("loader", ""))
 
         if not loader:
             self.log.error(
