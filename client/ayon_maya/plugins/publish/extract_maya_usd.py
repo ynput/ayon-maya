@@ -32,7 +32,13 @@ def get_node_hash(node):
 
 
 @contextlib.contextmanager
-def usd_export_attributes(nodes, attrs=None, attr_prefixes=None, mapping=None):
+def usd_export_attributes(
+        nodes,
+        attrs=None,
+        attr_prefixes=None,
+        mapping=None,
+        custom_attr_prefix=None
+    ):
     """Define attributes for the given nodes that should be exported.
 
     MayaUSDExport will export custom attributes if the Maya node has a
@@ -51,6 +57,10 @@ def usd_export_attributes(nodes, attrs=None, attr_prefixes=None, mapping=None):
             `USD_UserExportedAttributesJson` json mapping of `mayaUSDExport`.
             When no mapping provided for an attribute it will use `{}` as
             value.
+        custom_attr_prefix (Optional[str]): A custom prefix to add to all
+            attributes matching the given `attrs` and `attr_prefixes`. This
+            allows you to e.g. write out all custom attributes with a
+            `userProperties:` prefix if needed.
 
     Examples:
           >>> with usd_export_attributes(
@@ -96,7 +106,17 @@ def usd_export_attributes(nodes, attrs=None, attr_prefixes=None, mapping=None):
 
         node_attr_data = {}
         for node_attr in set(node_attrs):
-            node_attr_data[node_attr] = mapping.get(node_attr, {})
+            if node_attr in mapping:
+                value = mapping[node_attr]
+            else:
+                value = {}
+                if custom_attr_prefix:
+                    # Specify custom usd attribute name with prefix
+                    value["usdAttrName"] = "{}{}".format(
+                        custom_attr_prefix, node_attr
+                    )
+
+            node_attr_data[node_attr] = value
         if cmds.attributeQuery(usd_json_attr, node=node, exists=True):
             existing_node_attr_value = cmds.getAttr(
                 "{}.{}".format(node, usd_json_attr)
@@ -149,6 +169,8 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
     enabled = True
     label = "Extract Maya USD Asset"
     families = ["mayaUsd"]
+
+    custom_attr_prefix: str = ""
 
     @property
     def options(self):
@@ -377,9 +399,12 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                     # Use start frame as current time
                     cmds.currentTime(start)
 
-                with usd_export_attributes(instance[:],
-                                           attrs=attrs,
-                                           attr_prefixes=attr_prefixes):
+                with usd_export_attributes(
+                    instance[:],
+                    attrs=attrs,
+                    attr_prefixes=attr_prefixes,
+                    custom_attr_prefix=self.custom_attr_prefix,
+                ):
                     cmds.select(members, replace=True, noExpand=True)
                     cmds.mayaUSDExport(file=file_path,
                                        **options)
