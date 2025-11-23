@@ -7,6 +7,7 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
 )
 from ayon_maya.api.lib import (
     get_container_transforms,
+    get_highest_in_hierarchy,
     get_node_parent,
     get_node_index_under_parent
 )
@@ -91,12 +92,10 @@ class MayaPlaceholderLoadPlugin(MayaPlaceholderPlugin, PlaceholderLoadMixin):
         if not container:
             return
 
-        container_roots: list[str] = get_container_transforms(
-            container, root=True
-        )
+        container_roots: list[str] = get_container_transforms(container)
 
         roots: list[str] = []
-        for container_root in container_roots:
+        for container_root in get_highest_in_hierarchy(container_roots):
             # Bugfix: The get_container_transforms does not recognize the load
             # reference group currently
             # TODO: Remove this when it does
