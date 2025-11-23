@@ -289,7 +289,15 @@ def _set_project():
         else:
             raise
 
-    cmds.workspace(workdir, openWorkspace=True)
+    try:
+        cmds.workspace(workdir, openWorkspace=True)
+    except RuntimeError:
+        # Allow to pass through with an error log in case `workspace.mel`
+        # may have been invalid or setting workspace fails for some other
+        # reason.
+        log.error(
+            "Failed to set Maya workspace to '%s': %s", workdir, exc_info=True
+        )
 
 
 def _on_maya_initialized(*args):
