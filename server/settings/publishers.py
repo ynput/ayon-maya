@@ -532,22 +532,77 @@ class ExtractModelModel(BaseSettingsModel):
     active: bool = SettingsField(title="Active")
 
 
+class ExtractMayaUsdCustomAttrNameMappingModel(BaseSettingsModel):
+    _layout = "compact"
+    name: str = SettingsField("", title="Maya name")
+    usd_name: str = SettingsField("", title="USD name")
+
+
 class ExtractMayaUsdModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    optional: bool = SettingsField(title="Optional")
-    active: bool = SettingsField(title="Active")
-    custom_attr_prefix: str = SettingsField(
-        title="Custom Attribute Prefix",
+    """Export USD using Maya's mayaUsd plug-in
+
+    Custom attributes overrides allow user defined attributes to be exported
+    using custom naming overrides, e.g. by prefixing them all with a default
+    namespace or specifying explict Maya name to USD name mapping.
+
+    You can also customize it with the `mapping` JSON which expects a key
+    for each Maya attribute name to customize output values for with syntax
+    like for the [custom attribute `USD_UserExportedAttributesJson` on the node](https://github.com/Autodesk/maya-usd/blob/dev/lib/mayaUsd/commands/Readme.md#specifying-arbitrary-attributes-for-export)
+
+    Any existing `USD_UserExportedAttributesJson` attribute on nodes in the
+    scene will still be the strongest opinion - hence these mappings only
+    apply defaults if not explicitly specified in the scene.
+    """
+    custom_attr_namespace: str = SettingsField(
+        section="Custom Attributes",
+        title="Custom Attribute Default Namespace",
         description=(
-            "Prefix for custom attributes to be exported to USD. For example, "
-            "setting this to `userProperties:` would make custom attribute "
-            "`myAttr` exported as `userProperties:myAttr` in the resulting "
-            "USD file.\n\n"
-            "Note that you can still use Maya USD Exporter's built-in"
-            "custom attribute mapping using a [custom attribute "
-            "`USD_UserExportedAttributesJson` on the node](https://github.com/Autodesk/maya-usd/blob/dev/lib/mayaUsd/commands/Readme.md#specifying-arbitrary-attributes-for-export)."  # noqa
+            "Default USD attribute name prefix for custom attributes to be"
+            " exported. For example, setting this to `userProperties:` would"
+            " make custom attribute `myAttr` exported as "
+            "`userProperties:myAttr` in the resulting USD file. In the "
+            "majority of cases you will want to leave this empty."
         )
     )
+    custom_attr_name_mapping: list[
+        ExtractMayaUsdCustomAttrNameMappingModel
+    ] = SettingsField(
+        title="Custom Attribute Name Mapping",
+        description=(
+            "Specify a Maya name to USD attribute nane mapping "
+            "for custom attributes"
+        )
+    )
+    custom_attr_mapping: str = SettingsField(
+        title="Custom Attribute Mapping",
+        widget="textarea",
+        description=(
+            "Default [custom attribute `USD_UserExportedAttributesJson`](https://github.com/Autodesk/maya-usd/blob/dev/lib/mayaUsd/commands/Readme.md#specifying-arbitrary-attributes-for-export)."
+            "\n\n"
+            "Use this if you want to override other data or more than just "
+            "the name, like e.g. `usdAttrType` or "
+            "`translateMayaDoubleToUsdSinglePrecision`."
+            "\n\n"
+            "Any `USD_UserExportedAttributesJson` attribute existing"
+            " on the node attribute will not be overridden."
+        )
+    )
+
+    @validator("custom_attr_mapping")
+    def validate_json(cls, value):
+        if not value.strip():
+            return "{}"
+        try:
+            converted_value = json.loads(value)
+            success = isinstance(converted_value, dict)
+        except json.JSONDecodeError:
+            success = False
+
+        if not success:
+            raise BadRequestException(
+                "The attributes can't be parsed as json object"
+            )
+        return value
 
 
 class ExtractMayaUsdModelModel(BaseSettingsModel):
@@ -1744,10 +1799,9 @@ DEFAULT_PUBLISH_SETTINGS = {
         "active": True,
     },
     "ExtractMayaUsd": {
-        "enabled": True,
-        "optional": True,
-        "active": False,
-        "custom_attr_prefix": "",
+        "custom_attr_namespace": "",
+        "custom_attr_name_mapping": [],
+        "custom_attr_mapping": "{}",
     },
     "ExtractMayaUsdModel": {
         "enabled": True,
