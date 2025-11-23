@@ -508,6 +508,12 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                             "as UsdGeomSubset data.",
                     visible=visible,
                     default=False),
+            BoolDef("exportVisibility",
+                    label="Export Visibility",
+                    tooltip="Export any state and animation on Maya visibility"
+                            " attributes.",
+                    visible=visible,
+                    default=True),
             BoolDef("mergeTransformAndShape",
                     label="Merge Transform and Shape",
                     tooltip=(
@@ -535,6 +541,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                         "To specify per mesh subdivision schemes add a "
                         "USD_ATTR_subdivisionScheme attribute."
                     ),
+                    visible=visible,
                     default="catmullClark"
             )
         ]
