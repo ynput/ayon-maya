@@ -545,9 +545,9 @@ class ExtractMayaUsdModel(BaseSettingsModel):
     using custom naming overrides, e.g. by prefixing them all with a default
     namespace or specifying explict Maya name to USD name mapping.
 
-    You can also customize it with the `mapping` JSON which expects a key
-    for each Maya attribute name to customize output values for with syntax
-    like for the [custom attribute `USD_UserExportedAttributesJson` on the node](https://github.com/Autodesk/maya-usd/blob/dev/lib/mayaUsd/commands/Readme.md#specifying-arbitrary-attributes-for-export)
+    You can also customize it with the mapping JSON which expects a key
+    for each Maya attribute name to customize output values for, using the
+    [custom attribute `USD_UserExportedAttributesJson` syntax](https://github.com/Autodesk/maya-usd/blob/dev/lib/mayaUsd/commands/Readme.md#specifying-arbitrary-attributes-for-export).
 
     Any existing `USD_UserExportedAttributesJson` attribute on nodes in the
     scene will still be the strongest opinion - hence these mappings only
