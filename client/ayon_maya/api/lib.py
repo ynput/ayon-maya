@@ -1845,9 +1845,20 @@ def is_valid_reference_node(reference_node):
     return OpenMaya.MFnReference(depend_node).isValidReference()
 
 
-def get_container_members(container):
+def get_container_members(container, include_reference_associated_nodes=False):
     """Returns the members of a container.
     This includes the nodes from any loaded references in the container.
+
+    Arguments:
+        container (str): name of the container
+        include_reference_associated_nodes (bool): whether to include the
+            associated nodes of references, like those produced from
+            referencing with `groupReference`. This is disabled by default,
+            for backwards compatibility to existing calls.
+
+    Returns:
+        list[str]: The nodes belonging to the container.
+
     """
     if isinstance(container, dict):
         # Assume it's a container dictionary
@@ -1884,6 +1895,15 @@ def get_container_members(container):
                                     long=True,
                                     objectsOnly=True)
         all_members.update(reference_members)
+
+        if include_reference_associated_nodes:
+            associated_nodes: list[str] = cmds.listConnections(
+                f"{ref}.associatedNode",
+                source=True,
+                destination=False,
+                fullNodeName=True
+            ) or []
+            all_members.update(associated_nodes)
 
     return list(all_members)
 

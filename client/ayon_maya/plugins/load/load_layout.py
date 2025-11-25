@@ -1,7 +1,9 @@
-from maya import cmds
+from __future__ import annotations
 import math
 import json
 import collections
+from typing import Any
+
 import ayon_api
 from ayon_maya.api import plugin
 from ayon_maya.api.lib import (
@@ -9,14 +11,16 @@ from ayon_maya.api.lib import (
     get_container_members,
     get_highest_in_hierarchy
 )
+from ayon_maya.api.pipeline import containerise
 from ayon_core.pipeline import (
     load_container,
     discover_loader_plugins,
     loaders_from_representation,
     get_current_project_name
 )
+
+from maya import cmds
 from maya.api import OpenMaya as om
-from ayon_maya.api.pipeline import containerise
 
 
 class LayoutLoader(plugin.Loader):
@@ -30,17 +34,19 @@ class LayoutLoader(plugin.Loader):
     icon = "code-fork"
     color = "orange"
 
-    def _get_repre_entities_by_version_id(self, data):
+    def _get_repre_entities_by_version_id(
+        self,
+        data: dict
+    ) -> dict[str, list[dict]]:
         version_ids = {
             element.get("version")
             for element in data
         }
         version_ids.discard(None)
+        if not version_ids:
+            return {}
 
         output = collections.defaultdict(list)
-        if not version_ids:
-            return output
-
         project_name = get_current_project_name()
         repre_entities = ayon_api.get_representations(
             project_name,
@@ -51,10 +57,10 @@ class LayoutLoader(plugin.Loader):
         for repre_entity in repre_entities:
             version_id = repre_entity["versionId"]
             output[version_id].append(repre_entity)
-        return output
+        return dict(output)
 
     @staticmethod
-    def _get_loader(loaders, product_type, loader_name):
+    def _get_loader(loaders: list, product_type: str, loader_name: str):
         if not loader_name:
             if product_type in {
                 "rig", "model", "camera",
@@ -70,7 +76,7 @@ class LayoutLoader(plugin.Loader):
 
         return None
 
-    def get_asset(self, containers, element):
+    def get_container_root(self, container, element):
         """Get the container root and check with the
         namespace of the root aligning to the instance_name
         from element.
@@ -78,36 +84,46 @@ class LayoutLoader(plugin.Loader):
         is set to the namespace of the container root.
 
         Args:
-            containers (list): containers
-            element (Dict): element data from layout json
+            container (str): containers
+            element (dict[str, Any]): element data from layout json
 
         Returns:
-            str: container root
+            str: container root dag node.
         """
         # TODO: Improve this logic to support multiples of same asset
         #  and to avoid bugs with containers getting renamed by artists
-        # Find container names that starts with 'instance name'
-        containers = [con for con in containers]
         # Get the highest root node from the loaded container
-        for container in containers:
-            members = get_container_members(container)
-            transforms = cmds.ls(members, transforms=True)
-            roots = get_highest_in_hierarchy(transforms)
-            root = next(iter(
-                cmds.listRelatives(
-                    root, parent=True, fullPath=True, type="transform"
-                ) for root in roots), None)
-            if root is not None:
-                # For loading multiple layouts with the same namespaces
-                # Once namespace is already found, it would be replaced
-                # by new namespace but still applies the correct
-                # transformation data
-                element["instance_name"] = cmds.getAttr(f"{container}.namespace")
-                return root
-            else:
-                self.log.error("No container root found.")
+        members = get_container_members(
+            container,
+            include_reference_associated_nodes=True
+        )
+        roots = get_highest_in_hierarchy(members)
 
-    def _process_element(self, element, repre_entities_by_version_id):
+        # Assume only one root for a loaded container, use the first one.
+        root = next(iter(roots), None)
+        if not root:
+            raise RuntimeError(
+                f"Unable to find asset root for container: {container}"
+            )
+
+        # For loading multiple layouts with the same namespaces
+        # Once namespace is already found, it would be replaced
+        # by new namespace but still applies the correct
+        # transformation data
+        element["instance_name"] = cmds.getAttr(f"{container}.namespace")
+        return root
+
+
+    def _process_element(
+        self,
+        element: dict[str, Any],
+        repre_entities_by_version_id: dict[str, list[dict]]
+    ) -> list[str]:
+        """Load one of the elements from a layout JSON file.
+
+        Each element will specify a version for which we will load
+        the first representation
+        """
         repre_id = None
         repr_format = None
         version_id = element.get("version")
@@ -117,7 +133,7 @@ class LayoutLoader(plugin.Loader):
                 self.log.error(
                     "No valid representation found for version"
                     f" {version_id}")
-                return
+                return []
             # always use the first representation to load
             # If reference is None, this element is skipped, as it cannot be
             # imported in Maya, repre_entities must always be the first one
@@ -128,9 +144,11 @@ class LayoutLoader(plugin.Loader):
         # If reference is None, this element is skipped, as it cannot be
         # imported in Maya
         if not repr_format:
-            self.log.warning(f"Representation name not defined for element: {element}")
-            return
+            self.log.warning(
+                f"Representation name not defined for element: {element}")
+            return []
 
+        # Filter available loaders by representation
         instance_name: str = element['instance_name']
         all_loaders = discover_loader_plugins()
         product_type = element.get("product_type")
@@ -139,58 +157,96 @@ class LayoutLoader(plugin.Loader):
         loaders = loaders_from_representation(
             all_loaders, repre_id)
 
-        loader = self._get_loader(loaders, product_type, element.get("loader", ""))
-
+        # Find the right loader for the element
+        loader = self._get_loader(
+            loaders,
+            product_type,
+            element.get("loader", "")
+        )
         if not loader:
             self.log.error(
                 f"No valid loader found for {repre_id}")
-            return
-        options = {
-            # "asset_dir": asset_dir
-        }
-        assets = load_container(
+            return []
+
+        # Load it, and transform the root to match the JSON element.
+        # TODO: Currently load API does not enforce a return data structure
+        #  from the `Loader.load` call. In Maya ReferenceLoader may return
+        #  a list of container nodes (objectSet names) but others may return a
+        #  single container node.
+        result = load_container(
             loader,
             repre_id,
-            namespace=instance_name,
-            options=options
+            namespace=instance_name
         )
-        self.set_transformation(assets, element)
-        return assets
-
-    def set_transformation(self, assets, element):
-        asset = self.get_asset(assets, element)
-        unreal_import = True if "unreal" in element.get("host", []) else False
-        if unreal_import:
-            transform = element["transform"]
-            self._set_transformation(asset, transform)
+        if isinstance(result, str):
+            containers: list[str] = [result]
+        elif isinstance(result, list):
+            containers: list[str] = result
         else:
-            transform = element["transform_matrix"]
-            # flatten matrix to a list
-            maya_transform_matrix = [element for row in transform for element in row]
-            self._set_transformation_by_matrix(asset, maya_transform_matrix)
+            self.log.warning(
+                f"Loader {loader} returned invalid container data: {result}"
+            )
+            return []
 
-            instance_name = element["instance_name"]
-            for object_data in element.get("object_transform", []):
-                for obj_name, transform_matrix in object_data.items():
-                    obj_transforms = cmds.ls(
-                        f"{instance_name}:{obj_name}",
-                        type="transform",
-                        long=True
+        for container in containers:
+            self.set_transformation(container, element)
+        return containers
+
+    def set_transformation(self, container: str, element: dict[str, Any]):
+        """Transform objects in the loaded container.
+
+        1. Transform the root of the loaded container using the element's
+           transform matrix.
+        2. For object transformation in element `object_transform` data
+           apply transformation overrides to children nodes.
+        """
+        container_root = self.get_container_root(container, element)
+
+        if "unreal" in element.get("host", []):
+            # Special behavior for Unreal import
+            transform = element["transform"]
+            self._set_transformation(container_root, transform)
+            return
+
+        transform = element["transform_matrix"]
+        # flatten matrix to a list
+        maya_transform_matrix: list[float] = [
+            element for row in transform for element in row
+        ]
+        self._set_transformation_by_matrix(container_root,
+                                           maya_transform_matrix)
+
+        instance_name = element["instance_name"]
+        for object_data in element.get("object_transform", []):
+            for obj_name, transform_matrix in object_data.items():
+                expected_name: str = f"{instance_name}:{obj_name}"
+                obj_transforms = cmds.ls(
+                    expected_name,
+                    type="transform",
+                    long=True
+                )
+                if not obj_transforms:
+                    self.log.warning(
+                        f"No transforms found for: {expected_name}"
                     )
-                    if len(obj_transforms) > 1:
-                        self.log.warning(
-                            f"Multiple transforms found for {instance_name}:{obj_name}. "
-                            "Using the first one instead."
-                        )
-                    obj_root = next(iter(obj_transforms), None)
-                    if obj_root is not None:
-                        # flatten matrix to a list
-                        maya_transform_matrix = [
-                            element for row in transform_matrix for element in row
-                        ]
-                        self._set_transformation_by_matrix(obj_root, maya_transform_matrix)
+                    continue
+                if len(obj_transforms) > 1:
+                    self.log.warning(
+                        f"Multiple transforms found for {expected_name}. "
+                        "Using the first one instead."
+                    )
+                    continue
+                obj_root = obj_transforms[0]
+                # flatten matrix to a list
+                maya_transform_matrix: list[float] = [
+                    element for row in transform_matrix for element in row
+                ]
+                self._set_transformation_by_matrix(
+                    obj_root,
+                    maya_transform_matrix
+                )
 
-    def _set_transformation(self, asset, transform):
+    def _set_transformation(self, node: str, transform: dict):
         translation = [
             transform["translation"]["x"],
             transform["translation"]["z"],
@@ -208,18 +264,19 @@ class LayoutLoader(plugin.Loader):
             transform["scale"]["y"]
         ]
         cmds.xform(
-            asset,
+            node,
             translation=translation,
             rotation=rotation,
             scale=scale
         )
 
-    def _set_transformation_by_matrix(self, asset, transform):
+    def _set_transformation_by_matrix(self, node: str, transform: list[float]):
         """Set transformation with transform matrix and rotation data
         for the imported asset.
 
         Args:
-            transform (list): Transformations of the asset
+            node (str): Transform node name
+            transform (list[float]): Transformations of the asset
         """
         transform_mm = om.MMatrix(transform)
         convert_transform = om.MTransformationMatrix(transform_mm)
@@ -235,7 +292,7 @@ class LayoutLoader(plugin.Loader):
             convert_translation.y
         ]
         cmds.xform(
-            asset,
+            node,
             translation=translation,
             rotation=rotation_degrees,
             scale=[convert_scale[0], convert_scale[2], convert_scale[1]]
@@ -245,8 +302,8 @@ class LayoutLoader(plugin.Loader):
         """Get existing asset container by instance name
 
         Args:
-            container_node (dict): container_node
-            element (dict): element data
+            container_node (str): container_node
+            element (dict[str, Any]): element data
 
         Returns:
             list: asset container
@@ -267,10 +324,13 @@ class LayoutLoader(plugin.Loader):
         repre_entities_by_version_id = self._get_repre_entities_by_version_id(
             data
         )
-        assets = []
+        containers: list[str] = []
         for element in data:
-            elements = self._process_element(element, repre_entities_by_version_id)
-            assets.extend(elements)
+            loaded_containers = self._process_element(
+                element,
+                repre_entities_by_version_id
+            )
+            containers.extend(loaded_containers)
 
         folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
