@@ -413,6 +413,20 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 continue
             custom_attr_mapping[maya_name] = {"usdAttrName": data["usd_name"]}
 
+        # Remove attributes from custom mapping which we do not intend
+        # to include in the export
+        attrs_lookup = set(attrs)
+        for attr_name in list(custom_attr_mapping):
+            # Exclude any keys not matching specified `attrs` or
+            # `attr_prefixes` because we only want to include them in the
+            # export if these are marked as attributes to export. Maya USD
+            # exports everything in the custom mapping, so we pop them.
+            if attr_name is attrs_lookup:
+                continue
+            if attr_name.startswith(tuple(attr_prefixes)):
+                continue
+            del custom_attr_mapping[attr_name]
+
         self.log.debug("Export options: {0}".format(options))
         self.log.debug('Exporting USD: {} / {}'.format(file_path, members))
         with maintained_time():
