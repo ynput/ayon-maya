@@ -342,7 +342,7 @@ class LayoutLoader(plugin.Loader):
         return containerise(
             name=name,
             namespace=namespace,
-            nodes=assets,
+            nodes=containers,
             context=context,
             loader=self.__class__.__name__)
 
