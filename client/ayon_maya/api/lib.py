@@ -1850,7 +1850,7 @@ def get_container_members(container, include_reference_associated_nodes=False):
     This includes the nodes from any loaded references in the container.
 
     Arguments:
-        container (str): name of the container
+        container (str | dict): container data or name of container node
         include_reference_associated_nodes (bool): whether to include the
             associated nodes of references, like those produced from
             referencing with `groupReference`. This is disabled by default,
