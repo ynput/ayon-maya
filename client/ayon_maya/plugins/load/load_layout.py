@@ -84,7 +84,7 @@ class LayoutLoader(plugin.Loader):
         is set to the namespace of the container root.
 
         Args:
-            container (str): containers
+            container (str): container node name.
             element (dict[str, Any]): element data from layout json
 
         Returns:
