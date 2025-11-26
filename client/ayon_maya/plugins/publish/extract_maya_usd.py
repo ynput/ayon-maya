@@ -421,7 +421,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             # `attr_prefixes` because we only want to include them in the
             # export if these are marked as attributes to export. Maya USD
             # exports everything in the custom mapping, so we pop them.
-            if attr_name is attrs_lookup:
+            if attr_name in attrs_lookup:
                 continue
             if attr_name.startswith(tuple(attr_prefixes)):
                 continue
