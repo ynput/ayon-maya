@@ -12,12 +12,11 @@ from ayon_maya.api.lib import (
     get_highest_in_hierarchy
 )
 from ayon_maya.api.pipeline import containerise
-from ayon_core.pipeline import (
-    load_container,
-    discover_loader_plugins,
-    loaders_from_representation
+from ayon_core.pipeline.load import (
+    get_representation_contexts,
+    get_loaders_by_name,
+    load_with_repre_context,
 )
-
 from maya import cmds
 from maya.api import OpenMaya as om
 
@@ -41,12 +40,12 @@ class LayoutLoader(plugin.Loader):
         ])
     }
 
-    def _get_repre_entities_by_version_id(
+    def _get_repre_contexts_by_version_id(
         self,
         data: dict,
         context: dict
-    ) -> dict[str, list[dict]]:
-        """Fetch all representations for all version ids in data
+    ) -> dict[str, list[dict[str, dict]]]:
+        """Fetch all representation contexts for all version ids in data
         at once - as optimal query."""
         version_ids = {
             element.get("version")
@@ -60,30 +59,16 @@ class LayoutLoader(plugin.Loader):
         project_name: str = context["project"]["name"]
         repre_entities = ayon_api.get_representations(
             project_name,
-            version_ids=version_ids,
-            fields={"id", "versionId", "name"}
+            version_ids=version_ids
         )
-        for repre_entity in repre_entities:
-            version_id = repre_entity["versionId"]
-            output[version_id].append(repre_entity)
+        repre_contexts = get_representation_contexts(
+            project_name,
+            repre_entities
+        )
+        for repre_context in repre_contexts.values():
+            version_id = repre_context["version"]["id"]
+            output[version_id].append(repre_context)
         return dict(output)
-
-    @staticmethod
-    def _get_loader(loaders: list, product_type: str, loader_name: str):
-        if not loader_name:
-            if product_type in {
-                "rig", "model", "camera",
-                "animation", "staticMesh",
-                "skeletalMesh"}:
-                    loader_name = "ReferenceLoader"
-            else:
-                return None
-
-        for loader in loaders:
-            if loader.__name__ == loader_name:
-                return loader
-
-        return None
 
     def get_container_root(self, container, element):
         """Get the container root and check with the
@@ -122,11 +107,20 @@ class LayoutLoader(plugin.Loader):
         element["instance_name"] = cmds.getAttr(f"{container}.namespace")
         return root
 
+    @staticmethod
+    def _get_loader_name(product_type: str) -> Optional[str]:
+        if product_type in {
+            "rig", "model", "camera",
+            "animation", "staticMesh",
+            "skeletalMesh"
+        }:
+            return "ReferenceLoader"
+        return None
 
     def _process_element(
         self,
         element: dict[str, Any],
-        repre_entities_by_version_id: dict[str, list[dict]]
+        repre_contexts_by_version_id: dict[str, list[dict]]
     ) -> list[str]:
         """Load one of the elements from a layout JSON file.
 
@@ -139,66 +133,68 @@ class LayoutLoader(plugin.Loader):
                 f"No version id found in element: {element}")
             return []
 
-        repre_entities: list[dict] = repre_entities_by_version_id.get(
+        repre_contexts: list[dict] = repre_contexts_by_version_id.get(
             version_id, []
         )
-        if not repre_entities:
+        if not repre_contexts:
             self.log.error(
-                "No valid representation found for version"
+                "No representations found for version id:"
                 f" {version_id}")
             return []
 
-        def _sort_by_preferred_order(_repre_entity: dict) -> int:
-            name: str = _repre_entity["name"]
+        def _sort_by_preferred_order(_repre_context: dict) -> int:
+            _repre_name: str = _repre_context["representation"]["name"]
             return self.repre_order_by_name.get(
-                name,
+                _repre_name,
                 len(self.repre_order_by_name) + 1
             )
 
-        repre_entities.sort(key=_sort_by_preferred_order)
+        repre_contexts.sort(key=_sort_by_preferred_order)
 
-        # always use the first representation to load
-        # TODO: We should actually figure out from the published data what
-        #   representation is actually preferred instead of guessing
-        #   a first entry that may not be compatible with the loader
-        # If reference is None, this element is skipped, as it cannot be
-        # imported in Maya, repre_entities must always be the first one
-        repre_entity = repre_entities[0]
-        repre_id: str = repre_entity["id"]
-        repre_name: str = repre_entity["name"]
+        # Get preferred loader
+        loader_name: Optional[str] = element.get("loader")
+        if not loader_name:
+            product_type = element.get("product_type")
+            if product_type is None:
+                # Backwards compatibility
+                product_type = element.get("family")
+            loader_name = self._get_loader_name(product_type)
 
-        # Filter available loaders by representation
-        instance_name: str = element['instance_name']
-        all_loaders = discover_loader_plugins()
-        product_type = element.get("product_type")
-        if product_type is None:
-            # Backwards compatibility
-            product_type = element.get("family")
-        loaders = loaders_from_representation(
-            all_loaders, repre_id)
-
-        # Find the right loader for the element
-        # TODO: If a loader is specified for the element, then filter the
-        #  representations to those that are compatible with it.
-        loader = self._get_loader(
-            loaders,
-            product_type,
-            element.get("loader", "")
-        )
+        # Find loader plugin
+        # TODO: Cache the loaders by name once
+        loader = get_loaders_by_name().get(loader_name, None)
         if not loader:
             self.log.error(
-                f"No valid loader found for {repre_name} with id: {repre_id}"
+                f"No valid loader '{loader_name}' found for: {element}"
             )
             return []
 
-        # Load it, and transform the root to match the JSON element.
+        # Find a matching representation for the loader among
+        # the ordered representations of the version
+        # TODO: We should actually figure out from the published data what
+        #   representation is actually preferred instead of guessing
+        #   a first entry that is compatible with the loader
+        supported_repre_context: Optional[dict[str, dict[str, Any]]] = None
+        for repre_context in repre_contexts:
+            if loader.is_loader_compatible(repre_context):
+                supported_repre_context = repre_context
+
+        if not supported_repre_context:
+            self.log.error(
+                f"Loader '{loader_name}' does not support"
+                f" representation contexts: {repre_contexts}"
+            )
+            return []
+
+        # Load the representation
         # TODO: Currently load API does not enforce a return data structure
         #  from the `Loader.load` call. In Maya ReferenceLoader may return
         #  a list of container nodes (objectSet names) but others may return a
         #  single container node.
-        result = load_container(
+        instance_name: str = element['instance_name']
+        result = load_with_repre_context(
             loader,
-            repre_id,
+            repre_context=supported_repre_context,
             namespace=instance_name
         )
         if isinstance(result, str):
@@ -211,6 +207,7 @@ class LayoutLoader(plugin.Loader):
             )
             return []
 
+        # Move the container root node
         for container in containers:
             self.set_transformation(container, element)
         return containers
@@ -328,14 +325,14 @@ class LayoutLoader(plugin.Loader):
             data = json.load(fp)
 
         # get the list of representations by using version id
-        repre_entities_by_version_id = self._get_repre_entities_by_version_id(
+        repre_contexts_by_version_id = self._get_repre_contexts_by_version_id(
             data, context
         )
         containers: list[str] = []
         for element in data:
             loaded_containers = self._process_element(
                 element,
-                repre_entities_by_version_id
+                repre_contexts_by_version_id
             )
             containers.extend(loaded_containers)
 
@@ -361,7 +358,7 @@ class LayoutLoader(plugin.Loader):
             data = json.load(fp)
 
         # get the list of representations by using version id
-        repre_entities_by_version_id = self._get_repre_entities_by_version_id(
+        repre_contexts_by_version_id = self._get_repre_contexts_by_version_id(
             data, context
         )
 
@@ -389,7 +386,7 @@ class LayoutLoader(plugin.Loader):
             else:
                 # Load new elements and add them to container
                 loaded_containers = self._process_element(
-                    element, repre_entities_by_version_id
+                    element, repre_contexts_by_version_id
                 )
                 cmds.sets(loaded_containers, add=container_node)
 
