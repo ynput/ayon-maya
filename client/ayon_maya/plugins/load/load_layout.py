@@ -2,7 +2,7 @@ from __future__ import annotations
 import math
 import json
 import collections
-from typing import Any
+from typing import Any, Optional
 
 import ayon_api
 from ayon_maya.api import plugin
@@ -15,8 +15,7 @@ from ayon_maya.api.pipeline import containerise
 from ayon_core.pipeline import (
     load_container,
     discover_loader_plugins,
-    loaders_from_representation,
-    get_current_project_name
+    loaders_from_representation
 )
 
 from maya import cmds
@@ -34,10 +33,21 @@ class LayoutLoader(plugin.Loader):
     icon = "code-fork"
     color = "orange"
 
+    # For JSON elements where we don't know what representation
+    # to use, prefer to load the representation in this order.
+    repre_order_by_name: dict[str, int] = {
+        key: i for i, key in enumerate([
+            "fbx", "abc", "usd", "vdb", "ma"
+        ])
+    }
+
     def _get_repre_entities_by_version_id(
         self,
-        data: dict
+        data: dict,
+        context: dict
     ) -> dict[str, list[dict]]:
+        """Fetch all representations for all version ids in data
+        at once - as optimal query."""
         version_ids = {
             element.get("version")
             for element in data
@@ -47,10 +57,9 @@ class LayoutLoader(plugin.Loader):
             return {}
 
         output = collections.defaultdict(list)
-        project_name = get_current_project_name()
+        project_name: str = context["project"]["name"]
         repre_entities = ayon_api.get_representations(
             project_name,
-            representation_names={"fbx", "abc"},
             version_ids=version_ids,
             fields={"id", "versionId", "name"}
         )
@@ -122,42 +131,55 @@ class LayoutLoader(plugin.Loader):
         """Load one of the elements from a layout JSON file.
 
         Each element will specify a version for which we will load
-        the first representation
+        the first representation.
         """
-        repre_id = None
-        repr_format = None
         version_id = element.get("version")
-        if version_id:
-            repre_entities = repre_entities_by_version_id[version_id]
-            if not repre_entities:
-                self.log.error(
-                    "No valid representation found for version"
-                    f" {version_id}")
-                return []
-            # always use the first representation to load
-            # If reference is None, this element is skipped, as it cannot be
-            # imported in Maya, repre_entities must always be the first one
-            repre_entity = repre_entities[0]
-            repre_id = repre_entity["id"]
-            repr_format = repre_entity["name"]
-
-        # If reference is None, this element is skipped, as it cannot be
-        # imported in Maya
-        if not repr_format:
+        if not version_id:
             self.log.warning(
-                f"Representation name not defined for element: {element}")
+                f"No version id found in element: {element}")
             return []
+
+        repre_entities: list[dict] = repre_entities_by_version_id.get(
+            version_id, []
+        )
+        if not repre_entities:
+            self.log.error(
+                "No valid representation found for version"
+                f" {version_id}")
+            return []
+
+        def _sort_by_preferred_order(_repre_entity: dict) -> int:
+            name: str = _repre_entity["name"]
+            return self.repre_order_by_name.get(
+                name,
+                len(self.repre_order_by_name) + 1
+            )
+
+        repre_entities.sort(key=_sort_by_preferred_order)
+
+        # always use the first representation to load
+        # TODO: We should actually figure out from the published data what
+        #   representation is actually preferred instead of guessing
+        #   a first entry that may not be compatible with the loader
+        # If reference is None, this element is skipped, as it cannot be
+        # imported in Maya, repre_entities must always be the first one
+        repre_entity = repre_entities[0]
+        repre_id: str = repre_entity["id"]
+        repre_name: str = repre_entity["name"]
 
         # Filter available loaders by representation
         instance_name: str = element['instance_name']
         all_loaders = discover_loader_plugins()
         product_type = element.get("product_type")
         if product_type is None:
+            # Backwards compatibility
             product_type = element.get("family")
         loaders = loaders_from_representation(
             all_loaders, repre_id)
 
         # Find the right loader for the element
+        # TODO: If a loader is specified for the element, then filter the
+        #  representations to those that are compatible with it.
         loader = self._get_loader(
             loaders,
             product_type,
@@ -165,7 +187,8 @@ class LayoutLoader(plugin.Loader):
         )
         if not loader:
             self.log.error(
-                f"No valid loader found for {repre_id}")
+                f"No valid loader found for {repre_name} with id: {repre_id}"
+            )
             return []
 
         # Load it, and transform the root to match the JSON element.
@@ -298,22 +321,6 @@ class LayoutLoader(plugin.Loader):
             scale=[convert_scale[0], convert_scale[2], convert_scale[1]]
         )
 
-    def _get_asset_container_by_instance_name(self, container_node, element):
-        """Get existing asset container by instance name
-
-        Args:
-            container_node (str): container_node
-            element (dict[str, Any]): element data
-
-        Returns:
-            list: asset container
-        """
-        container_nodes = cmds.sets(container_node, query=True)
-        instance_name = element.get("instance_name")
-        return [
-            node for node in container_nodes if instance_name in node
-        ]
-
     def load(self, context, name, namespace, options):
         path = self.filepath_from_context(context)
         self.log.info(f">>> loading json [ {path} ]")
@@ -322,7 +329,7 @@ class LayoutLoader(plugin.Loader):
 
         # get the list of representations by using version id
         repre_entities_by_version_id = self._get_repre_entities_by_version_id(
-            data
+            data, context
         )
         containers: list[str] = []
         for element in data:
@@ -355,23 +362,39 @@ class LayoutLoader(plugin.Loader):
 
         # get the list of representations by using version id
         repre_entities_by_version_id = self._get_repre_entities_by_version_id(
-            data
+            data, context
         )
 
-        node = container["objectName"]
+        container_node: str = container["objectName"]
+
+        # On load, we collected the loaded containers into
+        # the layout container, to update existing containers we match
+        # them by those container node names.
+        member_containers = get_container_members(container)
+
         for element in data:
-            asset_container = self._get_asset_container_by_instance_name(
-                node, element)
-            if asset_container:
-                self.set_transformation(asset_container, element)
+            # Find a matching container node among the members
+            # TODO: Make this lookup more reliable than just
+            #  checking the container node name.
+            instance_name: str = element.get("instance_name")
+            update_containers: list[str] = [
+                node for node in member_containers
+                if instance_name in node
+            ]
+            if update_containers:
+                # Update existing elements
+                for update_container in update_containers:
+                    self.set_transformation(update_container,
+                                            element)
             else:
-                elements = self._process_element(
+                # Load new elements and add them to container
+                loaded_containers = self._process_element(
                     element, repre_entities_by_version_id
                 )
-                cmds.sets(elements, add=node)
+                cmds.sets(loaded_containers, add=container_node)
 
         # Update metadata
-        cmds.setAttr("{}.representation".format(node),
+        cmds.setAttr("{}.representation".format(container_node),
                      repre_entity["id"],
                      type="string")
 
@@ -379,12 +402,14 @@ class LayoutLoader(plugin.Loader):
         self.update(container, context)
 
     def remove(self, container):
-        members = cmds.sets(container['objectName'], query=True)
+        container_node: str = container['objectName']
+        members = cmds.sets(container_node, query=True)
         cmds.lockNode(members, lock=False)
-        cmds.delete([container['objectName']] + members)
+        cmds.delete([container_node] + members)
         # Clean up the namespace
         try:
-            cmds.namespace(removeNamespace=container['namespace'],
-                        deleteNamespaceContent=True)
+            cmds.namespace(
+                removeNamespace=container['namespace'],
+                deleteNamespaceContent=True)
         except RuntimeError:
             pass
