@@ -176,7 +176,7 @@ class LayoutLoader(plugin.Loader):
         #   a first entry that is compatible with the loader
         supported_repre_context: Optional[dict[str, dict[str, Any]]] = None
         for repre_context in repre_contexts:
-            if loader.is_loader_compatible(repre_context):
+            if loader.is_compatible_loader(repre_context):
                 supported_repre_context = repre_context
 
         if not supported_repre_context:
