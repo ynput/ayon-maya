@@ -574,7 +574,7 @@ class ExtractMayaUsdModel(BaseSettingsModel):
         )
     )
     custom_attr_mapping: str = SettingsField(
-        title="Custom Attribute Mapping",
+        title="Advanced Custom Attribute Mapping",
         widget="textarea",
         description=(
             "Default [custom attribute `USD_UserExportedAttributesJson`](https://github.com/Autodesk/maya-usd/blob/dev/lib/mayaUsd/commands/Readme.md#specifying-arbitrary-attributes-for-export)."
