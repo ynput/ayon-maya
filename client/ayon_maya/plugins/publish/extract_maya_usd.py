@@ -38,7 +38,7 @@ def usd_export_attributes(
         attrs=None,
         attr_prefixes=None,
         mapping=None,
-        custom_attr_default_namespace=None
+        custom_attr_default_namespace="userProperties:"
     ):
     """Define attributes for the given nodes that should be exported.
 
@@ -58,10 +58,12 @@ def usd_export_attributes(
             `USD_UserExportedAttributesJson` json mapping of `mayaUSDExport`.
             When no mapping provided for an attribute it will use `{}` as
             value.
-        custom_attr_default_namespace (Optional[str]): A custom prefix to add to all
-            attributes matching the given `attrs` and `attr_prefixes`. This
-            allows you to e.g. write out all custom attributes with a
-            `userProperties:` prefix if needed.
+        custom_attr_default_namespace (str): A prefix to add to all
+            attributes matching the given `attrs` and `attr_prefixes`.
+            This defaults to Maya USD's default export behavior for
+            mapped attributes without `usdAttrName` with prefix
+            `userProperties:`, but can be mapped to other prefixes
+            if needed.
 
     Examples:
           >>> with usd_export_attributes(
