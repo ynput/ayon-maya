@@ -110,12 +110,12 @@ def usd_export_attributes(
             if node_attr in mapping:
                 value = mapping[node_attr]
             else:
-                value = {}
-                if custom_attr_default_namespace:
-                    # Specify custom usd attribute name with prefix
-                    value["usdAttrName"] = "{}{}".format(
-                        custom_attr_default_namespace, node_attr
+                # Specify custom usd attribute name with prefix
+                value = {
+                    "usdAttrName": (
+                        f"{custom_attr_default_namespace}{node_attr}"
                     )
+                }
 
             node_attr_data[node_attr] = value
         if cmds.attributeQuery(usd_json_attr, node=node, exists=True):
@@ -412,6 +412,13 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             if maya_name in custom_attr_mapping:
                 continue
             custom_attr_mapping[maya_name] = {"usdAttrName": data["usd_name"]}
+
+        self.log.debug(
+            f"Custom attribute mapping: {custom_attr_mapping}"
+        )
+        self.log.debug(
+            f"Custom attribute default namespace: {self.custom_attr_namespace}"
+        )
 
         # Remove attributes from custom mapping which we do not intend
         # to include in the export

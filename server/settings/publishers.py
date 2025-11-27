@@ -558,10 +558,12 @@ class ExtractMayaUsdModel(BaseSettingsModel):
         title="Custom Attribute Default Namespace",
         description=(
             "Default USD attribute name prefix for custom attributes to be"
-            " exported. For example, setting this to `userProperties:` would"
-            " make custom attribute `myAttr` exported as "
-            "`userProperties:myAttr` in the resulting USD file. In the "
-            "majority of cases you will want to leave this empty."
+            " exported. For example, setting this to an empty string would"
+            " make custom attribute `myAttr` exported directly as `myAttr`"
+            " instead of `userProperties:myAttr` in the resulting USD file."
+            " In the majority of cases you will want to leave this at the"
+            " default `userProperties:` because that is where you store user"
+            " defined properties."
         )
     )
     custom_attr_name_mapping: list[
@@ -1799,7 +1801,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "active": True,
     },
     "ExtractMayaUsd": {
-        "custom_attr_namespace": "",
+        "custom_attr_namespace": "userProperties:",
         "custom_attr_name_mapping": [],
         "custom_attr_mapping": "{}",
     },
