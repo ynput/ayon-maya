@@ -569,7 +569,7 @@ class ExtractMayaUsdModel(BaseSettingsModel):
     ] = SettingsField(
         title="Custom Attribute Name Mapping",
         description=(
-            "Specify a Maya name to USD attribute nane mapping "
+            "Specify a Maya name to USD attribute name mapping "
             "for custom attributes"
         )
     )
