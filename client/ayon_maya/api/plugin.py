@@ -819,7 +819,7 @@ class ReferenceLoader(Loader):
             # Only containerize if any nodes were loaded by the Loader
             nodes = self[:]
             if not nodes:
-                return
+                continue
 
             ref_node = lib.get_reference_node(nodes, self.log)
             container = containerise(
