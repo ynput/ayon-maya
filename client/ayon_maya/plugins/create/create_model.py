@@ -15,7 +15,6 @@ class CreateModel(plugin.MayaCreator):
     icon = "cube"
     default_variants = ["Main", "Proxy", "_MD", "_HD", "_LD"]
 
-
     write_face_sets = True
     include_shaders = False
 

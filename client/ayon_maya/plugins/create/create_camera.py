@@ -14,7 +14,6 @@ class CreateCamera(plugin.MayaCreator):
     product_base_type = "camera"
     icon = "video-camera"
 
-
     def get_instance_attr_defs(self):
 
         defs = lib.collect_animation_defs(create_context=self.create_context)
