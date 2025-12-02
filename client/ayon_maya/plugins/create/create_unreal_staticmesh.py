@@ -36,7 +36,16 @@ class CreateUnrealStaticMesh(plugin.MayaCreator):
             host_name,
             instance
         )
-        dynamic_data["asset"] = folder_entity["name"]
+        
+        dynamic_data.update(
+            {
+                "asset": folder_entity["name"],
+                "folder": {
+                            "name": folder_entity["name"]
+                }
+            }
+        )
+        
         return dynamic_data
 
     def create(self, product_name, instance_data, pre_create_data):

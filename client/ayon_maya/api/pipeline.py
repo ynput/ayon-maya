@@ -80,6 +80,16 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         super(MayaHost, self).__init__()
         self._op_events = {}
 
+    def get_app_information(self):
+        from ayon_core.host import ApplicationInformation
+
+        version = cmds.about(version=True)
+
+        return ApplicationInformation(
+            app_name="Maya",
+            app_version=version,
+        )
+
     def install(self):
         project_name = get_current_project_name()
         project_settings = get_project_settings(project_name)
@@ -279,7 +289,15 @@ def _set_project():
         else:
             raise
 
-    cmds.workspace(workdir, openWorkspace=True)
+    try:
+        cmds.workspace(workdir, openWorkspace=True)
+    except RuntimeError:
+        # Allow to pass through with an error log in case `workspace.mel`
+        # may have been invalid or setting workspace fails for some other
+        # reason.
+        log.error(
+            "Failed to set Maya workspace to '%s': %s", workdir, exc_info=True
+        )
 
 
 def _on_maya_initialized(*args):
@@ -553,7 +571,7 @@ def on_init():
 
 def on_before_save():
     """Run validation for scene's FPS prior to saving"""
-    return lib.validate_fps()
+    return lib.validate_fps() and lib.validate_scene_units()
 
 
 def on_after_save():
@@ -628,6 +646,7 @@ def on_open():
     # Validate FPS after update_task_from_path to
     # ensure it is using correct FPS for the folder
     lib.validate_fps()
+    lib.validate_scene_units()
     lib.fix_incompatible_containers()
 
     if any_outdated_containers():

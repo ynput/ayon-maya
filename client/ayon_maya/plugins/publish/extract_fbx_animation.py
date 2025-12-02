@@ -20,6 +20,7 @@ class ExtractFBXAnimation(plugin.MayaExtractorPlugin):
     order = pyblish.api.ExtractorOrder
     label = "Extract Animation (FBX)"
     families = ["animation.fbx"]
+    targets = ["local", "remote"]
 
     def process(self, instance):
         # Define output path

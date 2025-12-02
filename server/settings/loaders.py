@@ -110,6 +110,18 @@ class ReferenceLoaderModel(BaseSettingsModel):
     display_handle: bool = SettingsField(
         title="Display Handle On Load References"
     )
+    lock_animation_instance_on_load: bool = SettingsField(
+        title="Lock Animation Instance on Rig Load"
+    )
+    create_camera_instance_on_load: bool = SettingsField(
+        default=False,
+        title="Create Camera instance on load",
+        description=(
+            "When enabled, upon loading a Camera product a new Camera instance "
+            "is automatically created as preparation to publishing the output "
+            "directly."
+        )
+    )
 
 
 class ImportLoaderModel(BaseSettingsModel):
@@ -286,7 +298,9 @@ DEFAULT_LOADERS_SETTING = {
     "reference_loader": {
         "namespace": "{folder[name]}_{product[name]}_##_",
         "group_name": "_GRP",
-        "display_handle": True
+        "display_handle": True,
+        "lock_animation_instance_on_load": False,
+        "create_camera_instance_on_load": False
     },
     "import_loader": {
         "enabled": True,

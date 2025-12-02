@@ -1,4 +1,5 @@
 from ayon_maya.api import plugin
+from ayon_core.lib import BoolDef
 
 
 class CreateXgen(plugin.MayaCreator):
@@ -9,3 +10,10 @@ class CreateXgen(plugin.MayaCreator):
     product_type = "xgen"
     product_base_type = "xgen"
     icon = "pagelines"
+
+    def get_instance_attr_defs(self):
+        return [
+            BoolDef("farm",
+                    label="Submit to Farm",
+                    default=False),
+        ]
