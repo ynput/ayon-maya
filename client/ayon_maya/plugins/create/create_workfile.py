@@ -42,7 +42,6 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
                 task_entity=task_entity,
                 variant=variant,
                 host_name=host_name,
-                product_base_type=self.product_base_type
             )
             data = {
                 "folderPath": folder_path,
@@ -77,7 +76,6 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
                 task_entity=task_entity,
                 variant=variant,
                 host_name=host_name,
-                product_base_type=self.product_base_type
             )
 
             current_instance["folderPath"] = folder_path
