@@ -724,6 +724,9 @@ def imprint(node, data):
             add_type = {"attributeType": "enum", "enumName": ":".join(value)}
             set_type = {"keyable": False, "channelBox": True}
             value = 0  # enum default
+        elif value is None:
+            # None is not a valid value for attributes, so we skip it
+            continue
         else:
             raise TypeError("Unsupported type: %r" % type(value))
 
