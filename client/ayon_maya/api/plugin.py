@@ -617,7 +617,6 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         host_name: Optional[str] = None,
         instance: Optional[CreatedInstance] = None,
         project_entity: Optional[dict[str, Any]] = None,
-        product_base_type: Optional[str] = None
     ) -> str:
         if host_name is None:
             host_name = self.create_context.host_name
@@ -643,7 +642,6 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
             variant=variant,
             dynamic_data=dynamic_data,
             project_settings=self.project_settings,
-            product_base_type=product_base_type
         )
 
 
@@ -651,7 +649,7 @@ def get_load_color_for_product_type(product_base_type, settings=None):
     """Get color for product type from settings.
 
     Args:
-        product_base_type (str): Family name.
+        product_base_type (str): Product base type.
         settings (Optional[dict]): Settings dictionary.
 
     Returns:
@@ -728,7 +726,9 @@ class Loader(LoaderPlugin):
         product_entity = context["product"]
         product_name = product_entity["name"]
         product_type = product_entity["productType"]
-        product_base_type = product_entity.get("productBaseType")
+        product_base_type = (
+            product_entity.get("productBaseType") or product_type
+        )
         formatting_data = {
             "asset_name": folder_entity["name"],
             "asset_type": "asset",
