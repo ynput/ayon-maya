@@ -27,11 +27,6 @@ class YetiRigLoader(plugin.ReferenceLoader):
 
         attach_to_root = options.get("attach_to_root", True)
         group_name = options["group_name"]
-
-        # no group shall be created
-        if not attach_to_root:
-            group_name = namespace
-
         with lib.maintained_selection():
             file_url = self.prepare_root_value(
                 path, context["project"]["name"]
@@ -48,10 +43,10 @@ class YetiRigLoader(plugin.ReferenceLoader):
         color = plugin.get_load_color_for_product_type("yetiRig")
         if color is not None:
             red, green, blue = color
-            cmds.setAttr(group_name + ".useOutlinerColor", 1)
-            cmds.setAttr(
-                group_name + ".outlinerColor", red, green, blue
-            )
+            roots = lib.get_highest_in_hierarchy(nodes)
+            for root in roots:
+                cmds.setAttr(f"{root}.useOutlinerColor", 1)
+                cmds.setAttr(f"{root}.outlinerColor", red, green, blue)
         self[:] = nodes
 
         if self.create_cache_instance_on_load:
