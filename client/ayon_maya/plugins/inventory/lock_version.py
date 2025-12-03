@@ -25,7 +25,7 @@ class LockVersions(InventoryAction):
             key = "version_locked"
             if cmds.attributeQuery(key, node=node, exists=True):
                 cmds.deleteAttr(f"{node}.{key}")
-            cmds.addAttr(node, longName=key, attributeType=bool)
+            cmds.addAttr(node, longName=key, attributeType="bool")
             cmds.setAttr(
                 f"{node}.{key}", True, keyable=False, channelBox=True
             )
