@@ -3487,10 +3487,13 @@ def set_colorspace(project_settings=None):
         project_settings = get_project_settings(project_name)
     imageio: dict = project_settings["maya"]["imageio"]
 
-    if not imageio["workfile"]["enabled"]:
+    # Check master toggle for host color management
+    if not imageio.get("activate_host_color_management", True):
         log.info(
-            "AYON Maya Color Management settings for workfile are disabled."
+            "AYON Maya host color management is disabled. "
+            "Disabling Maya color management."
         )
+        cmds.colorManagementPrefs(edit=True, cmEnabled=False)
         return
 
     # set color spaces for rendering space and view transforms
@@ -3513,6 +3516,14 @@ def set_colorspace(project_settings=None):
     # enable color management
     cmds.colorManagementPrefs(edit=True, cmEnabled=True)
     cmds.colorManagementPrefs(edit=True, ocioRulesEnabled=True)
+
+    # If workfile settings are disabled, just enable CM but don't configure spaces
+    if not imageio["workfile"]["enabled"]:
+        log.info(
+            "AYON Maya workfile color settings are disabled. "
+            "Color management enabled but specific spaces not configured."
+        )
+        return
 
     is_ocio_set = bool(os.environ.get("OCIO"))
     if not is_ocio_set:
