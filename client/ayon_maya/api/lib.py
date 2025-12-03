@@ -3496,6 +3496,12 @@ def set_colorspace(project_settings=None):
         cmds.colorManagementPrefs(edit=True, cmEnabled=False)
         return
 
+    if not imageio["workfile"]["enabled"]:
+        log.info(
+            "AYON Maya Color Management settings for workfile are disabled."
+        )
+        return
+        
     # set color spaces for rendering space and view transforms
     def _colormanage(**kwargs):
         """Wrapper around `cmds.colorManagementPrefs`.
