@@ -325,7 +325,9 @@ class MayaCreator(Creator, MayaCreatorBase):
                 "data": instance_data,
                 "creator": self,
             }
-            
+
+            # this is here to retain compatibility with older ayon-core
+            # but should be removed in future
             if hasattr(self, "product_base_type"):
                 signature = inspect.signature(CreatedInstance)
                 if "product_base_type" in signature.parameters:
