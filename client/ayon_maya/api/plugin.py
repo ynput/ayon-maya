@@ -1,5 +1,6 @@
 """Plugin for Ayon Maya API."""
 from __future__ import annotations
+import inspect
 import json
 import os
 from typing import Any, Optional, Union
@@ -317,13 +318,22 @@ class MayaCreator(Creator, MayaCreatorBase):
         with lib.undo_chunk():
             instance_node = cmds.sets(members, name=product_name)
             instance_data["instance_node"] = instance_node
-            instance = CreatedInstance(
-                product_type=self.product_type,
-                product_name=product_name,
-                data=instance_data,
-                creator=self,
-                product_base_type=self.product_base_type
-            )
+
+            instance_kwargs = {
+                "product_type": self.product_type,
+                "product_name": product_name,
+                "data": instance_data,
+                "creator": self,
+            }
+            
+            if hasattr(self, "product_base_type"):
+                signature = inspect.signature(CreatedInstance)
+                if "product_base_type" in signature.parameters:
+                    instance_kwargs["product_base_type"] = (
+                        self.product_base_type
+                    )
+
+            instance = CreatedInstance(**instance_kwargs)
             self._add_instance_to_context(instance)
 
             self.imprint_instance_node(instance_node,
