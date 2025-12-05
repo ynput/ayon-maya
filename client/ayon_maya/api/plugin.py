@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 import json
 import os
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 import ayon_api
 import qargparse
