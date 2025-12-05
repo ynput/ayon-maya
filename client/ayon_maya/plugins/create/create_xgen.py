@@ -8,6 +8,7 @@ class CreateXgen(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.xgen"
     label = "Xgen"
     product_type = "xgen"
+    product_base_type = "xgen"
     icon = "pagelines"
 
     def get_instance_attr_defs(self):

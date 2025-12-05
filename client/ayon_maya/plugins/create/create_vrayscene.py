@@ -15,6 +15,7 @@ class CreateVRayScene(plugin.RenderlayerCreator):
     identifier = "io.openpype.creators.maya.vrayscene"
 
     product_type = "vrayscene"
+    product_base_type = "vrayscene"
     label = "VRay Scene"
     icon = "cubes"
 

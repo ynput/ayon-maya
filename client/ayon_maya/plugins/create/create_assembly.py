@@ -7,4 +7,5 @@ class CreateAssembly(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.assembly"
     label = "Assembly"
     product_type = "assembly"
+    product_base_type = "assembly"
     icon = "cubes"

@@ -14,6 +14,7 @@ class CreateMayaUsd(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.mayausd"
     label = "Maya USD"
     product_type = "usd"
+    product_base_type = "usd"
     icon = "cubes"
     description = "Create Maya USD Export"
     cache = {}

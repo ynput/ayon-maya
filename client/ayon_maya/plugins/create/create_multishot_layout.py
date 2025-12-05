@@ -30,6 +30,7 @@ class CreateMultishotLayout(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.multishotlayout"
     label = "Multi-shot Layout"
     product_type = "layout"
+    product_base_type = "layout"
     icon = "project-diagram"
 
     def get_pre_create_attr_defs(self):

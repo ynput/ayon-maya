@@ -9,6 +9,7 @@ class CreateRig(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.rig"
     label = "Rig"
     product_type = "rig"
+    product_base_type = "rig"
     icon = "wheelchair"
 
     def create(self, product_name, instance_data, pre_create_data):

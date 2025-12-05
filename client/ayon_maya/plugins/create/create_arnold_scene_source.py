@@ -18,6 +18,7 @@ class CreateArnoldSceneSource(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.ass"
     label = "Arnold Scene Source"
     product_type = "ass"
+    product_base_type = "ass"
     icon = "cube"
     settings_name = "CreateAss"
 

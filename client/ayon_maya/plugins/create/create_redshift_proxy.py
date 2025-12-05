@@ -11,6 +11,7 @@ class CreateRedshiftProxy(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.redshiftproxy"
     label = "Redshift Proxy"
     product_type = "redshiftproxy"
+    product_base_type = "redshiftproxy"
     icon = "gears"
 
     def get_instance_attr_defs(self):

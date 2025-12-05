@@ -11,6 +11,7 @@ class CreateModel(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.model"
     label = "Model"
     product_type = "model"
+    product_base_type = "model"
     icon = "cube"
     default_variants = ["Main", "Proxy", "_MD", "_HD", "_LD"]
 
