@@ -33,9 +33,10 @@ class ValidateRigControllers(plugin.MayaInstancePlugin,
     label = "Rig Controllers"
     families = ["rig"]
     optional = True
-    set_name = "controls_SET"
     actions = [RepairAction,
                ayon_maya.api.action.SelectInvalidAction]
+
+    set_name = "controls_SET"
 
     # Default controller values
     CONTROLLER_DEFAULTS = {
