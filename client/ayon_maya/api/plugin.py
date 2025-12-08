@@ -319,23 +319,12 @@ class MayaCreator(Creator, MayaCreatorBase):
             instance_node = cmds.sets(members, name=product_name)
             instance_data["instance_node"] = instance_node
 
-            instance_kwargs = {
-                "product_type": self.product_type,
-                "product_name": product_name,
-                "data": instance_data,
-                "creator": self,
-            }
-
-            # this is here to retain compatibility with older ayon-core
-            # but should be removed in future
-            if hasattr(self, "product_base_type"):
-                signature = inspect.signature(CreatedInstance)
-                if "product_base_type" in signature.parameters:
-                    instance_kwargs["product_base_type"] = (
-                        self.product_base_type
-                    )
-
-            instance = CreatedInstance(**instance_kwargs)
+            # product base type support is added in ayon-core 1.7.0
+            instance = CreatedInstance(
+                product_type=self.product_type,
+                product_name=product_name,
+                data=instance_data,
+                creator=self,)
             self._add_instance_to_context(instance)
 
             self.imprint_instance_node(instance_node,
@@ -624,7 +613,7 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         self,
         project_name: str,
         folder_entity: dict[str, Any],
-        task_entity: dict[str, Any],
+        task_entity: Optional[dict[str, Any]],
         variant: str,
         host_name: Optional[str] = None,
         instance: Optional[CreatedInstance] = None,
