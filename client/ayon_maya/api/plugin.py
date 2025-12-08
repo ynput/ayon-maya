@@ -697,7 +697,7 @@ class Loader(LoaderPlugin):
 
     @classmethod
     def apply_settings(cls, project_settings):
-        super(Loader, cls).apply_settings(project_settings)
+        super().apply_settings(project_settings)
         cls.load_settings = project_settings['maya']['load']
 
     def get_custom_namespace_and_group(self, context, options, loader_key):
@@ -731,24 +731,28 @@ class Loader(LoaderPlugin):
             product_entity.get("productBaseType") or product_type
         )
         formatting_data = {
-            "asset_name": folder_entity["name"],
-            "asset_type": "asset",
             "folder": {
                 "name": folder_entity["name"],
             },
-            "subset": product_name,
             "product": {
                 "name": product_name,
                 "type": product_type,
                 "baseType": product_base_type,
             },
-            "family": product_base_type
+            # Legacy: Backwards compatibilty
+            "family": product_type,
+            "asset_name": folder_entity["name"],
+            "asset_type": "asset",
+            "subset": product_name,
         }
 
         custom_namespace = custom_naming["namespace"].format(
             **formatting_data
         )
 
+        # Keep namespace dynamic, because we want to use the actual resolved
+        # unique namespace to format with instead
+        formatting_data["namespace"] = "{namespace}"
         custom_group_name = custom_naming["group_name"].format(
             **formatting_data
         )
@@ -808,7 +812,7 @@ class ReferenceLoader(Loader):
             namespace = lib.get_custom_namespace(custom_namespace)
             group_name = "{}:{}".format(
                 namespace,
-                custom_group_name
+                custom_group_name.format(namespace=namespace)
             )
 
             options['group_name'] = group_name
@@ -830,7 +834,7 @@ class ReferenceLoader(Loader):
             # Only containerize if any nodes were loaded by the Loader
             nodes = self[:]
             if not nodes:
-                return
+                continue
 
             ref_node = lib.get_reference_node(nodes, self.log)
             container = containerise(
