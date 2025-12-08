@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 
 import clique
@@ -14,12 +15,11 @@ from ayon_maya.api.plugin import get_load_color_for_product_type
 from ayon_maya.api import plugin
 
 
-def is_sequence(files):
-    sequence = False
-    collections, remainder = clique.assemble(files, minimum_items=1)
+def is_sequence(files: list[str]) -> bool:
+    collections, _remainder = clique.assemble(files)
     if collections:
-        sequence = True
-    return sequence
+        return True
+    return False
 
 
 class ArnoldStandinLoader(plugin.Loader):
@@ -117,7 +117,7 @@ class ArnoldStandinLoader(plugin.Loader):
             context=context,
             loader=self.__class__.__name__)
 
-    def get_next_free_multi_index(self, attr_name):
+    def get_next_free_multi_index(self, attr_name: str) -> int:
         """Find the next unconnected multi index at the input attribute."""
         for index in range(10000000):
             connection_info = cmds.connectionInfo(
@@ -126,8 +126,9 @@ class ArnoldStandinLoader(plugin.Loader):
             )
             if len(connection_info or []) == 0:
                 return index
+        return -1
 
-    def _get_proxy_path(self, path):
+    def _get_proxy_path(self, path: str) -> tuple[str, str]:
         basename_split = os.path.basename(path).split(".")
         proxy_basename = (
             basename_split[0] + "_proxy." + ".".join(basename_split[1:])
