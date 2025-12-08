@@ -28,6 +28,7 @@ class ValidateRigOutputIds(plugin.MayaInstancePlugin):
     families = ["rig"]
     actions = [RepairAction,
                ayon_maya.api.action.SelectInvalidAction]
+    optional = True
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -142,6 +143,7 @@ class ValidateSkeletonRigOutputIds(ValidateRigOutputIds):
     """
     order = ValidateContentsOrder + 0.05
     label = "Skeleton Rig Output Ids"
+    optional = True
 
     @classmethod
     def get_node(cls, instance):
