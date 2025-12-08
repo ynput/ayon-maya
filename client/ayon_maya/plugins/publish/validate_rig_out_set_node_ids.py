@@ -140,8 +140,6 @@ class ValidateSkeletonRigOutSetNodeIds(ValidateRigOutSetNodeIds):
     """
 
     order = ValidateContentsOrder
-    families = ["rig.fbx"]
-    hosts = ['maya']
     label = 'Skeleton Rig Out Set Node Ids'
     optional = False
 

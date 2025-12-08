@@ -142,8 +142,6 @@ class ValidateSkeletonRigOutputIds(ValidateRigOutputIds):
     """
     order = ValidateContentsOrder + 0.05
     label = "Skeleton Rig Output Ids"
-    hosts = ["maya"]
-    families = ["rig.fbx"]
 
     @classmethod
     def get_node(cls, instance):

@@ -33,6 +33,7 @@ class ValidateRigControllers(plugin.MayaInstancePlugin,
     label = "Rig Controllers"
     families = ["rig"]
     optional = True
+    set_name = "controls_SET"
     actions = [RepairAction,
                ayon_maya.api.action.SelectInvalidAction]
 
@@ -65,7 +66,7 @@ class ValidateRigControllers(plugin.MayaInstancePlugin,
         controls_set = cls.get_node(instance)
         if not controls_set:
             cls.log.error(
-                "Must have 'controls_SET' in rig instance"
+                f"Must have '{cls.set_name}' in rig instance"
             )
             return [instance.data["instance_node"]]
 
@@ -195,7 +196,7 @@ class ValidateRigControllers(plugin.MayaInstancePlugin,
         controls_set = cls.get_node(instance)
         if not controls_set:
             cls.log.error(
-                "Unable to repair because no 'controls_SET' found in rig "
+                f"Unable to repair because no '{cls.set_name}' found in rig "
                 "instance: {}".format(instance)
             )
             return
@@ -242,7 +243,7 @@ class ValidateRigControllers(plugin.MayaInstancePlugin,
         Returns:
             list: list of object nodes from controls_SET
         """
-        return instance.data["rig_sets"].get("controls_SET")
+        return instance.data["rig_sets"].get(cls.set_name)
 
 
 class ValidateSkeletonRigControllers(ValidateRigControllers):
@@ -265,8 +266,8 @@ class ValidateSkeletonRigControllers(ValidateRigControllers):
     """
     order = ValidateContentsOrder + 0.05
     label = "Skeleton Rig Controllers"
-    hosts = ["maya"]
-    families = ["rig.fbx"]
+    set_name = "skeletonMesh_SET"
+    optional = True
 
     # Default controller values
     CONTROLLER_DEFAULTS = {
@@ -291,4 +292,4 @@ class ValidateSkeletonRigControllers(ValidateRigControllers):
         Returns:
             list: list of object nodes from skeletonMesh_SET
         """
-        return instance.data["rig_sets"].get("skeletonMesh_SET")
+        return instance.data["rig_sets"].get(cls.set_name)

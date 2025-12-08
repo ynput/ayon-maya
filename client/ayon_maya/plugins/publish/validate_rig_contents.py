@@ -212,8 +212,6 @@ class ValidateSkeletonRigContents(ValidateRigContents):
 
     order = ValidateContentsOrder
     label = "Skeleton Rig Contents"
-    hosts = ["maya"]
-    families = ["rig.fbx"]
     optional = True
 
     @classmethod
@@ -224,6 +222,9 @@ class ValidateSkeletonRigContents(ValidateRigContents):
 
         # Ensure contents in sets and retrieve long path for all objects
         output_content = instance.data.get("skeleton_mesh", [])
+        if not output_content:
+            return
+
         output_content = cmds.ls(skeleton_mesh_nodes, long=True)
 
         invalid_hierarchy = cls.invalid_hierarchy(

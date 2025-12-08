@@ -30,7 +30,7 @@ class ValidateSkeletonTopGroupHierarchy(plugin.MayaInstancePlugin,
     """
     order = ValidateContentsOrder + 0.05
     label = "Skeleton Rig Top Group Hierarchy"
-    families = ["rig.fbx"]
+    families = ["rig"]
     optional = True
 
     def process(self, instance):
