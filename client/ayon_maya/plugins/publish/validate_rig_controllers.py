@@ -267,8 +267,9 @@ class ValidateSkeletonRigControllers(ValidateRigControllers):
     """
     order = ValidateContentsOrder + 0.05
     label = "Skeleton Rig Controllers"
-    set_name = "skeletonMesh_SET"
     optional = True
+
+    set_name = "skeletonMesh_SET"
 
     # Default controller values
     CONTROLLER_DEFAULTS = {
