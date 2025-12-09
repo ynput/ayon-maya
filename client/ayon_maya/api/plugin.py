@@ -323,7 +323,8 @@ class MayaCreator(Creator, MayaCreatorBase):
                 product_type=self.product_type,
                 product_name=product_name,
                 data=instance_data,
-                creator=self,)
+                creator=self,
+            )
             self._add_instance_to_context(instance)
 
             self.imprint_instance_node(instance_node,
