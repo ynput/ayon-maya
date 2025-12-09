@@ -1,6 +1,5 @@
 """Plugin for Ayon Maya API."""
 from __future__ import annotations
-import inspect
 import json
 import os
 from typing import Any, Optional
