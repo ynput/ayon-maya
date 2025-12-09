@@ -119,6 +119,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                 container_order += 1
                 representation_id = cmds.getAttr(
                     "{}.representation".format(container))
+                loader = cmds.getAttr("{}.loader".format(container))
 
                 # Ignore invalid UUID is the representation for whatever reason
                 # is invalid
@@ -155,7 +156,8 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
                     "representation": str(representation_id),
                     "version": str(version_id),
                     "extension": repre_context["ext"],
-                    "host": self.hosts
+                    "host": self.hosts,
+                    "loader": loader,
                 }
                 local_matrix = cmds.xform(
                     container_root, query=True, matrix=True)
