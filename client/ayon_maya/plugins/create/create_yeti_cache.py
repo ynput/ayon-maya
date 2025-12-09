@@ -11,6 +11,7 @@ class CreateYetiCache(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.yeticache"
     label = "Yeti Cache"
     product_type = "yeticache"
+    product_base_type = "yeticache"
     icon = "pagelines"
 
     def get_instance_attr_defs(self):

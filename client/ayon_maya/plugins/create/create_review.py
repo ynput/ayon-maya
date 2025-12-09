@@ -24,6 +24,7 @@ class CreateReview(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.review"
     label = "Review"
     product_type = "review"
+    product_base_type = "review"
     icon = "video-camera"
 
     useMayaTimeline = True

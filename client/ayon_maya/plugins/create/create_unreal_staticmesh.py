@@ -10,6 +10,7 @@ class CreateUnrealStaticMesh(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.unrealstaticmesh"
     label = "Unreal - Static Mesh"
     product_type = "staticMesh"
+    product_base_type = "staticMesh"
     icon = "cube"
 
     # Defined in settings
