@@ -15,7 +15,17 @@ from ayon_maya.api.plugin import get_load_color_for_product_type
 from ayon_maya.api import plugin
 
 
-def is_sequence(files: list[str]) -> bool:
+def is_sequence(path: str) -> bool:
+    """From single frame check if it is part of a sequence."""
+    # Given all the files matching the representation's extension
+    # check if we can detect a sequence of more than one file.
+    extension = os.path.splitext(path)[1]
+    files: list[str] = [
+        fname for fname in
+        os.listdir(os.path.dirname(path))
+        if fname.endswith(extension)
+    ]
+
     collections, _remainder = clique.assemble(files)
     if collections:
         return True
@@ -96,7 +106,7 @@ class ArnoldStandinLoader(plugin.Loader):
                 standin_shape, repre_path, namespace
             )
             cmds.setAttr(standin_shape + ".dso", path, type="string")
-            sequence = is_sequence(os.listdir(os.path.dirname(repre_path)))
+            sequence = is_sequence(path)
             cmds.setAttr(standin_shape + ".useFrameExtension", sequence)
             cmds.setAttr(standin_shape + ".aiNamespace", namespace, type="string")
 
@@ -214,7 +224,7 @@ class ArnoldStandinLoader(plugin.Loader):
             dso_path = proxy_path
         cmds.setAttr(standin + ".dso", dso_path, type="string")
 
-        sequence = is_sequence(os.listdir(os.path.dirname(path)))
+        sequence = is_sequence(dso_path)
         cmds.setAttr(standin + ".useFrameExtension", sequence)
 
         cmds.setAttr(
