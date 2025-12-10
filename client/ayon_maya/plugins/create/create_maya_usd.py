@@ -14,6 +14,7 @@ class CreateMayaUsd(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.mayausd"
     label = "Maya USD"
     product_type = "usd"
+    product_base_type = "usd"
     icon = "cubes"
     description = "Create Maya USD Export"
     cache = {}
@@ -109,17 +110,6 @@ class CreateMayaUsd(plugin.MayaCreator):
                         "Remove namespaces during export. By default, "
                         "namespaces are exported to the USD file in the "
                         "following format: nameSpaceExample_pPlatonic1"
-                    ),
-                    default=True),
-            BoolDef("mergeTransformAndShape",
-                    label="Merge Transform and Shape",
-                    tooltip=(
-                        "Combine Maya transform and shape into a single USD"
-                        "prim that has transform and geometry, for all"
-                        " \"geometric primitives\" (gprims).\n"
-                        "This results in smaller and faster scenes. Gprims "
-                        "will be \"unpacked\" back into transform and shape "
-                        "nodes when imported into Maya from USD."
                     ),
                     default=True),
             BoolDef("includeUserDefinedAttributes",

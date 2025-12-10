@@ -43,8 +43,6 @@ class ExtractFBX(plugin.MayaExtractorPlugin):
         # Export
         with maintained_selection():
             fbx_exporter.export(members, path)
-            cmds.select(members, r=1, noExpand=True)
-            mel.eval('FBXExport -f "{}" -s'.format(path))
 
         if "representations" not in instance.data:
             instance.data["representations"] = []

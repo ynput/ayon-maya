@@ -5,26 +5,24 @@ import os
 import contextlib
 import copy
 
-import six
 import ayon_api
 
 from maya import cmds
 
 from ayon_core.pipeline import (
-    schema,
     discover_loader_plugins,
     loaders_from_representation,
     load_container,
     update_container,
     remove_container,
-    get_representation_path,
     get_current_project_name,
 )
 from ayon_maya.api.lib import (
     matrix_equals,
     unique_namespace,
     get_container_transforms,
-    DEFAULT_MATRIX
+    DEFAULT_MATRIX,
+    get_representation_path_by_project,
 )
 
 log = logging.getLogger("PackageLoader")
@@ -111,7 +109,7 @@ def load_package(filepath, name, namespace=None):
         # Define a unique namespace for the package
         namespace = os.path.basename(filepath).split(".")[0]
         unique_namespace(namespace)
-    assert isinstance(namespace, six.string_types)
+    assert isinstance(namespace, str)
 
     # Load the setdress package data
     with open(filepath, "r") as fp:
@@ -260,11 +258,11 @@ def get_contained_containers(container):
     containers = []
     members = cmds.sets(container['objectName'], query=True)
     for node in cmds.ls(members, type="objectSet"):
-        try:
-            member_container = parse_container(node)
-            containers.append(member_container)
-        except schema.ValidationError:
-            pass
+        member_container = parse_container(node)
+        if not member_container:
+            # Skip invalid container (missing partial metadata)
+            continue
+        containers.append(member_container)
 
     return containers
 
@@ -345,13 +343,17 @@ def update_package(set_container, context):
         project_name, set_container["representation"]
     )
 
-    current_file = get_representation_path(current_representation)
+    current_file = get_representation_path_by_project(
+        project_name, current_representation
+    )
     assert current_file.endswith(".json")
     with open(current_file, "r") as fp:
         current_data = json.load(fp)
 
     # Load the new package data
-    new_file = get_representation_path(repre_entity)
+    new_file = get_representation_path_by_project(
+        project_name, repre_entity
+    )
     assert new_file.endswith(".json")
     with open(new_file, "r") as fp:
         new_data = json.load(fp)

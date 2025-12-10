@@ -12,25 +12,11 @@ from .publish_playblast import (
 )
 
 
-def linear_unit_enum():
-    """Get linear units enumerator."""
+def up_axis_enum():
+    """Get Up Axis enumerator."""
     return [
-        {"label": "millimeter", "value": "mm"},
-        {"label": "centimeter", "value": "cm"},
-        {"label": "meter", "value": "m"},
-        {"label": "kilometer", "value": "km"},
-        {"label": "inch", "value": "in"},
-        {"label": "foot", "value": "ft"},
-        {"label": "yard", "value": "yd"},
-        {"label": "mile", "value": "mi"}
-    ]
-
-
-def angular_unit_enum():
-    """Get angular units enumerator."""
-    return [
-        {"label": "degree", "value": "deg"},
-        {"label": "radian", "value": "rad"},
+        {"label": "y", "value": "y"},
+        {"label": "z", "value": "z"},
     ]
 
 
@@ -147,10 +133,22 @@ class CollectMayaRenderModel(BaseSettingsModel):
 
 class CollectFbxAnimationModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Collect Fbx Animation")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    input_connections: bool = SettingsField(True, title="Input Connections")
+    up_axis: str = SettingsField(
+        enum_resolver=up_axis_enum, title="Up Axis"
+    )
 
 
 class CollectFbxCameraModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="CollectFbxCamera")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    input_connections: bool = SettingsField(True, title="Input Connections")
+    up_axis: str = SettingsField(
+        enum_resolver=up_axis_enum, title="Up Axis"
+    )
 
 
 class CollectGLTFModel(BaseSettingsModel):
@@ -234,17 +232,26 @@ class ValidateLoadedPluginModel(BaseSettingsModel):
 class ValidateMayaUnitsModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="ValidateMayaUnits")
     optional: bool = SettingsField(title="Optional")
-    validate_linear_units: bool = SettingsField(title="Validate linear units")
-    linear_units: str = SettingsField(
-        enum_resolver=linear_unit_enum, title="Linear Units"
+    validate_linear_units: bool = SettingsField(
+        title="Validate linear units",
+        description=(
+            "Whether to validate the Maya scene linear units against "
+            "the _Scene Unit_ settings"
+        ),
     )
     validate_angular_units: bool = SettingsField(
-        title="Validate angular units"
+        title="Validate angular units",
+        description=(
+            "Whether to validate the Maya scene angular units against "
+            "the _Scene Unit_ settings"
+        ),
     )
-    angular_units: str = SettingsField(
-        enum_resolver=angular_unit_enum, title="Angular units"
-    )
-    validate_fps: bool = SettingsField(title="Validate fps")
+    validate_fps: bool = SettingsField(
+        title="Validate FPS",
+        description=(
+            "Whether to validate the Maya scene FPS against the task "
+            "context's FPS"
+        ))
 
 
 class ValidateUnrealStaticMeshNameModel(BaseSettingsModel):
@@ -525,6 +532,81 @@ class ExtractModelModel(BaseSettingsModel):
     active: bool = SettingsField(title="Active")
 
 
+class ExtractMayaUsdCustomAttrNameMappingModel(BaseSettingsModel):
+    _layout = "compact"
+    name: str = SettingsField("", title="Maya name")
+    usd_name: str = SettingsField("", title="USD name")
+
+
+class ExtractMayaUsdModel(BaseSettingsModel):
+    """Export USD using Maya's mayaUsd plug-in
+
+    Custom attributes overrides allow user defined attributes to be exported
+    using custom naming overrides, e.g. by prefixing them all with a default
+    namespace or specifying explict Maya name to USD name mapping.
+
+    You can also customize it with the mapping JSON which expects a key
+    for each Maya attribute name to customize output values for, using the
+    [custom attribute `USD_UserExportedAttributesJson` syntax](https://github.com/Autodesk/maya-usd/blob/dev/lib/mayaUsd/commands/Readme.md#specifying-arbitrary-attributes-for-export).
+
+    Any existing `USD_UserExportedAttributesJson` attribute on nodes in the
+    scene will still be the strongest opinion - hence these mappings only
+    apply defaults if not explicitly specified in the scene.
+    """
+    custom_attr_namespace: str = SettingsField(
+        section="Custom Attributes",
+        title="Custom Attribute Default Namespace",
+        description=(
+            "Default USD attribute name prefix for custom attributes to be"
+            " exported. For example, setting this to an empty string would"
+            " make custom attribute `myAttr` exported directly as `myAttr`"
+            " instead of `userProperties:myAttr` in the resulting USD file."
+            " In the majority of cases you will want to leave this at the"
+            " default `userProperties:` because that is where you store user"
+            " defined properties."
+        )
+    )
+    custom_attr_name_mapping: list[
+        ExtractMayaUsdCustomAttrNameMappingModel
+    ] = SettingsField(
+        title="Custom Attribute Name Mapping",
+        description=(
+            "Specify a Maya name to USD attribute name mapping "
+            "for custom attributes"
+        )
+    )
+    custom_attr_mapping: str = SettingsField(
+        title="Advanced Custom Attribute Mapping",
+        widget="textarea",
+        description=(
+            "Default [custom attribute `USD_UserExportedAttributesJson`](https://github.com/Autodesk/maya-usd/blob/dev/lib/mayaUsd/commands/Readme.md#specifying-arbitrary-attributes-for-export)."
+            "\n\n"
+            "Use this if you want to override other data or more than just "
+            "the name, like e.g. `usdAttrType` or "
+            "`translateMayaDoubleToUsdSinglePrecision`."
+            "\n\n"
+            "Any `USD_UserExportedAttributesJson` attribute existing"
+            " on the node attribute will not be overridden."
+        )
+    )
+
+    @validator("custom_attr_mapping")
+    def validate_json(cls, value):
+        if not value.strip():
+            return "{}"
+        try:
+            converted_value = json.loads(value)
+            success = isinstance(converted_value, dict)
+        except json.JSONDecodeError:
+            success = False
+
+        if not success:
+            raise BadRequestException(
+                "The attributes can't be parsed as json object"
+            )
+        return value
+
+
 class ExtractMayaUsdModelModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
@@ -622,12 +704,12 @@ class PublishersModel(BaseSettingsModel):
         title="Collect Render Layers",
         section="Collectors"
     )
-    CollectFbxAnimation: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
+    CollectFbxAnimation: CollectFbxAnimationModel = SettingsField(
+        default_factory=CollectFbxAnimationModel,
         title="Collect FBX Animation",
     )
-    CollectFbxCamera: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
+    CollectFbxCamera: CollectFbxCameraModel = SettingsField(
+        default_factory=CollectFbxCameraModel,
         title="Collect Camera for FBX export",
     )
     CollectFbxModel: BasicValidateModel = SettingsField(
@@ -1063,6 +1145,10 @@ class PublishersModel(BaseSettingsModel):
         title="Extract Animation (Alembic)",
         description="Alembic extractor for loaded rigs"
     )
+    ExtractMayaUsd: ExtractMayaUsdModel = SettingsField(
+        default_factory=ExtractMayaUsdModel,
+        title="Extract Maya USD"
+    )
     ExtractMayaUsdModel: ExtractMayaUsdModelModel = SettingsField(
         default_factory=ExtractMayaUsdModelModel,
         title="Extract Maya USD with Model"
@@ -1074,6 +1160,10 @@ class PublishersModel(BaseSettingsModel):
     ExtractMayaUsdAnim: ExtractMayaUsdAnimModel = SettingsField(
         default_factory=ExtractMayaUsdAnimModel,
         title="Extract Maya USD with Animation"
+    )
+    ExtractSkeletonMesh: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Skeleton Mesh"
     )
 
 
@@ -1092,12 +1182,16 @@ DEFAULT_PUBLISH_SETTINGS = {
     "CollectFbxAnimation": {
         "enabled": False,
         "optional": True,
-        "active": True
+        "active": True,
+        "input_connections": True,
+        "up_axis": "y"
     },
     "CollectFbxCamera": {
         "enabled": False,
-        "optional": True,
-        "active": True
+        "optional": False,
+        "active": True,
+        "input_connections": True,
+        "up_axis": "y"
     },
     "CollectFbxModel": {
         "enabled": False,
@@ -1156,9 +1250,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": False,
         "validate_linear_units": True,
-        "linear_units": "cm",
         "validate_angular_units": True,
-        "angular_units": "deg",
         "validate_fps": True
     },
     "ValidateUnrealStaticMeshName": {
@@ -1708,6 +1800,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": False,
         "active": True,
     },
+    "ExtractMayaUsd": {
+        "custom_attr_namespace": "userProperties:",
+        "custom_attr_name_mapping": [],
+        "custom_attr_mapping": "{}",
+    },
     "ExtractMayaUsdModel": {
         "enabled": True,
         "optional": True,
@@ -1722,5 +1819,10 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "active": False,
+    },
+    "ExtractSkeletonMesh": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
     }
 }

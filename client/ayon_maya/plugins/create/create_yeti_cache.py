@@ -2,7 +2,7 @@ from ayon_maya.api import (
     lib,
     plugin
 )
-from ayon_core.lib import NumberDef
+from ayon_core.lib import NumberDef, BoolDef
 
 
 class CreateYetiCache(plugin.MayaCreator):
@@ -11,11 +11,15 @@ class CreateYetiCache(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.yeticache"
     label = "Yeti Cache"
     product_type = "yeticache"
+    product_base_type = "yeticache"
     icon = "pagelines"
 
     def get_instance_attr_defs(self):
 
         defs = [
+            BoolDef("farm",
+                    label="Submit to Farm",
+                    default=False),
             NumberDef("preroll",
                       label="Preroll",
                       minimum=0,

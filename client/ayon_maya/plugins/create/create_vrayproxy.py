@@ -11,6 +11,7 @@ class CreateVrayProxy(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.vrayproxy"
     label = "VRay Proxy"
     product_type = "vrayproxy"
+    product_base_type = "vrayproxy"
     icon = "gears"
 
     vrmesh = True
@@ -19,6 +20,9 @@ class CreateVrayProxy(plugin.MayaCreator):
     def get_instance_attr_defs(self):
 
         defs = [
+            BoolDef("farm",
+                    label="Submit to Farm",
+                    default=False),
             BoolDef("animation",
                     label="Export Animation",
                     default=False)

@@ -8,6 +8,7 @@ class CreateLayout(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.layout"
     label = "Layout"
     product_type = "layout"
+    product_base_type = "layout"
     icon = "cubes"
 
     def get_instance_attr_defs(self):
@@ -17,5 +18,10 @@ class CreateLayout(plugin.MayaCreator):
                     label="Group Loaded Assets",
                     tooltip="Enable this when you want to publish group of "
                             "loaded asset",
-                    default=False)
+                    default=False),
+            BoolDef("allowObjectTransforms",
+                    label="Allow Object Transforms",
+                    tooltip="Enable this when include all the transform data"
+                            "of objects"
+                    )
         ]

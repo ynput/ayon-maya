@@ -2,7 +2,6 @@ import os
 
 import clique
 import maya.cmds as cmds
-from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
 from ayon_maya.api.lib import (
     get_attribute_input,
@@ -99,6 +98,7 @@ class ArnoldStandinLoader(plugin.Loader):
             cmds.setAttr(standin_shape + ".dso", path, type="string")
             sequence = is_sequence(os.listdir(os.path.dirname(repre_path)))
             cmds.setAttr(standin_shape + ".useFrameExtension", sequence)
+            cmds.setAttr(standin_shape + ".aiNamespace", namespace, type="string")
 
             fps = (
                 version_attributes.get("fps") or get_fps_for_current_context()
@@ -201,7 +201,7 @@ class ArnoldStandinLoader(plugin.Loader):
                 standin = shapes[0]
 
         repre_entity = context["representation"]
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         proxy_basename, proxy_path = self._get_proxy_path(path)
 
         # Whether there is proxy or not, we still update the string operator.

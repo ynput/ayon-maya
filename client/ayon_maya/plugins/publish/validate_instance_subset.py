@@ -1,6 +1,5 @@
 import string
 
-import six
 from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
@@ -35,7 +34,7 @@ class ValidateSubsetName(plugin.MayaInstancePlugin):
                 "Instance is missing product name: {0}".format(product_name)
             )
 
-        if not isinstance(product_name, six.string_types):
+        if not isinstance(product_name, str):
             raise PublishValidationError((
                 "Instance product name must be string, got: {0} ({1})"
             ).format(product_name, type(product_name)))

@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 """Class for handling Render Settings."""
-import six
-import sys
-
 from ayon_core.lib import Logger
 from ayon_core.settings import get_project_settings
 
@@ -51,7 +48,8 @@ class RenderSettings(object):
             "vray": render_settings["vray_renderer"]["image_prefix"],
             "arnold": render_settings["arnold_renderer"]["image_prefix"],
             "renderman": render_settings["renderman_renderer"]["image_prefix"],
-            "redshift": render_settings["redshift_renderer"]["image_prefix"]
+            "redshift": render_settings["redshift_renderer"]["image_prefix"],
+            "mayahardware2": render_settings["mayahardware2_renderer"]["image_prefix"],
         }
 
         # TODO probably should be stored to more explicit attribute
@@ -200,22 +198,14 @@ class RenderSettings(object):
         # update the AOV list
         mel.eval("redshiftUpdateActiveAovList")
 
-        rs_p_engine = redshift_render_presets["primary_gi_engine"]
-        rs_s_engine = redshift_render_presets["secondary_gi_engine"]
-
-        if int(rs_p_engine) or int(rs_s_engine) != 0:
-            cmds.setAttr("redshiftOptions.GIEnabled", 1)
-            if int(rs_p_engine) == 0:
-                # reset the primary GI Engine as default
-                cmds.setAttr("redshiftOptions.primaryGIEngine", 4)
-            if int(rs_s_engine) == 0:
-                # reset the secondary GI Engine as default
-                cmds.setAttr("redshiftOptions.secondaryGIEngine", 2)
-        else:
-            cmds.setAttr("redshiftOptions.GIEnabled", 0)
-
-        cmds.setAttr("redshiftOptions.primaryGIEngine", int(rs_p_engine))
-        cmds.setAttr("redshiftOptions.secondaryGIEngine", int(rs_s_engine))
+        gi_enabled: bool = redshift_render_presets["gi_enabled"]
+        rs_p_engine = int(redshift_render_presets["primary_gi_engine"])
+        rs_s_engine = int(redshift_render_presets["secondary_gi_engine"])
+        cmds.setAttr("redshiftOptions.GIEnabled", gi_enabled)
+        if rs_p_engine != 0:
+            cmds.setAttr("redshiftOptions.primaryGIEngine", rs_p_engine)
+        if rs_s_engine != 0:
+            cmds.setAttr("redshiftOptions.secondaryGIEngine", rs_s_engine)
 
         additional_options = redshift_render_presets["additional_options"]
         ext = redshift_render_presets["image_format"]
@@ -343,13 +333,10 @@ class RenderSettings(object):
             separators = [cmds.menuItem(i, query=True, label=True) for i in items]  # noqa: E501
             try:
                 sep_idx = separators.index(aov_separator)
-            except ValueError:
-                six.reraise(
-                    CreatorError,
-                    CreatorError(
-                        "AOV character {} not in {}".format(
-                            aov_separator, separators)),
-                    sys.exc_info()[2])
+            except ValueError as exc:
+                raise CreatorError(
+                    f"AOV character {aov_separator} not in {separators}"
+                ) from exc
 
             cmds.optionMenuGrp(MENU, edit=True, select=sep_idx + 1)
 

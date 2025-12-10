@@ -80,6 +80,16 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         super(MayaHost, self).__init__()
         self._op_events = {}
 
+    def get_app_information(self):
+        from ayon_core.host import ApplicationInformation
+
+        version = cmds.about(version=True)
+
+        return ApplicationInformation(
+            app_name="Maya",
+            app_version=version,
+        )
+
     def install(self):
         project_name = get_current_project_name()
         project_settings = get_project_settings(project_name)
@@ -279,7 +289,15 @@ def _set_project():
         else:
             raise
 
-    cmds.workspace(workdir, openWorkspace=True)
+    try:
+        cmds.workspace(workdir, openWorkspace=True)
+    except RuntimeError:
+        # Allow to pass through with an error log in case `workspace.mel`
+        # may have been invalid or setting workspace fails for some other
+        # reason.
+        log.error(
+            "Failed to set Maya workspace to '%s': %s", workdir, exc_info=True
+        )
 
 
 def _on_maya_initialized(*args):
@@ -368,10 +386,18 @@ def parse_container(container):
         container (str): A container node name.
 
     Returns:
-        dict: The container schema data for this container node.
+        Optional[dict[str, Any]]: The container schema data for this container
+         if it meets all the required metadata.
 
     """
     data = lib.read(container)
+
+    required = ["id", "name", "namespace", "loader", "representation"]
+    missing = [key for key in required if key not in data]
+    if missing:
+        log.warning("Container '%s' is missing required keys: %s",
+                    container, missing)
+        return
 
     # Backwards compatibility pre-schemas for containers
     data["schema"] = data.get("schema", "openpype:container-1.0")
@@ -432,12 +458,14 @@ def ls():
     they are called 'containers'
 
     Yields:
-        dict: container
+        dict[str, Any]: container
 
     """
     container_names = _ls()
     for container in sorted(container_names):
-        yield parse_container(container)
+        container_data = parse_container(container)
+        if container_data:
+            yield container_data
 
 
 @lib.undo_chunk()
@@ -543,7 +571,7 @@ def on_init():
 
 def on_before_save():
     """Run validation for scene's FPS prior to saving"""
-    return lib.validate_fps()
+    return lib.validate_fps() and lib.validate_scene_units()
 
 
 def on_after_save():
@@ -618,6 +646,7 @@ def on_open():
     # Validate FPS after update_task_from_path to
     # ensure it is using correct FPS for the folder
     lib.validate_fps()
+    lib.validate_scene_units()
     lib.fix_incompatible_containers()
 
     if any_outdated_containers():
