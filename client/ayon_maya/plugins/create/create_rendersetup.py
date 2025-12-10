@@ -8,6 +8,7 @@ class CreateRenderSetup(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.rendersetup"
     label = "Render Setup Preset"
     product_type = "rendersetup"
+    product_base_type = "rendersetup"
     icon = "tablet"
 
     def get_pre_create_attr_defs(self):

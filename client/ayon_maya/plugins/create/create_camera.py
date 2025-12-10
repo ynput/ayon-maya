@@ -11,6 +11,7 @@ class CreateCamera(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.camera"
     label = "Camera"
     product_type = "camera"
+    product_base_type = "camera"
     icon = "video-camera"
 
     def get_instance_attr_defs(self):
@@ -33,4 +34,5 @@ class CreateCameraRig(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.camerarig"
     label = "Camera Rig"
     product_type = "camerarig"
+    product_base_type = "camerarig"
     icon = "video-camera"

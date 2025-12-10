@@ -8,6 +8,7 @@ class CreateLayout(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.layout"
     label = "Layout"
     product_type = "layout"
+    product_base_type = "layout"
     icon = "cubes"
 
     def get_instance_attr_defs(self):
