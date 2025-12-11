@@ -8,6 +8,7 @@ from ayon_maya.api import (
 from ayon_core.pipeline import CreatorError
 from ayon_core.lib import (
     BoolDef,
+    EnumDef,
     NumberDef,
 )
 
@@ -32,6 +33,7 @@ class CreateRender(plugin.RenderlayerCreator):
     layer_instance_prefix = "render"
     singleton_node_name = "renderingMain"
 
+    render_target = "farm"
     render_settings = {}
 
     def apply_settings(self, project_settings):
@@ -60,7 +62,17 @@ class CreateRender(plugin.RenderlayerCreator):
     def get_instance_attr_defs(self):
         """Create instance settings."""
 
+        render_target_items: dict[str, str] = {
+            "local": "Local machine rendering",
+            "local_no_render": "Use existing frames (local)",
+            "farm": "Farm Rendering",
+        }
+
         return [
+            EnumDef("render_target",
+                    items=render_target_items,
+                    label="Render target",
+                    default=self.render_target),
             BoolDef("review",
                     label="Review",
                     tooltip="Mark as reviewable",
