@@ -30,8 +30,29 @@ class ValidateSkeletonTopGroupHierarchy(plugin.MayaInstancePlugin,
     """
     order = ValidateContentsOrder + 0.05
     label = "Skeleton Rig Top Group Hierarchy"
-    families = ["rig"]
+    families = ["rig.fbx"]
     optional = True
+
+    @classmethod
+    def get_attr_defs_for_instance(cls, create_context, instance):
+        """Publish attribute definitions for an instance.
+
+        Attributes available for all families in plugin's `families` attribute.
+
+        Args:
+            create_context (CreateContext): Create context.
+            instance (CreatedInstance): Instance for which attributes are
+                collected.
+
+        Returns:
+            list[AbstractAttrDef]: Attribute definitions for plugin.
+
+        """
+        if not cls.instance_matches_plugin_families(instance):
+            if instance.product_type != "rig":
+                return []
+
+        return cls.get_attribute_defs()
 
     def process(self, instance):
         if not self.is_active(instance.data):
