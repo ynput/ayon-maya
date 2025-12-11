@@ -1,5 +1,8 @@
+"""Plugin for Ayon Maya API."""
+from __future__ import annotations
 import json
 import os
+from typing import Any, Optional
 
 import ayon_api
 import qargparse
@@ -314,11 +317,14 @@ class MayaCreator(Creator, MayaCreatorBase):
         with lib.undo_chunk():
             instance_node = cmds.sets(members, name=product_name)
             instance_data["instance_node"] = instance_node
+
+            # product base type support is added in ayon-core 1.7.0
             instance = CreatedInstance(
-                self.product_type,
-                product_name,
-                instance_data,
-                self)
+                product_type=self.product_type,
+                product_name=product_name,
+                data=instance_data,
+                creator=self,
+            )
             self._add_instance_to_context(instance)
 
             self.imprint_instance_node(instance_node,
@@ -605,13 +611,14 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
 
     def get_product_name(
         self,
-        project_name,
-        folder_entity,
-        task_entity,
-        variant,
-        host_name=None,
-        instance=None
-    ):
+        project_name: str,
+        folder_entity: dict[str, Any],
+        task_entity: Optional[dict[str, Any]],
+        variant: str,
+        host_name: Optional[str] = None,
+        instance: Optional[CreatedInstance] = None,
+        project_entity: Optional[dict[str, Any]] = None,
+    ) -> str:
         if host_name is None:
             host_name = self.create_context.host_name
         dynamic_data = self.get_dynamic_data(
@@ -635,15 +642,15 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
             product_type=self.layer_instance_prefix or self.product_type,
             variant=variant,
             dynamic_data=dynamic_data,
-            project_settings=self.project_settings
+            project_settings=self.project_settings,
         )
 
 
-def get_load_color_for_product_type(product_type, settings=None):
+def get_load_color_for_product_type(product_base_type, settings=None):
     """Get color for product type from settings.
 
     Args:
-        product_type (str): Family name.
+        product_base_type (str): Product base type.
         settings (Optional[dict]): Settings dictionary.
 
     Returns:
@@ -654,7 +661,7 @@ def get_load_color_for_product_type(product_type, settings=None):
         settings = get_project_settings(get_current_project_name())
 
     colors = settings["maya"]["load"]["colors"]
-    color = colors.get(product_type)
+    color = colors.get(product_base_type)
     if not color:
         return None
 
@@ -720,6 +727,9 @@ class Loader(LoaderPlugin):
         product_entity = context["product"]
         product_name = product_entity["name"]
         product_type = product_entity["productType"]
+        product_base_type = (
+            product_entity.get("productBaseType") or product_type
+        )
         formatting_data = {
             "folder": {
                 "name": folder_entity["name"],
@@ -727,6 +737,7 @@ class Loader(LoaderPlugin):
             "product": {
                 "name": product_name,
                 "type": product_type,
+                "baseType": product_base_type,
             },
             # Legacy: Backwards compatibilty
             "family": product_type,

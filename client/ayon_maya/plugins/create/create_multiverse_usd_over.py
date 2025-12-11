@@ -12,6 +12,7 @@ class CreateMultiverseUsdOver(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.mvusdoverride"
     label = "Multiverse USD Override"
     product_type = "mvUsdOverride"
+    product_base_type = "mvUsdOverride"
     icon = "cubes"
 
     def get_instance_attr_defs(self):
