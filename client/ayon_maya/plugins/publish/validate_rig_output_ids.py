@@ -161,9 +161,8 @@ class ValidateSkeletonRigOutputIds(ValidateRigOutputIds):
             list[AbstractAttrDef]: Attribute definitions for plugin.
 
         """
-        if not cls.instance_matches_plugin_families(instance):
-            if instance.product_type != "rig":
-                return []
+        if instance.product_type != "rig":
+            return []
 
         return cls.get_attribute_defs()
 
