@@ -9,7 +9,7 @@ from typing import Any, List, TYPE_CHECKING
 
 import ayon_api
 from ayon_core.pipeline import registered_host
-from ayon_maya.api import plugin, pipeline
+from ayon_maya.api import plugin
 from ayon_maya.api.lib import (
     get_highest_in_hierarchy,
     get_container_members,
