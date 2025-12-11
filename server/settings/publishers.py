@@ -1079,18 +1079,6 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Camera Attributes"
     )
-    ValidateAssemblyName: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Assembly Name"
-    )
-    ValidateAssemblyNamespaces: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Assembly Namespaces"
-    )
-    ValidateAssemblyModelTransforms: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Assembly Model Transforms"
-    )
     ValidateAssRelativePaths: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Ass Relative Paths"
@@ -1659,21 +1647,6 @@ DEFAULT_PUBLISH_SETTINGS = {
     "ValidateCameraAttributes": {
         "enabled": False,
         "optional": True,
-        "active": True
-    },
-    "ValidateAssemblyName": {
-        "enabled": True,
-        "optional": True,
-        "active": True
-    },
-    "ValidateAssemblyNamespaces": {
-        "enabled": True,
-        "optional": False,
-        "active": True
-    },
-    "ValidateAssemblyModelTransforms": {
-        "enabled": True,
-        "optional": False,
         "active": True
     },
     "ValidateAssRelativePaths": {

@@ -160,10 +160,6 @@ class CreatorsModel(BaseSettingsModel):
         default_factory=CreateAssModel,
         title="Create Arnold Scene Source",
     )
-    CreateAssembly: BasicCreatorModel = SettingsField(
-        default_factory=BasicCreatorModel,
-        title="Create Assembly"
-    )
     CreateCamera: BasicCreatorModel = SettingsField(
         default_factory=BasicCreatorModel,
         title="Create Camera"
@@ -326,7 +322,6 @@ DEFAULT_CREATORS_SETTINGS = {
         "motionBlurKeys": 2,
         "motionBlurLength": 0.5,
     },
-    "CreateAssembly": {"default_variants": ["Main"], "enabled": True},
     "CreateCamera": {"default_variants": ["Main"], "enabled": True},
     "CreateCameraRig": {"default_variants": ["Main"], "enabled": True},
     "CreateLayout": {"default_variants": ["Main"], "enabled": True},
