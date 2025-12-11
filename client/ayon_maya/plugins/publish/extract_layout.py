@@ -111,7 +111,6 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
     label = "Extract Layout"
     families = ["layout"]
-    project_container = "AVALON_CONTAINERS"
 
     def process(self, instance: pyblish.api.Instance):
         self.log.debug("Performing layout extraction..")
@@ -126,23 +125,23 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         host = registered_host()
 
         # Get containers, but ignore containers with invalid representation ids
-        scene_containers: list[dict[str, Any]] = [
-            c for c in host.get_containers()
-            if is_valid_uuid(c.get("representation"))
-        ]
+        scene_containers: list[Container] = []
+        for container in host.get_containers():
+            if not is_valid_uuid(container.get("representation")):
+                continue
 
-        scene_containers: list[Container] = [
-            Container(
-                objectName=c["objectName"],
-                namespace=c["namespace"],
-                representation=c["representation"],
-                loader=c["loader"],
-                members=get_container_members(
-                    c, include_reference_associated_nodes=True
-                )
+            container_members = get_container_members(
+                container,
+                include_reference_associated_nodes=True
             )
-            for c in scene_containers
-        ]
+
+            scene_containers.append(Container(
+                objectName=container["objectName"],
+                namespace=container["namespace"],
+                representation=container["representation"],
+                loader=container["loader"],
+                members=container_members
+            ))
 
         node_to_scene_container: dict[str, Container] = {}
         for scene_container in scene_containers:
@@ -343,16 +342,27 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             List[om.MMatrix]: List of transformation matrix of the asset
         """
         convert_transform = om.MTransformationMatrix(transform_mm)
-
         convert_translation = convert_transform.translation(om.MSpace.kWorld)
-        convert_translation = om.MVector(convert_translation.x, convert_translation.z, convert_translation.y)
+        convert_translation = om.MVector(
+            convert_translation.x,
+            convert_translation.z,
+            convert_translation.y
+        )
         convert_scale = convert_transform.scale(om.MSpace.kWorld)
         convert_transform.setTranslation(convert_translation, om.MSpace.kWorld)
         converted_rotation = om.MEulerRotation(
-            math.radians(rotation[0]), math.radians(rotation[2]), math.radians(rotation[1])
+            math.radians(rotation[0]),
+            math.radians(rotation[2]),
+            math.radians(rotation[1])
         )
         convert_transform.setRotation(converted_rotation)
-        convert_transform.setScale([convert_scale[0], convert_scale[2], convert_scale[1]], om.MSpace.kWorld)
+        convert_transform.setScale(
+            [
+                convert_scale[0],
+                convert_scale[2],
+                convert_scale[1]
+            ],
+            om.MSpace.kWorld)
 
         return convert_transform.asMatrix()
 
