@@ -10,7 +10,7 @@ import clique
 
 
 class ValidateRenderLocalHasExistingFrames(plugin.MayaInstancePlugin):
-    """Validates instance objectSet has *any* members."""
+    """Validate all files for the representations exist on disk."""
 
     order = ValidateContentsOrder
     families = ["render.local_no_render"]
