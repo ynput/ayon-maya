@@ -216,9 +216,7 @@ class ValidateSkeletonRigContents(ValidateRigContents):
     optional = True
 
     @classmethod
-    def get_attr_defs_for_instance(
-        cls, create_context: "CreateContext", instance: "CreatedInstance"
-    ):
+    def get_attr_defs_for_instance(cls, create_context, instance):
         """Publish attribute definitions for an instance.
 
         Attributes available for all families in plugin's `families` attribute.
