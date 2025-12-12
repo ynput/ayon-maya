@@ -2,7 +2,6 @@ from __future__ import annotations
 import json
 import math
 import os
-import re
 import uuid
 import attr
 from typing import Any, List, TYPE_CHECKING
