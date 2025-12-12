@@ -32,6 +32,7 @@ BASIS_MATRIX = [
 
 @attr.define
 class Container:
+    """AYON Container data of a loaded representation"""
     objectName: str
     namespace: str
     representation: str
@@ -45,6 +46,7 @@ class Container:
 
 @attr.define
 class LayoutElement:
+    """Single element representing a loaded container in the layout.json"""
     # Loaded representation
     product_type: str
     instance_name: str
