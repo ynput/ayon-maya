@@ -62,7 +62,9 @@ class LayoutElement:
     rotation: dict
 
     # Child object transformations by object name
-    object_transform: list[dict[str, List[List[float]]]] = attr.ib(default=None)
+    object_transform: list[dict[str, List[List[float]]]] = attr.ib(
+        factory=list
+    )
 
 
 def is_valid_uuid(value) -> bool:
@@ -72,19 +74,6 @@ def is_valid_uuid(value) -> bool:
     except ValueError:
         return False
     return True
-
-
-def extract_number_from_namespace(namespace):
-    """Extracts a number from the namespace.
-
-    Args:
-        namespace (str): namespace
-
-    Returns:
-        int: namespace number
-    """
-    matches = re.findall(r'(\d+)', namespace)
-    return int(matches[-1]) if matches else 0
 
 
 def convert_matrix_to_4x4_list(
@@ -304,7 +293,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             )
             for child_transform in child_transforms:
                 element.object_transform.append(
-                    self.get_child_transform(
+                    self.get_child_transform_matrix(
                         child_transform
                     )
                 )
@@ -330,11 +319,15 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
     def create_transformation_matrix(self, local_matrix, local_rotation):
         matrix = om.MMatrix(local_matrix)
         matrix = self.convert_transformation_matrix(matrix, local_rotation)
-        t_matrix = convert_matrix_to_4x4_list(matrix)
-        return t_matrix
+        return convert_matrix_to_4x4_list(matrix)
 
-    def convert_transformation_matrix(self, transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
-        """Convert matrix to list of transformation matrix for Unreal Engine fbx asset import.
+    def convert_transformation_matrix(
+            self,
+            transform_mm: om.MMatrix,
+            rotation: list
+    ) -> om.MMatrix:
+        """Convert matrix to list of transformation matrix for Unreal Engine
+        fbx asset import.
 
         Args:
             transform_mm (om.MMatrix): Local Matrix for the asset
@@ -368,7 +361,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
         return convert_transform.asMatrix()
 
-    def get_child_transform(self, child_transform):
+    def get_child_transform_matrix(self, child_transform: str):
         """Parse transform data of the container objects.
         Args:
             child_transform (str): transform node.
@@ -377,7 +370,10 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         """
         local_matrix = cmds.xform(child_transform, query=True, matrix=True)
         local_rotation = cmds.xform(child_transform, query=True, rotation=True)
-        transform_matrix = self.create_transformation_matrix(local_matrix, local_rotation)
+        transform_matrix = self.create_transformation_matrix(
+            local_matrix,
+            local_rotation
+        )
         child_transform_name = child_transform.rsplit(":", 1)[-1]
         return {
             child_transform_name: transform_matrix
