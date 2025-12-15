@@ -3,6 +3,7 @@ import os
 import tempfile
 
 import pyblish.api
+from maya import cmds
 
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
@@ -45,10 +46,15 @@ class ExtractThumbnail(plugin.MayaExtractorPlugin):
 
         self.log.debug("Outputting images to %s" % path)
 
+        frame = cmds.currentTime(query=True)
         preset = lib.generate_capture_preset(
-            instance, camera, path,
-            start=1, end=1,
-            capture_preset=capture_preset)
+            instance,
+            camera,
+            path,
+            start=frame,
+            end=frame,
+            capture_preset=capture_preset,
+        )
 
         preset["camera_options"].update({
             "displayGateMask": False,
