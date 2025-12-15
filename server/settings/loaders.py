@@ -198,10 +198,6 @@ class LoadersModel(BaseSettingsModel):
         default_factory=LoaderEnabledModel,
         title="Arnold Standin Loader"
     )
-    AssemblyLoader: LoaderEnabledModel = SettingsField(
-        default_factory=LoaderEnabledModel,
-        title="Assembly Loader"
-    )
     AudioLoader: LoaderEnabledModel = SettingsField(
         default_factory=LoaderEnabledModel,
         title="Audio Loader"
@@ -335,7 +331,6 @@ DEFAULT_LOADERS_SETTING = {
         "display_handle": True
     },
     "ArnoldStandinLoader": {"enabled": True},
-    "AssemblyLoader": {"enabled": True},
     "AudioLoader": {"enabled": True},
     "FileNodeLoader": {"enabled": True},
     "GpuCacheLoader": {"enabled": True},
