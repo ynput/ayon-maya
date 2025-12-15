@@ -18,13 +18,14 @@ class ValidateNodeIDs(plugin.MayaInstancePlugin):
 
     order = ValidatePipelineOrder
     label = 'Instance Nodes Have ID'
-    families = ["model",
-                "look",
-                "rig",
-                "pointcache",
-                "animation",
-                "yetiRig",
-                "assembly"]
+    families = [
+        "model",
+        "look",
+        "rig",
+        "pointcache",
+        "animation",
+        "yetiRig",
+    ]
 
     actions = [ayon_maya.api.action.SelectInvalidAction,
                ayon_maya.api.action.GenerateUUIDsOnInvalidAction]
