@@ -652,37 +652,46 @@ def _independent_panel(width, height, off_screen=False):
 @contextlib.contextmanager
 def _applied_camera_options(options, panel):
     """Context manager for applying `options` to `camera`"""
+    if not options:
+        yield
+        return
 
     camera = cmds.modelPanel(panel, query=True, camera=True)
-    options = dict(CameraOptions, **(options or {}))
+    options = {**CameraOptions, **options}
 
-    old_options = dict()
-    for opt in options.copy():
-        try:
-            old_options[opt] = cmds.getAttr(camera + "." + opt)
-        except:
-            sys.stderr.write("Could not get camera attribute "
-                             "for capture: %s" % opt)
-            options.pop(opt)
+    # key = attr path, value = pairs of (current value and new value)
+    applied_options = {}
+    for key, new_value in options.items():
+        attr = f"{camera}.{key}"
 
-    _iteritems = getattr(options, "iteritems", options.items)
-    for opt, value in _iteritems():
-        if cmds.getAttr(camera + "." + opt, lock=True):
+        # ignore locked attributes
+        if cmds.getAttr(attr, lock=True):
             continue
-        else:
-            _safe_setAttr(camera + "." + opt, value)
+
+        try:
+            old_value = cmds.getAttr(attr)
+        except:
+            sys.stderr.write(f"Could not get camera attribute {attr} for capture.")
+            continue
+
+        # skip if old value is the same as new value
+        if old_value == new_value:
+            continue
+
+        applied_options[attr] = (old_value, new_value)
+
+    # apply the new values
+    for attr, (_, new_value) in applied_options.items():
+        logger.debug(f"capture: _applied_camera_options {attr=} {new_value=}")
+        _safe_setAttr(attr, new_value)
 
     try:
         yield
     finally:
-        if old_options:
-            _iteritems = getattr(old_options, "iteritems", old_options.items)
-            for opt, value in _iteritems():
-                #
-                if cmds.getAttr(camera + "." + opt, lock=True):
-                    continue
-                else:
-                    _safe_setAttr(camera + "." + opt, value)
+        # restore the original values
+        for attr, (old_value, _) in applied_options.items():
+            logger.debug(f"capture: restore camera attribute {attr=} to {old_value=}")
+            _safe_setAttr(attr, old_value)
 
 
 @contextlib.contextmanager
