@@ -7,10 +7,13 @@ from typing import List, Dict, Any, Optional
 from ayon_core.pipeline import (
     InventoryAction,
     get_repres_contexts,
-    get_representation_path,
     get_current_project_name
 )
-from ayon_maya.api.lib import get_container_members, get_node_name
+from ayon_maya.api.lib import (
+    get_container_members,
+    get_node_name,
+    get_representation_path_by_project,
+)
 from ayon_api import (
     get_representation_by_id,
     get_representation_by_name
@@ -88,9 +91,13 @@ class ConnectOrnatrixRig(InventoryAction):
         source_container = source_containers[0]
         source_repre_id = source_container["representation"]
         source_namespace = source_container["namespace"]
+        source_project = source_container.get(
+            "project_name", get_current_project_name()
+        )
 
         # Validate source representation is an alembic.
-        source_path = get_representation_path(
+        source_path = get_representation_path_by_project(
+            source_project,
             repre_contexts_by_id[source_repre_id]["representation"]
         ).replace("\\", "/")
         message = "Animation container \"{}\" is not an alembic:\n{}".format(
@@ -124,7 +131,9 @@ class ConnectOrnatrixRig(InventoryAction):
                 representation_name="rigsettings")
             if not settings_repre:
                 continue
-            settings_file = get_representation_path(settings_repre)
+            settings_file = get_representation_path_by_project(
+                project_name, settings_repre
+            )
             if not os.path.exists(settings_file):
                 continue
 

@@ -13,7 +13,6 @@ import maya.app.renderSetup.model.renderSetup as renderSetup
 from maya import cmds
 
 from ayon_core.lib import BoolDef, EnumDef
-from ayon_core.pipeline import get_representation_path
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from ayon_maya.api.pipeline import containerise
@@ -146,7 +145,7 @@ class RenderSetupLoader(plugin.Loader):
             "setting specified by user not included in loaded version "
             "will be lost.")
         repre_entity = context["representation"]
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         with open(path, "r") as file:
             try:
                 renderSetup.instance().decode(

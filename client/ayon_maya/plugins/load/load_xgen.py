@@ -4,7 +4,6 @@ import shutil
 from ayon_maya.api import plugin
 import maya.cmds as cmds
 import xgenm
-from ayon_core.pipeline import get_representation_path
 from ayon_maya.api import current_file
 from ayon_maya.api.lib import (
     attribute_values,
@@ -145,8 +144,7 @@ class XgenLoader(plugin.ReferenceLoader):
 
         self.set_palette_attributes(xgen_palette, xgen_file, xgd_file)
 
-        repre_entity = context["representation"]
-        maya_file = get_representation_path(repre_entity)
+        maya_file = self.filepath_from_context(context)
         _, extension = os.path.splitext(maya_file)
         new_xgen_file = maya_file.replace(extension, ".xgen")
         data_path = ""

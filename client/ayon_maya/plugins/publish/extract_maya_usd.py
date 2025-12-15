@@ -1,6 +1,7 @@
 import contextlib
 import json
 import os
+from typing import Any
 
 from ayon_core.pipeline import publish
 from ayon_core.lib import BoolDef, EnumDef, UILabelDef, UISeparatorDef
@@ -32,7 +33,13 @@ def get_node_hash(node):
 
 
 @contextlib.contextmanager
-def usd_export_attributes(nodes, attrs=None, attr_prefixes=None, mapping=None):
+def usd_export_attributes(
+        nodes,
+        attrs=None,
+        attr_prefixes=None,
+        mapping=None,
+        custom_attr_default_namespace="userProperties:"
+    ):
     """Define attributes for the given nodes that should be exported.
 
     MayaUSDExport will export custom attributes if the Maya node has a
@@ -51,6 +58,12 @@ def usd_export_attributes(nodes, attrs=None, attr_prefixes=None, mapping=None):
             `USD_UserExportedAttributesJson` json mapping of `mayaUSDExport`.
             When no mapping provided for an attribute it will use `{}` as
             value.
+        custom_attr_default_namespace (str): A prefix to add to all
+            attributes matching the given `attrs` and `attr_prefixes`.
+            This defaults to Maya USD's default export behavior for
+            mapped attributes without `usdAttrName` with prefix
+            `userProperties:`, but can be mapped to other prefixes
+            if needed.
 
     Examples:
           >>> with usd_export_attributes(
@@ -96,7 +109,17 @@ def usd_export_attributes(nodes, attrs=None, attr_prefixes=None, mapping=None):
 
         node_attr_data = {}
         for node_attr in set(node_attrs):
-            node_attr_data[node_attr] = mapping.get(node_attr, {})
+            if node_attr in mapping:
+                value = mapping[node_attr]
+            else:
+                # Specify custom usd attribute name with prefix
+                value = {
+                    "usdAttrName": (
+                        f"{custom_attr_default_namespace}{node_attr}"
+                    )
+                }
+
+            node_attr_data[node_attr] = value
         if cmds.attributeQuery(usd_json_attr, node=node, exists=True):
             existing_node_attr_value = cmds.getAttr(
                 "{}.{}".format(node, usd_json_attr)
@@ -149,6 +172,16 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
     enabled = True
     label = "Extract Maya USD Asset"
     families = ["mayaUsd"]
+
+    # Default prefix for custom attributes to USD attributes
+    # if no other mapping is provided
+    custom_attr_namespace: str = ""
+    # Direct attribute to USD attribute name mapping
+    # if attribute name not specified in custom_attr_mapping
+    custom_attr_name_mapping: list[dict[str, str]]
+    # Explicit attribute mapping matching the Maya USD Export
+    # USD_UserExportedAttributesJson data structure
+    custom_attr_mapping: str
 
     @property
     def options(self):
@@ -369,6 +402,40 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 default_prim = default_prim.rsplit(":", 1)[-1]
             options["defaultPrim"] = default_prim
 
+        # Specify custom attribute mapping from settings
+        custom_attr_mapping: dict[str, dict[str, Any]] = {}
+        try:
+            custom_attr_mapping = json.loads(self.custom_attr_mapping)
+        except json.decoder.JSONDecodeError:
+            pass
+
+        for data in self.custom_attr_name_mapping:
+            maya_name: str = data["name"]
+            if maya_name in custom_attr_mapping:
+                continue
+            custom_attr_mapping[maya_name] = {"usdAttrName": data["usd_name"]}
+
+        self.log.debug(
+            f"Custom attribute mapping: {custom_attr_mapping}"
+        )
+        self.log.debug(
+            f"Custom attribute default namespace: {self.custom_attr_namespace}"
+        )
+
+        # Remove attributes from custom mapping which we do not intend
+        # to include in the export
+        attrs_lookup = set(attrs)
+        for attr_name in list(custom_attr_mapping):
+            # Exclude any keys not matching specified `attrs` or
+            # `attr_prefixes` because we only want to include them in the
+            # export if these are marked as attributes to export. Maya USD
+            # exports everything in the custom mapping, so we pop them.
+            if attr_name in attrs_lookup:
+                continue
+            if attr_name.startswith(tuple(attr_prefixes)):
+                continue
+            del custom_attr_mapping[attr_name]
+
         self.log.debug("Export options: {0}".format(options))
         self.log.debug('Exporting USD: {} / {}'.format(file_path, members))
         with maintained_time():
@@ -377,9 +444,13 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                     # Use start frame as current time
                     cmds.currentTime(start)
 
-                with usd_export_attributes(instance[:],
-                                           attrs=attrs,
-                                           attr_prefixes=attr_prefixes):
+                with usd_export_attributes(
+                    instance[:],
+                    attrs=attrs,
+                    attr_prefixes=attr_prefixes,
+                    custom_attr_default_namespace=self.custom_attr_namespace,
+                    mapping=custom_attr_mapping
+                ):
                     cmds.select(members, replace=True, noExpand=True)
                     cmds.mayaUSDExport(file=file_path,
                                        **options)
@@ -508,6 +579,12 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                             "as UsdGeomSubset data.",
                     visible=visible,
                     default=False),
+            BoolDef("exportVisibility",
+                    label="Export Visibility",
+                    tooltip="Export any state and animation on Maya visibility"
+                            " attributes.",
+                    visible=visible,
+                    default=True),
             BoolDef("mergeTransformAndShape",
                     label="Merge Transform and Shape",
                     tooltip=(
@@ -535,6 +612,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                         "To specify per mesh subdivision schemes add a "
                         "USD_ATTR_subdivisionScheme attribute."
                     ),
+                    visible=visible,
                     default="catmullClark"
             )
         ]
@@ -585,7 +663,7 @@ class ExtractMayaUsdModel(ExtractMayaUsd):
     def process(self, instance):
         # TODO: Fix this without changing instance data
         instance.data["exportAnimationData"] = False
-        super(ExtractMayaUsdModel, self).process(instance)
+        super().process(instance)
 
 
 class ExtractMayaUsdPointcache(ExtractMayaUsd):
