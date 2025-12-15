@@ -9,7 +9,7 @@ from ayon_api import (
 from maya import cmds  # noqa: F401
 
 from ayon_maya.api import plugin
-from ayon_core.lib import BoolDef, EnumDef, TextDef
+from ayon_core.lib import EnumDef, TextDef
 from ayon_core.pipeline import (
     Creator,
     get_current_folder_path,
