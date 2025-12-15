@@ -14,7 +14,7 @@ class ValidateRenderLocalHasExistingFrames(plugin.MayaInstancePlugin):
 
     order = ValidateContentsOrder
     families = ["render.local_no_render"]
-    label = 'Validate Existing Frames'
+    label = "Validate Existing Frames"
 
     def process(self, instance):
         missing_paths = []
