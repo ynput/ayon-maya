@@ -242,6 +242,7 @@ class CreateMayaUsdModel(CreateMayaUsd):
     identifier = "io.ayon.creators.maya.mayausd.model"
     label = "Maya USD: Model"
     product_type = "model"
+    product_base_type = "model"
     icon = "cube"
     description = "Create Model with Maya USD Export"
 
