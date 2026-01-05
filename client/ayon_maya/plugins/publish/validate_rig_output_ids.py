@@ -28,6 +28,7 @@ class ValidateRigOutputIds(plugin.MayaInstancePlugin):
     families = ["rig"]
     actions = [RepairAction,
                ayon_maya.api.action.SelectInvalidAction]
+    optional = True
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -142,8 +143,28 @@ class ValidateSkeletonRigOutputIds(ValidateRigOutputIds):
     """
     order = ValidateContentsOrder + 0.05
     label = "Skeleton Rig Output Ids"
-    hosts = ["maya"]
     families = ["rig.fbx"]
+    optional = True
+
+    @classmethod
+    def get_attr_defs_for_instance(cls, create_context, instance):
+        """Publish attribute definitions for an instance.
+
+        Attributes available for all families in plugin's `families` attribute.
+
+        Args:
+            create_context (CreateContext): Create context.
+            instance (CreatedInstance): Instance for which attributes are
+                collected.
+
+        Returns:
+            list[AbstractAttrDef]: Attribute definitions for plugin.
+
+        """
+        if instance.product_type != "rig":
+            return []
+
+        return cls.get_attribute_defs()
 
     @classmethod
     def get_node(cls, instance):
