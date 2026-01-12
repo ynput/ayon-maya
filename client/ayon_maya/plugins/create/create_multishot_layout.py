@@ -9,7 +9,7 @@ from ayon_api import (
 from maya import cmds  # noqa: F401
 
 from ayon_maya.api import plugin
-from ayon_core.lib import BoolDef, EnumDef, TextDef
+from ayon_core.lib import EnumDef, TextDef
 from ayon_core.pipeline import (
     Creator,
     get_current_folder_path,
@@ -97,11 +97,6 @@ class CreateMultishotLayout(plugin.MayaCreator):
                     label="Shot Parent Folder",
                     items=items_with_label,
                     ),
-            BoolDef("groupLoadedAssets",
-                    label="Group Loaded Assets",
-                    tooltip="Enable this when you want to publish group of "
-                            "loaded asset",
-                    default=False),
             TextDef("taskName",
                     label="Associated Task Name",
                     tooltip=("Task name to be associated "
@@ -187,9 +182,6 @@ class CreateMultishotLayout(plugin.MayaCreator):
                     layout_creator.get_default_variant(),
                 ),
                 instance_data=instance_data,
-                pre_create_data={
-                    "groupLoadedAssets": pre_create_data["groupLoadedAssets"]
-                }
             )
 
     def get_related_shots(self, folder_path: str):

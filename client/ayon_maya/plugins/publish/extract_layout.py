@@ -1,12 +1,14 @@
+from __future__ import annotations
 import json
 import math
 import os
-import re
 import uuid
-from typing import List
+import attr
+from typing import Any, List, TYPE_CHECKING
 
-from ayon_api import get_representation_by_id
-from ayon_maya.api import plugin, pipeline
+import ayon_api
+from ayon_core.pipeline import registered_host
+from ayon_maya.api import plugin
 from ayon_maya.api.lib import (
     get_highest_in_hierarchy,
     get_container_members,
@@ -14,6 +16,54 @@ from ayon_maya.api.lib import (
 )
 from maya import cmds
 from maya.api import OpenMaya as om
+
+if TYPE_CHECKING:
+    import pyblish.api
+
+
+BASIS_MATRIX = [
+    [1., 0., 0., 0.],
+    [0., 1., 0., 0.],
+    [0., 0., 1., 0.],
+    [0., 0., 0., 1.]
+]
+
+
+@attr.define
+class Container:
+    """AYON Container data of a loaded representation"""
+    objectName: str
+    namespace: str
+    representation: str
+    loader: str
+    members: list[str]
+
+    def __hash__(self):
+        # container node is always unique in the scene
+        return hash(self.objectName)
+
+
+@attr.define
+class LayoutElement:
+    """Single element representing a loaded container in the layout.json"""
+    # Loaded representation
+    product_type: str
+    instance_name: str
+    representation: str
+    version: str
+    extension: str
+    host: List[str]
+    loader: str
+
+    # Transformation
+    transform_matrix: List[List[float]]
+    basis: List[List[float]]
+    rotation: dict
+
+    # Child object transformations by object name
+    object_transform: list[dict[str, List[List[float]]]] = attr.ib(
+        factory=list
+    )
 
 
 def is_valid_uuid(value) -> bool:
@@ -23,19 +73,6 @@ def is_valid_uuid(value) -> bool:
     except ValueError:
         return False
     return True
-
-
-def extract_number_from_namespace(namespace):
-    """Extracts a number from the namespace.
-
-    Args:
-        namespace (str): namespace
-
-    Returns:
-        int: namespace number
-    """
-    matches = re.findall(r'(\d+)', namespace)
-    return int(matches[-1]) if matches else 0
 
 
 def convert_matrix_to_4x4_list(
@@ -64,154 +101,95 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
 
     label = "Extract Layout"
     families = ["layout"]
-    project_container = "AVALON_CONTAINERS"
 
-    def process(self, instance):
+    def process(self, instance: pyblish.api.Instance):
+        self.log.debug("Performing layout extraction..")
+        allow_obj_transforms: bool = instance.data.get(
+            "allowObjectTransforms",
+            False
+        )
+
+        # Get all containers from the scene and their members so from the
+        # layout instance members we can find what containers we have inside
+        # the layout that we want to publish.
+        host = registered_host()
+
+        # Get containers, but ignore containers with invalid representation ids
+        scene_containers: list[Container] = []
+        for container in host.get_containers():
+            if not is_valid_uuid(container.get("representation")):
+                continue
+
+            container_members = get_container_members(
+                container,
+                include_reference_associated_nodes=True
+            )
+
+            scene_containers.append(Container(
+                objectName=container["objectName"],
+                namespace=container["namespace"],
+                representation=container["representation"],
+                loader=container["loader"],
+                members=container_members
+            ))
+
+        node_to_scene_container: dict[str, Container] = {}
+        for scene_container in scene_containers:
+            for container_member in scene_container.members:
+                node_to_scene_container[container_member] = scene_container
+
+        # Find all unique included containers from the layout instance members
+        instance_set_members: list[str] = instance.data["setMembers"]
+        included_containers: set[Container] = set()
+        for node in instance_set_members:
+            container = node_to_scene_container.get(node)
+            if container:
+                included_containers.add(container)
+
+        # Include recursively children of LayoutLoader containers
+        included_containers = self.include_layout_loader_children(
+            included_containers, node_to_scene_container
+        )
+
+        # Query all representations from the included containers
+        # TODO: Once we support managed products from another project we should
+        #  be querying here using the project name from the container instead.
+        project_name = instance.context.data["projectName"]
+        representation_ids = {c.representation for c in included_containers}
+        representations = ayon_api.get_representations(
+            project_name,
+            representation_ids=representation_ids,
+            fields={"id", "versionId", "context", "name"}
+        )
+        representations_by_id = {r["id"]: r for r in representations}
+
+        # Process each container found in the layout instance
+        elements: list[LayoutElement] = []
+        for container in included_containers:
+            representation_id: str = container.representation
+            representation = representations_by_id.get(representation_id)
+            if not representation:
+                self.log.warning(
+                    "Representation not found in current project "
+                    "for container: {}".format(container))
+                continue
+
+            element = self.get_container_element(
+                container=container,
+                representation=representation,
+                allow_obj_transforms=allow_obj_transforms
+            )
+            self.log.debug("Layout element collected: %s", element)
+            elements.append(element)
+
+        # Sort by instance name
+        elements = sorted(elements, key=lambda x: x.instance_name)
+        json_data: list[dict] = [attr.asdict(element) for element in elements]
+
         # Define extract output file path
         stagingdir = self.staging_dir(instance)
-
-        # Perform extraction
-        self.log.debug("Performing extraction..")
-
-        if "representations" not in instance.data:
-            instance.data["representations"] = []
-
-        json_data = []
-        container_order = 0
-        # TODO representation queries can be refactored to be faster
-        project_name = instance.context.data["projectName"]
-        members = [member.lstrip('|') for member in instance.data["setMembers"]]
-        for asset in members:
-            # Find the container
-            project_container = self.project_container
-            container_list = cmds.ls(project_container)
-            if len(container_list) == 0:
-                self.log.warning("Project container is not found!")
-                self.log.warning("The asset(s) may not be properly loaded after published") # noqa
-                continue
-
-            grp_loaded_ass = instance.data.get("groupLoadedAssets", False)
-            if grp_loaded_ass:
-                asset_list = cmds.listRelatives(asset, children=True)
-                # WARNING This does override 'asset' variable from parent loop
-                #   is it correct?
-                for asset in asset_list:
-                    grp_name = asset.split(':')[0]
-            else:
-                grp_name = asset.split(':')[0]
-
-            containers = cmds.ls("{}*_CON".format(grp_name))
-            containers = [
-                container for container in containers
-                # Make sure to include only valid containers
-                if pipeline.parse_container(container)
-            ]
-
-            if len(containers) == 0:
-                self.log.warning("{} isn't from the loader".format(asset))
-                self.log.warning("It may not be properly loaded after published") # noqa
-                continue
-
-            container_dict = self.process_containers(containers)
-            allow_obj_transforms = instance.data.get("allowObjectTransforms", False)
-
-            for container, container_root in container_dict.items():
-                container_order += 1
-                representation_id = cmds.getAttr(
-                    "{}.representation".format(container))
-                loader = cmds.getAttr("{}.loader".format(container))
-
-                # Ignore invalid UUID is the representation for whatever reason
-                # is invalid
-                if not is_valid_uuid(representation_id):
-                    self.log.warning(
-                        f"Skipping container with invalid UUID: {container}")
-                    continue
-
-                # TODO: Once we support managed products from another project
-                #  we should be querying here using the project name from the
-                #  container instead.
-                representation = get_representation_by_id(
-                    project_name,
-                    representation_id,
-                    fields={"versionId", "context", "name"}
-                )
-                if not representation:
-                    self.log.warning(
-                        "Representation not found in current project "
-                        "for container: {}".format(container))
-                    continue
-
-                version_id = representation["versionId"]
-                # TODO use product entity to get product type rather than
-                #    data in representation 'context'
-                repre_context = representation["context"]
-                product_type = repre_context.get("product", {}).get("type")
-                if not product_type:
-                    product_type = repre_context.get("family")
-                json_element = {
-                    "product_type": product_type,
-                    "instance_name": cmds.getAttr(
-                        "{}.namespace".format(container)),
-                    "representation": str(representation_id),
-                    "version": str(version_id),
-                    "extension": repre_context["ext"],
-                    "host": self.hosts,
-                    "loader": loader,
-                }
-                local_matrix = cmds.xform(
-                    container_root, query=True, matrix=True)
-                local_rotation = cmds.xform(
-                    container_root, query=True, rotation=True, euler=True)
-
-                t_matrix = self.create_transformation_matrix(local_matrix, local_rotation)
-
-                json_element["transform_matrix"] = [
-                    list(row)
-                    for row in t_matrix
-                ]
-
-                basis_list = [
-                    1, 0, 0, 0,
-                    0, 1, 0, 0,
-                    0, 0, 1, 0,
-                    0, 0, 0, 1
-                ]
-
-                basis_mm = om.MMatrix(basis_list)
-                b_matrix = convert_matrix_to_4x4_list(basis_mm)
-
-                json_element["basis"] = []
-                for row in b_matrix:
-                    json_element["basis"].append(list(row))
-
-                json_element["rotation"] = {
-                    "x": local_rotation[0],
-                    "y": local_rotation[1],
-                    "z": local_rotation[2]
-                }
-                if allow_obj_transforms:
-                    child_transforms = cmds.ls(
-                        get_all_children(
-                            [container_root],
-                            ignore_intermediate_objects=True
-                        ),
-                        type="transform",
-                        long=True
-                    )
-                    if child_transforms:
-                        object_transforms = json_element.setdefault("object_transform", [])
-                        for child_transform in child_transforms:
-                            object_transforms.append(
-                                self.parse_objects_transform_as_json_element(
-                                    child_transform
-                                )
-                            )
-                json_data.append(json_element)
-        json_data = sorted(json_data, key=lambda x: x["instance_name"])
         json_filename = "{}.json".format(instance.name)
         json_path = os.path.join(stagingdir, json_filename)
-
         with open(json_path, "w+") as file:
             json.dump(json_data, fp=file, indent=2)
 
@@ -221,49 +199,134 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             'files': json_filename,
             "stagingDir": stagingdir,
         }
-
-        instance.data["representations"].append(json_representation)
+        instance.data.setdefault("representations", []).append(
+            json_representation
+        )
 
         self.log.debug("Extracted instance '%s' to: %s",
                        instance.name, json_representation)
 
-    def process_containers(self, containers):
-        """Allow to collect the asset containers through sub-assembly workflow if
-        there is a layout container.
+    def include_layout_loader_children(
+        self,
+        containers: set[Container],
+        node_to_scene_containers: dict[str, Container]
+    ) -> set[Container]:
+
+        """Include children containers of LayoutLoader containers
+        recursively.
 
         Args:
-            containers (list[str]): Ayon asset containers
+            containers (set[Container]): Set of containers to process
+            node_to_scene_containers (dict[str, Container]): Mapping of node to
+                container in the scene
 
         Returns:
-            dict[str, str]: container mapping to its related root transform node
+            set[Container]: Updated set of containers including children
         """
-        all_containers_set = {}
+        all_containers_set = set(containers)
         for container in containers:
-            if cmds.getAttr(f"{container}.loader") == "LayoutLoader":
-                # Flatten container layout loader products to their individual loaded containers
-                member_containers = get_container_members(container)
-                # Recursively process each member container
-                children_containers = self.process_containers(member_containers)
-                all_containers_set.update(children_containers)
-            else:
-                members = get_container_members(container)
-                transforms = cmds.ls(members, transforms=True, references=False)
-                roots = get_highest_in_hierarchy(transforms)
-                if roots:
-                    root = roots[0].split("|")[1]
-                    # Assume just a single root node
-                    all_containers_set[container] = root
-
+            if container.loader == "LayoutLoader":
+                child_containers = set()
+                for member in container.members:
+                    child_containers.add(node_to_scene_containers.get(member))
+                child_containers.discard(None)
+                all_containers_set.update(child_containers)
+                all_containers_set.update(
+                    self.include_layout_loader_children(
+                        child_containers,
+                        node_to_scene_containers
+                    )
+                )
         return all_containers_set
+
+    def get_container_element(
+        self,
+        container: Container,
+        representation: dict[str, Any],
+        allow_obj_transforms: bool
+    ) -> LayoutElement:
+        """Get layout element data from the container root."""
+
+        container_root = self.get_container_root(container)
+        # TODO use product entity to get product type rather than
+        #    data in representation 'context'
+        repre_context = representation["context"]
+        product_type: str = repre_context.get("product", {}).get("type")
+        if not product_type:
+            product_type = repre_context.get("family")
+
+        # Get transformation data
+        local_matrix = cmds.xform(container_root, query=True, matrix=True)
+        local_rotation = cmds.xform(
+            container_root, query=True, rotation=True, euler=True
+        )
+        transform_matrix = self.create_transformation_matrix(local_matrix,
+                                                             local_rotation)
+        transform_matrix = [list(row) for row in transform_matrix]
+        rotation = {
+            "x": local_rotation[0],
+            "y": local_rotation[1],
+            "z": local_rotation[2]
+        }
+
+        element = LayoutElement(
+            product_type=product_type,
+            instance_name=container.namespace,
+            representation=representation["id"],
+            version=representation["versionId"],
+            extension=repre_context["ext"],
+            host=self.hosts,
+            loader=container.loader,
+            transform_matrix=transform_matrix,
+            basis=BASIS_MATRIX,
+            rotation=rotation,
+        )
+        if allow_obj_transforms:
+            child_transforms = cmds.ls(
+                get_all_children(
+                    [container_root],
+                    ignore_intermediate_objects=True
+                ),
+                type="transform",
+                long=True
+            )
+            for child_transform in child_transforms:
+                element.object_transform.append(
+                    self.get_child_transform_matrix(
+                        child_transform
+                    )
+                )
+        return element
+
+    def get_container_root(self, container):
+        """Get the root transform from a given Container.
+
+        Args:
+            container (Container): Ayon loaded container
+
+        Returns:
+            str: container's root transform node
+        """
+        transforms = cmds.ls(container.members,
+                             transforms=True,
+                             references=False)
+        roots = get_highest_in_hierarchy(transforms)
+        if roots:
+            root = roots[0].split("|")[1]
+            return root
 
     def create_transformation_matrix(self, local_matrix, local_rotation):
         matrix = om.MMatrix(local_matrix)
         matrix = self.convert_transformation_matrix(matrix, local_rotation)
-        t_matrix = convert_matrix_to_4x4_list(matrix)
-        return t_matrix
+        return convert_matrix_to_4x4_list(matrix)
 
-    def convert_transformation_matrix(self, transform_mm: om.MMatrix, rotation: list) -> om.MMatrix:
-        """Convert matrix to list of transformation matrix for Unreal Engine fbx asset import.
+    def convert_transformation_matrix(
+            self,
+            transform_mm: om.MMatrix,
+            rotation: list
+    ) -> om.MMatrix:
+        """Convert matrix to list of transformation matrix for Unreal Engine
+        fbx asset import.
 
         Args:
             transform_mm (om.MMatrix): Local Matrix for the asset
@@ -273,20 +336,31 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             List[om.MMatrix]: List of transformation matrix of the asset
         """
         convert_transform = om.MTransformationMatrix(transform_mm)
-
         convert_translation = convert_transform.translation(om.MSpace.kWorld)
-        convert_translation = om.MVector(convert_translation.x, convert_translation.z, convert_translation.y)
+        convert_translation = om.MVector(
+            convert_translation.x,
+            convert_translation.z,
+            convert_translation.y
+        )
         convert_scale = convert_transform.scale(om.MSpace.kWorld)
         convert_transform.setTranslation(convert_translation, om.MSpace.kWorld)
         converted_rotation = om.MEulerRotation(
-            math.radians(rotation[0]), math.radians(rotation[2]), math.radians(rotation[1])
+            math.radians(rotation[0]),
+            math.radians(rotation[2]),
+            math.radians(rotation[1])
         )
         convert_transform.setRotation(converted_rotation)
-        convert_transform.setScale([convert_scale[0], convert_scale[2], convert_scale[1]], om.MSpace.kWorld)
+        convert_transform.setScale(
+            [
+                convert_scale[0],
+                convert_scale[2],
+                convert_scale[1]
+            ],
+            om.MSpace.kWorld)
 
         return convert_transform.asMatrix()
 
-    def parse_objects_transform_as_json_element(self, child_transform):
+    def get_child_transform_matrix(self, child_transform: str):
         """Parse transform data of the container objects.
         Args:
             child_transform (str): transform node.
@@ -295,7 +369,10 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         """
         local_matrix = cmds.xform(child_transform, query=True, matrix=True)
         local_rotation = cmds.xform(child_transform, query=True, rotation=True)
-        transform_matrix = self.create_transformation_matrix(local_matrix, local_rotation)
+        transform_matrix = self.create_transformation_matrix(
+            local_matrix,
+            local_rotation
+        )
         child_transform_name = child_transform.rsplit(":", 1)[-1]
         return {
             child_transform_name: transform_matrix
