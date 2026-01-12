@@ -14,9 +14,12 @@ class CreateMayaUsd(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.mayausd"
     label = "Maya USD"
     product_type = "usd"
+    product_base_type = "usd"
     icon = "cubes"
     description = "Create Maya USD Export"
     cache = {}
+
+    allow_animation = True
 
     def register_callbacks(self):
         self.create_context.add_value_changed_callback(self.on_values_changed)
@@ -70,16 +73,18 @@ class CreateMayaUsd(plugin.MayaCreator):
 
             self.cache["jobContextItems"] = job_context_items
 
-        defs = [
-            BoolDef("exportAnimationData",
-                    label="Export Animation Data",
-                    tooltip="When disabled no frame range is exported and "
-                            "only the start frame is used to define the "
-                            "static export frame.",
-                    default=True)
-        ]
-        defs.extend(lib.collect_animation_defs(
-            create_context=self.create_context))
+        defs = []
+        if self.allow_animation:
+            defs.append(
+                BoolDef("exportAnimationData",
+                        label="Export Animation Data",
+                        tooltip="When disabled no frame range is exported and "
+                                "only the start frame is used to define the "
+                                "static export frame.",
+                        default=True)
+            )
+            defs.extend(lib.collect_animation_defs(
+                create_context=self.create_context))
         defs.extend([
             EnumDef("defaultUSDFormat",
                     label="File format",
@@ -231,3 +236,24 @@ class CreateMayaUsd(plugin.MayaCreator):
             cmds.select(root, replace=True, noExpand=True)
 
         super().create(product_name, instance_data, pre_create_data)
+
+
+class CreateMayaUsdModel(CreateMayaUsd):
+    identifier = "io.ayon.creators.maya.mayausd.model"
+    label = "Maya USD: Model"
+    product_type = "model"
+    product_base_type = "model"
+    icon = "cube"
+    description = "Create Model with Maya USD Export"
+
+    allow_animation = False
+
+    def get_pre_create_attr_defs(self):
+        attr_defs = super().get_pre_create_attr_defs()
+
+        # Enable by default
+        for attr_def in attr_defs:
+            if attr_def.key == "createAssetTemplateHierarchy":
+                attr_def.default = True
+
+        return attr_defs

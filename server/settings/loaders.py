@@ -105,8 +105,21 @@ class ColorsSetting(BaseSettingsModel):
 
 
 class ReferenceLoaderModel(BaseSettingsModel):
-    namespace: str = SettingsField(title="Namespace")
-    group_name: str = SettingsField(title="Group name")
+    namespace: str = SettingsField(
+        title="Namespace",
+        description=(
+            "Supports formatting tokens `{folder[name]}`, `{product[name]}`"
+            " and `{product[type]}`."
+        )
+    )
+    group_name: str = SettingsField(
+        title="Group name",
+        description=(
+            "Supports formatting token `{namespace}` to use the namespace "
+            "also for the group name to ensure uniqueness. Also supports same "
+            "formatting tokens like `namespace` attribute."
+        )
+    )
     display_handle: bool = SettingsField(
         title="Display Handle On Load References"
     )
@@ -126,8 +139,21 @@ class ReferenceLoaderModel(BaseSettingsModel):
 
 class ImportLoaderModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
-    namespace: str = SettingsField(title="Namespace")
-    group_name: str = SettingsField(title="Group name")
+    namespace: str = SettingsField(
+        title="Namespace",
+        description=(
+            "Supports formatting tokens `{folder[name]}`, `{product[name]}`"
+            " and `{product[type]}`."
+        )
+    )
+    group_name: str = SettingsField(
+        title="Group name",
+        description=(
+            "Supports formatting token `{namespace}` to use the namespace "
+            "also for the group name to ensure uniqueness. Also supports same "
+            "formatting tokens like `namespace` attribute."
+        )
+    )
 
 
 class YetiRigLoaderModel(LoaderEnabledModel):
@@ -171,10 +197,6 @@ class LoadersModel(BaseSettingsModel):
     ArnoldStandinLoader: LoaderEnabledModel = SettingsField(
         default_factory=LoaderEnabledModel,
         title="Arnold Standin Loader"
-    )
-    AssemblyLoader: LoaderEnabledModel = SettingsField(
-        default_factory=LoaderEnabledModel,
-        title="Assembly Loader"
     )
     AudioLoader: LoaderEnabledModel = SettingsField(
         default_factory=LoaderEnabledModel,
@@ -309,7 +331,6 @@ DEFAULT_LOADERS_SETTING = {
         "display_handle": True
     },
     "ArnoldStandinLoader": {"enabled": True},
-    "AssemblyLoader": {"enabled": True},
     "AudioLoader": {"enabled": True},
     "FileNodeLoader": {"enabled": True},
     "GpuCacheLoader": {"enabled": True},
