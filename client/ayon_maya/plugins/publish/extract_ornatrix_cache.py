@@ -14,6 +14,7 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
 
     label = "Extract Ornatrix Cache"
     families = ["oxrig", "oxcache"]
+    targets = ["local", "remote"]
 
     def process(self, instance):
         cmds.loadPlugin("Ornatrix", quiet=True)

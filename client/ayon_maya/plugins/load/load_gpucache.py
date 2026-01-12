@@ -1,5 +1,4 @@
 import maya.cmds as cmds
-from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
 from ayon_maya.api.lib import unique_namespace
 from ayon_maya.api.pipeline import containerise
@@ -54,6 +53,10 @@ class GpuCacheLoader(plugin.Loader):
         path = self.filepath_from_context(context)
         cmds.setAttr(cache + '.cacheFileName', path, type="string")
         cmds.setAttr(cache + '.cacheGeomPath', "|", type="string")    # root
+        if cmds.attributeQuery("aiNamespace", node=cache, exists=True):
+            # Set Arnold namespace attribute to ensure shaders are loaded uniquely
+            # when a gpu cache is loaded multiple times
+            cmds.setAttr(cache + '.aiNamespace', namespace, type="string")
 
         # Lock parenting of the transform and cache
         cmds.lockNode([transform, cache], lock=True)
@@ -70,7 +73,7 @@ class GpuCacheLoader(plugin.Loader):
 
     def update(self, container, context):
         repre_entity = context["representation"]
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
 
         # Update the cache
         members = cmds.sets(container['objectName'], query=True)

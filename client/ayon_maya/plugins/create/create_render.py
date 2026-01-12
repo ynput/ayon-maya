@@ -12,7 +12,7 @@ from ayon_core.lib import (
 )
 
 
-class CreateRenderlayer(plugin.RenderlayerCreator):
+class CreateRender(plugin.RenderlayerCreator):
     """Create and manages renderlayer product per renderLayer in workfile.
 
     This generates a single node in the scene which tells the Creator to if
@@ -25,6 +25,7 @@ class CreateRenderlayer(plugin.RenderlayerCreator):
 
     identifier = "io.openpype.creators.maya.renderlayer"
     product_type = "renderlayer"
+    prouct_base_type = "renderlayer"  # this won't be integrated
     label = "Render"
     icon = "eye"
 
@@ -33,9 +34,9 @@ class CreateRenderlayer(plugin.RenderlayerCreator):
 
     render_settings = {}
 
-    @classmethod
-    def apply_settings(cls, project_settings):
-        cls.render_settings = project_settings["maya"]["render_settings"]
+    def apply_settings(self, project_settings):
+        super().apply_settings(project_settings)
+        self.render_settings = project_settings["maya"]["render_settings"]
 
     def create(self, product_name, instance_data, pre_create_data):
         # Only allow a single render instance to exist
@@ -54,9 +55,7 @@ class CreateRenderlayer(plugin.RenderlayerCreator):
         if self.render_settings.get("apply_render_settings"):
             lib_rendersettings.RenderSettings().set_default_renderer_settings()
 
-        super(CreateRenderlayer, self).create(product_name,
-                                              instance_data,
-                                              pre_create_data)
+        super().create(product_name, instance_data, pre_create_data)
 
     def get_instance_attr_defs(self):
         """Create instance settings."""

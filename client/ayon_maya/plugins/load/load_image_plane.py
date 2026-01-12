@@ -1,4 +1,3 @@
-from ayon_core.pipeline import get_representation_path
 from ayon_maya.api.lib import (
     get_container_members,
     namespaced,
@@ -85,7 +84,8 @@ class ImagePlaneLoader(plugin.Loader):
 
     product_types = {"image", "plate", "render"}
     label = "Load imagePlane"
-    representations = {"mov", "exr", "preview", "png", "jpg"}
+    representations = {"*"}
+    extensions = {"mov", "mp4", "exr", "png", "jpg", "jpeg"}
     icon = "image"
     color = "orange"
 
@@ -216,7 +216,7 @@ class ImagePlaneLoader(plugin.Loader):
         assert image_planes, "Image plane not found."
         image_plane_shape = image_planes[0]
 
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         cmds.setAttr("{}.imageName".format(image_plane_shape),
                      path,
                      type="string")

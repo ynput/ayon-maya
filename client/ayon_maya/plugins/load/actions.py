@@ -1,8 +1,8 @@
 """A module containing generic loader actions that will display in the Loader.
 
 """
-import qargparse
 from ayon_core.pipeline import load
+from ayon_core.lib import BoolDef
 from ayon_maya.api.lib import (
     maintained_selection,
     get_custom_namespace
@@ -117,17 +117,20 @@ class ImportMayaLoader(ayon_maya.api.plugin.Loader):
     color = "#775555"
 
     options = [
-        qargparse.Boolean(
+        BoolDef(
             "clean_import",
-            label="Clean import",
+            label="Strip existing AYON asset metadata",
             default=False,
-            help="Should all occurrences of cbId be purged?"
+            tooltip=(
+                "When enabled, existing AYON 'cbId' attributes on nodes will "
+                "be removed upon import."
+            )
         )
     ]
 
     @classmethod
     def apply_settings(cls, project_settings):
-        super(ImportMayaLoader, cls).apply_settings(project_settings)
+        super().apply_settings(project_settings)
         cls.enabled = cls.load_settings["import_loader"].get("enabled", True)
 
     def load(self, context, name=None, namespace=None, data=None):
@@ -142,6 +145,7 @@ class ImportMayaLoader(ayon_maya.api.plugin.Loader):
                                                 "import_loader")
 
         namespace = get_custom_namespace(custom_namespace)
+        custom_group_name = custom_group_name.format(namespace=namespace)
 
         if not options.get("attach_to_root", True):
             custom_group_name = namespace

@@ -5,14 +5,13 @@ import json
 import logging
 import os
 import platform
-import sys
 import tempfile
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from collections import OrderedDict
 
 import attr
 import pyblish.api
-import six
+
 from ayon_core.lib import (
     ToolNotFoundError,
     find_executable,
@@ -93,8 +92,7 @@ def no_workspace_dir():
         os.rmdir(fake_workspace_dir)
 
 
-@six.add_metaclass(ABCMeta)
-class TextureProcessor:
+class TextureProcessor(ABC):
 
     extension = None
 
@@ -201,7 +199,7 @@ class MakeRSTexBin(TextureProcessor):
         except Exception:
             self.log.error("Texture .rstexbin conversion failed",
                            exc_info=True)
-            six.reraise(*sys.exc_info())
+            raise
 
         return TextureResult(
             path=destination,
@@ -475,6 +473,7 @@ class ExtractLook(plugin.MayaExtractorPlugin):
             self.log.debug("No sets found for the look")
             return
 
+        texture_objs = instance.data.get("textureReferenceObjects", [])
         # Specify texture processing executables to activate
         # TODO: Load these more dynamically once we support more processors
         processors = []
@@ -515,7 +514,9 @@ class ExtractLook(plugin.MayaExtractorPlugin):
                 with no_workspace_dir():
                     with lib.attribute_values(remap):
                         with lib.maintained_selection():
-                            cmds.select(sets, noExpand=True)
+                            # texture reference objects would publish along with
+                            # construction history and constraints
+                            cmds.select(sets + texture_objs, noExpand=True)
                             cmds.file(
                                 maya_path,
                                 force=True,
@@ -533,6 +534,8 @@ class ExtractLook(plugin.MayaExtractorPlugin):
             "attributes": lookdata["attributes"],
             "relationships": relationships
         }
+        if instance.data.get("includeTextureReferenceObjects"):
+            data["connections"] = lookdata["connections"]
 
         self.log.debug("Extracting json file: {}".format(json_path))
         with open(json_path, "w") as f:

@@ -75,13 +75,13 @@ class ValidateMeshHasUVs(plugin.MayaInstancePlugin,
         invalid = self.get_invalid(instance)
         if invalid:
 
-            names = "<br>".join(
+            names = "\n".join(
                 " - {}".format(node) for node in invalid
             )
 
             raise PublishValidationError(
                 title="Mesh has missing UVs",
-                message="Model meshes are required to have UVs.<br><br>"
-                        "Meshes detected with invalid or missing UVs:<br>"
+                message="Model meshes are required to have UVs.\n\n"
+                        "Meshes detected with invalid or missing UVs:\n"
                         "{0}".format(names)
             )

@@ -1,11 +1,10 @@
 import contextlib
 import json
 import os
-
-import six
+from typing import Any
 
 from ayon_core.pipeline import publish
-from ayon_core.lib import BoolDef
+from ayon_core.lib import BoolDef, EnumDef, UILabelDef, UISeparatorDef
 from ayon_maya.api.lib import maintained_selection, maintained_time
 from ayon_maya.api import plugin
 
@@ -34,7 +33,13 @@ def get_node_hash(node):
 
 
 @contextlib.contextmanager
-def usd_export_attributes(nodes, attrs=None, attr_prefixes=None, mapping=None):
+def usd_export_attributes(
+        nodes,
+        attrs=None,
+        attr_prefixes=None,
+        mapping=None,
+        custom_attr_default_namespace="userProperties:"
+    ):
     """Define attributes for the given nodes that should be exported.
 
     MayaUSDExport will export custom attributes if the Maya node has a
@@ -53,6 +58,12 @@ def usd_export_attributes(nodes, attrs=None, attr_prefixes=None, mapping=None):
             `USD_UserExportedAttributesJson` json mapping of `mayaUSDExport`.
             When no mapping provided for an attribute it will use `{}` as
             value.
+        custom_attr_default_namespace (str): A prefix to add to all
+            attributes matching the given `attrs` and `attr_prefixes`.
+            This defaults to Maya USD's default export behavior for
+            mapped attributes without `usdAttrName` with prefix
+            `userProperties:`, but can be mapped to other prefixes
+            if needed.
 
     Examples:
           >>> with usd_export_attributes(
@@ -98,7 +109,17 @@ def usd_export_attributes(nodes, attrs=None, attr_prefixes=None, mapping=None):
 
         node_attr_data = {}
         for node_attr in set(node_attrs):
-            node_attr_data[node_attr] = mapping.get(node_attr, {})
+            if node_attr in mapping:
+                value = mapping[node_attr]
+            else:
+                # Specify custom usd attribute name with prefix
+                value = {
+                    "usdAttrName": (
+                        f"{custom_attr_default_namespace}{node_attr}"
+                    )
+                }
+
+            node_attr_data[node_attr] = value
         if cmds.attributeQuery(usd_json_attr, node=node, exists=True):
             existing_node_attr_value = cmds.getAttr(
                 "{}.{}".format(node, usd_json_attr)
@@ -148,8 +169,19 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
     Upon publish a .usd (or .usdz) asset file will typically be written.
     """
 
+    enabled = True
     label = "Extract Maya USD Asset"
     families = ["mayaUsd"]
+
+    # Default prefix for custom attributes to USD attributes
+    # if no other mapping is provided
+    custom_attr_namespace: str = ""
+    # Direct attribute to USD attribute name mapping
+    # if attribute name not specified in custom_attr_mapping
+    custom_attr_name_mapping: list[dict[str, str]]
+    # Explicit attribute mapping matching the Maya USD Export
+    # USD_UserExportedAttributesJson data structure
+    custom_attr_mapping: str
 
     @property
     def options(self):
@@ -165,7 +197,10 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
 
         # TODO: Support more `mayaUSDExport` parameters
         return {
+            "chaser": (list, None),  # optional list
+            "chaserArgs": (list, None),  # optional list
             "defaultUSDFormat": str,
+            "defaultMeshScheme": str,
             "stripNamespaces": bool,
             "mergeTransformAndShape": bool,
             "exportDisplayColor": bool,
@@ -191,8 +226,11 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
 
         # TODO: Support more `mayaUSDExport` parameters
         return {
+            "chaser": None,
+            "chaserArgs": None,
             "defaultUSDFormat": "usdc",
-            "stripNamespaces": False,
+            "defaultMeshScheme": "catmullClark",
+            "stripNamespaces": True,
             "mergeTransformAndShape": True,
             "exportDisplayColor": False,
             "exportColorSets": True,
@@ -208,19 +246,19 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "jobContext": None,
             "filterTypes": None,
             "staticSingleSample": True,
-            "worldspace": False
+            "worldspace": True
         }
 
-    def parse_overrides(self, instance, options):
+    def parse_overrides(self, overrides, options):
         """Inspect data of instance to determine overridden options"""
 
-        for key in instance.data:
+        for key in overrides:
             if key not in self.options:
                 continue
 
             # Ensure the data is of correct type
-            value = instance.data[key]
-            if isinstance(value, six.text_type):
+            value = overrides[key]
+            if isinstance(value, str):
                 value = str(value)
             if not isinstance(value, self.options[key]):
                 self.log.warning(
@@ -234,6 +272,11 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
 
             options[key] = value
 
+        # Do not pass None values
+        for key, value in options.copy().items():
+            if value is None:
+                del options[key]
+
         return options
 
     def filter_members(self, members):
@@ -242,6 +285,10 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
 
     def process(self, instance):
         if not self.is_active(instance.data):
+            return
+
+        if instance.data.get("farm"):
+            self.log.debug("Should be processed on farm, skipping.")
             return
 
         attr_values = self.get_attr_values_from_data(instance.data)
@@ -257,8 +304,8 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
 
         # Parse export options
         options = self.default_options
-        options = self.parse_overrides(instance, options)
-        self.log.debug("Export options: {0}".format(options))
+        options = self.parse_overrides(instance.data, options)
+        options = self.parse_overrides(attr_values, options)
 
         # Perform extraction
         self.log.debug("Performing extraction ...")
@@ -287,11 +334,6 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         else:
             options["selection"] = True
 
-        options["stripNamespaces"] = attr_values.get("stripNamespaces", True)
-        options["exportComponentTags"] = attr_values.get("exportComponentTags",
-                                                         False)
-        options["worldspace"] = attr_values.get("worldspace", True)
-
         # TODO: Remove hardcoded filterTypes
         # We always filter constraint types because they serve no valuable
         # data (it doesn't preserve the actual constraint) but it does
@@ -301,7 +343,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         options["filterTypes"] = ["constraint"]
 
         def parse_attr_str(attr_str):
-            """Return list of strings from `a,b,c,,d` to `[a, b, c, d]`.
+            """Return list of strings from `a,b,c,d` to `[a, b, c, d]`.
 
             Args:
                 attr_str (str): Concatenated attributes by comma
@@ -331,7 +373,8 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         )
         for key, required_minimal_version in {
             "exportComponentTags": (0, 14, 0),
-            "jobContext": (0, 15, 0)
+            "jobContext": (0, 15, 0),
+            "worldspace": (0, 21, 0)
         }.items():
             if key in options and maya_usd_version < required_minimal_version:
                 self.log.warning(
@@ -343,6 +386,57 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 )
                 del options[key]
 
+        # Fix default prim bug in Maya USD 0.30.0 where prefixed `|` remains
+        # See: https://github.com/Autodesk/maya-usd/issues/3991
+        if (
+                options.get("exportRoots")          # only if roots are defined
+                and "defaultPrim" not in options    # ignore if already set
+                and "rootPrim" not in options       # ignore if root is created
+                and maya_usd_version == (0, 30, 0)  # only for Maya USD 0.30.0
+        ):
+            # Define the default prim name as it will end up in the USD file
+            # from the first export root node
+            first_root = options["exportRoots"][0]
+            default_prim = first_root.rsplit("|", 1)[-1]
+            if options["stripNamespaces"]:
+                default_prim = default_prim.rsplit(":", 1)[-1]
+            options["defaultPrim"] = default_prim
+
+        # Specify custom attribute mapping from settings
+        custom_attr_mapping: dict[str, dict[str, Any]] = {}
+        try:
+            custom_attr_mapping = json.loads(self.custom_attr_mapping)
+        except json.decoder.JSONDecodeError:
+            pass
+
+        for data in self.custom_attr_name_mapping:
+            maya_name: str = data["name"]
+            if maya_name in custom_attr_mapping:
+                continue
+            custom_attr_mapping[maya_name] = {"usdAttrName": data["usd_name"]}
+
+        self.log.debug(
+            f"Custom attribute mapping: {custom_attr_mapping}"
+        )
+        self.log.debug(
+            f"Custom attribute default namespace: {self.custom_attr_namespace}"
+        )
+
+        # Remove attributes from custom mapping which we do not intend
+        # to include in the export
+        attrs_lookup = set(attrs)
+        for attr_name in list(custom_attr_mapping):
+            # Exclude any keys not matching specified `attrs` or
+            # `attr_prefixes` because we only want to include them in the
+            # export if these are marked as attributes to export. Maya USD
+            # exports everything in the custom mapping, so we pop them.
+            if attr_name in attrs_lookup:
+                continue
+            if attr_name.startswith(tuple(attr_prefixes)):
+                continue
+            del custom_attr_mapping[attr_name]
+
+        self.log.debug("Export options: {0}".format(options))
         self.log.debug('Exporting USD: {} / {}'.format(file_path, members))
         with maintained_time():
             with maintained_selection():
@@ -350,9 +444,13 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                     # Use start frame as current time
                     cmds.currentTime(start)
 
-                with usd_export_attributes(instance[:],
-                                           attrs=attrs,
-                                           attr_prefixes=attr_prefixes):
+                with usd_export_attributes(
+                    instance[:],
+                    attrs=attrs,
+                    attr_prefixes=attr_prefixes,
+                    custom_attr_default_namespace=self.custom_attr_namespace,
+                    mapping=custom_attr_mapping
+                ):
                     cmds.select(members, replace=True, noExpand=True)
                     cmds.mayaUSDExport(file=file_path,
                                        **options)
@@ -370,22 +468,153 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         )
 
     @classmethod
-    def get_attribute_defs(cls):
-        return super(ExtractMayaUsd, cls).get_attribute_defs() + [
+    def register_create_context_callbacks(cls, create_context):
+        create_context.add_value_changed_callback(cls.on_values_changed)
+
+    @classmethod
+    def on_values_changed(cls, event):
+        """Update instance attribute definitions on attribute changes."""
+        for instance_change in event["changes"]:
+            # First check if there's a change we want to respond to
+            instance = instance_change["instance"]
+            if instance is None:
+                # Change is on context
+                continue
+
+            # Check if active state is toggled
+            value_changes = instance_change["changes"]
+            if "publish_attributes" not in value_changes:
+                continue
+
+            publish_attributes = value_changes["publish_attributes"]
+            class_name = cls.__name__
+            if class_name not in publish_attributes:
+                continue
+
+            if "active" not in publish_attributes[class_name]:
+                continue
+
+            # Update the attribute definitions
+            new_attrs = cls.get_attr_defs_for_instance(
+                event["create_context"], instance
+            )
+            instance.set_publish_plugin_attr_defs(class_name, new_attrs)
+
+    @classmethod
+    def get_attr_defs_for_instance(cls, create_context, instance):
+        is_enabled = cls.enabled
+        if not is_enabled:
+            return []
+
+        if not cls.instance_matches_plugin_families(instance):
+            return []
+
+        if cls.optional:
+            plugin_attr_values = (
+                instance.data
+                .get("publish_attributes", {})
+                .get(cls.__name__, {})
+            )
+            is_enabled = plugin_attr_values.get("active", cls.active)
+
+        attr_defs = [
+            UISeparatorDef("sep_usd_options"),
+            UILabelDef("USD Options"),
+        ]
+        attr_defs.extend(
+            super().get_attr_defs_for_instance(create_context, instance)
+        )
+        attr_defs.extend(cls._get_additional_attr_defs(is_enabled))
+        attr_defs.append(
+            UISeparatorDef("sep_usd_options_end")
+        )
+        return attr_defs
+
+    @classmethod
+    def convert_attribute_values(cls, create_context, instance):
+        # Convert creator attribute 'mergeTransformAndShape' to
+        # plugin attribute, because this attribute has moved from
+        # the `io.openpype.creators.maya.mayausd` creator to this extractor
+        super().convert_attribute_values(create_context, instance)
+        if (
+                not cls.enabled
+                or not instance
+                or not cls.instance_matches_plugin_families(instance)
+        ):
+            return
+        if (
+                instance.data.get("creator_identifier")
+                != "io.openpype.creators.maya.mayausd"
+        ):
+            return
+        creator_attributes = instance.data.get("creator_attributes", {})
+        if not creator_attributes:
+            return
+
+        keys = ["mergeTransformAndShape"]
+        for key in keys:
+            if key in creator_attributes:
+                # Set attribute value for this plugin
+                value = creator_attributes.pop(key)
+                class_name = cls.__name__
+                instance.publish_attributes[class_name][key] = value
+
+    @classmethod
+    def _get_additional_attr_defs(cls, visible: bool) -> list:
+        return [
             BoolDef("stripNamespaces",
-                    label="Strip Namespaces (USD)",
+                    label="Strip Namespaces",
                     tooltip="Strip Namespaces in the USD Export",
+                    visible=visible,
                     default=True),
             BoolDef("worldspace",
-                    label="World-Space (USD)",
+                    label="World-Space",
                     tooltip="Export all root prim using their full worldspace "
                             "transform instead of their local transform.",
+                    visible=visible,
                     default=True),
             BoolDef("exportComponentTags",
                     label="Export Component Tags",
                     tooltip="When enabled, export any geometry component tags "
                             "as UsdGeomSubset data.",
-                    default=False)
+                    visible=visible,
+                    default=False),
+            BoolDef("exportVisibility",
+                    label="Export Visibility",
+                    tooltip="Export any state and animation on Maya visibility"
+                            " attributes.",
+                    visible=visible,
+                    default=True),
+            BoolDef("mergeTransformAndShape",
+                    label="Merge Transform and Shape",
+                    tooltip=(
+                        "Combine Maya transform and shape into a single USD"
+                        "prim that has transform and geometry, for all"
+                        " \"geometric primitives\" (gprims).\n"
+                        "This results in smaller and faster scenes. Gprims "
+                        "will be \"unpacked\" back into transform and shape "
+                        "nodes when imported into Maya from USD."
+                    ),
+                    visible=visible,
+                    default=True),
+            EnumDef("defaultMeshScheme",
+                    label="Default Subdivision Method",
+                    items=[
+                        {"value": "catmullClark", "label": "Catmull Clark"},
+                        {"value": "loop", "label": "Loop"},
+                        {"value": "bilinear", "label": "Bilinear"},
+                        {"value": "none", "label": "None"},
+                    ],
+                    tooltip=(
+                        "Default subdivision method for meshes.\n"
+                        "Options are: catmullClark, loop, bilinear, none."
+                        "\n\n"
+                        "To specify per mesh subdivision schemes add a "
+                        "USD_ATTR_subdivisionScheme attribute."
+                    ),
+                    visible=visible,
+                    default="catmullClark"
+            )
         ]
 
 
@@ -434,7 +663,7 @@ class ExtractMayaUsdModel(ExtractMayaUsd):
     def process(self, instance):
         # TODO: Fix this without changing instance data
         instance.data["exportAnimationData"] = False
-        super(ExtractMayaUsdModel, self).process(instance)
+        super().process(instance)
 
 
 class ExtractMayaUsdPointcache(ExtractMayaUsd):

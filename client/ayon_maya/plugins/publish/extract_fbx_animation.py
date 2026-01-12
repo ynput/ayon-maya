@@ -20,6 +20,7 @@ class ExtractFBXAnimation(plugin.MayaExtractorPlugin):
     order = pyblish.api.ExtractorOrder
     label = "Extract Animation (FBX)"
     families = ["animation.fbx"]
+    targets = ["local", "remote"]
 
     def process(self, instance):
         # Define output path
@@ -37,7 +38,10 @@ class ExtractFBXAnimation(plugin.MayaExtractorPlugin):
         instance.data["referencedAssetsContent"] = True
         fbx_exporter.set_options_from_instance(instance)
 
-        namespace = get_namespace(out_members[0])
+        # Export relative only to the first level of the namespace,
+        # keeping any nested namespaces intact. Fix #147
+        # So `root:sublevel:mesh` becomes `sublevel:mesh`
+        namespace = get_namespace(out_members[0]).split(":", 1)[0]
         relative_out_members = [
             strip_namespace(node, namespace) for node in out_members
         ]
@@ -45,7 +49,7 @@ class ExtractFBXAnimation(plugin.MayaExtractorPlugin):
             ":" + namespace,
             new=False,
             relative_names=True
-        ) as namespace:
+        ) as _namespace:
             fbx_exporter.export(relative_out_members, path)
 
         representations = instance.data.setdefault("representations", [])

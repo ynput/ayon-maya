@@ -14,14 +14,44 @@ class CreateMayaUsd(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.mayausd"
     label = "Maya USD"
     product_type = "usd"
+    product_base_type = "usd"
     icon = "cubes"
     description = "Create Maya USD Export"
     cache = {}
 
+    allow_animation = True
+
+    def register_callbacks(self):
+        self.create_context.add_value_changed_callback(self.on_values_changed)
+
+    def on_values_changed(self, event):
+        """Update instance attribute definitions on attribute changes."""
+
+        for instance_change in event["changes"]:
+            # First check if there's a change we want to respond to
+            instance = instance_change["instance"]
+            if instance is None:
+                # Change is on context
+                continue
+
+            if instance["creator_identifier"] != self.identifier:
+                continue
+
+            value_changes = instance_change["changes"]
+            if (
+                "exportAnimationData"
+                not in value_changes.get("creator_attributes", {})
+            ):
+                continue
+
+            # Update the attribute definitions
+            new_attrs = self.get_attr_defs_for_instance(instance)
+            instance.set_create_attr_defs(new_attrs)
+
     def get_publish_families(self):
         return ["usd", "mayaUsd"]
 
-    def get_instance_attr_defs(self):
+    def get_attr_defs_for_instance(self, instance):
 
         if "jobContextItems" not in self.cache:
             # Query once instead of per instance
@@ -43,16 +73,18 @@ class CreateMayaUsd(plugin.MayaCreator):
 
             self.cache["jobContextItems"] = job_context_items
 
-        defs = [
-            BoolDef("exportAnimationData",
-                    label="Export Animation Data",
-                    tooltip="When disabled no frame range is exported and "
-                            "only the start frame is used to define the "
-                            "static export frame.",
-                    default=True)
-        ]
-        defs.extend(lib.collect_animation_defs(
-            create_context=self.create_context))
+        defs = []
+        if self.allow_animation:
+            defs.append(
+                BoolDef("exportAnimationData",
+                        label="Export Animation Data",
+                        tooltip="When disabled no frame range is exported and "
+                                "only the start frame is used to define the "
+                                "static export frame.",
+                        default=True)
+            )
+            defs.extend(lib.collect_animation_defs(
+                create_context=self.create_context))
         defs.extend([
             EnumDef("defaultUSDFormat",
                     label="File format",
@@ -78,17 +110,6 @@ class CreateMayaUsd(plugin.MayaCreator):
                         "Remove namespaces during export. By default, "
                         "namespaces are exported to the USD file in the "
                         "following format: nameSpaceExample_pPlatonic1"
-                    ),
-                    default=True),
-            BoolDef("mergeTransformAndShape",
-                    label="Merge Transform and Shape",
-                    tooltip=(
-                        "Combine Maya transform and shape into a single USD"
-                        "prim that has transform and geometry, for all"
-                        " \"geometric primitives\" (gprims).\n"
-                        "This results in smaller and faster scenes. Gprims "
-                        "will be \"unpacked\" back into transform and shape "
-                        "nodes when imported into Maya from USD."
                     ),
                     default=True),
             BoolDef("includeUserDefinedAttributes",
@@ -117,6 +138,18 @@ class CreateMayaUsd(plugin.MayaCreator):
                     ),
                     multiselection=True),
         ])
+
+        # Disable the frame range attributes if `exportAnimationData` is
+        # disabled.
+        use_anim = instance["creator_attributes"].get(
+            "exportAnimationData", True)
+        if not use_anim:
+            anim_defs = {
+                "frameStart", "frameEnd", "handleStart", "handleEnd", "step"
+            }
+            for attr_def in defs:
+                if attr_def.key in anim_defs:
+                    attr_def.disabled = True
 
         return defs
 
@@ -203,3 +236,24 @@ class CreateMayaUsd(plugin.MayaCreator):
             cmds.select(root, replace=True, noExpand=True)
 
         super().create(product_name, instance_data, pre_create_data)
+
+
+class CreateMayaUsdModel(CreateMayaUsd):
+    identifier = "io.ayon.creators.maya.mayausd.model"
+    label = "Maya USD: Model"
+    product_type = "model"
+    product_base_type = "model"
+    icon = "cube"
+    description = "Create Model with Maya USD Export"
+
+    allow_animation = False
+
+    def get_pre_create_attr_defs(self):
+        attr_defs = super().get_pre_create_attr_defs()
+
+        # Enable by default
+        for attr_def in attr_defs:
+            if attr_def.key == "createAssetTemplateHierarchy":
+                attr_def.default = True
+
+        return attr_defs

@@ -18,13 +18,14 @@ class ValidateNodeIDs(plugin.MayaInstancePlugin):
 
     order = ValidatePipelineOrder
     label = 'Instance Nodes Have ID'
-    families = ["model",
-                "look",
-                "rig",
-                "pointcache",
-                "animation",
-                "yetiRig",
-                "assembly"]
+    families = [
+        "model",
+        "look",
+        "rig",
+        "pointcache",
+        "animation",
+        "yetiRig",
+    ]
 
     actions = [ayon_maya.api.action.SelectInvalidAction,
                ayon_maya.api.action.GenerateUUIDsOnInvalidAction]
@@ -43,12 +44,11 @@ class ValidateNodeIDs(plugin.MayaInstancePlugin):
         invalid = self.get_invalid(instance)
         if invalid:
             names = "\n".join(
-                "- {}".format(node) for node in invalid
+                "- {}".format(node) for node in sorted(invalid)
             )
             raise PublishXmlValidationError(
                 plugin=self,
-                message="Nodes found without IDs: {}".format(invalid),
-                formatting_data={"nodes": names}
+                message="Nodes found without IDs:\n{}".format(names)
             )
 
     @classmethod

@@ -1,3 +1,5 @@
+import os
+
 import ayon_api
 import pyblish.api
 from ayon_core.pipeline import KnownPublishError
@@ -39,8 +41,8 @@ class CollectReview(plugin.MayaInstancePlugin):
         if camera is not None:
             attr = camera + ".focalLength"
             if lib.get_attribute_input(attr):
-                start = instance.data["frameStart"]
-                end = instance.data["frameEnd"] + 1
+                start = instance.data["frameStartHandle"]
+                end = instance.data["frameEndHandle"] + 1
                 time_range = range(int(start), int(end))
                 focal_length = [cmds.getAttr(attr, time=t) for t in time_range]
             else:
@@ -133,9 +135,6 @@ class CollectReview(plugin.MayaInstancePlugin):
             # as Extract Playblast is already adding fps to representation.
             instance.data["fps"] = instance.context.data["fps"]
 
-            # make ftrack publishable
-            instance.data.setdefault("families", []).append('ftrack')
-
             # Collect audio
             playback_slider = mel.eval('$tmpVar=$gPlayBackSlider')
             audio_name = cmds.timeControl(playback_slider,
@@ -169,5 +168,18 @@ class CollectReview(plugin.MayaInstancePlugin):
 
                     if start_audio <= end_frame and end_audio > start_frame:
                         audio_data.append(get_audio_node_data(node))
+
+            # Exclude audio data with filenames that can't be found with a
+            # warning to avoid a harder error on e.g. Extract Review
+            valid_audio_data = []
+            for audio in audio_data:
+                if not os.path.exists(audio["filename"]):
+                    self.log.warning(
+                        "Timeline audio file not found on disk: '{}'. "
+                        "Ignoring audio.".format(audio["filename"])
+                    )
+                    continue
+                valid_audio_data.append(audio)
+            audio_data = valid_audio_data
 
             instance.data["audio"] = audio_data
