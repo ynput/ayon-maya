@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 
 import re
@@ -67,13 +68,13 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
 
         # Store all connections
         connections = cmds.listConnections(input_content,
-                                            source=True,
-                                            destination=False,
-                                            connections=True,
-                                            # Only allow inputs from dagNodes
-                                            # (avoid display layers, etc.)
-                                            type="dagNode",
-                                            plugs=True) or []
+                                           source=True,
+                                           destination=False,
+                                           connections=True,
+                                           # Only allow inputs from dagNodes
+                                           # (avoid display layers, etc.)
+                                           type="dagNode",
+                                           plugs=True) or []
         connections = cmds.ls(connections, long=True)      # Ensure long names
 
         inputs = []
@@ -85,13 +86,17 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
             # current instance's hierarchy. If so, we ignore that connection
             # as we will want to preserve it even over a publish.
             if source_node in instance:
-                self.log.debug("Ignoring input connection between nodes "
-                            "inside the instance: %s -> %s" % (src, dest))
+                self.log.debug(
+                    "Ignoring input connection between nodes inside the "
+                    "instance: %s -> %s" % (src, dest)
+                )
                 continue
 
-            inputs.append({"connections": [source_attr, dest_attr],
-                        "sourceID": lib.get_id(source_node),
-                        "destinationID": lib.get_id(dest_node)})
+            inputs.append({
+                "connections": [source_attr, dest_attr],
+                "sourceID": lib.get_id(source_node),
+                "destinationID": lib.get_id(dest_node)
+            })
 
         return inputs
 
