@@ -171,12 +171,12 @@ class ExtractYetiRig(plugin.MayaExtractorPlugin):
                 with lib.attribute_values(attr_value):
                     cmds.select(nodes, noExpand=True)
                     cmds.file(maya_path,
-                            force=True,
-                            exportSelected=True,
-                            typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
-                            preserveReferences=False,
-                            constructionHistory=True,
-                            shader=False)
+                              force=True,
+                              exportSelected=True,
+                              typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
+                              preserveReferences=False,
+                              constructionHistory=True,
+                              shader=False)
 
         # Ensure files can be stored
         # build representations
