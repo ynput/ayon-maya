@@ -160,8 +160,8 @@ class ExtractYetiRig(plugin.MayaExtractorPlugin):
         input_set = yeti_sets["input_SET"]
         set_members = cmds.sets(input_set, query=True) or []
         set_members += cmds.listRelatives(set_members,
-                                        allDescendents=True,
-                                        fullPath=True) or []
+                                          allDescendents=True,
+                                          fullPath=True) or []
         members = cmds.ls(set_members, long=True)
 
         nodes = instance.data["setMembers"]
