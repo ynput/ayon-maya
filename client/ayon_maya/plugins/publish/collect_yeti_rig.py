@@ -24,8 +24,11 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
 
     def process(self, instance):
 
-        assert "input_SET" in instance.data["setMembers"], (
-            "Yeti Rig must have an input_SET")
+        if f"{instance.name}_input_SET" not in instance.data["setMembers"]:
+            raise KnownPublishError(
+                "Yeti Rig instance is missing its input_SET. "
+                "Please recreate the instance."
+            )
 
         input_connections = self.collect_input_connections(instance)
 
