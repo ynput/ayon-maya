@@ -55,7 +55,10 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
                 "Yeti Rig instance is missing its input_SET. "
                 "Please recreate the instance."
             )
-        input_content = cmds.ls(yeti_sets["input_SET"], long=True) or []
+        input_content: list[str] = cmds.ls(
+            cmds.sets(yeti_sets["input_SET"], query=True), 
+            long=True
+        ) or []
         # Include children
         input_content += cmds.listRelatives(input_content,
                                             allDescendents=True,
