@@ -40,7 +40,7 @@ class ValidateYetiRigInputShapesInInstance(plugin.MayaInstancePlugin,
         # Allow publish without input meshes.
         if not shapes:
             cls.log.debug("Found no input meshes for %s, skipping ..."
-                        % instance)
+                          % instance)
             return []
 
         # check if input node is part of groomRig instance
