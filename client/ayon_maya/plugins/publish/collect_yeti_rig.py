@@ -67,13 +67,13 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
 
         # Store all connections
         connections = cmds.listConnections(input_content,
-                                        source=True,
-                                        destination=False,
-                                        connections=True,
-                                        # Only allow inputs from dagNodes
-                                        # (avoid display layers, etc.)
-                                        type="dagNode",
-                                        plugs=True) or []
+                                          source=True,
+                                          destination=False,
+                                          connections=True,
+                                          # Only allow inputs from dagNodes
+                                          # (avoid display layers, etc.)
+                                          type="dagNode",
+                                          plugs=True) or []
         connections = cmds.ls(connections, long=True)      # Ensure long names
 
         inputs = []
