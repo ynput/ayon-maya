@@ -31,15 +31,16 @@ class ValidateYetiRigInputShapesInInstance(plugin.MayaInstancePlugin,
     @classmethod
     def get_invalid(cls, instance):
         # Get all children, we do not care about intermediates
-        input_nodes = cmds.ls(cmds.sets(input_set, query=True), long=True)
-        dag = cmds.ls(input_nodes, dag=True, long=True)
-        shapes = cmds.ls(dag, long=True, shapes=True, noIntermediate=True)
+        for input_set in instance.data["yeti_sets"].values():
+            input_nodes = cmds.ls(cmds.sets(input_set, query=True), long=True)
+            dag = cmds.ls(input_nodes, dag=True, long=True)
+            shapes = cmds.ls(dag, long=True, shapes=True, noIntermediate=True)
 
-        # Allow publish without input meshes.
-        if not shapes:
-            cls.log.debug("Found no input meshes for %s, skipping ..."
-                          % instance)
-            return []
+            # Allow publish without input meshes.
+            if not shapes:
+                cls.log.debug("Found no input meshes for %s, skipping ..."
+                            % instance)
+                return []
 
         # check if input node is part of groomRig instance
         instance_lookup = set(instance[:])
