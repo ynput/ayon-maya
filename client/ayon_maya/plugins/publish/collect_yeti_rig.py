@@ -110,21 +110,17 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
         """
         # Find required sets by suffix
         searching = {"input_SET"}
-        found: dict[str, str] = {}
+        yeti_sets: dict[str, str] = instance.data.setdefault("yeti_sets", {})
         for node in cmds.ls(instance, exactType="objectSet"):
             for suffix in searching:
                 if node.endswith(suffix):
-                    found[suffix] = node
+                    yeti_sets[suffix] = node
                     searching.remove(suffix)
                     break
             if not searching:
                 break
 
-        self.log.debug(f"Found sets: {found}")
-        yeti_sets = instance.data.setdefault("yeti_sets", {})
-        for name, objset in found.items():
-            yeti_sets[name] = objset
-
+        self.log.debug(f"Found sets: {yeti_sets}")
         return yeti_sets
 
     def get_yeti_resources(self, node):
