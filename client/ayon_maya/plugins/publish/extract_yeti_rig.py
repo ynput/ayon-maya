@@ -157,26 +157,26 @@ class ExtractYetiRig(plugin.MayaExtractorPlugin):
         yeti_sets = instance.data["yeti_sets"]
 
         # Get all items
-        for input_set in yeti_sets.values():
-            set_members = cmds.sets(input_set, query=True) or []
-            set_members += cmds.listRelatives(set_members,
-                                            allDescendents=True,
-                                            fullPath=True) or []
-            members = cmds.ls(set_members, long=True)
+        input_set = yeti_sets["input_SET"]
+        set_members = cmds.sets(input_set, query=True) or []
+        set_members += cmds.listRelatives(set_members,
+                                        allDescendents=True,
+                                        fullPath=True) or []
+        members = cmds.ls(set_members, long=True)
 
-            nodes = instance.data["setMembers"]
-            resources = instance.data.get("resources", {})
-            with disconnect_plugs(settings, members):
-                with yetigraph_attribute_values(resources_dir, resources):
-                    with lib.attribute_values(attr_value):
-                        cmds.select(nodes, noExpand=True)
-                        cmds.file(maya_path,
-                                force=True,
-                                exportSelected=True,
-                                typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
-                                preserveReferences=False,
-                                constructionHistory=True,
-                                shader=False)
+        nodes = instance.data["setMembers"]
+        resources = instance.data.get("resources", {})
+        with disconnect_plugs(settings, members):
+            with yetigraph_attribute_values(resources_dir, resources):
+                with lib.attribute_values(attr_value):
+                    cmds.select(nodes, noExpand=True)
+                    cmds.file(maya_path,
+                            force=True,
+                            exportSelected=True,
+                            typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
+                            preserveReferences=False,
+                            constructionHistory=True,
+                            shader=False)
 
         # Ensure files can be stored
         # build representations
