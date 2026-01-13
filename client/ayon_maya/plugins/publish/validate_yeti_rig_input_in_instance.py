@@ -21,8 +21,6 @@ class ValidateYetiRigInputShapesInInstance(plugin.MayaInstancePlugin,
     def process(self, instance):
         if not self.is_active(instance.data):
             return
-        if not instance.data.get("yeti_sets", {}):
-            raise PublishValidationError("No yeti_sets found in instance data")
 
         invalid = self.get_invalid(instance)
         if invalid:
@@ -31,16 +29,19 @@ class ValidateYetiRigInputShapesInInstance(plugin.MayaInstancePlugin,
     @classmethod
     def get_invalid(cls, instance):
         # Get all children, we do not care about intermediates
-        for input_set in instance.data["yeti_sets"].values():
-            input_nodes = cmds.ls(cmds.sets(input_set, query=True), long=True)
-            dag = cmds.ls(input_nodes, dag=True, long=True)
-            shapes = cmds.ls(dag, long=True, shapes=True, noIntermediate=True)
+        yeti_sets = instance.data.get("yeti_sets", {})
+        if not yeti_sets:
+            raise PublishValidationError("No yeti_sets found in instance data")
+        input_set = yeti_sets["input_SET"]
+        input_nodes = cmds.ls(cmds.sets(input_set, query=True), long=True)
+        dag = cmds.ls(input_nodes, dag=True, long=True)
+        shapes = cmds.ls(dag, long=True, shapes=True, noIntermediate=True)
 
-            # Allow publish without input meshes.
-            if not shapes:
-                cls.log.debug("Found no input meshes for %s, skipping ..."
-                            % instance)
-                return []
+        # Allow publish without input meshes.
+        if not shapes:
+            cls.log.debug("Found no input meshes for %s, skipping ..."
+                        % instance)
+            return []
 
         # check if input node is part of groomRig instance
         instance_lookup = set(instance[:])

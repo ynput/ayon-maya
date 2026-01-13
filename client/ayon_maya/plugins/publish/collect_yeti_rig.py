@@ -54,45 +54,44 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
                 "Yeti Rig instance is missing its input_SET. "
                 "Please recreate the instance."
             )
-        for yeti_set in yeti_sets.values():
-            input_content = cmds.ls(yeti_set, long=True) or []
-            # Include children
-            input_content += cmds.listRelatives(input_content,
-                                                allDescendents=True,
-                                                fullPath=True) or []
+        input_content = cmds.ls(yeti_sets["input_SET"], long=True) or []
+        # Include children
+        input_content += cmds.listRelatives(input_content,
+                                            allDescendents=True,
+                                            fullPath=True) or []
 
-            # Ignore intermediate objects
-            input_content = cmds.ls(input_content, long=True, noIntermediate=True)
-            if not input_content:
-                return []
+        # Ignore intermediate objects
+        input_content = cmds.ls(input_content, long=True, noIntermediate=True)
+        if not input_content:
+            return []
 
-            # Store all connections
-            connections = cmds.listConnections(input_content,
-                                            source=True,
-                                            destination=False,
-                                            connections=True,
-                                            # Only allow inputs from dagNodes
-                                            # (avoid display layers, etc.)
-                                            type="dagNode",
-                                            plugs=True) or []
-            connections = cmds.ls(connections, long=True)      # Ensure long names
+        # Store all connections
+        connections = cmds.listConnections(input_content,
+                                        source=True,
+                                        destination=False,
+                                        connections=True,
+                                        # Only allow inputs from dagNodes
+                                        # (avoid display layers, etc.)
+                                        type="dagNode",
+                                        plugs=True) or []
+        connections = cmds.ls(connections, long=True)      # Ensure long names
 
-            inputs = []
-            for dest, src in lib.pairwise(connections):
-                source_node, source_attr = src.split(".", 1)
-                dest_node, dest_attr = dest.split(".", 1)
+        inputs = []
+        for dest, src in lib.pairwise(connections):
+            source_node, source_attr = src.split(".", 1)
+            dest_node, dest_attr = dest.split(".", 1)
 
-                # Ensure the source of the connection is not included in the
-                # current instance's hierarchy. If so, we ignore that connection
-                # as we will want to preserve it even over a publish.
-                if source_node in instance:
-                    self.log.debug("Ignoring input connection between nodes "
-                                "inside the instance: %s -> %s" % (src, dest))
-                    continue
+            # Ensure the source of the connection is not included in the
+            # current instance's hierarchy. If so, we ignore that connection
+            # as we will want to preserve it even over a publish.
+            if source_node in instance:
+                self.log.debug("Ignoring input connection between nodes "
+                            "inside the instance: %s -> %s" % (src, dest))
+                continue
 
-                inputs.append({"connections": [source_attr, dest_attr],
-                            "sourceID": lib.get_id(source_node),
-                            "destinationID": lib.get_id(dest_node)})
+            inputs.append({"connections": [source_attr, dest_attr],
+                        "sourceID": lib.get_id(source_node),
+                        "destinationID": lib.get_id(dest_node)})
 
         return inputs
 
@@ -108,10 +107,11 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
         searching = {"input_SET"}
         found: dict[str, str] = {}
         for node in cmds.ls(instance, exactType="objectSet"):
-            if node.endswith(suffix):
-                found[suffix] = node
-                searching.remove(suffix)
-                break
+            for suffix in searching:
+                if node.endswith(suffix):
+                    found[suffix] = node
+                    searching.remove(suffix)
+                    break
             if not searching:
                 break
 
