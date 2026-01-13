@@ -102,7 +102,7 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
         Args:
             instance (pyblish.Instance): instance to collect from
         Returns:
-            dict: mapping of set names to their members
+            dict[str, str]: mapping of set names to their members
         """
         # Find required sets by suffix
         searching = {"input_SET"}
