@@ -23,13 +23,6 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
     families = ["yetiRig"]
 
     def process(self, instance):
-
-        if f"{instance.name}_input_SET" not in instance.data["setMembers"]:
-            raise KnownPublishError(
-                "Yeti Rig instance is missing its input_SET. "
-                "Please recreate the instance."
-            )
-
         input_connections = self.collect_input_connections(instance)
 
         # Collect any textures if used
@@ -55,47 +48,80 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
         """Collect the inputs for all nodes in the input_SET"""
 
         # Get the input meshes information
-        input_content = cmds.ls(cmds.sets("input_SET", query=True), long=True)
+        yeti_sets = self.get_yeti_sets(instance)
+        if not yeti_sets:
+            raise KnownPublishError(
+                "Yeti Rig instance is missing its input_SET. "
+                "Please recreate the instance."
+            )
+        for yeti_set in yeti_sets.values():
+            input_content = cmds.ls(yeti_set, long=True) or []
+            # Include children
+            input_content += cmds.listRelatives(input_content,
+                                                allDescendents=True,
+                                                fullPath=True) or []
 
-        # Include children
-        input_content += cmds.listRelatives(input_content,
-                                            allDescendents=True,
-                                            fullPath=True) or []
+            # Ignore intermediate objects
+            input_content = cmds.ls(input_content, long=True, noIntermediate=True)
+            if not input_content:
+                return []
 
-        # Ignore intermediate objects
-        input_content = cmds.ls(input_content, long=True, noIntermediate=True)
-        if not input_content:
-            return []
+            # Store all connections
+            connections = cmds.listConnections(input_content,
+                                            source=True,
+                                            destination=False,
+                                            connections=True,
+                                            # Only allow inputs from dagNodes
+                                            # (avoid display layers, etc.)
+                                            type="dagNode",
+                                            plugs=True) or []
+            connections = cmds.ls(connections, long=True)      # Ensure long names
 
-        # Store all connections
-        connections = cmds.listConnections(input_content,
-                                           source=True,
-                                           destination=False,
-                                           connections=True,
-                                           # Only allow inputs from dagNodes
-                                           # (avoid display layers, etc.)
-                                           type="dagNode",
-                                           plugs=True) or []
-        connections = cmds.ls(connections, long=True)      # Ensure long names
+            inputs = []
+            for dest, src in lib.pairwise(connections):
+                source_node, source_attr = src.split(".", 1)
+                dest_node, dest_attr = dest.split(".", 1)
 
-        inputs = []
-        for dest, src in lib.pairwise(connections):
-            source_node, source_attr = src.split(".", 1)
-            dest_node, dest_attr = dest.split(".", 1)
+                # Ensure the source of the connection is not included in the
+                # current instance's hierarchy. If so, we ignore that connection
+                # as we will want to preserve it even over a publish.
+                if source_node in instance:
+                    self.log.debug("Ignoring input connection between nodes "
+                                "inside the instance: %s -> %s" % (src, dest))
+                    continue
 
-            # Ensure the source of the connection is not included in the
-            # current instance's hierarchy. If so, we ignore that connection
-            # as we will want to preserve it even over a publish.
-            if source_node in instance:
-                self.log.debug("Ignoring input connection between nodes "
-                               "inside the instance: %s -> %s" % (src, dest))
-                continue
-
-            inputs.append({"connections": [source_attr, dest_attr],
-                           "sourceID": lib.get_id(source_node),
-                           "destinationID": lib.get_id(dest_node)})
+                inputs.append({"connections": [source_attr, dest_attr],
+                            "sourceID": lib.get_id(source_node),
+                            "destinationID": lib.get_id(dest_node)})
 
         return inputs
+
+    def get_yeti_sets(self, instance):
+        """Get all Yeti sets from the instance
+
+        Args:
+            instance (pyblish.Instance): instance to collect from
+        Returns:
+            dict: mapping of set names to their members
+        """
+        # Find required sets by suffix
+        searching = {"input_SET", "_input_SET"}
+        found = {}
+        for node in cmds.ls(instance, exactType="objectSet"):
+            for suffix in searching:
+                if node.endswith(suffix):
+                    found[suffix] = node
+                    searching.remove(suffix)
+                    break
+            if not searching:
+                break
+
+        self.log.debug("Found sets: {}".format(found))
+        yeti_sets = instance.data.setdefault("yeti_sets", {})
+        for name, objset in found.items():
+            yeti_sets[name] = objset
+
+        return yeti_sets
 
     def get_yeti_resources(self, node):
         """Get all resource file paths

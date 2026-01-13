@@ -21,16 +21,15 @@ class ValidateYetiRigInputShapesInInstance(plugin.MayaInstancePlugin,
     def process(self, instance):
         if not self.is_active(instance.data):
             return
+        if not instance.data.get("yeti_sets", {}):
+            raise PublishValidationError("No yeti_sets found in instance data")
+
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError("Yeti Rig has invalid input meshes")
 
     @classmethod
     def get_invalid(cls, instance):
-
-        input_set = next((i for i in instance if i == "input_SET"), None)
-        assert input_set, "Current %s instance has no `input_SET`" % instance
-
         # Get all children, we do not care about intermediates
         input_nodes = cmds.ls(cmds.sets(input_set, query=True), long=True)
         dag = cmds.ls(input_nodes, dag=True, long=True)
