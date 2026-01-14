@@ -532,6 +532,81 @@ class ExtractModelModel(BaseSettingsModel):
     active: bool = SettingsField(title="Active")
 
 
+class ExtractMayaUsdCustomAttrNameMappingModel(BaseSettingsModel):
+    _layout = "compact"
+    name: str = SettingsField("", title="Maya name")
+    usd_name: str = SettingsField("", title="USD name")
+
+
+class ExtractMayaUsdModel(BaseSettingsModel):
+    """Export USD using Maya's mayaUsd plug-in
+
+    Custom attributes overrides allow user defined attributes to be exported
+    using custom naming overrides, e.g. by prefixing them all with a default
+    namespace or specifying explict Maya name to USD name mapping.
+
+    You can also customize it with the mapping JSON which expects a key
+    for each Maya attribute name to customize output values for, using the
+    [custom attribute `USD_UserExportedAttributesJson` syntax](https://github.com/Autodesk/maya-usd/blob/dev/lib/mayaUsd/commands/Readme.md#specifying-arbitrary-attributes-for-export).
+
+    Any existing `USD_UserExportedAttributesJson` attribute on nodes in the
+    scene will still be the strongest opinion - hence these mappings only
+    apply defaults if not explicitly specified in the scene.
+    """
+    custom_attr_namespace: str = SettingsField(
+        section="Custom Attributes",
+        title="Custom Attribute Default Namespace",
+        description=(
+            "Default USD attribute name prefix for custom attributes to be"
+            " exported. For example, setting this to an empty string would"
+            " make custom attribute `myAttr` exported directly as `myAttr`"
+            " instead of `userProperties:myAttr` in the resulting USD file."
+            " In the majority of cases you will want to leave this at the"
+            " default `userProperties:` because that is where you store user"
+            " defined properties."
+        )
+    )
+    custom_attr_name_mapping: list[
+        ExtractMayaUsdCustomAttrNameMappingModel
+    ] = SettingsField(
+        title="Custom Attribute Name Mapping",
+        description=(
+            "Specify a Maya name to USD attribute name mapping "
+            "for custom attributes"
+        )
+    )
+    custom_attr_mapping: str = SettingsField(
+        title="Advanced Custom Attribute Mapping",
+        widget="textarea",
+        description=(
+            "Default [custom attribute `USD_UserExportedAttributesJson`](https://github.com/Autodesk/maya-usd/blob/dev/lib/mayaUsd/commands/Readme.md#specifying-arbitrary-attributes-for-export)."
+            "\n\n"
+            "Use this if you want to override other data or more than just "
+            "the name, like e.g. `usdAttrType` or "
+            "`translateMayaDoubleToUsdSinglePrecision`."
+            "\n\n"
+            "Any `USD_UserExportedAttributesJson` attribute existing"
+            " on the node attribute will not be overridden."
+        )
+    )
+
+    @validator("custom_attr_mapping")
+    def validate_json(cls, value):
+        if not value.strip():
+            return "{}"
+        try:
+            converted_value = json.loads(value)
+            success = isinstance(converted_value, dict)
+        except json.JSONDecodeError:
+            success = False
+
+        if not success:
+            raise BadRequestException(
+                "The attributes can't be parsed as json object"
+            )
+        return value
+
+
 class ExtractMayaUsdModelModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
@@ -1004,18 +1079,6 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Camera Attributes"
     )
-    ValidateAssemblyName: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Assembly Name"
-    )
-    ValidateAssemblyNamespaces: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Assembly Namespaces"
-    )
-    ValidateAssemblyModelTransforms: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Assembly Model Transforms"
-    )
     ValidateAssRelativePaths: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Ass Relative Paths"
@@ -1069,6 +1132,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Extract Animation (Alembic)",
         description="Alembic extractor for loaded rigs"
+    )
+    ExtractMayaUsd: ExtractMayaUsdModel = SettingsField(
+        default_factory=ExtractMayaUsdModel,
+        title="Extract Maya USD"
     )
     ExtractMayaUsdModel: ExtractMayaUsdModelModel = SettingsField(
         default_factory=ExtractMayaUsdModelModel,
@@ -1586,21 +1653,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": True,
         "active": True
     },
-    "ValidateAssemblyName": {
-        "enabled": True,
-        "optional": True,
-        "active": True
-    },
-    "ValidateAssemblyNamespaces": {
-        "enabled": True,
-        "optional": False,
-        "active": True
-    },
-    "ValidateAssemblyModelTransforms": {
-        "enabled": True,
-        "optional": False,
-        "active": True
-    },
     "ValidateAssRelativePaths": {
         "enabled": True,
         "optional": False,
@@ -1724,6 +1776,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": False,
         "active": True,
+    },
+    "ExtractMayaUsd": {
+        "custom_attr_namespace": "userProperties:",
+        "custom_attr_name_mapping": [],
+        "custom_attr_mapping": "{}",
     },
     "ExtractMayaUsdModel": {
         "enabled": True,

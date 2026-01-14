@@ -12,6 +12,7 @@ class CreateOxCache(plugin.MayaCreator):
     identifier = "io.ayon.creators.maya.oxcache"
     label = "Ornatrix Cache"
     product_type = "oxcache"
+    product_base_type = "oxcache"
     icon = "pagelines"
     description = "Ornatrix Cache"
 

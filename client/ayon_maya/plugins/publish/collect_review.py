@@ -41,8 +41,8 @@ class CollectReview(plugin.MayaInstancePlugin):
         if camera is not None:
             attr = camera + ".focalLength"
             if lib.get_attribute_input(attr):
-                start = instance.data["frameStart"]
-                end = instance.data["frameEnd"] + 1
+                start = instance.data["frameStartHandle"]
+                end = instance.data["frameEndHandle"] + 1
                 time_range = range(int(start), int(end))
                 focal_length = [cmds.getAttr(attr, time=t) for t in time_range]
             else:
