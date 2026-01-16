@@ -11,28 +11,18 @@ from maya import cmds
 
 
 @contextlib.contextmanager
-def disconnect_plugs(settings, members):
+def disconnect_plugs(settings):
     """Disconnect and store attribute connections."""
-    members = cmds.ls(members, long=True)
     original_connections = []
     try:
         for input in settings["inputs"]:
 
-            # Get source shapes
-            source_nodes = lib.lsattr("cbId", input["sourceID"])
-            if not source_nodes:
-                continue
-
-            source = next(s for s in source_nodes if s not in members)
-
-            # Get destination shapes (the shapes used as hook up)
-            destination_nodes = lib.lsattr("cbId", input["destinationID"])
-            destination = next(i for i in destination_nodes if i in members)
-
             # Create full connection
+            source_node: str = input["sourceNode"]
+            destination_node: str = input["destinationNode"]
             connections = input["connections"]
-            src_attribute = "%s.%s" % (source, connections[0])
-            dst_attribute = "%s.%s" % (destination, connections[1])
+            src_attribute = "%s.%s" % (source_node, connections[0])
+            dst_attribute = "%s.%s" % (destination_node, connections[1])
 
             # Check if there is an actual connection
             if not cmds.isConnected(src_attribute, dst_attribute):
@@ -133,9 +123,6 @@ class ExtractYetiRig(plugin.MayaExtractorPlugin):
 
         settings = instance.data.get("rigsettings", None)
         assert settings, "Yeti rig settings were not collected."
-        settings["imageSearchPath"] = image_search_path
-        with open(settings_path, "w") as fp:
-            json.dump(settings, fp, ensure_ascii=False)
 
         # add textures to transfers
         if 'transfers' not in instance.data:
@@ -153,20 +140,9 @@ class ExtractYetiRig(plugin.MayaExtractorPlugin):
         attr_value = {"%s.imageSearchPath" % n: str(image_search_path) for
                       n in yeti_nodes}
 
-        # Get input_SET members
-        yeti_sets = instance.data["yeti_sets"]
-
-        # Get all items
-        input_set = yeti_sets["input_SET"]
-        set_members = cmds.sets(input_set, query=True) or []
-        set_members += cmds.listRelatives(set_members,
-                                          allDescendents=True,
-                                          fullPath=True) or []
-        members = cmds.ls(set_members, long=True)
-
         nodes = instance.data["setMembers"]
         resources = instance.data.get("resources", {})
-        with disconnect_plugs(settings, members):
+        with disconnect_plugs(settings):
             with yetigraph_attribute_values(resources_dir, resources):
                 with lib.attribute_values(attr_value):
                     cmds.select(nodes, noExpand=True)
@@ -177,6 +153,17 @@ class ExtractYetiRig(plugin.MayaExtractorPlugin):
                               preserveReferences=False,
                               constructionHistory=True,
                               shader=False)
+
+        # Remove `sourceNode` and `destinationNode` from settings['inputs']
+        # because it's just data we needed for extraction, but not in the
+        # published data.
+        for input_ in settings["inputs"]:
+            input_.pop("sourceNode", None)
+            input_.pop("destinationNode", None)
+
+        settings["imageSearchPath"] = image_search_path
+        with open(settings_path, "w") as fp:
+            json.dump(settings, fp, ensure_ascii=False)
 
         # Ensure files can be stored
         # build representations

@@ -98,7 +98,9 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
             inputs.append({
                 "connections": [source_attr, dest_attr],
                 "sourceID": lib.get_id(source_node),
-                "destinationID": lib.get_id(dest_node)
+                "destinationID": lib.get_id(dest_node),
+                "sourceNode": source_node,
+                "destinationNode": dest_node,
             })
 
         return inputs
