@@ -25,6 +25,8 @@ class ValidateInstanceHasMembers(plugin.MayaInstancePlugin):
     def process(self, instance):
         # Allow renderlayer, rendersetup and workfile to be empty
         skip_families = {"workfile",
+                         "render.local",
+                         "render.local_no_render",
                          "renderlayer",
                          "rendersetup",
                          "mayaUsdLayer",

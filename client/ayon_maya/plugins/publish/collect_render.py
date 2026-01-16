@@ -223,10 +223,16 @@ class CollectMayaRender(plugin.MayaInstancePlugin):
             "Publish meta path: {}".format(common_publish_meta_path)
         )
 
+        # Collect Render Target
+        creator_attribute = instance.data["creator_attributes"]
+        farm_render: bool = (
+            creator_attribute.get("render_target", "farm") == "farm"
+        )
+
         # Get layer specific settings, might be overrides
         colorspace_data = lib.get_color_management_preferences()
         data = {
-            "farm": True,
+            "farm": farm_render,
             "attachTo": attach_to,
 
             "multipartExr": multipart,
