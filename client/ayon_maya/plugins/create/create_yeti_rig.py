@@ -24,5 +24,5 @@ class CreateYetiRig(plugin.MayaCreator):
             instance_node = instance.get("instance_node")
 
             self.log.info("Creating Rig instance set up ...")
-            input_meshes = cmds.sets(name="input_SET", empty=True)
+            input_meshes = cmds.sets(name=f"{product_name}_input_SET", empty=True)
             cmds.sets(input_meshes, forceElement=instance_node)
