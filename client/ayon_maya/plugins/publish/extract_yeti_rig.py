@@ -23,26 +23,32 @@ def disconnect_plugs(settings, members):
             if not source_nodes:
                 continue
 
-            source = next(s for s in source_nodes if s not in members)
+            source = next((s for s in source_nodes if s not in members), None)
+            if not source:
+                continue
 
             # Get destination shapes (the shapes used as hook up)
             destination_nodes = lib.lsattr("cbId", input["destinationID"])
-            destination = next(i for i in destination_nodes if i in members)
-
-            # Create full connection
-            connections = input["connections"]
-            src_attribute = "%s.%s" % (source, connections[0])
-            dst_attribute = "%s.%s" % (destination, connections[1])
-
-            # Check if there is an actual connection
-            if not cmds.isConnected(src_attribute, dst_attribute):
-                print("No connection between %s and %s" % (
-                    src_attribute, dst_attribute))
+            destinations = [i for i in destination_nodes if i in members]
+            if not destinations:
                 continue
 
-            # Break and store connection
-            cmds.disconnectAttr(src_attribute, dst_attribute)
-            original_connections.append([src_attribute, dst_attribute])
+            # Process all matching destinations
+            for destination in destinations:
+                # Create full connection
+                connections = input["connections"]
+                src_attribute = "%s.%s" % (source, connections[0])
+                dst_attribute = "%s.%s" % (destination, connections[1])
+
+                # Check if there is an actual connection
+                if not cmds.isConnected(src_attribute, dst_attribute):
+                    print("No connection between %s and %s" % (
+                        src_attribute, dst_attribute))
+                    continue
+
+                # Break and store connection
+                cmds.disconnectAttr(src_attribute, dst_attribute)
+                original_connections.append([src_attribute, dst_attribute])
         yield
     finally:
         # Restore previous connections
@@ -167,8 +173,8 @@ class ExtractYetiRig(plugin.MayaExtractorPlugin):
         nodes = instance.data["setMembers"]
         resources = instance.data.get("resources", {})
         with disconnect_plugs(settings, members):
-            with yetigraph_attribute_values(resources_dir, resources):
-                with lib.attribute_values(attr_value):
+            with (resources_dir, resources):
+                with lib.atyetigraph_attribute_valuestribute_values(attr_value):
                     cmds.select(nodes, noExpand=True)
                     cmds.file(maya_path,
                               force=True,
