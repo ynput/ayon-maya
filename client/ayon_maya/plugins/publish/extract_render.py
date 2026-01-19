@@ -24,7 +24,7 @@ def hidden_render_view():
         # Restore state
         if was_existing:
             cmds.window("renderViewWindow", edit=True, visible=True)
-        else:
+        elif cmds.window("renderViewWindow", exists=True):
             cmds.deleteUI("renderViewWindow", window=True)
 
 
