@@ -12,20 +12,21 @@ from maya import cmds
 def hidden_render_view():
     """Context manager to hide the render view window temporarily."""
     # Ensure `renderViewWindow` exists so we can set its visibility
-    was_existing = cmds.window("renderViewWindow", exists=True)
+    render_view_window: str = "renderViewWindow"
+    was_existing = cmds.window(render_view_window, exists=True)
     if not was_existing:
         cmds.RenderViewWindow()
 
     # Hide the window
-    cmds.window("renderViewWindow", edit=True, visible=False)
+    cmds.window(render_view_window, edit=True, visible=False)
     try:
         yield
     finally:
         # Restore state
         if was_existing:
-            cmds.window("renderViewWindow", edit=True, visible=True)
-        elif cmds.window("renderViewWindow", exists=True):
-            cmds.deleteUI("renderViewWindow", window=True)
+            cmds.window(render_view_window, edit=True, visible=True)
+        elif cmds.window(render_view_window, exists=True):
+            cmds.deleteUI(render_view_window, window=True)
 
 
 class ExtractLocalRender(plugin.MayaExtractorPlugin):
