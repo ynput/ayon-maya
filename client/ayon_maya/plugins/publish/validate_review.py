@@ -9,7 +9,7 @@ class ValidateReview(plugin.MayaInstancePlugin):
 
     order = ValidateContentsOrder
     label = "Validate Review"
-    families = ["review"]
+    families = ["review.playblast"]
 
     def process(self, instance):
         cameras = instance.data["cameras"]

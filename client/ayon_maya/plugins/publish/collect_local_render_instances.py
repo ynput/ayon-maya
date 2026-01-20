@@ -72,6 +72,10 @@ class CollectLocalRenderInstances(plugin.MayaInstancePlugin):
             aov_instance.data.update(aov_instance_data)
             aov_instance.data["families"] = [f"render.{render_target}"]
 
+            # Pass on 'review' family
+            if "review" in aov_instance_data["families"]:
+                aov_instance.data["families"].append("review")
+
         # Skip integrating original render instance.
         # We are not removing it because it's used to trigger the render.
         instance.data["integrate"] = False

@@ -31,7 +31,7 @@ class ValidateFrameRange(plugin.MayaInstancePlugin,
                 "camera",
                 "proxyAbc",
                 "renderlayer",
-                "review",
+                "review.playblast",
                 "yeticache",
                 "oxcache"]
     optional = True

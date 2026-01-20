@@ -13,7 +13,7 @@ class CollectReview(plugin.MayaInstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.3
     label = 'Collect Review Data'
-    families = ["review"]
+    families = ["review.playblast"]
 
     def process(self, instance):
 

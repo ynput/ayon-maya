@@ -17,7 +17,7 @@ class ExtractThumbnail(plugin.MayaExtractorPlugin):
     """
     order = pyblish.api.ExtractorOrder - 0.3
     label = "Thumbnail"
-    families = ["review"]
+    families = ["review.playblast"]
 
     def process(self, instance):
         self.log.debug("Extracting thumbnail..")
