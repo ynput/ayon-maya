@@ -1,32 +1,47 @@
+from __future__ import annotations
 import contextlib
 import shutil
 import os
+from typing import Optional
 
-from ayon_core.pipeline import KnownPublishError
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
-from maya import cmds
+from maya import cmds, mel
 
 
 @contextlib.contextmanager
-def hidden_render_view():
-    """Context manager to hide the render view window temporarily."""
-    # Ensure `renderViewWindow` exists so we can set its visibility
-    render_view_window: str = "renderViewWindow"
-    was_existing = cmds.window(render_view_window, exists=True)
-    if not was_existing:
-        cmds.RenderViewWindow()
-
-    # Hide the window
-    cmds.window(render_view_window, edit=True, visible=False)
+def only_renderable(active_layer: str):
+    """Set `active_layer` as only active renderlayer during context"""
+    layers = cmds.ls(type="renderLayer")
+    original: dict[str, bool] = {}
     try:
+        for layer in layers:
+            current_state: bool = cmds.getAttr(f"{layer}.renderable")
+            target_state: bool = layer == active_layer
+            original[layer] = current_state
+            if current_state != target_state:
+                cmds.setAttr(f"{layer}.renderable", target_state)
+        cmds.refresh(f=True)
         yield
     finally:
-        # Restore state
-        if was_existing:
-            cmds.window(render_view_window, edit=True, visible=True)
-        elif cmds.window(render_view_window, exists=True):
-            cmds.deleteUI(render_view_window, window=True)
+        # Revert states
+        for layer, target_state in original.items():
+            current_state: bool = cmds.getAttr(f"{layer}.renderable")
+            if current_state != target_state:
+                cmds.setAttr(f"{layer}.renderable", target_state)
+
+
+@contextlib.contextmanager
+def revert_to_layer(layer: Optional[str] = None):
+    """Revert back to original layer at end of context"""
+    original_layer = cmds.editRenderLayerGlobals(query=True,
+                                                 currentRenderLayer=True)
+    try:
+        if layer is not None:
+            cmds.editRenderLayerGlobals(currentRenderLayer=layer)
+        yield
+    finally:
+        cmds.editRenderLayerGlobals(currentRenderLayer=original_layer)
 
 
 class ExtractLocalRender(plugin.MayaExtractorPlugin):
@@ -60,33 +75,21 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
             )
             return
 
-        if cmds.about(batch=True):
-            raise KnownPublishError(
-                "Cannot perform local render in batch mode because "
-                "`RenderSequence` command only works within an "
-                "interactive Maya session."
-            )
-
-        frame_start: int = instance.data["frameStartHandle"]
-        frame_end: int = instance.data["frameEndHandle"]
-        step: int = int(instance.data.get("step", 1))
-
         # Get the render layer from the instance data using the legacy layer
         # node name, switch to it and render a sequence locally.
         layer: str = instance.data["setMembers"]
+
         with contextlib.ExitStack() as stack:
             stack.enter_context(lib.maintained_time())
-            stack.enter_context(lib.renderlayer(layer))
-            if self.offscreen:
-                stack.enter_context(hidden_render_view())
+            stack.enter_context(revert_to_layer())
+            stack.enter_context(only_renderable(layer))
 
-            for t in range(frame_start, frame_end + 1, step):
-                cmds.currentTime(t)
-                cmds.RenderIntoNewWindow()
+            # Render scene
+            mel.eval('mayaBatchRenderProcedure(0, "", "", "", "")')
 
-        # Because we're in an interactive session with user interface Maya will
-        # render into a `tmp` subfolder under the 'images' file rule directory.
-        # We need to move the files up a folder.
+        # Because we're in an interactive session with user interface Maya some
+        # renderers will render into a `tmp` subfolder under the 'images' file
+        # rule directory. We need to move the files up a folder.
         image_directory: str = os.path.join(
             cmds.workspace(query=True, rootDirectory=True),
             cmds.workspace(fileRuleEntry="images"),
@@ -97,20 +100,31 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
         for _aov, filepaths in expected_files[0].items():
             for filepath in filepaths:
                 relative_path = os.path.relpath(filepath, image_directory)
-                source_filepath = os.path.join(
+                tmp_filepath = os.path.join(
                     image_directory,
                     "tmp",
                     relative_path,
                 )
-                if not os.path.exists(source_filepath):
+
+                # Find the newest of two files, allowing it to be in tmp/
+                existing = [
+                    path for path in (filepath, tmp_filepath)
+                    if os.path.exists(path)
+                ]
+                if not existing:
                     raise RuntimeError(
-                        "Render did not produce expected file at: "
-                        f"{source_filepath}"
+                        f"Render did not produce expected file at: {filepath}"
                     )
+
+                existing.sort(key=os.path.getmtime, reverse=True)
+                latest = existing[0]
+                if latest == filepath:
+                    # Do nothing, file is already in place
+                    continue
 
                 dest_dir = os.path.dirname(filepath)
                 os.makedirs(dest_dir, exist_ok=True)
                 self.log.debug(
-                    f"Moving rendered file: {source_filepath} -> {filepath}"
+                    f"Moving rendered file: {tmp_filepath} -> {filepath}"
                 )
-                shutil.move(source_filepath, filepath)
+                shutil.move(tmp_filepath, filepath)
