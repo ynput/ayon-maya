@@ -1,6 +1,5 @@
 from __future__ import annotations
 import contextlib
-import shutil
 import os
 from typing import Optional
 
@@ -127,4 +126,4 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
                 self.log.debug(
                     f"Moving rendered file: {tmp_filepath} -> {filepath}"
                 )
-                shutil.move(tmp_filepath, filepath)
+                os.rename(tmp_filepath, filepath)
