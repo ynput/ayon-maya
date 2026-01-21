@@ -96,7 +96,7 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
         expected_files: list[dict[str, list[str]]] = (
             instance.data["expectedFiles"]
         )
-        for _aov, filepaths in expected_files[0].items():
+        for filepaths in expected_files[0].values():
             for filepath in filepaths:
                 relative_path = os.path.relpath(filepath, image_directory)
                 tmp_filepath = os.path.join(
