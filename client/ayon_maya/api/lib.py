@@ -1865,6 +1865,10 @@ def get_container_members(container, include_reference_associated_nodes=False):
         # Assume it's a container dictionary
         container = container["objectName"]
 
+    if "," in container:
+        # Assume it's a UFE path - return it as the only member
+        return [container]
+
     members = cmds.sets(container, query=True) or []
     members = cmds.ls(members, long=True, objectsOnly=True) or []
     all_members = set(members)
