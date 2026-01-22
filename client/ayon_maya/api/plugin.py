@@ -618,6 +618,7 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         host_name: Optional[str] = None,
         instance: Optional[CreatedInstance] = None,
         project_entity: Optional[dict[str, Any]] = None,
+        product_type: Optional[str] = None,
     ) -> str:
         if host_name is None:
             host_name = self.create_context.host_name
