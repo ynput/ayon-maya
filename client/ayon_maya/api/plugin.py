@@ -624,42 +624,44 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
             host_name = self.create_context.host_name
 
         project_entity = self.create_context.get_current_project_entity()
-        # creator.product_type != 'render' as expected
+        # creator.product_type != 'render' as expected so
+        product_base_type = self.layer_instance_prefix or self.product_type,
         if getattr(get_product_name, "use_entities", False):
-            task_name = task_type = None
-            if task_entity:
-                task_name = task_entity["name"]
-                task_type = task_entity["taskType"]
+            if product_type is None:
+                product_type = self.product_base_type
             return get_product_name(
                 project_name=project_name,
-                task_name=task_name,
-                task_type=task_type,
+                folder_entity=folder_entity,
+                task_entity=task_entity,
                 host_name=host_name,
-                product_type=self.layer_instance_prefix or self.product_type,
+                product_base_type=product_base_type,
+                product_type=product_type,
                 variant=variant,
                 project_settings=self.project_settings,
                 project_entity=project_entity,
-                dynamic_data={
-                    "folder": {
-                        "name": folder_entity["name"],
-                        "label": folder_entity["label"],
-                        "type": folder_entity["folderType"],
-                    },
-                }
             )
 
-        if product_type is None:
-            product_type = self.product_base_type
+        # Backwards compatibility
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
         return get_product_name(
             project_name=project_name,
-            folder_entity=folder_entity,
-            task_entity=task_entity,
+            task_name=task_name,
+            task_type=task_type,
             host_name=host_name,
-            product_base_type=self.layer_instance_prefix or self.product_type,
-            product_type=product_type,
+            product_type=product_base_type,
             variant=variant,
             project_settings=self.project_settings,
             project_entity=project_entity,
+            dynamic_data={
+                "folder": {
+                    "name": folder_entity["name"],
+                    "label": folder_entity["label"],
+                    "type": folder_entity["folderType"],
+                },
+            }
         )
 
 
