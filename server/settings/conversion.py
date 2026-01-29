@@ -117,4 +117,5 @@ def convert_settings_overrides(
     _convert_dirmap_0_4_3(overrides)
     _convert_redshift_render_settings_gi_0_4_4(overrides)
     _convert_scene_units(overrides)
+    _convert_product_types_to_base_types_0_6_0(overrides)
     return overrides
