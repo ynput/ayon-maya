@@ -177,9 +177,9 @@ class ValidateFrameRangeModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="ValidateFrameRange")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
-    exclude_product_types: list[str] = SettingsField(
+    exclude_product_base_types: list[str] = SettingsField(
         default_factory=list,
-        title="Exclude product types"
+        title="Exclude product base types"
     )
 
 
@@ -314,13 +314,6 @@ class ValidateRenderSettingsModel(BaseSettingsModel):
         default_factory=list, title="Redshift Render Attributes")
     renderman_render_attributes: list[RendererAttributesModel] = SettingsField(
         default_factory=list, title="Renderman Render Attributes")
-
-
-class BasicValidateModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    optional: bool = SettingsField(title="Optional")
-    active: bool = SettingsField(title="Active")
-
 
 class ValidateCameraContentsModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")

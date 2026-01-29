@@ -67,6 +67,49 @@ def _convert_redshift_render_settings_gi_0_4_4(overrides):
         redshift_settings["gi_enabled"] = True
 
 
+
+def _convert_validate_frame_range_exclude_0_6_0(overrides: dict[str, Any]) -> None:
+    """The `validate_frame_range.exclude` key was renamed to `exclude_frames` in 0.6.0"""
+    publish_settings = overrides.get("publish")
+    if publish_settings is None:
+        return
+
+    validate_frame_range_settings = publish_settings.get("ValidateFrameRange")
+    if validate_frame_range_settings is None:
+        return
+
+    if "exclude_product_types" in validate_frame_range_settings:
+        validate_frame_range_settings["exclude_product_base_types"] = (
+            validate_frame_range_settings.pop("exclude_product_types")
+        )
+
+def _convert_workfile_builder_product_types_0_6_0(overrides: dict[str, Any]) -> None:
+    """Product types were moved to a separate section in 0.6.0"""
+    for t in ["workfile_build", "templated_workfile_build"]:
+        workfile_builder_settings = overrides.get(t)
+        if workfile_builder_settings is None:
+            continue
+        profiles = workfile_builder_settings.get("profiles")
+        if profiles is None:
+            continue
+        for  c in ["current_context", "linked_assets"]:
+            current_context = profiles.get(c)
+            if current_context is None:
+                continue
+            if not current_context.get("product_base_types"):
+                current_context["product_base_types"] = (
+                    current_context.pop("product_types")
+                )
+
+
+def _convert_product_types_to_base_types_0_6_0(
+    overrides: dict[str, Any],
+) -> None:
+    """Product types were moved to a separate section in 0.6.0"""
+    _convert_validate_frame_range_exclude_0_6_0(overrides)
+    _convert_workfile_builder_product_types_0_6_0(overrides)
+
+
 def convert_settings_overrides(
     source_version: str,
     overrides: dict[str, Any],
