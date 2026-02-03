@@ -244,9 +244,9 @@ class MayaPlaceholderPlugin(PlaceholderPlugin):
         return data
 
 
-def build_workfile_template(*args):
+def build_workfile_template(*args, **kwargs):
     builder = MayaTemplateBuilder(registered_host())
-    builder.build_template()
+    builder.build_template(*args, **kwargs)
 
 
 def update_workfile_template(*args):
