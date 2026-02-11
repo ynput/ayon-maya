@@ -10,7 +10,7 @@ class CollectMayaHistory(plugin.MayaInstancePlugin):
         This removes render layers collected in the history
 
     This is separate from Collect Instances so we can target it towards only
-    specific product types.
+    specific product base types.
 
     """
 

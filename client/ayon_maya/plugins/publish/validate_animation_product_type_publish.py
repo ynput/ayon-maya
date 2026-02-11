@@ -11,7 +11,7 @@ import pyblish.api
 
 
 class ValidateAnimationProductBaseTypePublish(plugin.MayaInstancePlugin):
-    """Validate at least a single product type is exported for the instance.
+    """Validate at least a single product base type is exported.
     
     Validate either fbx animation collector or collect animation output 
     geometry(Alembic) enabled for publishing otherwise no products
@@ -88,7 +88,7 @@ class ValidateAnimationProductBaseTypePublish(plugin.MayaInstancePlugin):
             raise PublishValidationError(
                 f"Animation instance generates no products: {name}\n"
                 "Make sure to enable at least one of the export(s) "
-                "product types: FBX, Alembic and/or USD.",
+                "product base types: FBX, Alembic and/or USD.",
                 description=self.get_description()
             )
 
@@ -100,6 +100,6 @@ class ValidateAnimationProductBaseTypePublish(plugin.MayaInstancePlugin):
             The animation instance generates no products. As a result of that
             there is nothing to publish.
             
-            Please make sure to enable at least one of the product types to 
-            export: FBX, Alembic and/or USD.
+            Please make sure to enable at least one of the product base types
+            to export: FBX, Alembic and/or USD.
         """)

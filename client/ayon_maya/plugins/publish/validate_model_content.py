@@ -13,7 +13,7 @@ from maya import cmds
 
 class ValidateModelContent(plugin.MayaInstancePlugin,
                            OptionalPyblishPluginMixin):
-    """Adheres to the content of 'model' product type
+    """Adheres to the content of 'model' product base type
 
     See `get_description` for more details.
 
@@ -125,7 +125,7 @@ class ValidateModelContent(plugin.MayaInstancePlugin,
             ### Model content is invalid
 
             Your model instance does not adhere to the rules of a
-            model product type:
+            model product base type:
 
             - Must have at least one visible shape in it, like a mesh.
             - Must have one root node. When exporting multiple meshes they
