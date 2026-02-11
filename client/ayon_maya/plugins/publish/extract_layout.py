@@ -47,7 +47,7 @@ class Container:
 class LayoutElement:
     """Single element representing a loaded container in the layout.json"""
     # Loaded representation
-    product_type: str
+    product_base_type: str
     instance_name: str
     representation: str
     version: str
@@ -294,7 +294,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         }
 
         element = LayoutElement(
-            product_type=product_type,
+            product_base_type=product_base_type,
             instance_name=container.namespace,
             representation=representation["id"],
             version=representation["versionId"],
