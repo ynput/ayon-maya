@@ -177,9 +177,9 @@ class ValidateFrameRangeModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="ValidateFrameRange")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
-    exclude_product_types: list[str] = SettingsField(
+    exclude_product_base_types: list[str] = SettingsField(
         default_factory=list,
-        title="Exclude product types"
+        title="Exclude product base types"
     )
 
 
@@ -1202,7 +1202,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "active": True,
-        "exclude_product_types": [
+        "exclude_product_base_types": [
             "model",
             "rig",
             "staticMesh"

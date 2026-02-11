@@ -1,11 +1,17 @@
 from typing import Any
 
 
-def _convert_validate_animation_0_6_0(overrides):
+def _convert_product_base_types_0_6_0(overrides):
     publish_override = overrides.get("publish", {})
     if "ValidateAnimationProductTypePublish" in publish_override:
         publish_override["ValidateAnimationProductBaseTypePublish"] = (
             publish_override.pop("ValidateAnimationProductTypePublish")
+        )
+
+    validate_frame_range = publish_override.get("ValidateFrameRange", {})
+    if "exclude_product_types" in validate_frame_range:
+        validate_frame_range["exclude_product_base_types"] = (
+            validate_frame_range.pop("exclude_product_types")
         )
 
 
@@ -82,5 +88,5 @@ def convert_settings_overrides(
     _convert_dirmap_0_4_3(overrides)
     _convert_redshift_render_settings_gi_0_4_4(overrides)
     _convert_scene_units(overrides)
-    _convert_validate_animation_0_6_0(overrides)
+    _convert_product_base_types_0_6_0(overrides)
     return overrides
