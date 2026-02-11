@@ -320,7 +320,8 @@ class MayaCreator(Creator, MayaCreatorBase):
 
             # product base type support is added in ayon-core 1.7.0
             instance = CreatedInstance(
-                product_type=self.product_type,
+                product_base_type=self.product_base_type,
+                product_type=self.product_base_type,
                 product_name=product_name,
                 data=instance_data,
                 creator=self,
@@ -502,9 +503,12 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
                     layer.name(),
                     host_name,
                 )
-
+                product_type = instance_data.get("productType")
+                if not product_type:
+                    product_type = self.product_base_type
                 instance = CreatedInstance(
-                    product_type=self.product_type,
+                    product_base_type=self.product_base_type,
+                    product_type=product_type,
                     product_name=product_name,
                     data=instance_data,
                     creator=self
