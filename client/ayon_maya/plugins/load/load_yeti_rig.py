@@ -58,7 +58,7 @@ class YetiRigLoader(plugin.ReferenceLoader):
         return nodes
 
     def _create_yeti_cache_instance(self, nodes: List[str], variant: str):
-        """Create a yeticache product type instance to publish the output.
+        """Create a yeticache instance to publish the output.
 
         This is similar to how loading animation rig will automatically create
         an animation instance for publishing any loaded character rigs, but

@@ -61,7 +61,7 @@ class OxRigLoader(plugin.ReferenceLoader):
         return nodes
 
     def _create_ox_cache_instance(self, nodes: List[str], variant: str):
-        """Create an ornatrixcache product type instance to publish the output.
+        """Create a ornatrixcache instance to publish the output.
 
         This is similar to how loading animation rig will automatically create
         an animation instance for publishing any loaded character rigs, but

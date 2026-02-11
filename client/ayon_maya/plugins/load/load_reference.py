@@ -228,7 +228,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
                 'reference_loader', {}
             ).get('create_camera_instance_on_load', False)
 
-            if product_type == "rig":
+            if product_base_type == "rig":
                 options["lock_instance"] = (
                     settings
                     ["maya"]
@@ -248,7 +248,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
                                  *options["translate"])
 
             if create_camera_instance_on_load and (
-                product_type == "camerarig"
+                product_base_type == "camerarig"
             ):
                 self._post_process_camera(namespace, context, options)
 
@@ -271,14 +271,17 @@ class ReferenceLoader(plugin.ReferenceLoader):
         project_name: str = container.get(
             "project_name", get_current_project_name()
         )
-        product_type = None
+        product_base_type = None
         if representation_id:
             context: dict = get_representation_context(
                 project_name, representation_id
             )
-            product_type: str = context["product"]["productType"]
+            product_entity = context["product"]
+            product_base_type = product_entity.get("productBaseType")
+            if not product_base_type:
+                product_base_type = product_entity["productType"]
 
-        if product_type == "rig":
+        if product_base_type == "rig":
             # Special handling needed for rig containers
             self._remove_rig(container)
             return
