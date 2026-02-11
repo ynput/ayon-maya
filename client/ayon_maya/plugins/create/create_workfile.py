@@ -59,7 +59,8 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
             )
             self.log.info("Auto-creating workfile instance...")
             current_instance = CreatedInstance(
-                product_type=self.product_type,
+                product_base_type=self.product_base_type,
+                product_type=self.product_base_type,
                 product_name=product_name,
                 data=data,
                 creator=self,

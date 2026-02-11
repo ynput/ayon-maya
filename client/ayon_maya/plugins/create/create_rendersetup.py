@@ -19,7 +19,7 @@ class CreateRenderSetup(plugin.MayaCreator):
 
         existing_instance = None
         for instance in self.create_context.instances:
-            if instance.product_type == self.product_type:
+            if instance.product_base_type == self.product_base_type:
                 existing_instance = instance
                 break
 
