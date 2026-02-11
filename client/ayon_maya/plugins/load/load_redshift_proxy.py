@@ -14,7 +14,8 @@ from ayon_maya.api.plugin import get_load_color_for_product_type
 class RedshiftProxyLoader(plugin.Loader):
     """Load Redshift proxy"""
 
-    product_types = {"*"}
+    product_base_types = {"*"}
+    product_types = product_base_types
     representations = {"*"}
     extensions = {"rs", "usd", "usda", "usdc", "abc"}
 

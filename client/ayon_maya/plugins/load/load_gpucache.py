@@ -9,7 +9,8 @@ from ayon_maya.api.plugin import get_load_color_for_product_type
 class GpuCacheLoader(plugin.Loader):
     """Load Alembic as gpuCache"""
 
-    product_types = {"model", "animation", "proxyAbc", "pointcache"}
+    product_base_types = {"model", "animation", "proxyAbc", "pointcache"}
+    product_types = product_base_types
     representations = {"abc", "gpu_cache"}
 
     label = "Load Gpu Cache"

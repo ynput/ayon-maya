@@ -9,7 +9,8 @@ from ayon_maya.api import lib, plugin
 class YetiRigLoader(plugin.ReferenceLoader):
     """This loader will load Yeti rig."""
 
-    product_types = {"yetiRig"}
+    product_base_types = {"yetiRig"}
+    product_types = product_base_types
     representations = {"ma"}
 
     label = "Load Yeti Rig"

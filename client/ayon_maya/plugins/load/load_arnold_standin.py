@@ -35,7 +35,7 @@ def is_sequence(path: str) -> bool:
 class ArnoldStandinLoader(plugin.Loader):
     """Load as Arnold standin"""
 
-    product_types = {
+    product_base_types = {
         "ass",
         "assProxy",
         "animation",
@@ -45,6 +45,7 @@ class ArnoldStandinLoader(plugin.Loader):
         "usd",
         "oxcache"
     }
+    product_types = product_base_types
     representations = {"ass", "abc", "usda", "usdc", "usd"}
 
     label = "Load as Arnold standin"

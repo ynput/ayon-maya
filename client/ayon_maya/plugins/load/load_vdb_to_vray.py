@@ -73,7 +73,8 @@ def _fix_duplicate_vvg_callbacks():
 class LoadVDBtoVRay(plugin.Loader):
     """Load OpenVDB in a V-Ray Volume Grid"""
 
-    product_types = {"vdbcache"}
+    product_base_types = {"vdbcache"}
+    product_types = product_base_types
     representations = {"vdb"}
 
     label = "Load VDB to VRay"

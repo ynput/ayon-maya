@@ -14,7 +14,8 @@ from ayon_maya.api.plugin import get_load_color_for_product_type
 class LoadVDBtoArnold(plugin.Loader):
     """Load OpenVDB for Arnold in aiVolume"""
 
-    product_types = {"vdbcache"}
+    product_base_types = {"vdbcache"}
+    product_types = product_base_types
     representations = {"vdb"}
 
     label = "Load VDB to Arnold"

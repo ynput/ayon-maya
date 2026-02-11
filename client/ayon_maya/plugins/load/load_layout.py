@@ -24,7 +24,8 @@ from maya.api import OpenMaya as om
 class LayoutLoader(plugin.Loader):
     """Layout Loader (json)"""
 
-    product_types = {"layout"}
+    product_base_types = {"layout"}
+    product_types = product_base_types
     representations = {"json"}
 
     label = "Load Layout"

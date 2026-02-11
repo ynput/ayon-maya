@@ -43,7 +43,8 @@ def set_attribute(node, attr, value):
 class YetiCacheLoader(plugin.Loader):
     """Load Yeti Cache with one or more Yeti nodes"""
 
-    product_types = {"yeticache", "yetiRig"}
+    product_base_types = {"yeticache", "yetiRig"}
+    product_types = product_base_types
     representations = {"fur"}
 
     label = "Load Yeti Cache"

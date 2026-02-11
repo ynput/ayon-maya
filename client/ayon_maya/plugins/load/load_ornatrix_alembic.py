@@ -11,7 +11,8 @@ from ayon_core.lib import EnumDef
 class OxAlembicLoader(plugin.Loader):
     """Ornatrix Alembic Loader"""
 
-    product_types = {"oxcache", "oxrig"}
+    product_base_types = {"oxcache", "oxrig"}
+    product_types = product_base_types
     representations = {"abc"}
 
     label = "Ornatrix Alembic Loader"
