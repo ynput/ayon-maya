@@ -11,7 +11,7 @@ from ayon_maya.api.lib import (
     unique_namespace,
 )
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import get_load_color_for_product_type
+from ayon_maya.api.plugin import get_load_color_for_product_base_type
 from ayon_maya.api import plugin
 
 
@@ -82,7 +82,7 @@ class ArnoldStandinLoader(plugin.Loader):
 
         # Set color.
         settings = get_project_settings(context["project"]["name"])
-        color = get_load_color_for_product_type("ass", settings)
+        color = get_load_color_for_product_base_type("ass", settings)
         if color is not None:
             red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", True)

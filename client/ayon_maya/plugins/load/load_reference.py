@@ -142,8 +142,13 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
     def process_reference(self, context, name, namespace, options):
         import maya.cmds as cmds
-        product_type = context["product"]["productType"]
         project_name = context["project"]["name"]
+
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
+
         # True by default to keep legacy behaviours
         attach_to_root = options.get("attach_to_root", True)
         group_name = options["group_name"]
@@ -193,15 +198,15 @@ class ReferenceLoader(plugin.ReferenceLoader):
                                            children=True,
                                            fullPath=True) or []
 
-                if product_type not in {
+                if product_base_type not in {
                     "layout", "setdress", "mayaAscii", "mayaScene"
                 }:
                     # QUESTION Why do we need to exclude these families?
                     with parent_nodes(roots, parent=None):
                         cmds.xform(group_name, zeroTransformPivots=True)
 
-                color = plugin.get_load_color_for_product_type(
-                    product_type, settings
+                color = plugin.get_load_color_for_product_base_type(
+                    product_base_type, settings
                 )
                 if color is not None:
                     red, green, blue = color

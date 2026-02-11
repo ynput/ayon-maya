@@ -4,7 +4,7 @@ from ayon_core.settings import get_project_settings
 from ayon_maya.api import plugin, lib
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api.lib import maintained_selection, unique_namespace
-from ayon_maya.api.plugin import get_load_color_for_product_type
+from ayon_maya.api.plugin import get_load_color_for_product_base_type
 from ayon_core.lib import EnumDef
 
 
@@ -63,8 +63,13 @@ class OxAlembicLoader(plugin.Loader):
         group_node = cmds.group(nodes, name=group_name)
 
         settings = get_project_settings(project_name)
-        product_type = context["product"]["productType"]
-        color = get_load_color_for_product_type(product_type, settings)
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
+        color = get_load_color_for_product_base_type(
+            product_base_type, settings
+        )
         if color is not None:
             red, green, blue = color
             cmds.setAttr(group_node + ".useOutlinerColor", 1)

@@ -41,7 +41,7 @@ class YetiRigLoader(plugin.ReferenceLoader):
                 groupName=group_name
             )
 
-        color = plugin.get_load_color_for_product_type("yetiRig")
+        color = plugin.get_load_color_for_product_base_type("yetiRig")
         if color is not None:
             red, green, blue = color
             roots = lib.get_highest_in_hierarchy(nodes)

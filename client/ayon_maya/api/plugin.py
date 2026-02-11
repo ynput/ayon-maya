@@ -650,7 +650,7 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         )
 
 
-def get_load_color_for_product_type(product_base_type, settings=None):
+def get_load_color_for_product_base_type(product_base_type, settings=None):
     """Get color for product type from settings.
 
     Args:

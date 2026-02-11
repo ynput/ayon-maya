@@ -5,7 +5,7 @@ from ayon_core.settings import get_project_settings
 from ayon_core.lib import BoolDef
 
 from ayon_maya.api import plugin, lib
-from ayon_maya.api.plugin import get_load_color_for_product_type
+from ayon_maya.api.plugin import get_load_color_for_product_base_type
 from ayon_maya.api.pipeline import containerise
 
 from maya import cmds, mel
@@ -40,9 +40,6 @@ class LoadVDBtoRedShift(plugin.Loader):
     ]
 
     def load(self, context, name=None, namespace=None, options=None):
-
-        product_type = context["product"]["productType"]
-
         # Check if the plugin for redshift is available on the pc
         try:
             cmds.loadPlugin("redshift4maya", quiet=True)
@@ -74,8 +71,14 @@ class LoadVDBtoRedShift(plugin.Loader):
         root = cmds.createNode("transform", name=label)
 
         project_name = context["project"]["name"]
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
         settings = get_project_settings(project_name)
-        color = get_load_color_for_product_type(product_type, settings)
+        color = get_load_color_for_product_base_type(
+            product_base_type, settings
+        )
         if color is not None:
             red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", 1)
