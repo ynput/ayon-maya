@@ -9,8 +9,8 @@ class ContextItemModel(BaseSettingsModel):
     _layout = "expanded"
     product_name_filters: list[str] = SettingsField(
         default_factory=list, title="Product name Filters")
-    product_types: list[str] = SettingsField(
-        default_factory=list, title="Product types")
+    product_base_types: list[str] = SettingsField(
+        default_factory=list, title="Product base types")
     repre_names: list[str] = SettingsField(
         default_factory=list, title="Repre Names")
     loaders: list[str] = SettingsField(
@@ -23,13 +23,13 @@ class WorkfileSettingModel(BaseSettingsModel):
         default_factory=list,
         enum_resolver=task_types_enum,
         title="Task types")
-    tasks: list[str] = SettingsField(
+    task_names: list[str] = SettingsField(
         default_factory=list,
         title="Task names")
     current_context: list[ContextItemModel] = SettingsField(
         default_factory=list,
         title="Current Context")
-    linked_assets: list[ContextItemModel] = SettingsField(
+    linked_folders: list[ContextItemModel] = SettingsField(
         default_factory=list,
         title="Linked Assets")
 
@@ -45,7 +45,7 @@ DEFAULT_WORKFILE_SETTING = {
     "profiles": [
         {
             "task_types": [],
-            "tasks": [
+            "task_names": [
                 "Lighting"
             ],
             "current_context": [
@@ -53,7 +53,7 @@ DEFAULT_WORKFILE_SETTING = {
                     "product_name_filters": [
                         ".+[Mm]ain"
                     ],
-                    "product_types": [
+                    "product_base_types": [
                         "model"
                     ],
                     "repre_names": [
@@ -66,7 +66,7 @@ DEFAULT_WORKFILE_SETTING = {
                 },
                 {
                     "product_name_filters": [],
-                    "product_types": [
+                    "product_base_types": [
                         "animation",
                         "pointcache",
                         "proxyAbc"
@@ -80,7 +80,7 @@ DEFAULT_WORKFILE_SETTING = {
                 },
                 {
                     "product_name_filters": [],
-                    "product_types": [
+                    "product_base_types": [
                         "rendersetup"
                     ],
                     "repre_names": [
@@ -92,7 +92,7 @@ DEFAULT_WORKFILE_SETTING = {
                 },
                 {
                     "product_name_filters": [],
-                    "product_types": [
+                    "product_base_types": [
                         "camera"
                     ],
                     "repre_names": [
@@ -103,10 +103,10 @@ DEFAULT_WORKFILE_SETTING = {
                     ]
                 }
             ],
-            "linked_assets": [
+            "linked_folders": [
                 {
                     "product_name_filters": [],
-                    "product_types": [
+                    "product_base_types": [
                         "setdress"
                     ],
                     "repre_names": [
@@ -118,7 +118,7 @@ DEFAULT_WORKFILE_SETTING = {
                 },
                 {
                     "product_name_filters": [],
-                    "product_types": [
+                    "product_base_types": [
                         "ArnoldStandin"
                     ],
                     "repre_names": [
