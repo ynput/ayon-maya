@@ -54,7 +54,7 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
         scene_type: str = self.scene_type
 
         # Use `families` for lookup in extension mapping and add for families
-        families = [instance.data["productType"]]
+        families = [instance.data["productBaseType"]]
         families.extend(instance.data.get("families", []))
 
         # use extension mapping for first family found
