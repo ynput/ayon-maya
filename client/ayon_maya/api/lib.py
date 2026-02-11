@@ -10,6 +10,7 @@ import logging
 import contextlib
 from collections import OrderedDict, defaultdict
 from math import ceil
+from typing import Optional
 
 import capture
 import clique
@@ -1936,6 +1937,8 @@ def list_looks(project_name, folder_id):
         list[dict[str, Any]]: List of look products.
 
     """
+    # TODO this should filter by 'product_base_types'
+    # - can be used only with server version >= 1.14.0
     return list(ayon_api.get_products(
         project_name, folder_ids=[folder_id], product_types={"look"}
     ))
@@ -4372,21 +4375,33 @@ def create_rig_animation_instance(
     folder_entity = context["folder"]
     product_entity = context["product"]
     product_type = product_entity["productType"]
+    product_base_type = product_entity.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
     product_name = product_entity["name"]
 
     custom_product_name = options.get("animationProductName")
     if custom_product_name:
+        for old_key, new_key in (
+            ("{family}", "{product[basetype]}"),
+            ("{asset}", "{folder[name]}"),
+            ("{subset}", "asset"),
+        ):
+            if old_key in custom_product_name:
+                log.warning(f"Using deprecated template key '{old_key}'")
+                custom_product_name = custom_product_name.replace(
+                    old_key, new_key
+                )
+
         formatting_data = {
             "folder": {
                 "name": folder_entity["name"]
             },
             "product": {
-                "type": product_type,
                 "name": product_name,
+                "type": product_type,
+                "basetype": product_base_type,
             },
-            "asset": folder_entity["name"],
-            "subset": product_name,
-            "family": product_type
         }
         namespace = get_custom_namespace(
             custom_product_name.format(**formatting_data)
@@ -4442,21 +4457,33 @@ def create_camera_instance(
     folder_entity: dict = context["folder"]
     product_entity: dict = context["product"]
     product_type: str = product_entity["productType"]
+    product_base_type: Optional[str] = product_entity.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
     product_name: str = product_entity["name"]
 
     custom_product_name = options.get("cameraProductName")
     if custom_product_name:
+        for old_key, new_key in (
+            ("{family}", "{product[basetype]}"),
+            ("{asset}", "{folder[name]}"),
+            ("{subset}", "asset"),
+        ):
+            if old_key in custom_product_name:
+                log.warning(f"Using deprecated template key '{old_key}'")
+                custom_product_name = custom_product_name.replace(
+                    old_key, new_key
+                )
+
         formatting_data = {
             "folder": {
-                "name": folder_entity["name"]
+                "name": folder_entity["name"],
             },
             "product": {
-                "type": product_type,
                 "name": product_name,
+                "type": product_type,
+                "basetype": product_base_type,
             },
-            "asset": folder_entity["name"],
-            "subset": product_name,
-            "family": product_type
         }
         namespace = get_custom_namespace(
             custom_product_name.format(**formatting_data)
