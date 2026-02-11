@@ -625,7 +625,9 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
 
         project_entity = self.create_context.get_current_project_entity()
         # creator.product_type != 'render' as expected so
-        product_base_type = self.layer_instance_prefix or self.product_type,
+        product_base_type = self.product_base_type
+        if self.layer_instance_prefix:
+            product_base_type = self.layer_instance_prefix
         if getattr(get_product_name, "use_entities", False):
             if product_type is None:
                 product_type = self.product_base_type
