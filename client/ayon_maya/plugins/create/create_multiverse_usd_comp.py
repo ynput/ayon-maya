@@ -11,8 +11,8 @@ class CreateMultiverseUsdComp(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.mvusdcomposition"
     label = "Multiverse USD Composition"
-    product_type = "mvUsdComposition"
     product_base_type = "mvUsdComposition"
+    product_type = product_base_type
     icon = "cubes"
 
     def get_instance_attr_defs(self):

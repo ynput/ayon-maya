@@ -9,8 +9,8 @@ class CreateLayout(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.layout"
     label = "Layout"
-    product_type = "layout"
     product_base_type = "layout"
+    product_type = product_base_type
     icon = "cubes"
 
     description = "Create a Layout - a grouped package of loaded content"
