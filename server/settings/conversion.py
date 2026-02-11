@@ -1,6 +1,14 @@
 from typing import Any
 
 
+def _convert_validate_animation_0_6_0(overrides):
+    publish_override = overrides.get("publish", {})
+    if "ValidateAnimationProductTypePublish" in publish_override:
+        publish_override["ValidateAnimationProductBaseTypePublish"] = (
+            publish_override.pop("ValidateAnimationProductTypePublish")
+        )
+
+
 def _convert_dirmap_0_4_3(overrides):
     """maya_dirmap key was renamed to dirmap in 0.4.3"""
     if "maya_dirmap" not in overrides:
@@ -74,4 +82,5 @@ def convert_settings_overrides(
     _convert_dirmap_0_4_3(overrides)
     _convert_redshift_render_settings_gi_0_4_4(overrides)
     _convert_scene_units(overrides)
+    _convert_validate_animation_0_6_0(overrides)
     return overrides

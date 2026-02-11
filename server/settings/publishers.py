@@ -1022,7 +1022,7 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Animation Out Set Related Node Ids",
     )
-    ValidateAnimationProductTypePublish: BasicValidateModel = SettingsField(
+    ValidateAnimationProductBaseTypePublish: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Animation Product Type Publish",
     )
@@ -1584,7 +1584,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": False,
         "active": True
     },
-    "ValidateAnimationProductTypePublish": {
+    "ValidateAnimationProductBaseTypePublish": {
         "enabled": True,
         "optional": False,
         "active": True

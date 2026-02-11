@@ -10,7 +10,7 @@ from ayon_maya.api import plugin
 import pyblish.api
 
 
-class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
+class ValidateAnimationProductBaseTypePublish(plugin.MayaInstancePlugin):
     """Validate at least a single product type is exported for the instance.
     
     Validate either fbx animation collector or collect animation output 
@@ -20,7 +20,7 @@ class ValidateAnimationProductTypePublish(plugin.MayaInstancePlugin):
 
     order = ValidateContentsOrder
     families = ["animation"]
-    label = "Animation Product Type Publish"
+    label = "Animation Product base Type Publish"
     actions = [ayon_maya.api.action.SelectInvalidAction]
 
     @classmethod
