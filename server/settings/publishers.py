@@ -316,12 +316,6 @@ class ValidateRenderSettingsModel(BaseSettingsModel):
         default_factory=list, title="Renderman Render Attributes")
 
 
-class BasicValidateModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    optional: bool = SettingsField(title="Optional")
-    active: bool = SettingsField(title="Active")
-
-
 class ValidateCameraContentsModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
