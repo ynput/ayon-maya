@@ -4,6 +4,18 @@ from ayon_server.settings import (
 )
 
 
+class ProductTypeItemModel(BaseSettingsModel):
+    _layout = "compact"
+    product_type: str = SettingsField(
+        title="Product type",
+        description="Product type name",
+    )
+    label: str = SettingsField(
+        title="Label",
+        description="Label to display in UI for the product type",
+    )
+
+
 class CreateWorkfileModel(BaseSettingsModel):
     is_mandatory: bool = SettingsField(
         False,
@@ -13,32 +25,38 @@ class CreateWorkfileModel(BaseSettingsModel):
             " Requires core addon 1.4.1 or newer."
         )
     )
-
-
-class CreateLookModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    make_tx: bool = SettingsField(title="Make tx files")
-    rs_tex: bool = SettingsField(title="Make Redshift texture files")
-    include_texture_reference_objects: bool = SettingsField(title="Texture Reference Objects")
-    default_variants: list[str] = SettingsField(
-        default_factory=list, title="Default Variants"
+    product_type_items: list[ProductTypeItemModel] = SettingsField(
+        default_factory=list,
+        title="Product type items",
+        description=(
+            "Optional list of product types that this plugin can create."
+        )
     )
 
 
 class BasicCreatorModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     default_variants: list[str] = SettingsField(
+        default_factory=list, title="Default Variants"
+    )
+    product_type_items: list[ProductTypeItemModel] = SettingsField(
         default_factory=list,
-        title="Default Variants"
+        title="Product type items",
+        description=(
+            "Optional list of product types that this plugin can create."
+        ),
     )
 
 
-class CreateUnrealStaticMeshModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    default_variants: list[str] = SettingsField(
-        default_factory=list,
-        title="Default Variants"
+class CreateLookModel(BasicCreatorModel):
+    make_tx: bool = SettingsField(title="Make tx files")
+    rs_tex: bool = SettingsField(title="Make Redshift texture files")
+    include_texture_reference_objects: bool = SettingsField(
+        title="Texture Reference Objects"
     )
+
+
+class CreateUnrealStaticMeshModel(BasicCreatorModel):
     static_mesh_prefix: str = SettingsField("S", title="Static Mesh Prefix")
     collision_prefixes: list[str] = SettingsField(
         default_factory=list,
@@ -46,58 +64,35 @@ class CreateUnrealStaticMeshModel(BaseSettingsModel):
     )
 
 
-class CreateUnrealSkeletalMeshModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    default_variants: list[str] = SettingsField(
-        default_factory=list, title="Default Variants")
+class CreateUnrealSkeletalMeshModel(BasicCreatorModel):
     joint_hints: str = SettingsField("jnt_org", title="Joint root hint")
 
 
-class CreateMultiverseLookModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
+class CreateMultiverseLookModel(BasicCreatorModel):
     publish_mip_map: bool = SettingsField(title="publish_mip_map")
 
 
-class BasicExportMeshModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
+class BasicExportMeshModel(BasicCreatorModel):
     write_face_sets: bool = SettingsField(title="Write Face Sets")
-    default_variants: list[str] = SettingsField(
-        default_factory=list,
-        title="Default Variants"
-    )
     include_shaders: bool = SettingsField(title="Include Shaders")
 
 
-class CreateAnimationModel(BaseSettingsModel):
+class CreateAnimationModel(BasicCreatorModel):
     include_parent_hierarchy: bool = SettingsField(
         title="Include Parent Hierarchy")
     include_user_defined_attributes: bool = SettingsField(
         title="Include User Defined Attributes")
-    default_variants: list[str] = SettingsField(
-        default_factory=list,
-        title="Default Variants"
-    )
 
 
-class CreatePointCacheModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
+class CreatePointCacheModel(BasicCreatorModel):
     include_user_defined_attributes: bool = SettingsField(
         title="Include User Defined Attributes"
     )
-    default_variants: list[str] = SettingsField(
-        default_factory=list,
-        title="Default Variants"
-    )
 
 
-class CreateProxyAlembicModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
+class CreateProxyAlembicModel(BasicCreatorModel):
     write_color_sets: bool = SettingsField(title="Write Color Sets")
     write_face_sets: bool = SettingsField(title="Write Face Sets")
-    default_variants: list[str] = SettingsField(
-        default_factory=list,
-        title="Default Variants"
-    )
 
 
 class CreateAssModel(BasicCreatorModel):
@@ -126,20 +121,14 @@ class CreateReviewModel(BasicCreatorModel):
     )
 
 
-class CreateVrayProxyModel(BaseSettingsModel):
-    enabled: bool = SettingsField(True)
+class CreateVrayProxyModel(BasicCreatorModel):
     vrmesh: bool = SettingsField(title="VrMesh")
     alembic: bool = SettingsField(title="Alembic")
-    default_variants: list[str] = SettingsField(
-        default_factory=list, title="Default Variants")
 
 
-class CreateSetDressModel(BaseSettingsModel):
-    enabled: bool = SettingsField(True)
+class CreateSetDressModel(BasicCreatorModel):
     exactSetMembersOnly: bool = SettingsField(title="Exact Set Members Only")
     shader: bool = SettingsField(title="Include shader")
-    default_variants: list[str] = SettingsField(
-        default_factory=list, title="Default Variants")
 
 
 class CreatorsModel(BaseSettingsModel):
