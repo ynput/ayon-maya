@@ -36,7 +36,7 @@ class CreateWorkfileModel(BaseSettingsModel):
 
 
 class BasicCreatorModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
+    enabled: bool = SettingsField(True, title="Enabled")
     default_variants: list[str] = SettingsField(
         default_factory=list, title="Default Variants"
     )
