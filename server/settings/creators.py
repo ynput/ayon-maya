@@ -287,6 +287,7 @@ class CreatorsModel(BaseSettingsModel):
 DEFAULT_CREATORS_SETTINGS = {
     "use_entity_attributes_as_defaults": False,
     "CreateAnimation": {
+        "enabled": True,
         "default_variants": ["Main"],
         "include_parent_hierarchy": False,
         "include_user_defined_attributes": False,
