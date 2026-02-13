@@ -17,7 +17,7 @@ ORNATRIX_NODES = {
 
 class ValidateOrnatrixRigContent(plugin.MayaInstancePlugin,
                                  OptionalPyblishPluginMixin):
-    """Adheres to the content of 'oxrig' product type
+    """Adheres to the content of 'oxrig' product base type
 
     See `get_description` for more details.
 
@@ -67,7 +67,7 @@ class ValidateOrnatrixRigContent(plugin.MayaInstancePlugin,
             ### Ornatrix content is invalid
 
             Your oxrig instance does not adhere to the rules of an
-            oxrig product type:
+            oxrig product base type:
 
             - Must have the Ornatrix nodes connected to the shape
             of the mesh

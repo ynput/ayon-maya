@@ -12,7 +12,7 @@ from maya import mel
 class MultiverseUsdLoader(plugin.Loader):
     """Read USD data in a Multiverse Compound"""
 
-    product_types = {
+    product_base_types = {
         "model",
         "usd",
         "mvUsdComposition",
@@ -20,6 +20,7 @@ class MultiverseUsdLoader(plugin.Loader):
         "pointcache",
         "animation",
     }
+    product_types = product_base_types
     representations = {"usd", "usda", "usdc", "usdz", "abc"}
 
     label = "Load USD to Multiverse"

@@ -9,8 +9,8 @@ class CreateSetDress(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.setdress"
     label = "Set Dress"
-    product_type = "setdress"
     product_base_type = "setdress"
+    product_type = product_base_type
     icon = "cubes"
     exactSetMembersOnly = True
     shader = True

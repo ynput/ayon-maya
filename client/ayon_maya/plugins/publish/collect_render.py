@@ -13,7 +13,7 @@ Requires:
 
 Provides:
     instance    -> label
-    instance    -> subset
+    instance    -> productName
     instance    -> attachTo
     instance    -> setMembers
     instance    -> publish
@@ -22,7 +22,7 @@ Provides:
     instance    -> byFrameStep
     instance    -> renderer
     instance    -> family
-    instance    -> asset
+    instance    -> folderPath
     instance    -> time
     instance    -> author
     instance    -> source
@@ -84,14 +84,18 @@ class CollectMayaRender(plugin.MayaInstancePlugin):
         sets = cmds.sets(objset, query=True) or []
         attach_to = []
         for s in sets:
-            if not cmds.attributeQuery("productType", node=s, exists=True):
+            if not cmds.attributeQuery(
+                "productBaseType", node=s, exists=True
+            ):
                 continue
 
             attach_to.append(
                 {
                     "version": None,  # we need integrator for that
                     "productName": s,
-                    "productType": cmds.getAttr("{}.productType".format(s)),
+                    "productBaseType": cmds.getAttr(
+                        f"{s}.productBaseType"
+                    ),
                 }
             )
             self.log.debug(" -> attach render to: {}".format(s))
@@ -302,7 +306,7 @@ class CollectMayaRender(plugin.MayaInstancePlugin):
         if self.sync_workfile_version:
             data["version"] = context.data["version"]
             for _instance in context:
-                if _instance.data["productType"] == "workfile":
+                if _instance.data["productBaseType"] == "workfile":
                     _instance.data["version"] = context.data["version"]
 
         # Define nice label

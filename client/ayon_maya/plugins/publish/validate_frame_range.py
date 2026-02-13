@@ -36,7 +36,7 @@ class ValidateFrameRange(plugin.MayaInstancePlugin,
                 "oxcache"]
     optional = True
     actions = [RepairAction]
-    exclude_product_types = []
+    exclude_product_base_types = []
 
     def process(self, instance):
         if not self.is_active(instance.data):
@@ -71,10 +71,16 @@ class ValidateFrameRange(plugin.MayaInstancePlugin,
         # compare with data on instance
         errors = []
         # QUESTION shouldn't this be just:
-        #   'if instance.data["productType"] in self.exclude_product_types:'
-        if [ef for ef in self.exclude_product_types
-                if instance.data["productType"] in ef]:
+        #   if instance.data["productBaseType"] in (
+        #       self.exclude_product_base_types
+        #   ):
+        if [
+            ef
+            for ef in self.exclude_product_base_types
+            if instance.data["productBaseType"] in ef
+        ]:
             return
+
         if (inst_start != frame_start_handle):
             errors.append("Instance start frame [ {} ] doesn't "
                           "match the one set on folder [ {} ]: "

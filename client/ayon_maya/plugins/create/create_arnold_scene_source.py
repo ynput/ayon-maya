@@ -17,8 +17,8 @@ class CreateArnoldSceneSource(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.ass"
     label = "Arnold Scene Source"
-    product_type = "ass"
     product_base_type = "ass"
+    product_type = product_base_type
     icon = "cube"
     settings_name = "CreateAss"
 
@@ -133,7 +133,8 @@ class CreateArnoldSceneSourceProxy(CreateArnoldSceneSource):
 
     identifier = "io.openpype.creators.maya.assproxy"
     label = "Arnold Scene Source Proxy"
-    product_type = "assProxy"
+    product_base_type = "assProxy"
+    product_type = product_base_type
     icon = "cube"
 
     def create(self, product_name, instance_data, pre_create_data):

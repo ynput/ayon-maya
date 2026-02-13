@@ -13,7 +13,8 @@ from maya import mel
 class MultiverseUsdOverLoader(plugin.Loader):
     """Reference file"""
 
-    product_types = {"mvUsdOverride"}
+    product_base_types = {"mvUsdOverride"}
+    product_types = product_base_types
     representations = {"usda", "usd", "udsz"}
 
     label = "Load Usd Override into Compound"
