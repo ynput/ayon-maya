@@ -78,7 +78,20 @@ class BasicExportMeshModel(BasicCreatorModel):
     include_shaders: bool = SettingsField(title="Include Shaders")
 
 
-class CreateAnimationModel(BasicCreatorModel):
+class CreateAnimationModel(BaseSettingsModel):
+    # Note this Creator does not have a generic "enabled" flag as it a
+    # HiddenCreator, so we can't inherit from BasicCreatorModel, but we
+    # still want to have the same options for variants and product types
+    default_variants: list[str] = SettingsField(
+        default_factory=list, title="Default Variants"
+    )
+    product_type_items: list[ProductTypeItemModel] = SettingsField(
+        default_factory=list,
+        title="Product type items",
+        description=(
+            "Optional list of product types that this plugin can create."
+        ),
+    )
     include_parent_hierarchy: bool = SettingsField(
         title="Include Parent Hierarchy")
     include_user_defined_attributes: bool = SettingsField(
@@ -287,7 +300,6 @@ class CreatorsModel(BaseSettingsModel):
 DEFAULT_CREATORS_SETTINGS = {
     "use_entity_attributes_as_defaults": False,
     "CreateAnimation": {
-        "enabled": True,
         "default_variants": ["Main"],
         "include_parent_hierarchy": False,
         "include_user_defined_attributes": False,
