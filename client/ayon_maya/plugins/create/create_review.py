@@ -96,3 +96,6 @@ class CreateReview(plugin.MayaCreator):
         ])
 
         return defs
+
+    def get_publish_families(self):
+        return ["review.playblast", "review"]
