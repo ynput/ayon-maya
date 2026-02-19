@@ -8,5 +8,5 @@ class CreateMayaScene(plugin.MayaCreator):
     name = "mayaScene"
     label = "Maya Scene"
     product_type = "mayaScene"
-    product_base_type = "mayascene"
+    product_base_type = "mayaScene"
     icon = "file-archive-o"
