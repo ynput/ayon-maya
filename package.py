@@ -1,6 +1,6 @@
 name = "maya"
 title = "Maya"
-version = "0.5.2+dev"
+version = "0.5.3"
 app_host_name = "maya"
 client_dir = "ayon_maya"
 project_can_override_addon_version = True
