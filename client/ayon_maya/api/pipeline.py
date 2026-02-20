@@ -45,6 +45,7 @@ from ayon_core.pipeline.workfile.lock_workfile import (
     is_workfile_locked,
     is_workfile_lock_enabled
 )
+
 from ayon_maya import MAYA_ROOT_DIR
 from ayon_maya.lib import create_workspace_mel
 
