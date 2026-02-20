@@ -830,7 +830,8 @@ class ReferenceLoader(Loader):
 
         loaded_containers = []
         for c in range(0, count):
-            namespace = lib.get_custom_namespace(custom_namespace)
+            if not namespace:
+                namespace = lib.get_custom_namespace(custom_namespace)
             group_name = "{}:{}".format(
                 namespace,
                 custom_group_name.format(namespace=namespace)
