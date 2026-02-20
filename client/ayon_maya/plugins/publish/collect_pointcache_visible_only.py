@@ -11,7 +11,7 @@ class CollectPointcacheVisibleOnly(plugin.MayaInstancePlugin):
 
     def process(self, instance):
 
-        if instance.data["productType"] == "animation":
+        if instance.data["productBaseType"] == "animation":
             plugin_name = "ExtractAnimation"
         else:
             plugin_name = "ExtractAlembic"

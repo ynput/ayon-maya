@@ -63,7 +63,7 @@ class ValidateAttributes(plugin.MayaInstancePlugin,
 
         attributes_data = cls.get_attributes_data()
         # Filter families.
-        families = [instance.data["productType"]]
+        families = [instance.data["productBaseType"]]
         families += instance.data.get("families", [])
         families = set(families) & set(attributes_data.keys())
         if not families:

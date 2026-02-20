@@ -7,8 +7,8 @@ class CreateRenderSetup(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.rendersetup"
     label = "Render Setup Preset"
-    product_type = "rendersetup"
     product_base_type = "rendersetup"
+    product_type = product_base_type
     icon = "tablet"
 
     def get_pre_create_attr_defs(self):
@@ -19,7 +19,7 @@ class CreateRenderSetup(plugin.MayaCreator):
 
         existing_instance = None
         for instance in self.create_context.instances:
-            if instance.product_type == self.product_type:
+            if instance.product_base_type == self.product_base_type:
                 existing_instance = instance
                 break
 

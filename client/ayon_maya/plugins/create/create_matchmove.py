@@ -15,8 +15,8 @@ class CreateMatchmove(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.matchmove"
     label = "Matchmove"
-    product_type = "matchmove"
     product_base_type = "matchmove"
+    product_type = product_base_type
     icon = "video-camera"
 
     def get_instance_attr_defs(self):

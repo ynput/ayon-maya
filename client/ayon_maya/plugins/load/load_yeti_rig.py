@@ -9,7 +9,8 @@ from ayon_maya.api import lib, plugin
 class YetiRigLoader(plugin.ReferenceLoader):
     """This loader will load Yeti rig."""
 
-    product_types = {"yetiRig"}
+    product_base_types = {"yetiRig"}
+    product_types = product_base_types
     representations = {"ma"}
 
     label = "Load Yeti Rig"
@@ -40,7 +41,7 @@ class YetiRigLoader(plugin.ReferenceLoader):
                 groupName=group_name
             )
 
-        color = plugin.get_load_color_for_product_type("yetiRig")
+        color = plugin.get_load_color_for_product_base_type("yetiRig")
         if color is not None:
             red, green, blue = color
             roots = lib.get_highest_in_hierarchy(nodes)
@@ -57,7 +58,7 @@ class YetiRigLoader(plugin.ReferenceLoader):
         return nodes
 
     def _create_yeti_cache_instance(self, nodes: List[str], variant: str):
-        """Create a yeticache product type instance to publish the output.
+        """Create a yeticache instance to publish the output.
 
         This is similar to how loading animation rig will automatically create
         an animation instance for publishing any loaded character rigs, but

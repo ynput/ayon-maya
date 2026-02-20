@@ -13,8 +13,8 @@ class CreateLook(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.look"
     label = "Look"
-    product_type = "look"
     product_base_type = "look"
+    product_type = product_base_type
 
     icon = "paint-brush"
 

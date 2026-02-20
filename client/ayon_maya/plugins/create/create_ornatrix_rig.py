@@ -7,8 +7,8 @@ class CreateOxRig(plugin.MayaCreator):
 
     identifier = "io.ayon.creators.maya.oxrig"
     label = "Ornatrix Rig"
-    product_type = "oxrig"
     product_base_type = "oxrig"
+    product_type = product_base_type
     icon = "usb"
     description = "Ornatrix Rig"
 

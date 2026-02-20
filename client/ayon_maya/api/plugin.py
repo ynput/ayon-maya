@@ -161,7 +161,7 @@ class MayaCreatorBase:
         specify `usd` but apply different extractors like `usdMultiverse`.
 
         There is no need to override this method if you only have the
-        'product_type' required for publish filtering.
+        'product_base_type' required for publish filtering.
 
         Returns:
             list: families for instances of this creator
@@ -320,7 +320,8 @@ class MayaCreator(Creator, MayaCreatorBase):
 
             # product base type support is added in ayon-core 1.7.0
             instance = CreatedInstance(
-                product_type=self.product_type,
+                product_base_type=self.product_base_type,
+                product_type=self.product_base_type,
                 product_name=product_name,
                 data=instance_data,
                 creator=self,
@@ -502,9 +503,9 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
                     layer.name(),
                     host_name,
                 )
-
                 instance = CreatedInstance(
-                    product_type=self.product_type,
+                    product_base_type=self.product_base_type,
+                    product_type=self.product_base_type,
                     product_name=product_name,
                     data=instance_data,
                     creator=self
@@ -622,52 +623,34 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
     ) -> str:
         if host_name is None:
             host_name = self.create_context.host_name
-
-        project_entity = self.create_context.get_current_project_entity()
-        # creator.product_type != 'render' as expected so
-        product_base_type = self.product_base_type
+        dynamic_data = self.get_dynamic_data(
+            project_name,
+            folder_entity,
+            task_entity,
+            variant,
+            host_name,
+            instance=instance,
+            product_type=product_type,
+        )
+        # creator.product_base_type != 'render' as expected
+        product_base_type_filter = None
         if self.layer_instance_prefix:
-            product_base_type = self.layer_instance_prefix
-        if getattr(get_product_name, "use_entities", False):
-            if product_type is None:
-                product_type = self.product_base_type
-            return get_product_name(
-                project_name=project_name,
-                folder_entity=folder_entity,
-                task_entity=task_entity,
-                host_name=host_name,
-                product_base_type=product_base_type,
-                product_type=product_type,
-                variant=variant,
-                project_settings=self.project_settings,
-                project_entity=project_entity,
-            )
-
-        # Backwards compatibility
-        task_name = task_type = None
-        if task_entity:
-            task_name = task_entity["name"]
-            task_type = task_entity["taskType"]
+            product_base_type_filter = self.layer_instance_prefix
         return get_product_name(
             project_name=project_name,
-            task_name=task_name,
-            task_type=task_type,
+            folder_entity=folder_entity,
+            task_entity=task_entity,
             host_name=host_name,
-            product_type=product_base_type,
+            product_base_type=self.product_base_type,
+            product_type=product_type,
             variant=variant,
+            dynamic_data=dynamic_data,
             project_settings=self.project_settings,
-            project_entity=project_entity,
-            dynamic_data={
-                "folder": {
-                    "name": folder_entity["name"],
-                    "label": folder_entity["label"],
-                    "type": folder_entity["folderType"],
-                },
-            }
+            product_base_type_filter=product_base_type_filter,
         )
 
 
-def get_load_color_for_product_type(product_base_type, settings=None):
+def get_load_color_for_product_base_type(product_base_type, settings=None):
     """Get color for product type from settings.
 
     Args:
@@ -748,9 +731,10 @@ class Loader(LoaderPlugin):
         product_entity = context["product"]
         product_name = product_entity["name"]
         product_type = product_entity["productType"]
-        product_base_type = (
-            product_entity.get("productBaseType") or product_type
-        )
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+             product_base_type = product_type
+
         formatting_data = {
             "folder": {
                 "name": folder_entity["name"],
@@ -760,23 +744,41 @@ class Loader(LoaderPlugin):
                 "type": product_type,
                 "baseType": product_base_type,
             },
-            # Legacy: Backwards compatibilty
-            "family": product_type,
-            "asset_name": folder_entity["name"],
-            "asset_type": "asset",
-            "subset": product_name,
         }
+        namespace_template = custom_naming["namespace"]
+        group_name_template = custom_naming["group_name"]
 
-        custom_namespace = custom_naming["namespace"].format(
-            **formatting_data
-        )
+        # Backwards compatibilty: log out old formatting options
+        for old_key, new_key in (
+            ("{family}", "{product[basetype]}"),
+            ("{asset_name}", "{folder[name]}"),
+            ("{asset_type}", "asset"),
+            ("{subset}", "asset"),
+        ):
+            if old_key in namespace_template:
+                log.warning(
+                    f"Using deprecated template key '{old_key}'"
+                    f" in ayon+settings://maya/load/{loader_key}/namespace"
+                )
+                namespace_template = namespace_template.replace(
+                    old_key, new_key
+                )
+
+            if old_key in group_name_template:
+                log.warning(
+                    f"Using deprecated template key '{old_key}'"
+                    f" in ayon+settings://maya/load/{loader_key}/group_name"
+                )
+                group_name_template = group_name_template.replace(
+                    old_key, new_key
+                )
+
+        custom_namespace = namespace_template.format(**formatting_data)
 
         # Keep namespace dynamic, because we want to use the actual resolved
         # unique namespace to format with instead
         formatting_data["namespace"] = "{namespace}"
-        custom_group_name = custom_naming["group_name"].format(
-            **formatting_data
-        )
+        custom_group_name = group_name_template.format(**formatting_data)
 
         return custom_group_name, custom_namespace, options
 

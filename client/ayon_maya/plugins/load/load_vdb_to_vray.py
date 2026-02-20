@@ -2,7 +2,7 @@ import os
 
 from ayon_core.settings import get_project_settings
 from ayon_maya.api import plugin
-from ayon_maya.api.plugin import get_load_color_for_product_type
+from ayon_maya.api.plugin import get_load_color_for_product_base_type
 from maya import cmds
 
 # List of 3rd Party Channels Mapping names for VRayVolumeGrid
@@ -73,7 +73,8 @@ def _fix_duplicate_vvg_callbacks():
 class LoadVDBtoVRay(plugin.Loader):
     """Load OpenVDB in a V-Ray Volume Grid"""
 
-    product_types = {"vdbcache"}
+    product_base_types = {"vdbcache"}
+    product_types = product_base_types
     representations = {"vdb"}
 
     label = "Load VDB to VRay"
@@ -89,8 +90,6 @@ class LoadVDBtoVRay(plugin.Loader):
         assert os.path.exists(path), (
             "Path does not exist: %s" % path
         )
-
-        product_type = context["product"]["productType"]
 
         # Ensure V-ray is loaded with the vrayvolumegrid
         if not cmds.pluginInfo("vrayformaya", query=True, loaded=True):
@@ -121,8 +120,14 @@ class LoadVDBtoVRay(plugin.Loader):
         root = cmds.group(name=label, empty=True)
 
         project_name = context["project"]["name"]
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
         settings = get_project_settings(project_name)
-        color = get_load_color_for_product_type(product_type, settings)
+        color = get_load_color_for_product_base_type(
+            product_base_type, settings
+        )
         if color is not None:
             red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", 1)
