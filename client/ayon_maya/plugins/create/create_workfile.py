@@ -48,15 +48,6 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
                 "task": task_name,
                 "variant": variant
             }
-            data.update(
-                self.get_dynamic_data(
-                    project_name,
-                    folder_entity,
-                    task_entity,
-                    variant,
-                    host_name,
-                    current_instance)
-            )
             self.log.info("Auto-creating workfile instance...")
             current_instance = CreatedInstance(
                 product_base_type=self.product_base_type,
