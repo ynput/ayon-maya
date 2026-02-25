@@ -1898,12 +1898,23 @@ def get_container_members(container, include_reference_associated_nodes=False):
         all_members.update(reference_members)
 
         if include_reference_associated_nodes:
-            associated_nodes: list[str] = cmds.listConnections(
-                f"{ref}.associatedNode",
-                source=True,
-                destination=False,
-                fullNodeName=True
-            ) or []
+            if cmds.about(apiVersion=True) >= 20240000:
+                associated_nodes: list[str] = cmds.listConnections(
+                    f"{ref}.associatedNode",
+                    source=True,
+                    destination=False,
+                    fullNodeName=True
+                ) or []
+            else:
+                # fullNodeName argument is Maya 2023.1+
+                associated_nodes = cmds.listConnections(
+                    f"{ref}.associatedNode",
+                    source=True,
+                    destination=False
+                ) or []
+                associated_nodes = cmds.ls(
+                    associated_nodes, long=True
+                ) or []
             all_members.update(associated_nodes)
 
     return list(all_members)
