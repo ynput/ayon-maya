@@ -1906,6 +1906,7 @@ def get_container_members(container, include_reference_associated_nodes=False):
                     fullNodeName=True
                 ) or []
             else:
+                # fullNodeName argument is Maya 2023.1+
                 associated_nodes = cmds.listConnections(
                     f"{ref}.associatedNode",
                     source=True,
