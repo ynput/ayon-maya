@@ -203,7 +203,8 @@ class ExtractCameraMayaScene(plugin.MayaExtractorPlugin,
             stack.enter_context(transfer_image_planes(
                 sorted(cameras),
                 sorted(baked_camera_shapes),
-                keep_image_planes
+                keep_image_planes,
+                log=self.log
             ))
 
             self.log.info("Performing extraction..")
@@ -255,7 +256,7 @@ class ExtractCameraMayaScene(plugin.MayaExtractorPlugin,
 
 @contextlib.contextmanager
 def transfer_image_planes(source_cameras, target_cameras,
-                          keep_input_connections):
+                          keep_input_connections, log):
     """Reattaches image planes to baked or original cameras.
 
     Baked cameras are duplicates of original ones.
@@ -282,6 +283,13 @@ def transfer_image_planes(source_cameras, target_cameras,
 
             originals[source_camera] = []
             for image_plane in image_planes:
+                # TODO: Find a way to manage referenced image planes
+                if cmds.referenceQuery(image_plane, isNodeReferenced=True):
+                    log.warning(
+                        f"Image plane '{image_plane}' is referenced,"
+                        " skipping reattachment for camera extraction."
+                    )
+                    continue
                 if keep_input_connections:
                     if source_camera == target_camera:
                         continue
