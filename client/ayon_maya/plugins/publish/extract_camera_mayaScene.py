@@ -280,6 +280,10 @@ def transfer_image_planes(source_cameras, target_cameras,
 
             originals[source_camera] = []
             for image_plane in image_planes:
+                if cmds.referenceQuery(image_plane, isNodeReferenced=True):
+                    # check if referenced,
+                    # if so, we don't want to mess with it
+                    continue
                 if keep_input_connections:
                     if source_camera == target_camera:
                         continue
