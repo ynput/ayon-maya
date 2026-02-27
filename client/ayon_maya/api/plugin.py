@@ -318,10 +318,13 @@ class MayaCreator(Creator, MayaCreatorBase):
             instance_node = cmds.sets(members, name=product_name)
             instance_data["instance_node"] = instance_node
 
-            # product base type support is added in ayon-core 1.7.0
+            product_type = instance_data.get("productType")
+            if not product_type:
+                product_type = self.product_base_type
+
             instance = CreatedInstance(
                 product_base_type=self.product_base_type,
-                product_type=self.product_base_type,
+                product_type=product_type,
                 product_name=product_name,
                 data=instance_data,
                 creator=self,
