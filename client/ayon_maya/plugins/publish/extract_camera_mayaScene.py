@@ -156,72 +156,74 @@ class ExtractCameraMayaScene(plugin.MayaExtractorPlugin,
         path = os.path.join(dir_path, filename)
 
         # Perform extraction
-        with lib.maintained_selection():
-            with lib.evaluation("off"):
-                with lib.suspended_refresh():
-                    if bake_to_worldspace:
-                        baked = lib.bake_to_world_space(
-                            transforms,
-                            frame_range=[start, end],
-                            step=step
-                        )
-                        baked_camera_shapes = set(cmds.ls(baked,
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(lib.maintained_selection())
+            stack.enter_context(lib.evaluation("off"))
+            stack.enter_context(lib.suspended_refresh())
+            if bake_to_worldspace:
+                baked = lib.bake_to_world_space(
+                    transforms,
+                    frame_range=[start, end],
+                    step=step
+                )
+                stack.enter_context(lib.delete_after(baked))
+                baked_camera_shapes = set(cmds.ls(baked,
                                                   type="camera",
                                                   dag=True,
                                                   shapes=True,
                                                   long=True))
 
-                        members.update(baked_camera_shapes)
-                        members.difference_update(cameras)
-                    else:
-                        baked_camera_shapes = cmds.ls(list(cameras),
-                                                      type="camera",
-                                                      dag=True,
-                                                      shapes=True,
-                                                      long=True)
+                members.update(baked_camera_shapes)
+                members.difference_update(cameras)
+            else:
+                baked_camera_shapes = cmds.ls(list(cameras),
+                                              type="camera",
+                                              dag=True,
+                                              shapes=True,
+                                              long=True)
 
-                    attrs = {"backgroundColorR": 0.0,
-                             "backgroundColorG": 0.0,
-                             "backgroundColorB": 0.0,
-                             "overscan": 1.0}
 
-                    # Fix PLN-178: Don't allow background color to be non-black
-                    for cam, (attr, value) in itertools.product(cmds.ls(
-                            baked_camera_shapes, type="camera", dag=True,
-                            long=True), attrs.items()):
-                        plug = "{0}.{1}".format(cam, attr)
-                        unlock(plug)
-                        cmds.setAttr(plug, value)
+            attrs = {"backgroundColorR": 0.0,
+                     "backgroundColorG": 0.0,
+                     "backgroundColorB": 0.0,
+                     "overscan": 1.0}
 
-                    attr_values = self.get_attr_values_from_data(
-                        instance.data)
-                    keep_image_planes = attr_values.get("keep_image_planes")
+            # Fix PLN-178: Don't allow background color to be non-black
+            for cam, (attr, value) in itertools.product(cmds.ls(
+                    baked_camera_shapes, type="camera", dag=True,
+                    long=True), attrs.items()):
+                plug = "{0}.{1}".format(cam, attr)
+                unlock(plug)
+                cmds.setAttr(plug, value)
 
-                    with transfer_image_planes(sorted(cameras),
-                                               sorted(baked_camera_shapes),
-                                               keep_image_planes,
-                                               log=self.log):
+            attr_values = self.get_attr_values_from_data(
+                instance.data)
+            keep_image_planes = attr_values.get("keep_image_planes")
 
-                        self.log.info("Performing extraction..")
-                        cmds.select(cmds.ls(list(members), dag=True,
-                                            shapes=True, long=True),
-                                    noExpand=True)
-                        cmds.file(path,
-                                  force=True,
-                                  typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
-                                  exportSelected=True,
-                                  preserveReferences=False,
-                                  constructionHistory=False,
-                                  channels=True,  # allow animation
-                                  constraints=False,
-                                  shader=False,
-                                  expressions=False)
+            stack.enter_context(transfer_image_planes(
+                sorted(cameras),
+                sorted(baked_camera_shapes),
+                keep_image_planes,
+                log=self.log
+            ))
 
-                    # Delete the baked hierarchy
-                    if bake_to_worldspace:
-                        cmds.delete(baked)
-                    if self.scene_type == "ma":
-                        massage_ma_file(path)
+            self.log.info("Performing extraction..")
+            cmds.select(cmds.ls(list(members), dag=True,
+                                shapes=True, long=True),
+                        noExpand=True)
+            cmds.file(path,
+                      force=True,
+                      typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
+                      exportSelected=True,
+                      preserveReferences=False,
+                      constructionHistory=False,
+                      channels=True,  # allow animation
+                      constraints=False,
+                      shader=False,
+                      expressions=False)
+
+            if self.scene_type == "ma":
+                massage_ma_file(path)
 
         if "representations" not in instance.data:
             instance.data["representations"] = []
