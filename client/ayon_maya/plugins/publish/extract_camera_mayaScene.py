@@ -286,8 +286,8 @@ def transfer_image_planes(source_cameras, target_cameras,
                 # TODO: Find a way to manage referenced image planes
                 if cmds.referenceQuery(image_plane, isNodeReferenced=True):
                     log.warning(
-                        f"Image plane {image_plane} is referenced,"
-                        " skipping reattachment"
+                        f"Image plane '{image_plane}' is referenced,"
+                        " skipping reattachment for camera extraction."
                     )
                     continue
                 if keep_input_connections:
