@@ -25,7 +25,7 @@ from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.load import LoadError
 from ayon_core.settings import get_project_settings
 from maya import cmds
-from maya.app.renderSetup.model import renderSetup
+from maya.app.renderSetup.model import renderSetup, renderLayer
 from pyblish.api import ContextPlugin, InstancePlugin
 
 from . import lib
@@ -438,20 +438,24 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
             return nodes if return_all else nodes[0]
 
     def create(self, product_name, instance_data, pre_create_data):
-        # A Renderlayer is never explicitly created using the create method.
-        # Instead, renderlayers from the scene are collected. Thus "create"
-        # would only ever be called to say, 'hey, please refresh collect'
-        self.create_singleton_node()
+        if not self._get_singleton_node():
+            self.create_singleton_node()
 
         variant_name: str = instance_data.get("variant", "Main")
 
-        # if no render layers are present, create default one with
-        # asterisk selector using the chosen variant name
+        # Create a new renderlayer to represent the new instance
         rs = renderSetup.instance()
-        if not rs.getRenderLayers():
-            render_layer = rs.createRenderLayer(variant_name)
-            collection = render_layer.createCollection("defaultCollection")
-            collection.getSelector().setPattern('*')
+        render_layer = rs.createRenderLayer(variant_name)
+        collection = render_layer.createCollection("defaultCollection")
+        collection.getSelector().setPattern('*')
+
+        # Ensure a node exists to persist the data to
+        instance_node = self._create_layer_instance_node(render_layer)
+        instance_data["instance_node"] = instance_node
+        instance_data["creator_identifier"] = self.identifier
+        instance_data["productName"] = product_name
+        self.imprint_instance_node(instance_node,
+                                   data=instance_data)
 
         # By RenderLayerCreator.create we make it so that the renderlayer
         # instances directly appear even though it just collects scene
@@ -472,7 +476,6 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         return node
 
     def collect_instances(self):
-
         # We only collect if the global render instance exists
         if not self._get_singleton_node():
             return
@@ -490,6 +493,7 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
                 # this instance will not have the `instance_node` data yet
                 # until it's been saved/persisted at least once.
                 project_name = self.create_context.get_current_project_name()
+                product_type: str = self.layer_instance_prefix
                 folder_entity = self.create_context.get_current_folder_entity()
                 folder_path: str = folder_entity["path"]
                 task_entity = self.create_context.get_current_task_entity()
@@ -505,10 +509,11 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
                     task_entity,
                     layer.name(),
                     host_name,
+                    product_type=product_type,
                 )
                 instance = CreatedInstance(
                     product_base_type=self.product_base_type,
-                    product_type=self.product_base_type,
+                    product_type=product_type,
                     product_name=product_name,
                     data=instance_data,
                     creator=self
@@ -586,8 +591,7 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         data.pop("renderlayer", None)
         data.get("creator_attributes", {}).pop("renderlayer", None)
 
-        return super(RenderlayerCreator, self).imprint_instance_node(node,
-                                                                     data=data)
+        return super().imprint_instance_node(node, data=data)
 
     def remove_instances(self, instances):
         """Remove specified instances from the scene.
@@ -596,22 +600,30 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         instance, because it might contain valuable data for artist.
 
         """
-        # Instead of removing the single instance or renderlayers we instead
-        # remove the CreateRender node this creator relies on to decide whether
-        # it should collect anything at all.
-        nodes = self._get_singleton_node(return_all=True)
-        if nodes:
-            cmds.delete(nodes)
+        for instance in instances:
+            self._remove_instance_from_context(instance)
 
-        # Remove ALL the instances even if only one gets deleted
-        for instance in list(self.create_context.instances):
-            if instance.get("creator_identifier") == self.identifier:
-                self._remove_instance_from_context(instance)
+            # Remove the stored settings per renderlayer too
+            node = instance.data.get("instance_node")
+            if node and cmds.objExists(node):
+                cmds.delete(node)
 
-                # Remove the stored settings per renderlayer too
-                node = instance.data.get("instance_node")
-                if node and cmds.objExists(node):
-                    cmds.delete(node)
+            # Also delete the renderlayer, because with the singleton still
+            # existing it'll just mean it'll get recreated on collect
+            layer = instance.transient_data.get("layer")
+            if layer:
+                renderLayer.delete(layer)
+
+        # If no render instances are remaining, then remove the singleton node
+        # as well.
+        has_render_instances = any(
+            instance.get("creator_identifier") == self.identifier
+            for instance in self.create_context.instances
+        )
+        if not has_render_instances:
+            nodes = self._get_singleton_node(return_all=True)
+            if nodes:
+                cmds.delete(nodes)
 
     def get_product_name(
         self,

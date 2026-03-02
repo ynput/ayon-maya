@@ -5,7 +5,6 @@ from ayon_maya.api import (
     lib_rendersettings,
     plugin
 )
-from ayon_core.pipeline import CreatorError
 from ayon_core.lib import (
     BoolDef,
     EnumDef,
@@ -42,19 +41,10 @@ class CreateRender(plugin.RenderlayerCreator):
 
     def create(self, product_name, instance_data, pre_create_data):
         # Only allow a single render instance to exist
-        if self._get_singleton_node():
-            raise CreatorError(
-                "A Render instance already exists - only one can be "
-                "configured.\n\n"
-                "To render multiple render layers, create extra Render Setup "
-                "Layers via Maya's Render Setup UI.\n"
-                "Then refresh the publisher to detect the new layers for "
-                "rendering.\n\n"
-                "With a render instance present all Render Setup layers in "
-                "your workfile are renderable instances.")
-
-        # Apply default project render settings on create
-        if self.render_settings.get("apply_render_settings"):
+        if (
+                not self._get_singleton_node()
+                and self.render_settings.get("apply_render_settings")
+        ):
             lib_rendersettings.RenderSettings().set_default_renderer_settings()
 
         super().create(product_name, instance_data, pre_create_data)
