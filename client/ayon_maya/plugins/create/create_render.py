@@ -1,15 +1,21 @@
 # -*- coding: utf-8 -*-
 """Create ``Render`` instance in Maya."""
+import typing
+from typing import Optional, Any
 
-from ayon_maya.api import (
-    lib_rendersettings,
-    plugin
-)
 from ayon_core.lib import (
     BoolDef,
     EnumDef,
     NumberDef,
 )
+from ayon_core.pipeline.create import get_product_name, ProductTypeItem
+from ayon_maya.api import (
+    lib_rendersettings,
+    plugin
+)
+
+if typing.TYPE_CHECKING:
+    from ayon_core.pipeline import CreatedInstance
 
 
 class CreateRender(plugin.RenderlayerCreator):
@@ -38,6 +44,46 @@ class CreateRender(plugin.RenderlayerCreator):
     def apply_settings(self, project_settings):
         super().apply_settings(project_settings)
         self.render_settings = project_settings["maya"]["render_settings"]
+
+    def get_product_type_items(self) -> list[ProductTypeItem]:
+        if self.product_type_items:
+            return self.product_type_items
+        # Make sure there is one item with product type 'render'
+        # - this is to avoid having product type being 'renderlayer'
+        return [
+            ProductTypeItem(product_type="render")
+        ]
+
+    def get_product_name(
+        self,
+        project_name: str,
+        folder_entity: dict[str, Any],
+        task_entity: Optional[dict[str, Any]],
+        variant: str,
+        host_name: Optional[str] = None,
+        instance: Optional["CreatedInstance"] = None,
+        project_entity: Optional[dict[str, Any]] = None,
+        product_type: Optional[str] = None,
+    ) -> str:
+        if host_name is None:
+            host_name = self.create_context.host_name
+
+        # creator.product_base_type != 'render' as expected
+        product_base_type_filter = None
+        if self.layer_instance_prefix:
+            product_base_type_filter = self.layer_instance_prefix
+
+        return get_product_name(
+            project_name=project_name,
+            folder_entity=folder_entity,
+            task_entity=task_entity,
+            host_name=host_name,
+            product_base_type="render",
+            product_type=product_type or "render",
+            variant=variant,
+            project_settings=self.project_settings,
+            product_base_type_filter=product_base_type_filter,
+        )
 
     def create(self, product_name, instance_data, pre_create_data):
         # Only allow a single render instance to exist
