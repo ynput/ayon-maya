@@ -159,7 +159,7 @@ class ValidateSkeletonRigOutSetNodeIds(ValidateRigOutSetNodeIds):
             list[AbstractAttrDef]: Attribute definitions for plugin.
 
         """
-        if instance.product_type != "rig":
+        if instance.product_base_type != "rig":
             return []
 
         return cls.get_attribute_defs()

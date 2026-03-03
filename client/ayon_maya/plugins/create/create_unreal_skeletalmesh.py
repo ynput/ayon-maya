@@ -14,8 +14,8 @@ class CreateUnrealSkeletalMesh(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.unrealskeletalmesh"
     label = "Unreal - Skeletal Mesh"
-    product_type = "skeletalMesh"
     product_base_type = "skeletalMesh"
+    product_type = product_base_type
     icon = "thumbs-up"
 
     # Defined in settings

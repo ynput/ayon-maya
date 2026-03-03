@@ -17,7 +17,8 @@ from qtpy import QtWidgets
 class XgenLoader(plugin.ReferenceLoader):
     """Load Xgen as reference"""
 
-    product_types = {"xgen"}
+    product_base_types = {"xgen"}
+    product_types = product_base_types
     representations = {"ma", "mb"}
 
     label = "Reference Xgen"

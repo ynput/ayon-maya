@@ -29,12 +29,14 @@ class MayaPlaceholderLoadPlugin(MayaPlaceholderPlugin, PlaceholderLoadMixin):
         parts = [prefix]
 
         # add family if any
-        placeholder_product_type = placeholder_data.get("product_type")
-        if placeholder_product_type is None:
-            placeholder_product_type = placeholder_data.get("family")
+        placeholder_product_base_type = (
+            placeholder_data.get("product_base_type")
+            or placeholder_data.get("product_type")
+            or placeholder_data.get("family")
+        )
 
-        if placeholder_product_type:
-            parts.append(placeholder_product_type)
+        if placeholder_product_base_type:
+            parts.append(placeholder_product_base_type)
 
         # add loader arguments if any
         loader_args = placeholder_data["loader_args"]

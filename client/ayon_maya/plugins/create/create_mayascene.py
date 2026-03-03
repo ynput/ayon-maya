@@ -7,6 +7,6 @@ class CreateMayaScene(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.mayascene"
     name = "mayaScene"
     label = "Maya Scene"
-    product_type = "mayaScene"
-    product_base_type = "mayaScene"
+    product_base_type = "mayascene"
+    product_type = product_base_type
     icon = "file-archive-o"

@@ -3,13 +3,14 @@ from ayon_core.settings import get_project_settings
 from ayon_maya.api.lib import unique_namespace
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
-from ayon_maya.api.plugin import get_load_color_for_product_type
+from ayon_maya.api.plugin import get_load_color_for_product_base_type
 
 
 class GpuCacheLoader(plugin.Loader):
     """Load Alembic as gpuCache"""
 
-    product_types = {"model", "animation", "proxyAbc", "pointcache"}
+    product_base_types = {"model", "animation", "proxyAbc", "pointcache"}
+    product_types = product_base_types
     representations = {"abc", "gpu_cache"}
 
     label = "Load Gpu Cache"
@@ -33,7 +34,7 @@ class GpuCacheLoader(plugin.Loader):
 
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        color = get_load_color_for_product_type("model", settings)
+        color = get_load_color_for_product_base_type("model", settings)
         if color is not None:
             red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", 1)

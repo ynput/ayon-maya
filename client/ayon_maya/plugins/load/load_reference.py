@@ -114,7 +114,7 @@ def preserve_modelpanel_cameras(container, log=None):
 class ReferenceLoader(plugin.ReferenceLoader):
     """Reference file"""
 
-    product_types = {
+    product_base_types = {
         "model",
         "pointcache",
         "proxyAbc",
@@ -131,6 +131,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
         "mvLook",
         "matchmove",
     }
+    product_types = product_base_types
 
     representations = {"ma", "abc", "fbx", "mb"}
 
@@ -141,8 +142,13 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
     def process_reference(self, context, name, namespace, options):
         import maya.cmds as cmds
-        product_type = context["product"]["productType"]
         project_name = context["project"]["name"]
+
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
+
         # True by default to keep legacy behaviours
         attach_to_root = options.get("attach_to_root", True)
         group_name = options["group_name"]
@@ -192,15 +198,15 @@ class ReferenceLoader(plugin.ReferenceLoader):
                                            children=True,
                                            fullPath=True) or []
 
-                if product_type not in {
+                if product_base_type not in {
                     "layout", "setdress", "mayaAscii", "mayaScene"
                 }:
                     # QUESTION Why do we need to exclude these families?
                     with parent_nodes(roots, parent=None):
                         cmds.xform(group_name, zeroTransformPivots=True)
 
-                color = plugin.get_load_color_for_product_type(
-                    product_type, settings
+                color = plugin.get_load_color_for_product_base_type(
+                    product_base_type, settings
                 )
                 if color is not None:
                     red, green, blue = color
@@ -222,7 +228,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
                 'reference_loader', {}
             ).get('create_camera_instance_on_load', False)
 
-            if product_type == "rig":
+            if product_base_type == "rig":
                 options["lock_instance"] = (
                     settings
                     ["maya"]
@@ -242,7 +248,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
                                  *options["translate"])
 
             if create_camera_instance_on_load and (
-                product_type == "camerarig"
+                product_base_type == "camerarig"
             ):
                 self._post_process_camera(namespace, context, options)
 
@@ -265,14 +271,17 @@ class ReferenceLoader(plugin.ReferenceLoader):
         project_name: str = container.get(
             "project_name", get_current_project_name()
         )
-        product_type = None
+        product_base_type = None
         if representation_id:
             context: dict = get_representation_context(
                 project_name, representation_id
             )
-            product_type: str = context["product"]["productType"]
+            product_entity = context["product"]
+            product_base_type = product_entity.get("productBaseType")
+            if not product_base_type:
+                product_base_type = product_entity["productType"]
 
-        if product_type == "rig":
+        if product_base_type == "rig":
             # Special handling needed for rig containers
             self._remove_rig(container)
             return
@@ -388,7 +397,8 @@ class MayaUSDReferenceLoader(ReferenceLoader):
     """Reference USD file to native Maya nodes using MayaUSDImport reference"""
 
     label = "Reference Maya USD"
-    product_types = {"usd"}
+    product_base_types = {"usd"}
+    product_types = product_base_types
     representations = {"usd"}
     extensions = {"usd", "usda", "usdc"}
 

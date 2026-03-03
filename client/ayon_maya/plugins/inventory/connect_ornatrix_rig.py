@@ -59,7 +59,7 @@ class ConnectOrnatrixRig(InventoryAction):
 
     def process(self, containers):
         # Categorize containers by product type.
-        containers_by_product_type = defaultdict(list)
+        containers_by_product_base_type = defaultdict(list)
         repre_ids = {
             container["representation"]
             for container in containers
@@ -69,12 +69,17 @@ class ConnectOrnatrixRig(InventoryAction):
             repre_id = container["representation"]
             repre_context = repre_contexts_by_id[repre_id]
 
-            product_type = repre_context["product"]["productType"]
-            containers_by_product_type[product_type].append(container)
+            product_entity = repre_context["product"]
+            product_base_type = product_entity.get("productBaseType")
+            if not product_base_type:
+                product_base_type = product_entity["productType"]
+            containers_by_product_base_type[product_base_type].append(
+                container
+            )
 
         # Validate to only 1 source container.
-        source_containers = containers_by_product_type.get("animation", [])
-        source_containers += containers_by_product_type.get("pointcache", [])
+        source_containers = containers_by_product_base_type["animation"]
+        source_containers += containers_by_product_base_type["pointcache"]
         source_container_namespaces = [
             x["namespace"] for x in source_containers
         ]
@@ -86,6 +91,13 @@ class ConnectOrnatrixRig(InventoryAction):
         )
         if len(source_containers) != 1:
             self.display_warning(message)
+            return
+
+        ox_rig_containers = containers_by_product_base_type["oxrig"]
+        if not ox_rig_containers:
+            self.display_warning(
+                "Select at least one oxrig container"
+            )
             return
 
         source_container = source_containers[0]
@@ -105,13 +117,6 @@ class ConnectOrnatrixRig(InventoryAction):
         )
         if not source_path.endswith(".abc"):
             self.display_warning(message)
-            return
-
-        ox_rig_containers = containers_by_product_type.get("oxrig")
-        if not ox_rig_containers:
-            self.display_warning(
-                "Select at least one oxrig container"
-            )
             return
 
         # Define a mapping to quickly search among the members

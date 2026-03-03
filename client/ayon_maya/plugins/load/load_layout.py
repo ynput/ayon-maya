@@ -24,7 +24,8 @@ from maya.api import OpenMaya as om
 class LayoutLoader(plugin.Loader):
     """Layout Loader (json)"""
 
-    product_types = {"layout"}
+    product_base_types = {"layout"}
+    product_types = product_base_types
     representations = {"json"}
 
     label = "Load Layout"
@@ -108,8 +109,8 @@ class LayoutLoader(plugin.Loader):
         return root
 
     @staticmethod
-    def _get_loader_name(product_type: str) -> Optional[str]:
-        if product_type in {
+    def _get_loader_name(product_base_type: str) -> Optional[str]:
+        if product_base_type in {
             "rig", "model", "camera",
             "animation", "staticMesh",
             "skeletalMesh"
@@ -154,11 +155,13 @@ class LayoutLoader(plugin.Loader):
         # Get preferred loader
         loader_name: Optional[str] = element.get("loader")
         if not loader_name:
-            product_type = element.get("product_type")
-            if product_type is None:
+            product_base_type = element.get("product_base_type")
+            if not product_base_type:
                 # Backwards compatibility
-                product_type = element.get("family")
-            loader_name = self._get_loader_name(product_type)
+                product_base_type = element.get("product_type")
+                if not product_base_type:
+                    product_base_type = element.get("family")
+            loader_name = self._get_loader_name(product_base_type)
 
         # Find loader plugin
         # TODO: Cache the loaders by name once

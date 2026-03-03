@@ -9,7 +9,8 @@ from ayon_maya.api import lib, plugin
 class OxRigLoader(plugin.ReferenceLoader):
     """This loader will load Ornatrix rig."""
 
-    product_types = {"oxrig"}
+    product_base_types = {"oxrig"}
+    product_types = product_base_types
     representations = {"ma"}
 
     label = "Load Ornatrix Rig"
@@ -44,7 +45,7 @@ class OxRigLoader(plugin.ReferenceLoader):
                 groupName=group_name
             )
 
-        color = plugin.get_load_color_for_product_type("oxrig")
+        color = plugin.get_load_color_for_product_base_type("oxrig")
         if color is not None:
             red, green, blue = color
             cmds.setAttr(group_name + ".useOutlinerColor", 1)
@@ -60,7 +61,7 @@ class OxRigLoader(plugin.ReferenceLoader):
         return nodes
 
     def _create_ox_cache_instance(self, nodes: List[str], variant: str):
-        """Create an ornatrixcache product type instance to publish the output.
+        """Create a ornatrixcache instance to publish the output.
 
         This is similar to how loading animation rig will automatically create
         an animation instance for publishing any loaded character rigs, but

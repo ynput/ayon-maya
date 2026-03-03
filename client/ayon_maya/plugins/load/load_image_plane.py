@@ -82,7 +82,8 @@ class CameraWindow(QtWidgets.QDialog):
 class ImagePlaneLoader(plugin.Loader):
     """Specific loader of plate for image planes on selected camera."""
 
-    product_types = {"image", "plate", "render"}
+    product_base_types = {"image", "plate", "render"}
+    product_types = product_base_types
     label = "Load imagePlane"
     representations = {"*"}
     extensions = {"mov", "mp4", "exr", "png", "jpg", "jpeg"}
