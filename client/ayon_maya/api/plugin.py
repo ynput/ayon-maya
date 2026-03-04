@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json
 import os
-from typing import Any, Optional
+from typing import Optional
 
 import ayon_api
 import qargparse
@@ -21,7 +21,6 @@ from ayon_core.pipeline import (
     get_current_project_name,
     publish,
 )
-from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.load import LoadError
 from ayon_core.settings import get_project_settings
 
