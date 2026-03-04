@@ -627,42 +627,6 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
             if nodes:
                 cmds.delete(nodes)
 
-    def get_product_name(
-        self,
-        project_name: str,
-        folder_entity: dict[str, Any],
-        task_entity: Optional[dict[str, Any]],
-        variant: str,
-        host_name: Optional[str] = None,
-        instance: Optional[CreatedInstance] = None,
-        project_entity: Optional[dict[str, Any]] = None,
-        product_type: Optional[str] = None,
-    ) -> str:
-        if host_name is None:
-            host_name = self.create_context.host_name
-        dynamic_data = self.get_dynamic_data(
-            project_name,
-            folder_entity,
-            task_entity,
-            variant,
-            host_name,
-            instance=instance,
-            product_type=product_type,
-        )
-
-        return get_product_name(
-            project_name=project_name,
-            folder_entity=folder_entity,
-            task_entity=task_entity,
-            host_name=host_name,
-            product_base_type=self.product_base_type,
-            product_type=product_type,
-            variant=variant,
-            dynamic_data=dynamic_data,
-            project_settings=self.project_settings,
-            product_base_type_filter=product_base_type_filter,
-        )
-
 
 def get_load_color_for_product_base_type(product_base_type, settings=None):
     """Get color for product type from settings.
