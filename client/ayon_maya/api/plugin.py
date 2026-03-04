@@ -2,7 +2,6 @@
 from __future__ import annotations
 import json
 import os
-from typing import Any, Optional
 
 import ayon_api
 import qargparse
@@ -21,9 +20,9 @@ from ayon_core.pipeline import (
     get_current_project_name,
     publish,
 )
-from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.load import LoadError
 from ayon_core.settings import get_project_settings
+
 from maya import cmds
 from maya.app.renderSetup.model import renderSetup, renderLayer
 from pyblish.api import ContextPlugin, InstancePlugin
@@ -429,9 +428,6 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
     # These are required to be overridden in subclass
     singleton_node_name = ""
 
-    # These are optional to be overridden in subclass
-    layer_instance_prefix = None
-
     def _get_singleton_node(self, return_all=False):
         nodes = lib.lsattr("pre_creator_identifier", self.identifier)
         if nodes:
@@ -484,6 +480,10 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         rs = renderSetup.instance()
         layers = rs.getRenderLayers()
         fallback_product_type = None
+        product_type_items = self.get_product_type_items()
+        if product_type_items:
+            fallback_product_type = product_type_items[0].product_type
+
         for layer in layers:
             layer_instance_node = self.find_layer_instance_node(layer)
             if layer_instance_node:
@@ -494,13 +494,6 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
                 # this instance will not have the `instance_node` data yet
                 # until it's been saved/persisted at least once.
                 project_name = self.create_context.get_current_project_name()
-                if fallback_product_type is None:
-                    product_type_items = self.get_product_type_items()
-                    fallback_product_type = (
-                        product_type_items[0].product_type
-                        if product_type_items
-                        else self.layer_instance_prefix
-                    )
                 folder_entity = self.create_context.get_current_folder_entity()
                 folder_path: str = folder_entity["path"]
                 task_entity = self.create_context.get_current_task_entity()
@@ -631,45 +624,6 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
             nodes = self._get_singleton_node(return_all=True)
             if nodes:
                 cmds.delete(nodes)
-
-    def get_product_name(
-        self,
-        project_name: str,
-        folder_entity: dict[str, Any],
-        task_entity: Optional[dict[str, Any]],
-        variant: str,
-        host_name: Optional[str] = None,
-        instance: Optional[CreatedInstance] = None,
-        project_entity: Optional[dict[str, Any]] = None,
-        product_type: Optional[str] = None,
-    ) -> str:
-        if host_name is None:
-            host_name = self.create_context.host_name
-        dynamic_data = self.get_dynamic_data(
-            project_name,
-            folder_entity,
-            task_entity,
-            variant,
-            host_name,
-            instance=instance,
-            product_type=product_type,
-        )
-        # creator.product_base_type != 'render' as expected
-        product_base_type_filter = None
-        if self.layer_instance_prefix:
-            product_base_type_filter = self.layer_instance_prefix
-        return get_product_name(
-            project_name=project_name,
-            folder_entity=folder_entity,
-            task_entity=task_entity,
-            host_name=host_name,
-            product_base_type=self.product_base_type,
-            product_type=product_type,
-            variant=variant,
-            dynamic_data=dynamic_data,
-            project_settings=self.project_settings,
-            product_base_type_filter=product_base_type_filter,
-        )
 
 
 def get_load_color_for_product_base_type(product_base_type, settings=None):
