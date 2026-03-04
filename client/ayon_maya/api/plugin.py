@@ -484,6 +484,10 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         rs = renderSetup.instance()
         layers = rs.getRenderLayers()
         fallback_product_type = None
+        product_type_items = self.get_product_type_items()
+        if product_type_items:
+            fallback_product_type = product_type_items[0].product_type
+
         for layer in layers:
             layer_instance_node = self.find_layer_instance_node(layer)
             if layer_instance_node:
@@ -494,13 +498,6 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
                 # this instance will not have the `instance_node` data yet
                 # until it's been saved/persisted at least once.
                 project_name = self.create_context.get_current_project_name()
-                if fallback_product_type is None:
-                    product_type_items = self.get_product_type_items()
-                    fallback_product_type = (
-                        product_type_items[0].product_type
-                        if product_type_items
-                        else self.layer_instance_prefix
-                    )
                 folder_entity = self.create_context.get_current_folder_entity()
                 folder_path: str = folder_entity["path"]
                 task_entity = self.create_context.get_current_task_entity()
