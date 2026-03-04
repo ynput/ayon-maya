@@ -24,6 +24,7 @@ from ayon_core.pipeline import (
 from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.load import LoadError
 from ayon_core.settings import get_project_settings
+
 from maya import cmds
 from maya.app.renderSetup.model import renderSetup, renderLayer
 from pyblish.api import ContextPlugin, InstancePlugin
@@ -429,9 +430,6 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
     # These are required to be overridden in subclass
     singleton_node_name = ""
 
-    # These are optional to be overridden in subclass
-    layer_instance_prefix = None
-
     def _get_singleton_node(self, return_all=False):
         nodes = lib.lsattr("pre_creator_identifier", self.identifier)
         if nodes:
@@ -651,10 +649,7 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
             instance=instance,
             product_type=product_type,
         )
-        # creator.product_base_type != 'render' as expected
-        product_base_type_filter = None
-        if self.layer_instance_prefix:
-            product_base_type_filter = self.layer_instance_prefix
+
         return get_product_name(
             project_name=project_name,
             folder_entity=folder_entity,

@@ -35,7 +35,6 @@ class CreateRender(plugin.RenderlayerCreator):
     label = "Render"
     icon = "eye"
 
-    layer_instance_prefix = "render"
     singleton_node_name = "renderingMain"
 
     render_target = "farm"
@@ -68,11 +67,6 @@ class CreateRender(plugin.RenderlayerCreator):
         if host_name is None:
             host_name = self.create_context.host_name
 
-        # creator.product_base_type != 'render' as expected
-        product_base_type_filter = None
-        if self.layer_instance_prefix:
-            product_base_type_filter = self.layer_instance_prefix
-
         return get_product_name(
             project_name=project_name,
             folder_entity=folder_entity,
@@ -82,7 +76,6 @@ class CreateRender(plugin.RenderlayerCreator):
             product_type=product_type or "render",
             variant=variant,
             project_settings=self.project_settings,
-            product_base_type_filter=product_base_type_filter,
         )
 
     def create(self, product_name, instance_data, pre_create_data):
