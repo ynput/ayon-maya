@@ -218,6 +218,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "filterTypes": (list, None),  # optional list
             "staticSingleSample": bool,
             "worldspace": bool,
+            "exportSkels": str,
         }
 
     @property
@@ -232,7 +233,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "defaultMeshScheme": "catmullClark",
             "stripNamespaces": True,
             "mergeTransformAndShape": True,
-            "exportDisplayColor": False,
+            "exportDisplayColor": True,
             "exportColorSets": True,
             "exportInstances": True,
             "exportUVs": True,
@@ -246,7 +247,8 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "jobContext": None,
             "filterTypes": None,
             "staticSingleSample": True,
-            "worldspace": True
+            "worldspace": True,
+            "exportSkels": "auto"
         }
 
     def parse_overrides(self, overrides, options):
