@@ -12,18 +12,21 @@ class MayaPreOpenWorkfilePostInitialization(PreLaunchHook):
     launch_types = {LaunchTypes.local}
 
     def execute(self):
-        # Explicit workfile is set to be used
-        workfile_path = self.data.get("workfile_path")
-        if workfile_path:
-            return
-
         # Do nothing if post workfile initialization is disabled.
         maya_settings = self.data["project_settings"]["maya"]
         if not maya_settings["open_workfile_post_initialization"]:
             return
 
+        key = "AYON_MAYA_WORKFILE_PATH"
+
+        workfile_path = self.data.pop("workfile_path", None)
         # Force disable the `AddLastWorkfileToLaunchArgs`.
         start_last_workfile = self.data.pop("start_last_workfile", None)
+
+        # Explicit workfile is set to be used
+        if workfile_path:
+            self.launch_context.env[key] = workfile_path
+            return
 
         # Ignore if there's no last workfile to start.
         if not start_last_workfile:
@@ -37,5 +40,4 @@ class MayaPreOpenWorkfilePostInitialization(PreLaunchHook):
             return
 
         self.log.debug("Opening workfile post initialization.")
-        key = "AYON_OPEN_WORKFILE_POST_INITIALIZATION"
-        self.launch_context.env[key] = "1"
+        self.launch_context.env[key] = last_workfile_path
