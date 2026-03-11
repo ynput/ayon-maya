@@ -12,6 +12,11 @@ class MayaPreOpenWorkfilePostInitialization(PreLaunchHook):
     launch_types = {LaunchTypes.local}
 
     def execute(self):
+        # Explicit workfile is set to be used
+        workfile_path = self.data.get("workfile_path")
+        if workfile_path:
+            return
+
         # Do nothing if post workfile initialization is disabled.
         maya_settings = self.data["project_settings"]["maya"]
         if not maya_settings["open_workfile_post_initialization"]:
