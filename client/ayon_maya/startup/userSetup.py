@@ -35,7 +35,7 @@ if explicit_plugins_loading["enabled"]:
     )
 
 # Open Workfile Post Initialization.
-path = os.environ.get("AYON_MAYA_WORKFILE_PATH")
+path = os.environ.pop("AYON_MAYA_WORKFILE_PATH", None)
 if path:
     def _log_and_open():
         print("Opening \"{}\"".format(path))
