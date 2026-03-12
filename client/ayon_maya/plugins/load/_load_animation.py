@@ -84,7 +84,8 @@ class FbxLoader(ayon_maya.api.plugin.ReferenceLoader):
         "camera",
     }
     product_types = product_base_types
-    representations = {"fbx"}
+    representations = {"*"}
+    extensions = {"fbx"}
 
     label = "Reference animation"
     order = -10
