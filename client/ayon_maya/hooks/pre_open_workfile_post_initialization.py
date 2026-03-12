@@ -12,9 +12,7 @@ class MayaPreOpenWorkfilePostInitialization(PreLaunchHook):
     launch_types = {LaunchTypes.local}
 
     def execute(self):
-        # Do nothing if post workfile initialization is disabled.
-        maya_settings = self.data["project_settings"]["maya"]
-        if not maya_settings["open_workfile_post_initialization"]:
+        if not self._should_load_post_maya_init():
             return
 
         key = "AYON_MAYA_WORKFILE_PATH"
@@ -41,3 +39,17 @@ class MayaPreOpenWorkfilePostInitialization(PreLaunchHook):
 
         self.log.debug("Opening workfile post initialization.")
         self.launch_context.env[key] = last_workfile_path
+
+    def _should_load_post_maya_init(self) -> bool:
+        maya_settings = self.data["project_settings"]["maya"]
+
+        # Do nothing if post workfile initialization is disabled.
+        if maya_settings["open_workfile_post_initialization"]:
+            return True
+
+        # When using explicit plug-in load, we must delay the file open
+        # to ensure the loading happens the way we need, so we still force it.
+        if maya_settings["explicit_plugins_loading"]["enabled"]:
+            return True
+
+        return False
