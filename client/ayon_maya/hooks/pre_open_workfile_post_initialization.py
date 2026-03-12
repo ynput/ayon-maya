@@ -17,8 +17,8 @@ class MayaPreOpenWorkfilePostInitialization(PreLaunchHook):
 
         key = "AYON_MAYA_WORKFILE_PATH"
 
-        workfile_path = self.data.pop("workfile_path", None)
         # Force disable the `AddLastWorkfileToLaunchArgs`.
+        workfile_path = self.data.pop("workfile_path", None)
         start_last_workfile = self.data.pop("start_last_workfile", None)
 
         # Explicit workfile is set to be used
@@ -45,11 +45,19 @@ class MayaPreOpenWorkfilePostInitialization(PreLaunchHook):
 
         # Do nothing if post workfile initialization is disabled.
         if maya_settings["open_workfile_post_initialization"]:
+            self.log.info(
+                "Opening workfile post initialization because Open Workfile"
+                " Post Initialization setting is enabled."
+            )
             return True
 
         # When using explicit plug-in load, we must delay the file open
         # to ensure the loading happens the way we need, so we still force it.
         if maya_settings["explicit_plugins_loading"]["enabled"]:
+            self.log.info(
+                "Opening workfile post initialization because Explicit Plugins"
+                " Loading setting is enabled."
+            )
             return True
 
         return False
