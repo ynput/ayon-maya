@@ -20,7 +20,8 @@ class SetFrameRangeLoader(load.LoaderPlugin):
         "pointcache",
     }
     product_types = product_base_types
-    representations = {"abc"}
+    representations = {"*"}
+    extensions = {"abc"}
 
     label = "Set frame range"
     order = 11

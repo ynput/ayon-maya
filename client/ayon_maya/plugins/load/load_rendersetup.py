@@ -48,7 +48,8 @@ class RenderSetupLoader(plugin.Loader):
 
     product_base_types = {"rendersetup"}
     product_types = product_base_types
-    representations = {"json"}
+    representations = {"*"}
+    extensions = {"json"}
     defaults = ["Main"]
 
     label = "Load RenderSetup template"

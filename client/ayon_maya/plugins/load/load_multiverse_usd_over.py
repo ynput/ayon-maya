@@ -15,7 +15,8 @@ class MultiverseUsdOverLoader(plugin.Loader):
 
     product_base_types = {"mvUsdOverride"}
     product_types = product_base_types
-    representations = {"usda", "usd", "udsz"}
+    representations = {"*"}
+    extensions = {"usda", "usd", "udsz"}
 
     label = "Load Usd Override into Compound"
     order = -10

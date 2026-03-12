@@ -11,7 +11,8 @@ class YetiRigLoader(plugin.ReferenceLoader):
 
     product_base_types = {"yetiRig"}
     product_types = product_base_types
-    representations = {"ma"}
+    representations = {"*"}
+    extensions = {"ma"}
 
     label = "Load Yeti Rig"
     order = -9
