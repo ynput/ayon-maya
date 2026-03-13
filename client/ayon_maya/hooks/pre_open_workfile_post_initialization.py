@@ -12,13 +12,19 @@ class MayaPreOpenWorkfilePostInitialization(PreLaunchHook):
     launch_types = {LaunchTypes.local}
 
     def execute(self):
-        # Do nothing if post workfile initialization is disabled.
-        maya_settings = self.data["project_settings"]["maya"]
-        if not maya_settings["open_workfile_post_initialization"]:
+        if not self._should_load_post_maya_init():
             return
 
+        key = "AYON_MAYA_WORKFILE_PATH"
+
         # Force disable the `AddLastWorkfileToLaunchArgs`.
+        workfile_path = self.data.pop("workfile_path", None)
         start_last_workfile = self.data.pop("start_last_workfile", None)
+
+        # Explicit workfile is set to be used
+        if workfile_path:
+            self.launch_context.env[key] = workfile_path
+            return
 
         # Ignore if there's no last workfile to start.
         if not start_last_workfile:
@@ -31,6 +37,29 @@ class MayaPreOpenWorkfilePostInitialization(PreLaunchHook):
             self.log.info("Current context does not have any workfile yet.")
             return
 
-        self.log.debug("Opening workfile post initialization.")
-        key = "AYON_OPEN_WORKFILE_POST_INITIALIZATION"
-        self.launch_context.env[key] = "1"
+        self.log.info(
+            f"Opening workfile post initialization: {last_workfile_path}"
+        )
+        self.launch_context.env[key] = last_workfile_path
+
+    def _should_load_post_maya_init(self) -> bool:
+        maya_settings = self.data["project_settings"]["maya"]
+
+        # Do nothing if post workfile initialization is disabled.
+        if maya_settings["open_workfile_post_initialization"]:
+            self.log.debug(
+                "Opening workfile post initialization because Open Workfile"
+                " Post Initialization setting is enabled."
+            )
+            return True
+
+        # When using explicit plug-in load, we must delay the file open
+        # to ensure the loading happens the way we need, so we still force it.
+        if maya_settings["explicit_plugins_loading"]["enabled"]:
+            self.log.debug(
+                "Opening workfile post initialization because Explicit Plugins"
+                " Loading setting is enabled."
+            )
+            return True
+
+        return False
