@@ -12,44 +12,6 @@ from maya import cmds
 import mayaUsd
 
 
-def _get_stage_from_proxy_shape(shape_dag_path):
-    """Get USD stage from a mayaUsdProxyShape node.
-
-    Works across different mayaUsd plugin versions by using the
-    OpenMaya API to access the stage directly from the node.
-
-    Args:
-        shape_dag_path (str): Full DAG path to the mayaUsdProxyShape node.
-
-    Returns:
-        pxr.Usd.Stage or None
-    """
-    # Try mayaUsd.lib.GetStage (available in newer versions)
-    get_stage_fn = getattr(mayaUsd.lib, "GetStage", None)
-    if get_stage_fn is not None:
-        return get_stage_fn(shape_dag_path)
-
-    # Fallback: use OpenMaya to call the getUsdStage command on the node
-    import maya.OpenMaya as om
-    sel = om.MSelectionList()
-    sel.add(shape_dag_path)
-    dag = om.MDagPath()
-    sel.getDagPath(0, dag)
-    fn = om.MFnDependencyNode(dag.node())
-    stage_data_plug = fn.findPlug("outStageCacheId", False)
-    # Use mayaUsd mel command as last resort
-    shape_short = shape_dag_path.split("|")[-1]
-    import maya.mel as mel
-    stage = mel.eval(f'mayaUsdGetStage "{shape_short}"') if hasattr(
-        mel, 'eval') else None
-    if stage:
-        return stage
-
-    # Final fallback: use mayaUsd.ufe.getStage with UFE-style path
-    ufe_path = "|world" + shape_dag_path
-    return mayaUsd.ufe.getStage(ufe_path)
-
-
 class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
     """Add a USD Reference into mayaUsdProxyShape
 
@@ -79,25 +41,26 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
         if not selection:
             # No USD prim selected: create a new proxy stage and add reference
             # to its root prim.
-            import mayaUsd_createStageWithNewLayer
             from pxr import UsdGeom
 
             cmds.loadPlugin("mayaUsdPlugin", quiet=True)
 
-            shape = mayaUsd_createStageWithNewLayer.createStageWithNewLayer()
+            # createStageWithNewLayer is available directly on mayaUsd.ufe
+            shape = mayaUsd.ufe.createStageWithNewLayer()
 
+            # Resolve to full DAG path
             shape_long = cmds.ls(shape, long=True)
             if not shape_long:
                 raise RuntimeError(
                     f"Could not find created proxy shape: {shape}"
                 )
 
-            stage = _get_stage_from_proxy_shape(shape_long[0])
+            # getStage() expects a UFE path: '|world' + full_dag_path
+            ufe_path = "|world" + shape_long[0]
+            stage = mayaUsd.ufe.getStage(ufe_path)
             if not stage:
                 raise RuntimeError(
-                    f"Could not get USD stage from proxy shape: {shape_long[0]}\n"
-                    f"Available mayaUsd.lib attrs: "
-                    f"{[x for x in dir(mayaUsd.lib) if 'tage' in x]}"
+                    f"Could not get USD stage for UFE path: {ufe_path}"
                 )
 
             prim_path = "/root"
