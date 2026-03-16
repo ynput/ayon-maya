@@ -12,23 +12,37 @@ from maya import cmds
 import mayaUsd
 
 
-def _create_stage_with_new_layer():
-    """Create a new mayaUsdProxyShape stage and return (shape_long, stage).
+def _get_stage_from_shape(shape_long):
+    """Retrieve USD stage from a mayaUsdProxyShape via its stage cache ID.
 
-    Handles API differences across mayaUsd versions:
-    - mayaUsd_createStageWithNewLayer.createStageWithNewLayer() -> shape name
-    - mayaUsd.ufe.createStageWithNewLayer(parent_name) -> shape name
+    Args:
+        shape_long (str): Full DAG path to the mayaUsdProxyShape node.
+
+    Returns:
+        pxr.Usd.Stage
     """
-    from pxr import UsdGeom
+    from pxr import UsdUtils
 
+    # The proxy shape stores the stage cache ID on the outStageCacheId plug
+    cache_id_val = cmds.getAttr(shape_long + ".outStageCacheId")
+    cache_id = UsdUtils.StageCache.Id.FromLongInt(int(cache_id_val))
+    stage = UsdUtils.StageCache.Get().Find(cache_id)
+    if not stage:
+        raise RuntimeError(
+            f"Could not retrieve stage from cache for shape: {shape_long}\n"
+            f"Cache ID was: {cache_id_val}"
+        )
+    return stage
+
+
+def _create_stage_with_new_layer():
+    """Create a new mayaUsdProxyShape stage and return (shape_long, stage)."""
     cmds.loadPlugin("mayaUsdPlugin", quiet=True)
 
-    # Preferred: use the dedicated module (no args, most compatible)
     try:
         import mayaUsd_createStageWithNewLayer
         shape = mayaUsd_createStageWithNewLayer.createStageWithNewLayer()
     except Exception:
-        # Fallback: mayaUsd.ufe.createStageWithNewLayer(parent_name)
         parent = cmds.createNode("transform", name="stage")
         shape = mayaUsd.ufe.createStageWithNewLayer(parent)
 
@@ -36,14 +50,7 @@ def _create_stage_with_new_layer():
     if not shape_long:
         raise RuntimeError(f"Could not find created proxy shape: {shape}")
 
-    # getStage() expects UFE path: '|world' + full_dag_path
-    ufe_path = "|world" + shape_long[0]
-    stage = mayaUsd.ufe.getStage(ufe_path)
-    if not stage:
-        raise RuntimeError(
-            f"Could not get USD stage for UFE path: {ufe_path}"
-        )
-
+    stage = _get_stage_from_shape(shape_long[0])
     return shape_long[0], stage
 
 
@@ -74,8 +81,6 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
 
         selection = list(iter_ufe_usd_selection())
         if not selection:
-            # No USD prim selected: create a new proxy stage and add reference
-            # to its root prim.
             from pxr import UsdGeom
 
             _shape_long, stage = _create_stage_with_new_layer()
