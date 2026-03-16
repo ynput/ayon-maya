@@ -45,8 +45,14 @@ def _prim_path_flat(context):
 def _prim_path_by_type(context):
     """By folder type: /character/cone_character"""
     folder = context.get("folder", {})
+    # Debug: print all keys in folder to see what's available
+    print("[USD Ref] folder keys available: {}".format(list(folder.keys())))
+    print("[USD Ref] full folder: {}".format(folder))
+
     folder_type = folder.get("folderType", folder.get("type", ""))
     name = folder.get("name", context.get("asset", "asset"))
+    print("[USD Ref] folder_type='{}', name='{}'".format(folder_type, name))
+
     if folder_type:
         # Use the folder type as-is (already in proper case), sanitize it
         return "/{}/{}".format(_sanitize(folder_type), _sanitize(name))
