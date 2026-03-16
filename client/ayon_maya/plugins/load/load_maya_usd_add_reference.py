@@ -48,7 +48,8 @@ def _prim_path_by_type(context):
     folder_type = folder.get("folderType", folder.get("type", ""))
     name = folder.get("name", context.get("asset", "asset"))
     if folder_type:
-        return "/{}/{}".format(_sanitize(folder_type.lower()), _sanitize(name))
+        # Use the folder type as-is (already in proper case), sanitize it
+        return "/{}/{}".format(_sanitize(folder_type), _sanitize(name))
     return "/" + _sanitize(name)
 
 
@@ -162,10 +163,18 @@ def _define_prim_hierarchy(stage, prim_path):
     for part in parts:
         current += "/" + part
         existing = stage.GetPrimAtPath(current)
+        # Only create if it doesn't exist AND is not valid
         if not existing or not existing.IsValid():
-            UsdGeom.Xform.Define(stage, current)
+            # Use Xform.Define which will reuse if it already exists as a spec
+            xform = UsdGeom.Xform.Define(stage, current)
+            if not xform or not xform.GetPrim().IsValid():
+                # Fallback: create as a generic prim if Xform.Define fails
+                stage.DefinePrim(current, "Xform")
 
-    return stage.GetPrimAtPath(prim_path)
+    prim = stage.GetPrimAtPath(prim_path)
+    if not prim or not prim.IsValid():
+        raise RuntimeError("Failed to create prim at path: {}".format(prim_path))
+    return prim
 
 
 def _get_stage_from_proxy_shape(shape_long):
@@ -291,37 +300,51 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
 
         options = options or {}
         stage = None
-        prim = None
+        base_prim = None
 
-        # Priority 1: USD prim selected via UFE - add reference directly
+        # Priority 1: USD prim selected via UFE - use as base for hierarchy
         ufe_selection = list(iter_ufe_usd_selection())
         if ufe_selection:
             assert len(ufe_selection) == 1, "Select only one USD prim please"
-            prim = mayaUsd.ufe.ufePathToPrim(ufe_selection[0])
+            base_prim = mayaUsd.ufe.ufePathToPrim(ufe_selection[0])
+            if base_prim and base_prim.IsValid():
+                # Get the stage from the selected prim
+                from pxr import Usd
+                stage = base_prim.GetStage()
 
         # Priority 2: mayaUsdProxyShape (or its transform) is selected
-        if prim is None:
+        if stage is None:
             proxy_shape = _get_selected_proxy_shape()
             if proxy_shape:
                 stage = _get_stage_from_proxy_shape(proxy_shape)
 
         # Priority 3: no selection - find any proxy stage in the scene
-        if prim is None and stage is None:
+        if stage is None:
             _shape, stage = _find_any_proxy_stage()
 
         # Priority 4: no proxy in scene - create one
-        if prim is None and stage is None:
+        if stage is None:
             _shape, stage = _create_new_proxy_stage()
 
-        # Build hierarchy using chosen prim path mode
-        if prim is None and stage is not None:
-            mode = options.get("prim_path_mode", 0)
-            custom_path = options.get("custom_prim_path", "")
-            prim_path = _resolve_prim_path(context, mode, custom_path)
-            print("[USD Ref] resolved prim_path: '{}'".format(prim_path))
+        # Resolve the prim path using the chosen mode
+        mode = options.get("prim_path_mode", 0)
+        custom_path = options.get("custom_prim_path", "")
+        prim_path = _resolve_prim_path(context, mode, custom_path)
+        print("[USD Ref] resolved prim_path: '{}'".format(prim_path))
 
+        # If a prim is selected, add the resolved hierarchy as children of that prim
+        if base_prim is not None and base_prim.IsValid():
+            # Append the generated path structure to the selected prim's path
+            base_path = str(base_prim.GetPath()).rstrip("/")
+            # Append the full relative path from the mode
+            full_prim_path = base_path + prim_path
+            print("[USD Ref] selected prim base: '{}', appending hierarchy: {} -> '{}'".format(
+                base_path, prim_path, full_prim_path
+            ))
+            prim = _define_prim_hierarchy(stage, full_prim_path)
+        else:
+            # No prim selected, build from root using full hierarchy
             prim = _define_prim_hierarchy(stage, prim_path)
-
             root_prim_name = prim_path.strip("/").split("/")[0]
             if not stage.GetRootLayer().defaultPrim:
                 stage.GetRootLayer().defaultPrim = root_prim_name
