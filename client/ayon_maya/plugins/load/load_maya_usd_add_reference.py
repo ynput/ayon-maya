@@ -269,15 +269,22 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
     the prim path strategy:
       - Folder Path:     /assets/character/cone_character  (default)
       - Flat:            /cone_character
-      - By Folder Type:  /character/cone_character
+      - By Folder Type:  /character/cone_character (based on folder structure)
       - Folder+Product:  /assets/character/cone_character/usdMain
-      - Custom:          user-defined path
+      - Custom:          user-defined path (absolute, ignores selected prim)
 
-    Stage resolution (in order of priority):
-    1. USD prim selected (UFE) -> reference added directly, no path built.
-    2. mayaUsdProxyShape selected -> options dialog, hierarchy built in stage.
-    3. No selection -> first proxy in scene used.
-    4. No proxy -> new stage created.
+    Selection behavior:
+    1. USD prim selected (UFE):
+       - For regular modes: asset hierarchy is created as child of selected prim
+       - For Custom mode: custom path is used as-is (absolute, not concatenated)
+    2. mayaUsdProxyShape selected -> options dialog, hierarchy built from root
+    3. No selection -> first proxy in scene used or new stage created
+
+    Examples with /props prim selected:
+      - Flat mode: imports asset as /props/cone_character
+      - By Type: /props/character/cone_character
+      - Custom /props/: asset placed directly at /props/ (absolute path)
+      - Custom groundplane: asset placed at /props/groundplane (relative)
     """
 
     product_types = {"model", "usd", "pointcache", "animation"}
@@ -310,8 +317,13 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
             label="Custom Prim Path",
             default="",
             help=(
-                "Used only when Prim Path Mode is set to 'Custom'.\n"
-                "Example: /assets/character/cone_character"
+                "Used only when Prim Path Mode is set to 'Custom'.\n\n"
+                "Custom paths are always treated as ABSOLUTE (starting with /).\n"
+                "They are NOT concatenated with selected prims.\n\n"
+                "Examples:\n"
+                "  /props/           -> asset placed at /props/\n"
+                "  /environment/     -> asset placed at /environment/\n"
+                "  /chars/hero/      -> asset placed at /chars/hero/"
             )
         ),
     ]
