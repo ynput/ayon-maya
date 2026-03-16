@@ -140,6 +140,56 @@ def _lookup_mode(mode):
     return "folder_path", _prim_path_folder
 
 
+def _expand_custom_path(context, custom_path):
+    """Expand variables in custom path string.
+
+    Available variables:
+    - {name}            asset/folder name (cone_character)
+    - {folder_name}     folder name (cone_character)
+    - {folder_path}     full folder path (/assets/character/cone_character)
+    - {folder_type}     content type from path (character, environment)
+    - {product_name}    product name (usdMain)
+    - {parent_folder}   parent folder name (character)
+
+    Examples:
+    - "/props/{name}"           -> /props/cone_character
+    - "/props/{folder_type}/"   -> /props/character/
+    - "{folder_path}/props"     -> /assets/character/cone_character/props
+    """
+    folder = context.get("folder", {})
+    product = context.get("product", {})
+
+    # Extract folder type from path (e.g., 'character' from '/assets/character/cone')
+    path = folder.get("path", "")
+    folder_type = ""
+    parent_folder = ""
+    if path:
+        parts = path.strip("/").split("/")
+        if len(parts) >= 2:
+            folder_type = parts[-2]
+        if len(parts) >= 1:
+            parent_folder = parts[-1]
+
+    variables = {
+        "name": folder.get("name", context.get("asset", "asset")),
+        "folder_name": folder.get("name", ""),
+        "folder_path": folder.get("path", ""),
+        "folder_type": folder_type,
+        "product_name": product.get("name", context.get("subset", "")),
+        "parent_folder": parent_folder,
+    }
+
+    # Expand variables in the custom path
+    expanded = custom_path
+    for var_name, var_value in variables.items():
+        expanded = expanded.replace("{" + var_name + "}", str(var_value))
+
+    print("[USD Ref] custom path variables: {}".format(variables))
+    print("[USD Ref] expanded custom path: '{}' -> '{}'".format(custom_path, expanded))
+
+    return expanded
+
+
 def _resolve_prim_path(context, mode, custom_path=""):
     """Resolve the final USD prim path from the chosen mode.
 
@@ -147,6 +197,8 @@ def _resolve_prim_path(context, mode, custom_path=""):
         context (dict): AYON load context.
         mode (str | int): Value from qargparse.Enum (label string or int index).
         custom_path (str): Used only when mode resolves to 'custom'.
+                          Supports variables: {name}, {folder_name}, {folder_path},
+                          {folder_type}, {product_name}, {parent_folder}
 
     Returns:
         str: Absolute USD prim path.
@@ -156,6 +208,8 @@ def _resolve_prim_path(context, mode, custom_path=""):
     if key == "custom":
         path = (custom_path or "").strip()
         if path:
+            # Expand variables in the custom path
+            path = _expand_custom_path(context, path)
             return path if path.startswith("/") else "/" + path
         print("[USD Ref] custom path empty, falling back to folder_path")
         return _prim_path_folder(context)
@@ -271,20 +325,23 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
       - Flat:            /cone_character
       - By Folder Type:  /character/cone_character (based on folder structure)
       - Folder+Product:  /assets/character/cone_character/usdMain
-      - Custom:          user-defined path (absolute, ignores selected prim)
+      - Custom:          user-defined path with variable support
 
     Selection behavior:
     1. USD prim selected (UFE):
-       - For regular modes: asset hierarchy is created as child of selected prim
-       - For Custom mode: custom path is used as-is (absolute, not concatenated)
+       - For all modes: asset is placed as child of selected prim
+       - Exception: Custom ABSOLUTE paths (starting with /) ignore selected prim
     2. mayaUsdProxyShape selected -> options dialog, hierarchy built from root
     3. No selection -> first proxy in scene used or new stage created
 
-    Examples with /props prim selected:
-      - Flat mode: imports asset as /props/cone_character
-      - By Type: /props/character/cone_character
-      - Custom /props/: asset placed directly at /props/ (absolute path)
-      - Custom groundplane: asset placed at /props/groundplane (relative)
+    Custom path examples with /props prim selected:
+      - "/props/{name}"         -> /props/cone_character (absolute, ignores prim)
+      - "props/{name}"          -> /props/props/cone_character (relative, appends to prim)
+      - "{name}"                -> /props/cone_character (relative)
+      - "/props/{folder_type}"  -> /props/character (absolute)
+
+    Available variables for custom paths:
+      {name}, {folder_name}, {folder_path}, {folder_type}, {product_name}, {parent_folder}
     """
 
     product_types = {"model", "usd", "pointcache", "animation"}
@@ -318,12 +375,21 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
             default="",
             help=(
                 "Used only when Prim Path Mode is set to 'Custom'.\n\n"
-                "Custom paths are always treated as ABSOLUTE (starting with /).\n"
-                "They are NOT concatenated with selected prims.\n\n"
+                "Supports variables for dynamic paths:\n"
+                "  {name}            - Asset name (cone_character)\n"
+                "  {folder_name}     - Folder name (cone_character)\n"
+                "  {folder_path}     - Full path (/assets/character/cone_character)\n"
+                "  {folder_type}     - Content type from path (character, environment)\n"
+                "  {product_name}    - Product name (usdMain)\n"
+                "  {parent_folder}   - Parent folder name (character)\n\n"
+                "Path behavior:\n"
+                "  ABSOLUTE (starts with /): ignores selected prim\n"
+                "  RELATIVE (no /): appends to selected prim\n\n"
                 "Examples:\n"
-                "  /props/           -> asset placed at /props/\n"
-                "  /environment/     -> asset placed at /environment/\n"
-                "  /chars/hero/      -> asset placed at /chars/hero/"
+                "  /props/{name}           -> absolute, always /props/cone_character\n"
+                "  /props/{folder_type}    -> absolute, /props/character\n"
+                "  props/{name}            -> relative, /selected_prim/props/cone_character\n"
+                "  {name}                  -> relative, /selected_prim/cone_character"
             )
         ),
     ]
@@ -370,16 +436,27 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
         # Determine final prim path based on selection and mode
         final_prim_path = prim_path
 
-        # If a prim is selected and mode is NOT custom, append to selected prim
-        if base_prim is not None and base_prim.IsValid() and key != "custom":
+        # If a prim is selected, append to selected prim (for all modes)
+        if base_prim is not None and base_prim.IsValid():
             base_path = str(base_prim.GetPath()).rstrip("/")
-            final_prim_path = base_path + prim_path
-            print("[USD Ref] selected prim base: '{}', appending: {} -> '{}'".format(
-                base_path, prim_path, final_prim_path
-            ))
-        elif key == "custom":
-            # Custom path is always absolute, even if prim is selected
-            print("[USD Ref] custom mode: using path as-is (ignoring selected prim)")
+
+            # For custom mode: check if path is absolute or relative
+            if key == "custom":
+                # Absolute paths (starting with /) are used as-is
+                # Relative paths (not starting with /) are appended to selected prim
+                if prim_path.startswith("/"):
+                    print("[USD Ref] custom absolute path: using as-is (ignoring selected prim)")
+                else:
+                    final_prim_path = base_path + "/" + prim_path
+                    print("[USD Ref] custom relative path: appending to selected prim '{}' -> '{}'".format(
+                        base_path, final_prim_path
+                    ))
+            else:
+                # Regular modes always append to selected prim
+                final_prim_path = base_path + prim_path
+                print("[USD Ref] selected prim base: '{}', appending: {} -> '{}'".format(
+                    base_path, prim_path, final_prim_path
+                ))
 
         # Create the prim hierarchy
         prim = _define_prim_hierarchy(stage, final_prim_path)
