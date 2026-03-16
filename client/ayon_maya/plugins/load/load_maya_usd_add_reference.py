@@ -48,18 +48,15 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
 
             shape = mayaUsd_createStageWithNewLayer.createStageWithNewLayer()
 
-            # Get the stage directly from the proxy shape node via
-            # mayaUsd.lib.GetPrim, which is more reliable than getStage()
-            # via a UFE path.
+            # Resolve full DAG path
             shape_long = cmds.ls(shape, long=True)
             if not shape_long:
                 raise RuntimeError(
                     f"Could not find created proxy shape: {shape}"
                 )
 
-            stage = mayaUsd.lib.GetPrim(
-                shape_long[0], "/"
-            ).GetStage()
+            # mayaUsd.lib.GetStage() accepts the proxy shape DAG path directly
+            stage = mayaUsd.lib.GetStage(shape_long[0])
             if not stage:
                 raise RuntimeError(
                     f"Could not get USD stage from proxy shape: {shape_long[0]}"
@@ -94,8 +91,6 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
         if not success:
             raise RuntimeError("Failed to add reference")
 
-        # TODO: We should actually just use the data on the `Sdf.Reference`
-        #   instead of on the USDPrim
         container = containerise_prim(
             prim,
             name=name,
@@ -124,7 +119,6 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
             )
             references[index] = new_reference
 
-        # Update representation id
         prim.SetCustomDataByKey(
             "ayon:representation", context["representation"]["id"]
         )
@@ -137,7 +131,6 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
         """Remove loaded container."""
         prim = container["prim"]
 
-        # Pop the references from the prepended items list
         related_references = reversed(list(self._get_prim_references(prim)))
         for references, index in related_references:
             references.remove(references[index])
@@ -146,7 +139,6 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
 
     def _get_prim_references(self, prim):
 
-        # Get a list of all prepended references
         for prim_spec in prim.GetPrimStack():
             if not prim_spec:
                 continue
@@ -156,6 +148,4 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
 
             prepended_items = prim_spec.referenceList.prependedItems
             for index, _reference in enumerate(prepended_items):
-                # Override the matching reference identifier
-                # TODO: Make sure we only return the correct reference
                 yield prepended_items, index
