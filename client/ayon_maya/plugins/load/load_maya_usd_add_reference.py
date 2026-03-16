@@ -43,19 +43,26 @@ def _prim_path_flat(context):
 
 
 def _prim_path_by_type(context):
-    """By folder type: /character/cone_character"""
+    """By folder type: /character/cone_character
+
+    Uses the parent folder name (content type) from the path,
+    not the AYON folderType which is Asset/Shot/etc.
+    E.g., from '/assets/character/cone_character' extracts 'character'.
+    """
     folder = context.get("folder", {})
-    # Debug: print all keys in folder to see what's available
-    print("[USD Ref] folder keys available: {}".format(list(folder.keys())))
-    print("[USD Ref] full folder: {}".format(folder))
-
-    folder_type = folder.get("folderType", folder.get("type", ""))
     name = folder.get("name", context.get("asset", "asset"))
-    print("[USD Ref] folder_type='{}', name='{}'".format(folder_type, name))
 
-    if folder_type:
-        # Use the folder type as-is (already in proper case), sanitize it
-        return "/{}/{}".format(_sanitize(folder_type), _sanitize(name))
+    # Extract the content type from the folder path
+    # e.g., '/assets/character/cone_character' -> 'character'
+    path = folder.get("path", "")
+    if path:
+        parts = path.strip("/").split("/")
+        # Get the second-to-last component (the content type)
+        if len(parts) >= 2:
+            folder_type = parts[-2]  # e.g., 'character', 'environment'
+            return "/{}/{}".format(_sanitize(folder_type), _sanitize(name))
+
+    # Fallback if path doesn't have the expected structure
     return "/" + _sanitize(name)
 
 
