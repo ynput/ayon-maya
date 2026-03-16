@@ -10,7 +10,8 @@ class AudioLoader(plugin.Loader):
     product_base_types = {"audio"}
     product_types = product_base_types
     label = "Load audio"
-    representations = {"wav"}
+    representations = {"*"}
+    extensions = {"wav"}
     icon = "volume-up"
     color = "orange"
 

@@ -15,7 +15,8 @@ class MatchmoveLoader(plugin.Loader):
 
     product_base_types = {"matchmove"}
     product_types = product_base_types
-    representations = {"py", "mel"}
+    representations = {"*"}
+    extensions = {"py", "mel"}
     defaults = ["Camera", "Object", "Mocap"]
 
     label = "Run matchmove script"

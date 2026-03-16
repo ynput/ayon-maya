@@ -10,7 +10,8 @@ class MayaUsdLoader(plugin.Loader):
 
     product_base_types = {"model", "usd", "pointcache", "animation"}
     product_types = product_base_types
-    representations = {"usd", "usda", "usdc", "usdz", "abc"}
+    representations = {"*"}
+    extensions = {"usd", "usda", "usdc", "usdz", "abc"}
 
     label = "Load USD to Maya Proxy"
     order = -1

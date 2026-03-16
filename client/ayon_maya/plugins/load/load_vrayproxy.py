@@ -32,7 +32,8 @@ class VRayProxyLoader(plugin.Loader):
         "oxcache",
     }
     product_types = product_base_types
-    representations = {"vrmesh", "abc"}
+    representations = {"*"}
+    extensions = {"vrmesh", "abc"}
 
     label = "Import VRay Proxy"
     order = -10

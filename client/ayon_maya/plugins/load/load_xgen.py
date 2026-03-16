@@ -19,7 +19,8 @@ class XgenLoader(plugin.ReferenceLoader):
 
     product_base_types = {"xgen"}
     product_types = product_base_types
-    representations = {"ma", "mb"}
+    representations = {"*"}
+    extensions = {"ma", "mb"}
 
     label = "Reference Xgen"
     icon = "code-fork"

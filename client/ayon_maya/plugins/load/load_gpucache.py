@@ -11,7 +11,8 @@ class GpuCacheLoader(plugin.Loader):
 
     product_base_types = {"model", "animation", "proxyAbc", "pointcache"}
     product_types = product_base_types
-    representations = {"abc", "gpu_cache"}
+    representations = {"*"}
+    extensions = {"abc"}
 
     label = "Load Gpu Cache"
     order = -5

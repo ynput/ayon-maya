@@ -133,7 +133,8 @@ class ReferenceLoader(plugin.ReferenceLoader):
     }
     product_types = product_base_types
 
-    representations = {"ma", "abc", "fbx", "mb"}
+    representations = {"*"}
+    extensions = {"ma", "abc", "fbx", "mb"}
 
     label = "Reference"
     order = -10
@@ -399,7 +400,7 @@ class MayaUSDReferenceLoader(ReferenceLoader):
     label = "Reference Maya USD"
     product_base_types = {"usd"}
     product_types = product_base_types
-    representations = {"usd"}
+    representations = {"*"}
     extensions = {"usd", "usda", "usdc"}
 
     options = ReferenceLoader.options + [

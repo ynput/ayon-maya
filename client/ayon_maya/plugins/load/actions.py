@@ -20,7 +20,8 @@ class SetFrameRangeLoader(load.LoaderPlugin):
         "pointcache",
     }
     product_types = product_base_types
-    representations = {"abc"}
+    representations = {"*"}
+    extensions = {"abc"}
 
     label = "Set frame range"
     order = 11
@@ -56,7 +57,8 @@ class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
         "pointcache",
     }
     product_types = product_base_types
-    representations = {"abc"}
+    representations = {"*"}
+    extensions = {"abc"}
 
     label = "Set frame range (with handles)"
     order = 12
@@ -96,7 +98,8 @@ class ImportMayaLoader(ayon_maya.api.plugin.Loader):
         so you could also use it as a new base.
 
     """
-    representations = {"ma", "mb", "obj"}
+    representations = {"*"}
+    extensions = {"ma", "mb", "obj"}
     product_base_types = {
         "model",
         "pointcache",

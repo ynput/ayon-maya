@@ -21,7 +21,8 @@ class MultiverseUsdLoader(plugin.Loader):
         "animation",
     }
     product_types = product_base_types
-    representations = {"usd", "usda", "usdc", "usdz", "abc"}
+    representations = {"*"}
+    extensions = {"usd", "usda", "usdc", "usdz", "abc"}
 
     label = "Load USD to Multiverse"
     order = -10

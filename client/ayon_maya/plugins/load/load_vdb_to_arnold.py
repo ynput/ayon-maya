@@ -16,7 +16,8 @@ class LoadVDBtoArnold(plugin.Loader):
 
     product_base_types = {"vdbcache"}
     product_types = product_base_types
-    representations = {"vdb"}
+    representations = {"*"}
+    extensions = {"vdb"}
 
     label = "Load VDB to Arnold"
     icon = "cloud"
