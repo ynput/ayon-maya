@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 import uuid
 
 from ayon_core.pipeline import load
@@ -12,44 +13,96 @@ from maya import cmds
 import mayaUsd
 
 
-def _prim_path_from_context(context):
-    """Build a USD prim path that mirrors the AYON folder hierarchy.
+# ---------------------------------------------------------------------------
+# Prim path builders
+# ---------------------------------------------------------------------------
 
-    Examples:
-        /assets/character/cone_character
-        /assets/prop/rock
-        /shots/sq010/sh010
+def _sanitize(value):
+    """Replace USD-invalid characters with underscores."""
+    return re.sub(r"[^a-zA-Z0-9_]", "_", value).strip("_") or "_"
+
+
+def _prim_path_folder(context):
+    """Full folder path: /assets/character/cone_character"""
+    folder = context.get("folder", {})
+    path = folder.get("path", "")
+    if path:
+        sanitized = "/".join(
+            _sanitize(p) for p in path.strip("/").split("/") if p
+        )
+        return "/" + sanitized
+    return "/" + _sanitize(folder.get("name", "asset"))
+
+
+def _prim_path_flat(context):
+    """Flat: just the asset name — /cone_character"""
+    folder = context.get("folder", {})
+    name = folder.get("name", context.get("asset", "asset"))
+    return "/" + _sanitize(name)
+
+
+def _prim_path_by_type(context):
+    """By folder type: /character/cone_character"""
+    folder = context.get("folder", {})
+    folder_type = folder.get("folderType", folder.get("type", ""))
+    name = folder.get("name", context.get("asset", "asset"))
+    if folder_type:
+        return "/{}/{}".format(_sanitize(folder_type.lower()), _sanitize(name))
+    return "/" + _sanitize(name)
+
+
+def _prim_path_folder_product(context):
+    """Folder path + product name: /assets/character/cone_character/usdMain"""
+    base = _prim_path_folder(context)
+    product = context.get("product", {})
+    product_name = product.get("name", context.get("subset", ""))
+    if product_name:
+        return base + "/" + _sanitize(product_name)
+    return base
+
+
+_PRIM_PATH_BUILDERS = {
+    "folder_path":      _prim_path_folder,
+    "flat":             _prim_path_flat,
+    "by_type":          _prim_path_by_type,
+    "folder_product":   _prim_path_folder_product,
+}
+
+
+def _prim_path_from_context(context, options=None):
+    """Resolve the target prim path based on the selected mode.
 
     Args:
         context (dict): AYON load context.
+        options (dict): Loader options from the UI.
 
     Returns:
         str: Absolute USD prim path.
     """
-    import re
+    options = options or {}
+    mode = options.get("prim_path_mode", "folder_path")
 
-    folder = context.get("folder", {})
-    path = folder.get("path", "")  # e.g. "/assets/characters/cone_character"
+    if mode == "custom":
+        custom = options.get("custom_prim_path", "").strip()
+        if custom:
+            return custom if custom.startswith("/") else "/" + custom
+        # Fall back to folder_path if custom is empty
+        mode = "folder_path"
 
-    if path:
-        prim_path = re.sub(r"[^a-zA-Z0-9_/]", "_", path).rstrip("/")
-        if not prim_path.startswith("/"):
-            prim_path = "/" + prim_path
-        return prim_path
+    builder = _PRIM_PATH_BUILDERS.get(mode, _prim_path_folder)
+    return builder(context)
 
-    # Fallback: use asset name only
-    return "/" + re.sub(
-        r"[^a-zA-Z0-9_]", "_",
-        folder.get("name", context.get("asset", "asset"))
-    )
 
+# ---------------------------------------------------------------------------
+# Stage helpers
+# ---------------------------------------------------------------------------
 
 def _define_prim_hierarchy(stage, prim_path):
     """Ensure all ancestor Xform prims exist for the given USD path.
 
     Args:
         stage (pxr.Usd.Stage): The USD stage.
-        prim_path (str): Absolute prim path, e.g. '/assets/character/cone_character'.
+        prim_path (str): Absolute prim path.
 
     Returns:
         pxr.Usd.Prim: The leaf prim at prim_path.
@@ -72,30 +125,16 @@ def _get_stage_from_proxy_shape(shape_long):
 
     In this version of mayaUsd, getStage() accepts the plain DAG path
     without the '|world' prefix.
-
-    Args:
-        shape_long (str): Full Maya DAG path to the proxy shape.
-
-    Returns:
-        pxr.Usd.Stage or None
     """
     return mayaUsd.ufe.getStage(shape_long)
 
 
 def _get_selected_proxy_shape():
-    """Return the DAG path of a mayaUsdProxyShape in the current selection.
-
-    Checks both direct shape selection and transform parent of a shape.
-
-    Returns:
-        str or None: Full DAG path of the proxy shape, or None.
-    """
-    # Direct shape selection
+    """Return the DAG path of a mayaUsdProxyShape in the current selection."""
     shapes = cmds.ls(selection=True, type="mayaUsdProxyShape", long=True) or []
     if shapes:
         return shapes[0]
 
-    # Transform selected — check if it has a proxy shape child
     transforms = cmds.ls(selection=True, long=True) or []
     for transform in transforms:
         children = cmds.listRelatives(
@@ -108,11 +147,7 @@ def _get_selected_proxy_shape():
 
 
 def _find_any_proxy_stage():
-    """Find any mayaUsdProxyShape in the scene and return its stage.
-
-    Returns:
-        (shape_long, stage) tuple or (None, None).
-    """
+    """Find any mayaUsdProxyShape in the scene and return its stage."""
     shapes = cmds.ls(type="mayaUsdProxyShape", long=True) or []
     for shape in shapes:
         stage = _get_stage_from_proxy_shape(shape)
@@ -144,18 +179,21 @@ def _create_new_proxy_stage():
     return shape_long[0], stage
 
 
+# ---------------------------------------------------------------------------
+# Loader plugin
+# ---------------------------------------------------------------------------
+
 class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
     """Add a USD Reference into a mayaUsdProxyShape stage.
 
     Workflow (in order of priority):
     1. USD prim selected in Outliner -> reference added directly to that prim.
-    2. mayaUsdProxyShape (or its transform) selected -> loader builds the full
-       AYON folder hierarchy inside that stage and adds reference to leaf prim.
+    2. mayaUsdProxyShape (or its transform) selected -> loader builds the
+       chosen prim hierarchy inside that stage.
     3. Nothing selected -> finds first proxy shape in scene, same as (2).
     4. No proxy in scene -> creates a new stage, same as (2).
 
-    The prim path always mirrors the AYON project folder path, e.g.:
-        /assets/character/cone_character  <- reference is added here
+    The prim path strategy is configurable via the Loader UI options panel.
     """
 
     product_types = {"model", "usd", "pointcache", "animation"}
@@ -168,13 +206,62 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
 
     identifier_key = "ayon_identifier"
 
+    @classmethod
+    def get_options(cls, contexts):
+        """Options shown in the AYON Loader UI options panel."""
+        # Preview the default path from the first context
+        preview = ""
+        if contexts:
+            try:
+                preview = _prim_path_folder(contexts[0])
+            except Exception:
+                pass
+
+        return [
+            {
+                "name": "prim_path_mode",
+                "label": "Prim Path Mode",
+                "type": "enum",
+                "default": "folder_path",
+                "items": [
+                    {
+                        "label": "Folder Path  (e.g. {})".format(
+                            preview or "/assets/character/cone_character"
+                        ),
+                        "value": "folder_path",
+                    },
+                    {
+                        "label": "Flat  (e.g. /cone_character)",
+                        "value": "flat",
+                    },
+                    {
+                        "label": "By Folder Type  (e.g. /character/cone_character)",
+                        "value": "by_type",
+                    },
+                    {
+                        "label": "Folder + Product  (e.g. {}/usdMain)".format(
+                            preview or "/assets/character/cone_character"
+                        ),
+                        "value": "folder_product",
+                    },
+                    {
+                        "label": "Custom path",
+                        "value": "custom",
+                    },
+                ],
+            },
+            {
+                "name": "custom_prim_path",
+                "label": "Custom Prim Path",
+                "type": "text",
+                "default": "",
+                "placeholder": "/assets/character/cone_character",
+            },
+        ]
+
     def load(self, context, name=None, namespace=None, options=None):
 
         from pxr import Sdf
-
-        import json
-        print("=== AYON CONTEXT folder ===")
-        print(json.dumps(context.get("folder", {}), indent=2, default=str))
 
         stage = None
         prim = None
@@ -199,13 +286,11 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
         if prim is None and stage is None:
             _shape, stage = _create_new_proxy_stage()
 
-        # Build full hierarchy from AYON folder path when we have a stage
-        # but no specific prim target
+        # Build hierarchy from chosen prim path mode
         if prim is None and stage is not None:
-            prim_path = _prim_path_from_context(context)
+            prim_path = _prim_path_from_context(context, options)
             prim = _define_prim_hierarchy(stage, prim_path)
 
-            # Set defaultPrim to hierarchy root if not already set
             root_prim_name = prim_path.strip("/").split("/")[0]
             if not stage.GetRootLayer().defaultPrim:
                 stage.GetRootLayer().defaultPrim = root_prim_name
