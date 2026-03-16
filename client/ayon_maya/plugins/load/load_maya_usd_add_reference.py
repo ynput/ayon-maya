@@ -97,7 +97,6 @@ def _lookup_mode(mode):
     """Resolve mode to (key, builder) regardless of what qargparse returns.
 
     Handles: int index, exact label, stripped label, internal key.
-    Always prints the resolved result for debugging.
 
     Returns:
         (key, builder_fn) tuple. builder_fn is None for 'custom'.
@@ -105,38 +104,32 @@ def _lookup_mode(mode):
     if isinstance(mode, int):
         result = _PRIM_PATH_BUILDERS[mode]
         key, builder = result[1], result[2]
-        print("[USD Ref] mode=int({}) -> key='{}'".format(mode, key))
         return key, builder
 
     mode_str = str(mode)
-    print("[USD Ref] mode='{}'  (type={})".format(mode_str, type(mode).__name__))
 
     # 1. exact label
     if mode_str in _PRIM_PATH_BY_LABEL:
         key, builder = _PRIM_PATH_BY_LABEL[mode_str]
-        print("[USD Ref]   matched by exact label -> key='{}'".format(key))
         return key, builder
 
     # 2. stripped label (handles trailing spaces)
     stripped = mode_str.strip()
     if stripped in _PRIM_PATH_BY_LABEL_STRIP:
         key, builder = _PRIM_PATH_BY_LABEL_STRIP[stripped]
-        print("[USD Ref]   matched by stripped label -> key='{}'".format(key))
         return key, builder
 
     # 3. prefix match (handles labels like "Flat  (/cone_character)")
     for label, (key, builder) in _PRIM_PATH_BY_LABEL.items():
         if mode_str.startswith(label) or stripped.startswith(label.strip()):
-            print("[USD Ref]   matched by prefix '{}' -> key='{}'".format(label, key))
             return key, builder
 
     # 4. internal key
     if mode_str in _PRIM_PATH_BY_KEY:
         key, builder = _PRIM_PATH_BY_KEY[mode_str]
-        print("[USD Ref]   matched by key -> key='{}'".format(key))
         return key, builder
 
-    print("[USD Ref]   WARNING: no match found, falling back to folder_path")
+    # Fallback
     return "folder_path", _prim_path_folder
 
 
@@ -184,9 +177,6 @@ def _expand_custom_path(context, custom_path):
     for var_name, var_value in variables.items():
         expanded = expanded.replace("{" + var_name + "}", str(var_value))
 
-    print("[USD Ref] custom path variables: {}".format(variables))
-    print("[USD Ref] expanded custom path: '{}' -> '{}'".format(custom_path, expanded))
-
     return expanded
 
 
@@ -213,7 +203,7 @@ def _resolve_prim_path(context, mode, custom_path=""):
             # Ensure it starts with / for consistency
             expanded_path = expanded_path if expanded_path.startswith("/") else "/" + expanded_path
             return expanded_path
-        print("[USD Ref] custom path empty, falling back to folder_path")
+        # Empty custom path: fall back to folder path
         return _prim_path_folder(context)
 
     # For non-custom modes, paths from builders start with /
@@ -364,12 +354,16 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
             items=_PRIM_PATH_LABELS,
             default=0,
             help=(
-                "How to build the USD prim path for this asset.\n\n"
-                "Folder Path:    /assets/character/cone_character\n"
-                "Flat:           /cone_character\n"
-                "By Folder Type: /character/cone_character\n"
-                "Folder+Product: /assets/character/cone_character/usdMain\n"
-                "Custom:         enter a path manually below"
+                "How to organize the imported asset in the USD stage hierarchy.\n\n"
+                "MODES:\n"
+                "  Folder Path    - Full folder structure: /assets/character/cone_character\n"
+                "  Flat           - Just the asset name: /cone_character\n"
+                "  By Folder Type - Type + name: /character/cone_character\n"
+                "  Folder+Product - Path + product: /assets/character/cone_character/usdMain\n"
+                "  Custom         - Custom path with variable support (see below)\n\n"
+                "SELECTION BEHAVIOR:\n"
+                "When a USD prim is selected in the outliner, the asset will be imported\n"
+                "as a child of that prim for all modes."
             )
         ),
         qargparse.String(
@@ -439,12 +433,10 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
         is_absolute_custom = custom_path_strip.startswith("/") if custom_path_strip else False
 
         prim_path = _resolve_prim_path(context, mode, custom_path)
-        print("[USD Ref] resolved prim_path: '{}' (mode={})".format(prim_path, key))
 
         # For relative custom paths, remove leading / so concatenation with selected prim works
         if key == "custom" and not is_absolute_custom and prim_path.startswith("/"):
             prim_path = prim_path.lstrip("/")
-            print("[USD Ref] converted to relative path (no leading /): '{}'".format(prim_path))
 
         # Determine final prim path based on selection and mode
         final_prim_path = prim_path
@@ -455,21 +447,12 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
 
             # For custom mode: check if ORIGINAL path was absolute or relative
             if key == "custom":
-                if is_absolute_custom:
-                    # Absolute custom path: ignore selected prim
-                    print("[USD Ref] custom absolute path: using as-is (ignoring selected prim)")
-                else:
-                    # Relative custom path: append to selected prim with /
+                if not is_absolute_custom:
+                    # Relative custom path: append to selected prim
                     final_prim_path = base_path + "/" + prim_path
-                    print("[USD Ref] custom relative path: appending to selected prim '{}' + '{}' -> '{}'".format(
-                        base_path, prim_path, final_prim_path
-                    ))
             else:
-                # Regular modes always append to selected prim (paths start with /)
+                # Regular modes always append to selected prim
                 final_prim_path = base_path + prim_path
-                print("[USD Ref] selected prim base: '{}', appending: {} -> '{}'".format(
-                    base_path, prim_path, final_prim_path
-                ))
 
         # Create the prim hierarchy
         prim = _define_prim_hierarchy(stage, final_prim_path)
