@@ -12,6 +12,41 @@ from maya import cmds
 import mayaUsd
 
 
+def _create_stage_with_new_layer():
+    """Create a new mayaUsdProxyShape stage and return (shape_long, stage).
+
+    Handles API differences across mayaUsd versions:
+    - mayaUsd_createStageWithNewLayer.createStageWithNewLayer() -> shape name
+    - mayaUsd.ufe.createStageWithNewLayer(parent_name) -> shape name
+    """
+    from pxr import UsdGeom
+
+    cmds.loadPlugin("mayaUsdPlugin", quiet=True)
+
+    # Preferred: use the dedicated module (no args, most compatible)
+    try:
+        import mayaUsd_createStageWithNewLayer
+        shape = mayaUsd_createStageWithNewLayer.createStageWithNewLayer()
+    except Exception:
+        # Fallback: mayaUsd.ufe.createStageWithNewLayer(parent_name)
+        parent = cmds.createNode("transform", name="stage")
+        shape = mayaUsd.ufe.createStageWithNewLayer(parent)
+
+    shape_long = cmds.ls(shape, long=True)
+    if not shape_long:
+        raise RuntimeError(f"Could not find created proxy shape: {shape}")
+
+    # getStage() expects UFE path: '|world' + full_dag_path
+    ufe_path = "|world" + shape_long[0]
+    stage = mayaUsd.ufe.getStage(ufe_path)
+    if not stage:
+        raise RuntimeError(
+            f"Could not get USD stage for UFE path: {ufe_path}"
+        )
+
+    return shape_long[0], stage
+
+
 class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
     """Add a USD Reference into mayaUsdProxyShape
 
@@ -43,25 +78,7 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
             # to its root prim.
             from pxr import UsdGeom
 
-            cmds.loadPlugin("mayaUsdPlugin", quiet=True)
-
-            # createStageWithNewLayer is available directly on mayaUsd.ufe
-            shape = mayaUsd.ufe.createStageWithNewLayer()
-
-            # Resolve to full DAG path
-            shape_long = cmds.ls(shape, long=True)
-            if not shape_long:
-                raise RuntimeError(
-                    f"Could not find created proxy shape: {shape}"
-                )
-
-            # getStage() expects a UFE path: '|world' + full_dag_path
-            ufe_path = "|world" + shape_long[0]
-            stage = mayaUsd.ufe.getStage(ufe_path)
-            if not stage:
-                raise RuntimeError(
-                    f"Could not get USD stage for UFE path: {ufe_path}"
-                )
+            _shape_long, stage = _create_stage_with_new_layer()
 
             prim_path = "/root"
             UsdGeom.Xform.Define(stage, prim_path)
