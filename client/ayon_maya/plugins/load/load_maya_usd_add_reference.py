@@ -201,20 +201,27 @@ def _resolve_prim_path(context, mode, custom_path=""):
                           {folder_type}, {product_name}, {parent_folder}
 
     Returns:
-        str: Absolute USD prim path.
+        tuple: (prim_path, is_absolute)
+               - prim_path: the resolved path (may not start with / yet)
+               - is_absolute: whether the original custom_path was absolute
     """
     key, builder = _lookup_mode(mode)
 
     if key == "custom":
         path = (custom_path or "").strip()
         if path:
+            # Check if ORIGINAL path is absolute BEFORE expanding variables
+            is_absolute = path.startswith("/")
             # Expand variables in the custom path
-            path = _expand_custom_path(context, path)
-            return path if path.startswith("/") else "/" + path
+            expanded_path = _expand_custom_path(context, path)
+            # Ensure it starts with / for consistency
+            expanded_path = expanded_path if expanded_path.startswith("/") else "/" + expanded_path
+            return expanded_path, is_absolute
         print("[USD Ref] custom path empty, falling back to folder_path")
-        return _prim_path_folder(context)
+        return _prim_path_folder(context), False
 
-    return builder(context)
+    # For non-custom modes, paths from builders are always relative (start with /)
+    return builder(context), False
 
 
 # ---------------------------------------------------------------------------
@@ -430,24 +437,24 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
         mode = options.get("prim_path_mode", 0)
         custom_path = options.get("custom_prim_path", "")
         key, _ = _lookup_mode(mode)
-        prim_path = _resolve_prim_path(context, mode, custom_path)
+        prim_path, is_absolute_custom = _resolve_prim_path(context, mode, custom_path)
         print("[USD Ref] resolved prim_path: '{}' (mode={})".format(prim_path, key))
 
         # Determine final prim path based on selection and mode
         final_prim_path = prim_path
 
-        # If a prim is selected, append to selected prim (for all modes)
+        # If a prim is selected, append to selected prim (for all modes except absolute custom)
         if base_prim is not None and base_prim.IsValid():
             base_path = str(base_prim.GetPath()).rstrip("/")
 
-            # For custom mode: check if path is absolute or relative
+            # For custom mode: check if ORIGINAL path was absolute or relative
             if key == "custom":
-                # Absolute paths (starting with /) are used as-is
-                # Relative paths (not starting with /) are appended to selected prim
-                if prim_path.startswith("/"):
+                if is_absolute_custom:
+                    # Absolute custom path: ignore selected prim
                     print("[USD Ref] custom absolute path: using as-is (ignoring selected prim)")
                 else:
-                    final_prim_path = base_path + "/" + prim_path
+                    # Relative custom path: append to selected prim
+                    final_prim_path = base_path + prim_path
                     print("[USD Ref] custom relative path: appending to selected prim '{}' -> '{}'".format(
                         base_path, final_prim_path
                     ))
