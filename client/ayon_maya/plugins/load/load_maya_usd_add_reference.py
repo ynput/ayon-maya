@@ -171,7 +171,16 @@ def _define_prim_hierarchy(stage, prim_path):
     """Ensure all ancestor Xform prims exist for the given USD path."""
     from pxr import UsdGeom
 
-    parts = prim_path.strip("/").split("/")
+    # Normalize the path: strip trailing slashes, ensure leading slash
+    prim_path = "/" + prim_path.strip("/") if prim_path.strip("/") else "/"
+
+    # Split into components, filtering out empty ones
+    parts = [p for p in prim_path.strip("/").split("/") if p]
+
+    if not parts:
+        raise RuntimeError("Invalid prim path: {}".format(prim_path))
+
+    # Create all ancestors and the target prim
     current = ""
     for part in parts:
         current += "/" + part
@@ -342,23 +351,30 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
         # Resolve the prim path using the chosen mode
         mode = options.get("prim_path_mode", 0)
         custom_path = options.get("custom_prim_path", "")
+        key, _ = _lookup_mode(mode)
         prim_path = _resolve_prim_path(context, mode, custom_path)
-        print("[USD Ref] resolved prim_path: '{}'".format(prim_path))
+        print("[USD Ref] resolved prim_path: '{}' (mode={})".format(prim_path, key))
 
-        # If a prim is selected, add the resolved hierarchy as children of that prim
-        if base_prim is not None and base_prim.IsValid():
-            # Append the generated path structure to the selected prim's path
+        # Determine final prim path based on selection and mode
+        final_prim_path = prim_path
+
+        # If a prim is selected and mode is NOT custom, append to selected prim
+        if base_prim is not None and base_prim.IsValid() and key != "custom":
             base_path = str(base_prim.GetPath()).rstrip("/")
-            # Append the full relative path from the mode
-            full_prim_path = base_path + prim_path
-            print("[USD Ref] selected prim base: '{}', appending hierarchy: {} -> '{}'".format(
-                base_path, prim_path, full_prim_path
+            final_prim_path = base_path + prim_path
+            print("[USD Ref] selected prim base: '{}', appending: {} -> '{}'".format(
+                base_path, prim_path, final_prim_path
             ))
-            prim = _define_prim_hierarchy(stage, full_prim_path)
-        else:
-            # No prim selected, build from root using full hierarchy
-            prim = _define_prim_hierarchy(stage, prim_path)
-            root_prim_name = prim_path.strip("/").split("/")[0]
+        elif key == "custom":
+            # Custom path is always absolute, even if prim is selected
+            print("[USD Ref] custom mode: using path as-is (ignoring selected prim)")
+
+        # Create the prim hierarchy
+        prim = _define_prim_hierarchy(stage, final_prim_path)
+
+        # Set defaultPrim if we're at root level and don't have one
+        if not base_prim and key != "custom":
+            root_prim_name = final_prim_path.strip("/").split("/")[0]
             if not stage.GetRootLayer().defaultPrim:
                 stage.GetRootLayer().defaultPrim = root_prim_name
 
