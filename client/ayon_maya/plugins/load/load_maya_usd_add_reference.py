@@ -73,47 +73,77 @@ _PRIM_PATH_BUILDERS = [
 
 _PRIM_PATH_LABELS = [label for label, _, _ in _PRIM_PATH_BUILDERS]
 
-# label -> builder_fn  (None for custom)
-_PRIM_PATH_BY_LABEL = {label: builder for label, _, builder in _PRIM_PATH_BUILDERS}
-# also map by key as fallback
-_PRIM_PATH_BY_KEY   = {key: builder for _, key, builder in _PRIM_PATH_BUILDERS}
+# Build lookup dicts: exact label, stripped label, and key
+_PRIM_PATH_BY_LABEL         = {label: (key, builder) for label, key, builder in _PRIM_PATH_BUILDERS}
+_PRIM_PATH_BY_LABEL_STRIP   = {label.strip(): (key, builder) for label, key, builder in _PRIM_PATH_BUILDERS}
+_PRIM_PATH_BY_KEY           = {key: (key, builder) for _, key, builder in _PRIM_PATH_BUILDERS}
+
+
+def _lookup_mode(mode):
+    """Resolve mode to (key, builder) regardless of what qargparse returns.
+
+    Handles: int index, exact label, stripped label, internal key.
+    Always prints the resolved result for debugging.
+
+    Returns:
+        (key, builder_fn) tuple. builder_fn is None for 'custom'.
+    """
+    if isinstance(mode, int):
+        result = _PRIM_PATH_BUILDERS[mode]
+        key, builder = result[1], result[2]
+        print("[USD Ref] mode=int({}) -> key='{}'".format(mode, key))
+        return key, builder
+
+    mode_str = str(mode)
+    print("[USD Ref] mode='{}'  (type={})".format(mode_str, type(mode).__name__))
+
+    # 1. exact label
+    if mode_str in _PRIM_PATH_BY_LABEL:
+        key, builder = _PRIM_PATH_BY_LABEL[mode_str]
+        print("[USD Ref]   matched by exact label -> key='{}'".format(key))
+        return key, builder
+
+    # 2. stripped label (handles trailing spaces)
+    stripped = mode_str.strip()
+    if stripped in _PRIM_PATH_BY_LABEL_STRIP:
+        key, builder = _PRIM_PATH_BY_LABEL_STRIP[stripped]
+        print("[USD Ref]   matched by stripped label -> key='{}'".format(key))
+        return key, builder
+
+    # 3. prefix match (handles labels like "Flat  (/cone_character)")
+    for label, (key, builder) in _PRIM_PATH_BY_LABEL.items():
+        if mode_str.startswith(label) or stripped.startswith(label.strip()):
+            print("[USD Ref]   matched by prefix '{}' -> key='{}'".format(label, key))
+            return key, builder
+
+    # 4. internal key
+    if mode_str in _PRIM_PATH_BY_KEY:
+        key, builder = _PRIM_PATH_BY_KEY[mode_str]
+        print("[USD Ref]   matched by key -> key='{}'".format(key))
+        return key, builder
+
+    print("[USD Ref]   WARNING: no match found, falling back to folder_path")
+    return "folder_path", _prim_path_folder
 
 
 def _resolve_prim_path(context, mode, custom_path=""):
-    """Resolve the final USD prim path.
+    """Resolve the final USD prim path from the chosen mode.
 
     Args:
         context (dict): AYON load context.
-        mode (str | int): Label string from qargparse.Enum, or int index,
-                          or internal key string.
-        custom_path (str): Used only when mode == 'Custom'.
+        mode (str | int): Value from qargparse.Enum (label string or int index).
+        custom_path (str): Used only when mode resolves to 'custom'.
 
     Returns:
         str: Absolute USD prim path.
     """
-    # qargparse.Enum returns the label string
-    if isinstance(mode, int):
-        # safety: if somehow an int arrives, use as index
-        label, key, builder = _PRIM_PATH_BUILDERS[mode]
-    else:
-        mode_str = str(mode)
-        # try label lookup first (normal qargparse path)
-        builder = _PRIM_PATH_BY_LABEL.get(mode_str)
-        if builder is None and mode_str not in _PRIM_PATH_BY_LABEL:
-            # try key lookup as fallback
-            builder = _PRIM_PATH_BY_KEY.get(mode_str)
-        is_custom = (mode_str == "Custom" or mode_str == "custom")
-        if is_custom:
-            path = (custom_path or "").strip()
-            if path:
-                return path if path.startswith("/") else "/" + path
-            return _prim_path_folder(context)
+    key, builder = _lookup_mode(mode)
 
-    if builder is None:
-        # custom mode reached via int path
+    if key == "custom":
         path = (custom_path or "").strip()
         if path:
             return path if path.startswith("/") else "/" + path
+        print("[USD Ref] custom path empty, falling back to folder_path")
         return _prim_path_folder(context)
 
     return builder(context)
@@ -288,6 +318,7 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
             mode = options.get("prim_path_mode", 0)
             custom_path = options.get("custom_prim_path", "")
             prim_path = _resolve_prim_path(context, mode, custom_path)
+            print("[USD Ref] resolved prim_path: '{}'".format(prim_path))
 
             prim = _define_prim_hierarchy(stage, prim_path)
 
