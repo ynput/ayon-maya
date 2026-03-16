@@ -10,7 +10,8 @@ class LoadAsTemplate(plugin.Loader):
     product_base_types = {"workfile", "mayaScene"}
     product_types = product_base_types
     label = "Load as template"
-    representations = ["ma", "mb"]
+    representations = {"*"}
+    extensions = ["ma", "mb"]
     icon = "wrench"
     color = "#775555"
     order = 10

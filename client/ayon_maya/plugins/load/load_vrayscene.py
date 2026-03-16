@@ -12,7 +12,8 @@ class VRaySceneLoader(plugin.Loader):
 
     product_base_types = {"vrayscene_layer"}
     product_types = product_base_types
-    representations = {"vrscene"}
+    representations = {"*"}
+    extensions = {"vrscene"}
 
     label = "Import VRay Scene"
     order = -10

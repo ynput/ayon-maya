@@ -52,7 +52,8 @@ class AbcLoader(ayon_maya.api.plugin.ReferenceLoader):
         "pointcache",
     }
     product_types = product_base_types
-    representations = {"abc"}
+    representations = {"*"}
+    extensions = {"abc"}
 
     label = "Reference animation"
     order = -10
@@ -83,7 +84,8 @@ class FbxLoader(ayon_maya.api.plugin.ReferenceLoader):
         "camera",
     }
     product_types = product_base_types
-    representations = {"fbx"}
+    representations = {"*"}
+    extensions = {"fbx"}
 
     label = "Reference animation"
     order = -10

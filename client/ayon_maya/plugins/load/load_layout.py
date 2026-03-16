@@ -26,7 +26,8 @@ class LayoutLoader(plugin.Loader):
 
     product_base_types = {"layout"}
     product_types = product_base_types
-    representations = {"json"}
+    representations = {"*"}
+    extensions = {"json"}
 
     label = "Load Layout"
     order = -10

@@ -11,7 +11,8 @@ class OxRigLoader(plugin.ReferenceLoader):
 
     product_base_types = {"oxrig"}
     product_types = product_base_types
-    representations = {"ma"}
+    representations = {"*"}
+    extensions = {"ma"}
 
     label = "Load Ornatrix Rig"
     order = -11

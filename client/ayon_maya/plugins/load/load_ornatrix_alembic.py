@@ -13,7 +13,8 @@ class OxAlembicLoader(plugin.Loader):
 
     product_base_types = {"oxcache", "oxrig"}
     product_types = product_base_types
-    representations = {"abc"}
+    representations = {"*"}
+    extensions = {"abc"}
 
     label = "Ornatrix Alembic Loader"
     order = -10

@@ -46,7 +46,8 @@ class ArnoldStandinLoader(plugin.Loader):
         "oxcache"
     }
     product_types = product_base_types
-    representations = {"ass", "abc", "usda", "usdc", "usd"}
+    representations = {"*"}
+    extensions = {"ass", "abc", "usda", "usdc", "usd"}
 
     label = "Load as Arnold standin"
     order = -5
