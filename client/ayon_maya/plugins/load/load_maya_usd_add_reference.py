@@ -36,7 +36,7 @@ def _prim_path_folder(context):
 
 
 def _prim_path_flat(context):
-    """Flat — just the asset name: /cone_character"""
+    """Flat - just the asset name: /cone_character"""
     folder = context.get("folder", {})
     name = folder.get("name", context.get("asset", "asset"))
     return "/" + _sanitize(name)
@@ -62,28 +62,58 @@ def _prim_path_folder_product(context):
     return base
 
 
+# (label shown in UI, internal key, builder function)
 _PRIM_PATH_BUILDERS = [
-    # (enum_label, key, builder_fn)
-    ("Folder Path  (/assets/character/cone_character)", "folder_path", _prim_path_folder),
-    ("Flat  (/cone_character)",                         "flat",         _prim_path_flat),
-    ("By Folder Type  (/character/cone_character)",     "by_type",      _prim_path_by_type),
-    ("Folder + Product  (.../cone_character/usdMain)",  "folder_product",_prim_path_folder_product),
-    ("Custom",                                          "custom",       None),
+    ("Folder Path",    "folder_path",    _prim_path_folder),
+    ("Flat",           "flat",           _prim_path_flat),
+    ("By Folder Type", "by_type",        _prim_path_by_type),
+    ("Folder+Product", "folder_product", _prim_path_folder_product),
+    ("Custom",         "custom",         None),
 ]
 
 _PRIM_PATH_LABELS = [label for label, _, _ in _PRIM_PATH_BUILDERS]
-_PRIM_PATH_KEYS   = [key   for _, key, _ in _PRIM_PATH_BUILDERS]
+
+# label -> builder_fn  (None for custom)
+_PRIM_PATH_BY_LABEL = {label: builder for label, _, builder in _PRIM_PATH_BUILDERS}
+# also map by key as fallback
+_PRIM_PATH_BY_KEY   = {key: builder for _, key, builder in _PRIM_PATH_BUILDERS}
 
 
-def _resolve_prim_path(context, mode_index, custom_path=""):
-    """Resolve the final USD prim path from the chosen mode index."""
-    label, key, builder = _PRIM_PATH_BUILDERS[mode_index]
+def _resolve_prim_path(context, mode, custom_path=""):
+    """Resolve the final USD prim path.
 
-    if key == "custom":
+    Args:
+        context (dict): AYON load context.
+        mode (str | int): Label string from qargparse.Enum, or int index,
+                          or internal key string.
+        custom_path (str): Used only when mode == 'Custom'.
+
+    Returns:
+        str: Absolute USD prim path.
+    """
+    # qargparse.Enum returns the label string
+    if isinstance(mode, int):
+        # safety: if somehow an int arrives, use as index
+        label, key, builder = _PRIM_PATH_BUILDERS[mode]
+    else:
+        mode_str = str(mode)
+        # try label lookup first (normal qargparse path)
+        builder = _PRIM_PATH_BY_LABEL.get(mode_str)
+        if builder is None and mode_str not in _PRIM_PATH_BY_LABEL:
+            # try key lookup as fallback
+            builder = _PRIM_PATH_BY_KEY.get(mode_str)
+        is_custom = (mode_str == "Custom" or mode_str == "custom")
+        if is_custom:
+            path = (custom_path or "").strip()
+            if path:
+                return path if path.startswith("/") else "/" + path
+            return _prim_path_folder(context)
+
+    if builder is None:
+        # custom mode reached via int path
         path = (custom_path or "").strip()
         if path:
             return path if path.startswith("/") else "/" + path
-        # fallback to folder_path
         return _prim_path_folder(context)
 
     return builder(context)
@@ -233,7 +263,7 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
         stage = None
         prim = None
 
-        # Priority 1: USD prim selected via UFE — add reference directly
+        # Priority 1: USD prim selected via UFE - add reference directly
         ufe_selection = list(iter_ufe_usd_selection())
         if ufe_selection:
             assert len(ufe_selection) == 1, "Select only one USD prim please"
@@ -245,19 +275,19 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
             if proxy_shape:
                 stage = _get_stage_from_proxy_shape(proxy_shape)
 
-        # Priority 3: no selection — find any proxy stage in the scene
+        # Priority 3: no selection - find any proxy stage in the scene
         if prim is None and stage is None:
             _shape, stage = _find_any_proxy_stage()
 
-        # Priority 4: no proxy in scene — create one
+        # Priority 4: no proxy in scene - create one
         if prim is None and stage is None:
             _shape, stage = _create_new_proxy_stage()
 
         # Build hierarchy using chosen prim path mode
         if prim is None and stage is not None:
-            mode_index = options.get("prim_path_mode", 0)
+            mode = options.get("prim_path_mode", 0)
             custom_path = options.get("custom_prim_path", "")
-            prim_path = _resolve_prim_path(context, mode_index, custom_path)
+            prim_path = _resolve_prim_path(context, mode, custom_path)
 
             prim = _define_prim_hierarchy(stage, prim_path)
 
