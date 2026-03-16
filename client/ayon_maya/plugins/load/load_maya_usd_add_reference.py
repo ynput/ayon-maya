@@ -62,35 +62,148 @@ def _prim_path_folder_product(context):
 
 
 _PRIM_PATH_BUILDERS = {
-    "folder_path":      _prim_path_folder,
-    "flat":             _prim_path_flat,
-    "by_type":          _prim_path_by_type,
-    "folder_product":   _prim_path_folder_product,
+    "folder_path":    (_prim_path_folder,   "Folder Path"),
+    "flat":           (_prim_path_flat,     "Flat"),
+    "by_type":        (_prim_path_by_type,  "By Folder Type"),
+    "folder_product": (_prim_path_folder_product, "Folder + Product"),
+    "custom":         (None,                "Custom"),
 }
 
 
-def _prim_path_from_context(context, options=None):
-    """Resolve the target prim path based on the selected mode.
-
-    Args:
-        context (dict): AYON load context.
-        options (dict): Loader options from the UI.
-
-    Returns:
-        str: Absolute USD prim path.
-    """
-    options = options or {}
-    mode = options.get("prim_path_mode", "folder_path")
-
+def _prim_path_from_context(context, mode, custom_path=""):
+    """Resolve the target prim path based on the selected mode."""
     if mode == "custom":
-        custom = options.get("custom_prim_path", "").strip()
-        if custom:
-            return custom if custom.startswith("/") else "/" + custom
-        # Fall back to folder_path if custom is empty
+        path = custom_path.strip()
+        if path:
+            return path if path.startswith("/") else "/" + path
         mode = "folder_path"
 
-    builder = _PRIM_PATH_BUILDERS.get(mode, _prim_path_folder)
+    builder, _ = _PRIM_PATH_BUILDERS.get(mode, _PRIM_PATH_BUILDERS["folder_path"])
     return builder(context)
+
+
+# ---------------------------------------------------------------------------
+# Prim path dialog
+# ---------------------------------------------------------------------------
+
+def _show_prim_path_dialog(context):
+    """Show a modal dialog for prim path mode selection.
+
+    Returns:
+        (mode, custom_path) tuple, or (None, None) if cancelled.
+    """
+    from qtpy import QtWidgets, QtCore
+
+    # Pre-compute previews for each mode
+    previews = {}
+    for key, (builder, _) in _PRIM_PATH_BUILDERS.items():
+        if builder is not None:
+            try:
+                previews[key] = builder(context)
+            except Exception:
+                previews[key] = ""
+
+    class PrimPathDialog(QtWidgets.QDialog):
+        def __init__(self, parent=None):
+            super().__init__(parent)
+            self.setWindowTitle("USD Add Reference — Prim Path")
+            self.setMinimumWidth(480)
+            self.setWindowFlags(
+                self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint
+            )
+
+            layout = QtWidgets.QVBoxLayout(self)
+            layout.setSpacing(8)
+
+            # Mode selector
+            mode_layout = QtWidgets.QFormLayout()
+            self.mode_combo = QtWidgets.QComboBox()
+            for key, (_, label) in _PRIM_PATH_BUILDERS.items():
+                display = label
+                if key in previews and previews[key]:
+                    display = "{}  →  {}".format(label, previews[key])
+                self.mode_combo.addItem(display, key)
+            mode_layout.addRow("Mode:", self.mode_combo)
+            layout.addLayout(mode_layout)
+
+            # Preview label
+            self.preview_label = QtWidgets.QLabel()
+            self.preview_label.setStyleSheet(
+                "color: #aaa; font-family: monospace; padding: 4px;"
+            )
+            self.preview_label.setWordWrap(True)
+            layout.addWidget(self.preview_label)
+
+            # Custom path field
+            custom_layout = QtWidgets.QFormLayout()
+            self.custom_field = QtWidgets.QLineEdit()
+            self.custom_field.setPlaceholderText(
+                "/assets/character/cone_character"
+            )
+            self.custom_field.setEnabled(False)
+            custom_layout.addRow("Custom path:", self.custom_field)
+            layout.addLayout(custom_layout)
+
+            # Buttons
+            btn_box = QtWidgets.QDialogButtonBox(
+                QtWidgets.QDialogButtonBox.Ok
+                | QtWidgets.QDialogButtonBox.Cancel
+            )
+            btn_box.accepted.connect(self.accept)
+            btn_box.rejected.connect(self.reject)
+            layout.addWidget(btn_box)
+
+            # Connections
+            self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
+            self.custom_field.textChanged.connect(self._on_custom_changed)
+            self._on_mode_changed(0)
+
+        def _on_mode_changed(self, _index):
+            key = self.mode_combo.currentData()
+            is_custom = key == "custom"
+            self.custom_field.setEnabled(is_custom)
+            if not is_custom:
+                preview = previews.get(key, "")
+                self.preview_label.setText(
+                    "Prim path: <b>{}</b>".format(preview)
+                )
+            else:
+                self._on_custom_changed(self.custom_field.text())
+
+        def _on_custom_changed(self, text):
+            path = text.strip()
+            if path:
+                self.preview_label.setText(
+                    "Prim path: <b>{}</b>".format(
+                        path if path.startswith("/") else "/" + path
+                    )
+                )
+            else:
+                self.preview_label.setText(
+                    "<i>Enter a custom prim path above</i>"
+                )
+
+        def result_values(self):
+            return (
+                self.mode_combo.currentData(),
+                self.custom_field.text().strip(),
+            )
+
+    # Get Maya main window as parent
+    try:
+        from ayon_core.tools.utils import get_qt_app  # noqa
+        from maya import OpenMayaUI
+        import shiboken2
+        from qtpy import QtWidgets as _QtW
+        ptr = OpenMayaUI.MQtUtil.mainWindow()
+        parent = shiboken2.wrapInstance(int(ptr), _QtW.QWidget)
+    except Exception:
+        parent = None
+
+    dialog = PrimPathDialog(parent=parent)
+    if dialog.exec_() == QtWidgets.QDialog.Accepted:
+        return dialog.result_values()
+    return None, None
 
 
 # ---------------------------------------------------------------------------
@@ -98,15 +211,7 @@ def _prim_path_from_context(context, options=None):
 # ---------------------------------------------------------------------------
 
 def _define_prim_hierarchy(stage, prim_path):
-    """Ensure all ancestor Xform prims exist for the given USD path.
-
-    Args:
-        stage (pxr.Usd.Stage): The USD stage.
-        prim_path (str): Absolute prim path.
-
-    Returns:
-        pxr.Usd.Prim: The leaf prim at prim_path.
-    """
+    """Ensure all ancestor Xform prims exist for the given USD path."""
     from pxr import UsdGeom
 
     parts = prim_path.strip("/").split("/")
@@ -121,11 +226,7 @@ def _define_prim_hierarchy(stage, prim_path):
 
 
 def _get_stage_from_proxy_shape(shape_long):
-    """Get the USD stage from a proxy shape DAG path.
-
-    In this version of mayaUsd, getStage() accepts the plain DAG path
-    without the '|world' prefix.
-    """
+    """Get the USD stage from a proxy shape DAG path."""
     return mayaUsd.ufe.getStage(shape_long)
 
 
@@ -186,14 +287,18 @@ def _create_new_proxy_stage():
 class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
     """Add a USD Reference into a mayaUsdProxyShape stage.
 
-    Workflow (in order of priority):
-    1. USD prim selected in Outliner -> reference added directly to that prim.
-    2. mayaUsdProxyShape (or its transform) selected -> loader builds the
-       chosen prim hierarchy inside that stage.
-    3. Nothing selected -> finds first proxy shape in scene, same as (2).
-    4. No proxy in scene -> creates a new stage, same as (2).
+    A dialog appears on load to choose the prim path strategy:
+      - Folder Path:     /assets/character/cone_character  (default)
+      - Flat:            /cone_character
+      - By Folder Type:  /character/cone_character
+      - Folder+Product:  /assets/character/cone_character/usdMain
+      - Custom:          user-defined path
 
-    The prim path strategy is configurable via the Loader UI options panel.
+    Workflow (in order of priority):
+    1. USD prim selected -> reference added directly to it (no dialog).
+    2. ProxyShape selected -> dialog shown, hierarchy built in that stage.
+    3. No selection -> first proxy in scene used.
+    4. No proxy in scene -> new stage created.
     """
 
     product_types = {"model", "usd", "pointcache", "animation"}
@@ -206,59 +311,6 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
 
     identifier_key = "ayon_identifier"
 
-    @classmethod
-    def get_options(cls, contexts):
-        """Options shown in the AYON Loader UI options panel."""
-        # Preview the default path from the first context
-        preview = ""
-        if contexts:
-            try:
-                preview = _prim_path_folder(contexts[0])
-            except Exception:
-                pass
-
-        return [
-            {
-                "name": "prim_path_mode",
-                "label": "Prim Path Mode",
-                "type": "enum",
-                "default": "folder_path",
-                "items": [
-                    {
-                        "label": "Folder Path  (e.g. {})".format(
-                            preview or "/assets/character/cone_character"
-                        ),
-                        "value": "folder_path",
-                    },
-                    {
-                        "label": "Flat  (e.g. /cone_character)",
-                        "value": "flat",
-                    },
-                    {
-                        "label": "By Folder Type  (e.g. /character/cone_character)",
-                        "value": "by_type",
-                    },
-                    {
-                        "label": "Folder + Product  (e.g. {}/usdMain)".format(
-                            preview or "/assets/character/cone_character"
-                        ),
-                        "value": "folder_product",
-                    },
-                    {
-                        "label": "Custom path",
-                        "value": "custom",
-                    },
-                ],
-            },
-            {
-                "name": "custom_prim_path",
-                "label": "Custom Prim Path",
-                "type": "text",
-                "default": "",
-                "placeholder": "/assets/character/cone_character",
-            },
-        ]
-
     def load(self, context, name=None, namespace=None, options=None):
 
         from pxr import Sdf
@@ -266,29 +318,32 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
         stage = None
         prim = None
 
-        # Priority 1: USD prim selected via UFE
+        # Priority 1: USD prim selected via UFE — skip dialog, use prim directly
         ufe_selection = list(iter_ufe_usd_selection())
         if ufe_selection:
             assert len(ufe_selection) == 1, "Select only one USD prim please"
             prim = mayaUsd.ufe.ufePathToPrim(ufe_selection[0])
 
-        # Priority 2: mayaUsdProxyShape (or its transform) is selected
+        # Priorities 2-4: resolve stage
         if prim is None:
             proxy_shape = _get_selected_proxy_shape()
             if proxy_shape:
                 stage = _get_stage_from_proxy_shape(proxy_shape)
 
-        # Priority 3: no selection — find any proxy stage in the scene
         if prim is None and stage is None:
             _shape, stage = _find_any_proxy_stage()
 
-        # Priority 4: no proxy in scene — create one
         if prim is None and stage is None:
             _shape, stage = _create_new_proxy_stage()
 
-        # Build hierarchy from chosen prim path mode
+        # Show dialog and build hierarchy when we have a stage but no prim
         if prim is None and stage is not None:
-            prim_path = _prim_path_from_context(context, options)
+            mode, custom_path = _show_prim_path_dialog(context)
+            if mode is None:
+                # User cancelled
+                return None
+
+            prim_path = _prim_path_from_context(context, mode, custom_path)
             prim = _define_prim_hierarchy(stage, prim_path)
 
             root_prim_name = prim_path.strip("/").split("/")[0]
