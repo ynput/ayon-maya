@@ -12,6 +12,44 @@ from maya import cmds
 import mayaUsd
 
 
+def _get_stage_from_proxy_shape(shape_dag_path):
+    """Get USD stage from a mayaUsdProxyShape node.
+
+    Works across different mayaUsd plugin versions by using the
+    OpenMaya API to access the stage directly from the node.
+
+    Args:
+        shape_dag_path (str): Full DAG path to the mayaUsdProxyShape node.
+
+    Returns:
+        pxr.Usd.Stage or None
+    """
+    # Try mayaUsd.lib.GetStage (available in newer versions)
+    get_stage_fn = getattr(mayaUsd.lib, "GetStage", None)
+    if get_stage_fn is not None:
+        return get_stage_fn(shape_dag_path)
+
+    # Fallback: use OpenMaya to call the getUsdStage command on the node
+    import maya.OpenMaya as om
+    sel = om.MSelectionList()
+    sel.add(shape_dag_path)
+    dag = om.MDagPath()
+    sel.getDagPath(0, dag)
+    fn = om.MFnDependencyNode(dag.node())
+    stage_data_plug = fn.findPlug("outStageCacheId", False)
+    # Use mayaUsd mel command as last resort
+    shape_short = shape_dag_path.split("|")[-1]
+    import maya.mel as mel
+    stage = mel.eval(f'mayaUsdGetStage "{shape_short}"') if hasattr(
+        mel, 'eval') else None
+    if stage:
+        return stage
+
+    # Final fallback: use mayaUsd.ufe.getStage with UFE-style path
+    ufe_path = "|world" + shape_dag_path
+    return mayaUsd.ufe.getStage(ufe_path)
+
+
 class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
     """Add a USD Reference into mayaUsdProxyShape
 
@@ -48,18 +86,18 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
 
             shape = mayaUsd_createStageWithNewLayer.createStageWithNewLayer()
 
-            # Resolve full DAG path
             shape_long = cmds.ls(shape, long=True)
             if not shape_long:
                 raise RuntimeError(
                     f"Could not find created proxy shape: {shape}"
                 )
 
-            # mayaUsd.lib.GetStage() accepts the proxy shape DAG path directly
-            stage = mayaUsd.lib.GetStage(shape_long[0])
+            stage = _get_stage_from_proxy_shape(shape_long[0])
             if not stage:
                 raise RuntimeError(
-                    f"Could not get USD stage from proxy shape: {shape_long[0]}"
+                    f"Could not get USD stage from proxy shape: {shape_long[0]}\n"
+                    f"Available mayaUsd.lib attrs: "
+                    f"{[x for x in dir(mayaUsd.lib) if 'tage' in x]}"
                 )
 
             prim_path = "/root"
@@ -75,13 +113,9 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
         if not prim:
             raise RuntimeError("Invalid primitive")
 
-        # Define reference using Sdf.Reference so we can directly set custom
-        # data for it
         path = get_representation_path_from_context(context)
-
         references = prim.GetReferences()
 
-        # Add unique containerised data to the reference
         identifier = str(prim.GetPath()) + ":" + str(uuid.uuid4())
         identifier_data = {self.identifier_key: identifier}
         reference = Sdf.Reference(assetPath=path,
