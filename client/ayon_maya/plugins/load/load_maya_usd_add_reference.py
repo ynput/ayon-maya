@@ -68,7 +68,10 @@ def _define_prim_hierarchy(stage, prim_path):
 
 
 def _get_stage_from_proxy_shape(shape_long):
-    """Get the USD stage from a proxy shape using its UFE path.
+    """Get the USD stage from a proxy shape DAG path.
+
+    In this version of mayaUsd, getStage() accepts the plain DAG path
+    without the '|world' prefix.
 
     Args:
         shape_long (str): Full Maya DAG path to the proxy shape.
@@ -76,8 +79,7 @@ def _get_stage_from_proxy_shape(shape_long):
     Returns:
         pxr.Usd.Stage or None
     """
-    ufe_path = "|world" + shape_long
-    return mayaUsd.ufe.getStage(ufe_path)
+    return mayaUsd.ufe.getStage(shape_long)
 
 
 def _get_selected_proxy_shape():
@@ -169,6 +171,10 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
     def load(self, context, name=None, namespace=None, options=None):
 
         from pxr import Sdf
+
+        import json
+        print("=== AYON CONTEXT folder ===")
+        print(json.dumps(context.get("folder", {}), indent=2, default=str))
 
         stage = None
         prim = None
