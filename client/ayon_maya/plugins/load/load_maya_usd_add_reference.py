@@ -441,6 +441,11 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
         prim_path = _resolve_prim_path(context, mode, custom_path)
         print("[USD Ref] resolved prim_path: '{}' (mode={})".format(prim_path, key))
 
+        # For relative custom paths, remove leading / so concatenation with selected prim works
+        if key == "custom" and not is_absolute_custom and prim_path.startswith("/"):
+            prim_path = prim_path.lstrip("/")
+            print("[USD Ref] converted to relative path (no leading /): '{}'".format(prim_path))
+
         # Determine final prim path based on selection and mode
         final_prim_path = prim_path
 
@@ -454,13 +459,13 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
                     # Absolute custom path: ignore selected prim
                     print("[USD Ref] custom absolute path: using as-is (ignoring selected prim)")
                 else:
-                    # Relative custom path: append to selected prim
-                    final_prim_path = base_path + prim_path
-                    print("[USD Ref] custom relative path: appending to selected prim '{}' -> '{}'".format(
-                        base_path, final_prim_path
+                    # Relative custom path: append to selected prim with /
+                    final_prim_path = base_path + "/" + prim_path
+                    print("[USD Ref] custom relative path: appending to selected prim '{}' + '{}' -> '{}'".format(
+                        base_path, prim_path, final_prim_path
                     ))
             else:
-                # Regular modes always append to selected prim
+                # Regular modes always append to selected prim (paths start with /)
                 final_prim_path = base_path + prim_path
                 print("[USD Ref] selected prim base: '{}', appending: {} -> '{}'".format(
                     base_path, prim_path, final_prim_path
