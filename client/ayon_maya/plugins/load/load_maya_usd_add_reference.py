@@ -12,44 +12,89 @@ from maya import cmds
 import mayaUsd
 
 
-def _get_stage_from_shape(shape_long):
-    """Retrieve USD stage from a mayaUsdProxyShape node.
+def _prim_path_from_context(context):
+    """Build a USD prim path that mirrors the AYON folder hierarchy.
 
-    Matches the stage by comparing the root layer identifier stored on the
-    proxy shape's filePath attribute against all stages in the USD StageCache.
+    Examples:
+        /assets/character/cone_character
+        /assets/prop/rock
+        /shots/sq010/sh010
 
     Args:
-        shape_long (str): Full DAG path to the mayaUsdProxyShape node.
+        context (dict): AYON load context.
 
     Returns:
-        pxr.Usd.Stage
+        str: Absolute USD prim path.
     """
-    from pxr import UsdUtils
+    import re
 
-    cache = UsdUtils.StageCache.Get()
-    all_stages = cache.GetAllStages()
-    if not all_stages:
-        raise RuntimeError(
-            "USD StageCache is empty after creating proxy shape. "
-            "The stage may not have been registered yet."
-        )
+    folder = context.get("folder", {})
+    path = folder.get("path", "")  # e.g. "/assets/characters/cone_character"
 
-    # The most recently created stage will be last in the cache
-    # Match by checking the proxy shape's stageCacheId attribute
-    try:
-        cache_id_val = int(cmds.getAttr(shape_long + ".outStageCacheId"))
-        for stage in all_stages:
-            if cache.GetId(stage).ToLongInt() == cache_id_val:
-                return stage
-    except Exception:
-        pass
+    if path:
+        prim_path = re.sub(r"[^a-zA-Z0-9_/]", "_", path).rstrip("/")
+        if not prim_path.startswith("/"):
+            prim_path = "/" + prim_path
+        return prim_path
 
-    # Fallback: return the most recently added stage
-    return list(all_stages)[-1]
+    # Fallback: use asset name only
+    return "/" + re.sub(
+        r"[^a-zA-Z0-9_]", "_", folder.get("name", context.get("asset", "asset"))
+    )
 
 
-def _create_stage_with_new_layer():
-    """Create a new mayaUsdProxyShape stage and return (shape_long, stage)."""
+def _define_prim_hierarchy(stage, prim_path):
+    """Ensure all ancestor Xform prims exist for the given USD path.
+
+    Args:
+        stage (pxr.Usd.Stage): The USD stage to define prims on.
+        prim_path (str): Absolute prim path, e.g. '/assets/character/cone_character'.
+
+    Returns:
+        pxr.Usd.Prim: The leaf prim at prim_path.
+    """
+    from pxr import UsdGeom
+
+    parts = prim_path.strip("/").split("/")
+    current = ""
+    for part in parts:
+        current += "/" + part
+        existing = stage.GetPrimAtPath(current)
+        if not existing or not existing.IsValid():
+            UsdGeom.Xform.Define(stage, current)
+
+    return stage.GetPrimAtPath(prim_path)
+
+
+def _get_stage_from_proxy_shape(shape_long):
+    """Get the USD stage from a proxy shape using its UFE path.
+
+    Args:
+        shape_long (str): Full Maya DAG path to the proxy shape.
+
+    Returns:
+        pxr.Usd.Stage or None
+    """
+    ufe_path = "|world" + shape_long
+    return mayaUsd.ufe.getStage(ufe_path)
+
+
+def _find_any_proxy_stage():
+    """Find any mayaUsdProxyShape in the scene and return its stage.
+
+    Returns:
+        (shape_long, stage) tuple or (None, None) if no proxy found.
+    """
+    shapes = cmds.ls(type="mayaUsdProxyShape", long=True) or []
+    for shape in shapes:
+        stage = _get_stage_from_proxy_shape(shape)
+        if stage:
+            return shape, stage
+    return None, None
+
+
+def _create_new_proxy_stage():
+    """Create a new mayaUsdProxyShape and return (shape_long, stage)."""
     cmds.loadPlugin("mayaUsdPlugin", quiet=True)
 
     try:
@@ -63,49 +108,27 @@ def _create_stage_with_new_layer():
     if not shape_long:
         raise RuntimeError(f"Could not find created proxy shape: {shape}")
 
-    stage = _get_stage_from_shape(shape_long[0])
+    stage = _get_stage_from_proxy_shape(shape_long[0])
+    if not stage:
+        raise RuntimeError(
+            f"Could not get USD stage from newly created proxy: {shape_long[0]}\n"
+            f"Try selecting a USD prim in an existing stage before loading."
+        )
     return shape_long[0], stage
 
 
-def _prim_path_from_context(context):
-    """Build a USD prim path from the AYON load context.
-
-    Uses the folder hierarchy to mirror the project structure in USD:
-        /assets/characters/cone_character
-        /assets/props/rock
-        /shots/sq010/sh010
-
-    Args:
-        context (dict): AYON load context.
-
-    Returns:
-        str: USD prim path string.
-    """
-    folder = context.get("folder", {})
-    path = folder.get("path", "")  # e.g. "/assets/characters/cone_character"
-
-    if path:
-        # Sanitize: replace spaces/dashes with underscores, ensure no
-        # double slashes, strip trailing slash
-        import re
-        prim_path = re.sub(r"[^a-zA-Z0-9_/]", "_", path).rstrip("/")
-        if not prim_path.startswith("/"):
-            prim_path = "/" + prim_path
-        return prim_path
-
-    # Fallback: use asset name only
-    asset_name = folder.get("name", context.get("asset", "asset"))
-    return "/" + asset_name
-
-
 class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
-    """Add a USD Reference into mayaUsdProxyShape
+    """Add a USD Reference into a mayaUsdProxyShape stage.
 
-    Builds the prim path from the AYON folder hierarchy so the USD structure
-    mirrors the project organisation:
-        /assets/characters/cone_character
-        /assets/props/rock
+    Workflow:
+    - With a USD prim selected in the Outliner: adds the reference directly
+      to that prim.
+    - With no USD prim selected: finds the first proxy stage in the scene
+      (or creates one) and builds the prim hierarchy from the AYON folder
+      path before adding the reference.
 
+    The prim path mirrors the AYON project structure, e.g.:
+        /assets/character/cone_character
     """
 
     product_types = {"model", "usd", "pointcache", "animation"}
@@ -120,40 +143,37 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
 
     def load(self, context, name=None, namespace=None, options=None):
 
-        from pxr import Sdf, UsdGeom
+        from pxr import Sdf
 
         selection = list(iter_ufe_usd_selection())
-        if not selection:
-            _shape_long, stage = _create_stage_with_new_layer()
-            root_layer = stage.GetRootLayer()
-
-            # Use project path as prim path, define each ancestor
-            prim_path = _prim_path_from_context(context)
-            self._define_prim_hierarchy(stage, prim_path)
-            root_layer.defaultPrim = prim_path.strip("/").split("/")[0]
-            prim = stage.GetPrimAtPath(prim_path)
+        if selection:
+            # Primary workflow: user selected a prim — use it directly
+            assert len(selection) == 1, "Select only one USD prim please"
+            prim = mayaUsd.ufe.ufePathToPrim(selection[0])
         else:
-            assert len(selection) == 1, "Select only one PRIM please"
-            ufe_path = selection[0]
-            prim = mayaUsd.ufe.ufePathToPrim(ufe_path)
+            # No USD prim selected: find or create a proxy stage, then
+            # build the hierarchy from the AYON folder path
+            _shape, stage = _find_any_proxy_stage()
+            if stage is None:
+                _shape, stage = _create_new_proxy_stage()
 
-            # If a stage root is selected, create hierarchy under it
-            if str(prim.GetPath()) == "/":
-                stage = prim.GetStage()
-                prim_path = _prim_path_from_context(context)
-                self._define_prim_hierarchy(stage, prim_path)
-                prim = stage.GetPrimAtPath(prim_path)
+            prim_path = _prim_path_from_context(context)
+            prim = _define_prim_hierarchy(stage, prim_path)
 
-        if not prim:
-            raise RuntimeError("Invalid primitive")
+            # Set defaultPrim to the root of our path
+            root_prim_name = prim_path.strip("/").split("/")[0]
+            if not stage.GetRootLayer().defaultPrim:
+                stage.GetRootLayer().defaultPrim = root_prim_name
+
+        if not prim or not prim.IsValid():
+            raise RuntimeError("Invalid primitive — could not resolve prim path.")
 
         path = get_representation_path_from_context(context)
         references = prim.GetReferences()
 
         identifier = str(prim.GetPath()) + ":" + str(uuid.uuid4())
         identifier_data = {self.identifier_key: identifier}
-        reference = Sdf.Reference(assetPath=path,
-                                  customData=identifier_data)
+        reference = Sdf.Reference(assetPath=path, customData=identifier_data)
 
         success = references.AddReference(reference)
         if not success:
@@ -168,18 +188,6 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
         )
 
         return container
-
-    def _define_prim_hierarchy(self, stage, prim_path):
-        """Ensure all ancestor Xform prims exist for the given path."""
-        from pxr import UsdGeom
-        from pxr import Sdf
-
-        parts = prim_path.strip("/").split("/")
-        current = ""
-        for part in parts:
-            current += "/" + part
-            if not stage.GetPrimAtPath(current):
-                UsdGeom.Xform.Define(stage, current)
 
     def update(self, container, context):
         # type: (dict, dict) -> None
@@ -222,10 +230,8 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
         for prim_spec in prim.GetPrimStack():
             if not prim_spec:
                 continue
-
             if not prim_spec.hasReferences:
                 continue
-
             prepended_items = prim_spec.referenceList.prependedItems
             for index, _reference in enumerate(prepended_items):
                 yield prepended_items, index
