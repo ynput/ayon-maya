@@ -39,27 +39,30 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
 
         selection = list(iter_ufe_usd_selection())
         if not selection:
-            # Create a maya USD proxy with /root prim and add the reference
+            # No USD prim selected: create a new proxy stage and add reference
+            # to its root prim.
             import mayaUsd_createStageWithNewLayer
             from pxr import UsdGeom
 
-            # Make sure we can load the plugin
             cmds.loadPlugin("mayaUsdPlugin", quiet=True)
 
             shape = mayaUsd_createStageWithNewLayer.createStageWithNewLayer()
 
-            # createStageWithNewLayer() returns a short node name, not a full
-            # DAG path. Resolve it before passing to getStage() to avoid
-            # 'Invalid stage' errors.
+            # Get the stage directly from the proxy shape node via
+            # mayaUsd.lib.GetPrim, which is more reliable than getStage()
+            # via a UFE path.
             shape_long = cmds.ls(shape, long=True)
             if not shape_long:
                 raise RuntimeError(
                     f"Could not find created proxy shape: {shape}"
                 )
-            stage = mayaUsd.ufe.getStage('|world' + shape_long[0])
+
+            stage = mayaUsd.lib.GetPrim(
+                shape_long[0], "/"
+            ).GetStage()
             if not stage:
                 raise RuntimeError(
-                    f"Could not get USD stage from proxy shape: {shape}"
+                    f"Could not get USD stage from proxy shape: {shape_long[0]}"
                 )
 
             prim_path = "/root"
@@ -122,8 +125,6 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
             references[index] = new_reference
 
         # Update representation id
-        # TODO: Do this in prim spec where we update reference path?
-        # TODO: Store this in the Sdf.Reference CustomData instead?
         prim.SetCustomDataByKey(
             "ayon:representation", context["representation"]["id"]
         )
