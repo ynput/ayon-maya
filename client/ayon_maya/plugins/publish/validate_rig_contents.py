@@ -21,7 +21,7 @@ class ValidateRigContents(plugin.MayaInstancePlugin,
     order = ValidateContentsOrder
     label = "Rig Contents"
     families = ["rig"]
-    action = [ayon_maya.api.action.SelectInvalidAction]
+    actions = [ayon_maya.api.action.SelectInvalidAction]
     optional = True
 
     accepted_output = ["mesh", "transform"]
