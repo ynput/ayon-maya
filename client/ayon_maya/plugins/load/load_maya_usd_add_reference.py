@@ -39,7 +39,8 @@ def _prim_path_from_context(context):
 
     # Fallback: use asset name only
     return "/" + re.sub(
-        r"[^a-zA-Z0-9_]", "_", folder.get("name", context.get("asset", "asset"))
+        r"[^a-zA-Z0-9_]", "_",
+        folder.get("name", context.get("asset", "asset"))
     )
 
 
@@ -47,7 +48,7 @@ def _define_prim_hierarchy(stage, prim_path):
     """Ensure all ancestor Xform prims exist for the given USD path.
 
     Args:
-        stage (pxr.Usd.Stage): The USD stage to define prims on.
+        stage (pxr.Usd.Stage): The USD stage.
         prim_path (str): Absolute prim path, e.g. '/assets/character/cone_character'.
 
     Returns:
@@ -79,11 +80,36 @@ def _get_stage_from_proxy_shape(shape_long):
     return mayaUsd.ufe.getStage(ufe_path)
 
 
+def _get_selected_proxy_shape():
+    """Return the DAG path of a mayaUsdProxyShape in the current selection.
+
+    Checks both direct shape selection and transform parent of a shape.
+
+    Returns:
+        str or None: Full DAG path of the proxy shape, or None.
+    """
+    # Direct shape selection
+    shapes = cmds.ls(selection=True, type="mayaUsdProxyShape", long=True) or []
+    if shapes:
+        return shapes[0]
+
+    # Transform selected — check if it has a proxy shape child
+    transforms = cmds.ls(selection=True, long=True) or []
+    for transform in transforms:
+        children = cmds.listRelatives(
+            transform, shapes=True, type="mayaUsdProxyShape", fullPath=True
+        ) or []
+        if children:
+            return children[0]
+
+    return None
+
+
 def _find_any_proxy_stage():
     """Find any mayaUsdProxyShape in the scene and return its stage.
 
     Returns:
-        (shape_long, stage) tuple or (None, None) if no proxy found.
+        (shape_long, stage) tuple or (None, None).
     """
     shapes = cmds.ls(type="mayaUsdProxyShape", long=True) or []
     for shape in shapes:
@@ -94,7 +120,7 @@ def _find_any_proxy_stage():
 
 
 def _create_new_proxy_stage():
-    """Create a new mayaUsdProxyShape and return (shape_long, stage)."""
+    """Create a new mayaUsdProxyShape stage and return (shape_long, stage)."""
     cmds.loadPlugin("mayaUsdPlugin", quiet=True)
 
     try:
@@ -111,8 +137,7 @@ def _create_new_proxy_stage():
     stage = _get_stage_from_proxy_shape(shape_long[0])
     if not stage:
         raise RuntimeError(
-            f"Could not get USD stage from newly created proxy: {shape_long[0]}\n"
-            f"Try selecting a USD prim in an existing stage before loading."
+            f"Could not get USD stage from newly created proxy: {shape_long[0]}"
         )
     return shape_long[0], stage
 
@@ -120,15 +145,15 @@ def _create_new_proxy_stage():
 class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
     """Add a USD Reference into a mayaUsdProxyShape stage.
 
-    Workflow:
-    - With a USD prim selected in the Outliner: adds the reference directly
-      to that prim.
-    - With no USD prim selected: finds the first proxy stage in the scene
-      (or creates one) and builds the prim hierarchy from the AYON folder
-      path before adding the reference.
+    Workflow (in order of priority):
+    1. USD prim selected in Outliner -> reference added directly to that prim.
+    2. mayaUsdProxyShape (or its transform) selected -> loader builds the full
+       AYON folder hierarchy inside that stage and adds reference to leaf prim.
+    3. Nothing selected -> finds first proxy shape in scene, same as (2).
+    4. No proxy in scene -> creates a new stage, same as (2).
 
-    The prim path mirrors the AYON project structure, e.g.:
-        /assets/character/cone_character
+    The prim path always mirrors the AYON project folder path, e.g.:
+        /assets/character/cone_character  <- reference is added here
     """
 
     product_types = {"model", "usd", "pointcache", "animation"}
@@ -145,28 +170,44 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
 
         from pxr import Sdf
 
-        selection = list(iter_ufe_usd_selection())
-        if selection:
-            # Primary workflow: user selected a prim — use it directly
-            assert len(selection) == 1, "Select only one USD prim please"
-            prim = mayaUsd.ufe.ufePathToPrim(selection[0])
-        else:
-            # No USD prim selected: find or create a proxy stage, then
-            # build the hierarchy from the AYON folder path
-            _shape, stage = _find_any_proxy_stage()
-            if stage is None:
-                _shape, stage = _create_new_proxy_stage()
+        stage = None
+        prim = None
 
+        # Priority 1: USD prim selected via UFE
+        ufe_selection = list(iter_ufe_usd_selection())
+        if ufe_selection:
+            assert len(ufe_selection) == 1, "Select only one USD prim please"
+            prim = mayaUsd.ufe.ufePathToPrim(ufe_selection[0])
+
+        # Priority 2: mayaUsdProxyShape (or its transform) is selected
+        if prim is None:
+            proxy_shape = _get_selected_proxy_shape()
+            if proxy_shape:
+                stage = _get_stage_from_proxy_shape(proxy_shape)
+
+        # Priority 3: no selection — find any proxy stage in the scene
+        if prim is None and stage is None:
+            _shape, stage = _find_any_proxy_stage()
+
+        # Priority 4: no proxy in scene — create one
+        if prim is None and stage is None:
+            _shape, stage = _create_new_proxy_stage()
+
+        # Build full hierarchy from AYON folder path when we have a stage
+        # but no specific prim target
+        if prim is None and stage is not None:
             prim_path = _prim_path_from_context(context)
             prim = _define_prim_hierarchy(stage, prim_path)
 
-            # Set defaultPrim to the root of our path
+            # Set defaultPrim to hierarchy root if not already set
             root_prim_name = prim_path.strip("/").split("/")[0]
             if not stage.GetRootLayer().defaultPrim:
                 stage.GetRootLayer().defaultPrim = root_prim_name
 
         if not prim or not prim.IsValid():
-            raise RuntimeError("Invalid primitive — could not resolve prim path.")
+            raise RuntimeError(
+                "Could not resolve a valid USD prim to add the reference to."
+            )
 
         path = get_representation_path_from_context(context)
         references = prim.GetReferences()
