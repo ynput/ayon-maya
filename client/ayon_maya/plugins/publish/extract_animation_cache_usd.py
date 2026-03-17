@@ -142,7 +142,8 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
             ),
             "frameStride": frame_step,
             "stripNamespaces": creator_attrs.get("stripNamespaces", True),
-            "exportRoots": transforms,  # Only export selected transforms
+            # NOTE: Don't use exportRoots - it requires a parent-child hierarchy
+            # Instead, rely on the selection and filterTypes
             "mergeTransformAndShape": False,  # Keep transforms separate (don't merge with shapes)
             "exportDisplayColor": False,
             "exportVisibility": False,  # Don't export visibility
@@ -157,9 +158,9 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
             "eulerFilter": True,
         }
 
-        # filterTypes INCLUDES only these types (doesn't exclude)
-        # This ensures we export ONLY transforms, not mesh/camera/light/etc
-        options["filterTypes"] = ["xform", "transform"]
+        # Note: filterTypes may cause issues, removed to test basic export
+        # The "transforms" list (filtered to type="transform") should prevent
+        # shape/mesh/etc nodes from being exported since they won't be selected
 
         # worldspace parameter requires Maya USD 0.21.0+
         try:
