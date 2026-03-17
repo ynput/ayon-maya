@@ -15,12 +15,93 @@ from ayon_core.pipeline import PublishValidationError
 from ayon_maya.api import plugin
 from ayon_maya.api.lib import maintained_selection
 from maya import cmds
-from pxr import Sdf
+from pxr import Sdf, Usd
 
 
 def parse_version(version_str):
     """Parse string like '0.21.0' to (0, 21, 0)"""
     return tuple(int(v) for v in version_str.split("."))
+
+
+def _flatten_usd_hierarchy(filepath):
+    """Flatten unnecessary hierarchy in USD file after export.
+
+    Maya USD exports maintain the full hierarchy even when exporting
+    a single transform. This function finds the deepest prim in a linear
+    hierarchy (A > B > C) and moves it to the root level.
+
+    Example:
+        Before: /rigParent > /rigParent/rig > /rigParent/rig/cone_character
+        After:  /cone_character
+
+    Args:
+        filepath: Path to USD file (.usd or .usda)
+
+    Returns:
+        bool: True if modified, False if no changes needed
+    """
+
+    try:
+        # Open with Usd to preserve all data
+        stage = Usd.Stage.Open(filepath)
+        if not stage:
+            return False
+
+        root_prims = stage.GetRootLayer().rootPrims
+        if len(root_prims) != 1:
+            return False
+
+        root_prim = root_prims[0]
+        root_path = Sdf.Path(root_prim.path)
+
+        # Find deepest prim in linear chain
+        prim_path = root_path
+        hierarchy_depth = 0
+
+        while True:
+            prim_spec = stage.GetRootLayer().GetPrimAtPath(prim_path)
+            if not prim_spec:
+                break
+
+            # Get children
+            children_paths = [child.path for child in prim_spec.nameChildren]
+            if len(children_paths) != 1:
+                break
+
+            prim_path = children_paths[0]
+            hierarchy_depth += 1
+
+        # If deep hierarchy found, flatten it
+        if hierarchy_depth > 0:
+            leaf_prim_spec = stage.GetRootLayer().GetPrimAtPath(prim_path)
+            if not leaf_prim_spec:
+                return False
+
+            leaf_name = prim_path.name
+
+            # Create new prim at root with same name as leaf
+            new_root_spec = Sdf.PrimSpec(stage.GetRootLayer(), leaf_name, leaf_prim_spec.specifier)
+
+            # Copy attributes
+            for attr_name in leaf_prim_spec.attributes:
+                attr = leaf_prim_spec.attributes[attr_name]
+                new_root_spec.attributes[attr_name] = attr
+
+            # Copy child prims
+            for child in leaf_prim_spec.nameChildren:
+                new_root_spec.nameChildren.append(child)
+
+            # Replace root prims
+            stage.GetRootLayer().rootPrims[:] = [new_root_spec]
+
+            # Save
+            stage.GetRootLayer().Save()
+            return True
+
+    except Exception as e:
+        return False
+
+    return False
 
 
 class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
@@ -209,6 +290,20 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
             raise PublishValidationError(
                 f"USD export failed, file not created: {filepath}"
             )
+
+        # Post-process: flatten unnecessary hierarchy
+        # Maya USD creates rigParent > rig > cone_character structure
+        # We want just cone_character at the root
+        self.log.info("Flattening USD hierarchy (removing parent prims)...")
+        try:
+            was_flattened = _flatten_usd_hierarchy(filepath)
+            if was_flattened:
+                self.log.info("✓ USD hierarchy flattened successfully")
+            else:
+                self.log.debug("No hierarchy flattening needed")
+        except Exception as e:
+            self.log.warning(f"Could not flatten hierarchy: {e}")
+            # Continue anyway - the file is still valid
 
         self.log.debug(f"Exported animation cache: {filepath}")
         return filepath
