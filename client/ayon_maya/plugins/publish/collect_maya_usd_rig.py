@@ -75,10 +75,11 @@ class CollectMayaUsdRig(plugin.MayaInstancePlugin):
                     "Use 'Maya USD Layer Editor' to set target layer"
                 )
 
-            # Store edit target layer identifier for extractor
-            instance.data["usdEditTargetLayer"] = edit_target.identifier
+            # Store edit target layer for extractor
+            edit_layer = edit_target.GetLayer()
+            instance.data["usdEditTargetLayer"] = edit_layer
             self.log.debug(
-                f"Edit target layer: {edit_target.GetDisplayName()}"
+                f"Edit target layer: {edit_layer.GetDisplayName()}"
             )
 
         except ImportError as e:
