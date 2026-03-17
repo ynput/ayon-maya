@@ -619,6 +619,13 @@ class ExtractMayaUsdAnimModel(BaseSettingsModel):
     active: bool = SettingsField(title="Active")
 
 
+class ExtractMayaUsdRigModel(BaseSettingsModel):
+    """Extract Maya USD Rig - Export rig with Maya Reference Prim"""
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+
+
 class ExtractMayaSceneRawModel(BaseSettingsModel):
     """Add loaded instances to those published families:"""
     enabled: bool = SettingsField(title="ExtractMayaSceneRaw")
@@ -1142,6 +1149,10 @@ class PublishersModel(BaseSettingsModel):
     ExtractMayaUsdAnim: ExtractMayaUsdAnimModel = SettingsField(
         default_factory=ExtractMayaUsdAnimModel,
         title="Extract Maya USD with Animation"
+    )
+    ExtractMayaUsdRig: ExtractMayaUsdRigModel = SettingsField(
+        default_factory=ExtractMayaUsdRigModel,
+        title="Extract Maya USD Rig"
     )
     ExtractSkeletonMesh: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -1786,6 +1797,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "active": False,
+    },
+    "ExtractMayaUsdRig": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
     },
     "ExtractSkeletonMesh": {
         "enabled": True,

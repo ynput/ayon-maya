@@ -73,6 +73,11 @@ class CreateMultiverseLookModel(BasicCreatorModel):
     publish_mip_map: bool = SettingsField(title="publish_mip_map")
 
 
+class CreateMayaUsdRigModel(BasicCreatorModel):
+    """Settings for CreateMayaUsdRig"""
+    pass
+
+
 class BasicExportMeshModel(BasicCreatorModel):
     write_face_sets: bool = SettingsField(title="Write Face Sets")
     include_shaders: bool = SettingsField(title="Include Shaders")
@@ -194,6 +199,10 @@ class CreatorsModel(BaseSettingsModel):
     CreateMayaUsdLayer: BasicCreatorModel = SettingsField(
         default_factory=BasicCreatorModel,
         title="Create Maya USD Export Layer"
+    )
+    CreateMayaUsdRig: CreateMayaUsdRigModel = SettingsField(
+        default_factory=CreateMayaUsdRigModel,
+        title="Create Maya USD: Rig"
     )
     CreateModel: BasicExportMeshModel = SettingsField(
         default_factory=BasicExportMeshModel,
@@ -339,6 +348,7 @@ DEFAULT_CREATORS_SETTINGS = {
     "CreateMayaScene": {"default_variants": ["Main"], "enabled": True},
     "CreateMayaUsd": {"default_variants": ["Main"], "enabled": True},
     "CreateMayaUsdLayer": {"default_variants": ["Main"], "enabled": True},
+    "CreateMayaUsdRig": {"default_variants": ["Main"], "enabled": True},
     "CreateModel": {
         "default_variants": ["Main", "Proxy", "Sculpt"],
         "enabled": True,
