@@ -96,11 +96,17 @@ class CreateAnimationCacheUsd(plugin.MayaCreator):
             TextDef("originalAssetPrimPath",
                     label="Original Asset Prim Path",
                     default="",
-                    placeholder="/layout/character",
+                    placeholder="/assets/character/cone_character",
                     tooltip=(
-                        "Full prim path of the original asset in the shot.\n"
-                        "Usually auto-detected from loaded containers.\n"
-                        "Example: /layout/character or /assets/character"
+                        "Full USD prim path of the original asset in the "
+                        "shot stage.\n\n"
+                        "AUTO-DETECTED: This is normally resolved "
+                        "automatically from loaded USD containers (the prims "
+                        "with Ayon metadata). You do NOT need to fill this "
+                        "manually unless auto-detection fails.\n\n"
+                        "If auto-detection fails, enter the full prim path "
+                        "as it appears in the USD stage outliner.\n"
+                        "Example: /assets/character/cone_character"
                     ))
         )
 

@@ -10,13 +10,12 @@ Outputs two representations:
 """
 
 import os
-from typing import Optional
 
 from ayon_core.pipeline import PublishValidationError
 from ayon_maya.api import plugin
-from ayon_maya.api.lib import maintained_selection, maintained_time
+from ayon_maya.api.lib import maintained_selection
 from maya import cmds
-from pxr import Sdf, Usd
+from pxr import Sdf
 
 
 class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
@@ -95,20 +94,14 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
         filename = f"{instance.name}_cache.usda"
         filepath = os.path.join(staging_dir, filename).replace("\\", "/")
 
-        # Get animation settings
-        attr_values = self.get_attr_values_from_data(instance.data)
+        # Get animation settings from creator attributes
+        creator_attrs = instance.data.get("creator_attributes", {})
         sampling_mode = instance.data.get("samplingMode", "sparse")
         custom_step = instance.data.get("customStepSize", 1.0)
 
         # Determine frame step based on sampling mode
         frame_step = 1.0
-        if sampling_mode == "sparse":
-            # Sparse: export only keyframes
-            # We'll set this via exportAnimationData and let USD figure it out
-            frame_step = 1.0
-        elif sampling_mode == "per_frame":
-            frame_step = 1.0
-        elif sampling_mode == "custom":
+        if sampling_mode == "custom":
             frame_step = custom_step
 
         # Get members to export
@@ -127,13 +120,13 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
                 instance.data.get("frameEnd", 1)
             ),
             "frameStride": frame_step,
-            "stripNamespaces": attr_values.get("stripNamespaces", True),
+            "stripNamespaces": creator_attrs.get("stripNamespaces", True),
             "mergeTransformAndShape": True,
             "exportDisplayColor": False,
             "exportVisibility": True,
-            "staticSingleSample": False,  # Important: allow animation
+            "staticSingleSample": False,
             "worldspace": True,
-            "defaultUSDFormat": attr_values.get("defaultUSDFormat", "usda"),
+            "defaultUSDFormat": creator_attrs.get("defaultUSDFormat", "usda"),
         }
 
         # Export USD with animation
