@@ -18,6 +18,11 @@ from maya import cmds
 from pxr import Sdf
 
 
+def parse_version(version_str):
+    """Parse string like '0.21.0' to (0, 21, 0)"""
+    return tuple(int(v) for v in version_str.split("."))
+
+
 class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
     """Extract animation cache as USD with contribution layer."""
 
@@ -124,9 +129,19 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
             "exportDisplayColor": False,
             "exportVisibility": True,
             "staticSingleSample": False,
-            "worldspace": True,
             "defaultUSDFormat": creator_attrs.get("defaultUSDFormat", "usda"),
         }
+
+        # worldspace parameter requires Maya USD 0.21.0+
+        try:
+            maya_usd_version = parse_version(
+                cmds.pluginInfo("mayaUsdPlugin", query=True, version=True)
+            )
+            if maya_usd_version >= (0, 21, 0):
+                options["worldspace"] = True
+        except Exception:
+            # If we can't determine version, skip worldspace parameter
+            pass
 
         # Export USD with animation
         with maintained_selection():
