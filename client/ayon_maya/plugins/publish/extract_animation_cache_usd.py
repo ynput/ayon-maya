@@ -67,12 +67,12 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
         })
 
         # Representation 2: Contribution layer
+        # This layer can be manually added to the shot USD or used by custom scripts
         instance.data["representations"].append({
             "name": "animationContribution",
             "ext": "usda",
             "files": contribution_filename,
-            "stagingDir": staging_dir,
-            "outputName": "contribution"
+            "stagingDir": staging_dir
         })
 
         self.log.info(
