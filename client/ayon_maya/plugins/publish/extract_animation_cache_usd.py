@@ -114,7 +114,6 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
         # Prepare export options
         options = {
             "file": filepath,
-            "exportAnimationData": True,
             "frameRange": (
                 instance.data.get("frameStart", 1),
                 instance.data.get("frameEnd", 1)
