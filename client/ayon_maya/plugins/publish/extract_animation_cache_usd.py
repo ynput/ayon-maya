@@ -40,45 +40,34 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
         3. Generate both representations
         """
 
-        staging_dir = self.staging_dir(instance)
-
         # 1. Export animation cache USD
         self.log.info("Exporting animation cache USD...")
         cache_file = self._export_animation_cache(instance, staging_dir)
         cache_filename = os.path.basename(cache_file)
 
-        # 2. Create contribution layer with override structure
+        # 2. Create contribution layer (for reference/manual use)
         self.log.info("Creating USD contribution layer...")
         contribution_file = self._create_contribution_layer(
             instance, staging_dir, cache_filename
         )
         contribution_filename = os.path.basename(contribution_file)
 
-        # 3. Add representations
+        # 3. Add representation
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
-        # Representation 1: Animation cache
+        # Main representation: Animation cache USD
         instance.data["representations"].append({
-            "name": "animationCacheUsd",
+            "name": "usd",
             "ext": "usda",
             "files": cache_filename,
             "stagingDir": staging_dir
         })
 
-        # Representation 2: Contribution layer
-        # This layer can be manually added to the shot USD or used by custom scripts
-        instance.data["representations"].append({
-            "name": "animationContribution",
-            "ext": "usda",
-            "files": contribution_filename,
-            "stagingDir": staging_dir
-        })
-
         self.log.info(
-            f"Extracted animation cache: "
-            f"cache={cache_filename}, "
-            f"contribution={contribution_filename}"
+            f"Extracted animation cache: {cache_filename}\n"
+            f"Contribution layer: {contribution_filename}\n"
+            f"(Contribution layer can be manually added to shot USD)"
         )
 
     def _export_animation_cache(self, instance, staging_dir) -> str:
