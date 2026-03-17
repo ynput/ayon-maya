@@ -13,12 +13,13 @@ Outputs:
 The workflow:
 1. Select the deformed geometry (typically from inside the rigged asset)
 2. Export with proper options (no skeleton, no skin, no rig)
-3. Result: Clean point cache with mesh animation
+3. Post-process to remap hierarchy to match original asset prim path
+4. Result: Clean point cache with correct hierarchy for sublayer composition
 
 Usage:
 - Select: /assets/character/cone_character/geo/cone_character_GEO (or similar)
 - Publish with animationCacheUsd family
-- Get: point_cache.usd with animated mesh points
+- Get: point_cache.usd with animated mesh at the correct prim path
 """
 
 import os
@@ -48,7 +49,7 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
 
         Steps:
         1. Export selected geometry with animation (as point cache)
-        2. Clean up any unwanted structure
+        2. Remap hierarchy to match original asset prim path
         3. Generate representation
         """
 
@@ -57,13 +58,16 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
         # 1. Export animation cache USD (point cache)
         self.log.info("Exporting animation cache USD (point cache)...")
         cache_file = self._export_animation_cache(instance, staging_dir)
+
+        # 2. Remap hierarchy to match original asset prim path
+        self._remap_to_asset_hierarchy(cache_file, instance)
+
         cache_filename = os.path.basename(cache_file)
 
-        # 2. Add representation
+        # 3. Add representation
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
-        # Main representation: Animation cache USD
         instance.data["representations"].append({
             "name": "usd",
             "ext": "usd",
@@ -71,7 +75,7 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
             "stagingDir": staging_dir
         })
 
-        self.log.info(f"✓ Extracted point cache: {cache_filename}")
+        self.log.info(f"Extracted point cache: {cache_filename}")
 
     def _export_animation_cache(self, instance, staging_dir) -> str:
         """Export animated geometry as USD point cache.
@@ -113,32 +117,33 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
             )
 
         self.log.info(f"Exporting point cache for: {members}")
-        self.log.debug(f"Frame range: {instance.data.get('frameStart', 1)}-{instance.data.get('frameEnd', 1)}")
+        self.log.debug(
+            f"Frame range: {instance.data.get('frameStart', 1)}"
+            f"-{instance.data.get('frameEnd', 1)}"
+        )
         self.log.debug(f"Sampling: {sampling_mode} (step: {frame_step})")
 
         # Prepare export options for POINT CACHE
-        # Key: exportSkels and exportSkin should be "none" to skip rig structure
         options = {
             "file": filepath,
+            "selection": True,
             "frameRange": (
                 instance.data.get("frameStart", 1),
                 instance.data.get("frameEnd", 1)
             ),
             "frameStride": frame_step,
-            # CRITICAL: Skip rig/skeleton export - we only want geometry
-            "exportSkels": "none",  # Don't export skeleton
-            "exportSkin": "none",  # Don't export skin clusters
-            "exportBlendShapes": True,  # Export blend shapes if present
-            # Other settings
+            "exportSkels": "none",
+            "exportSkin": "none",
+            "exportBlendShapes": True,
             "stripNamespaces": creator_attrs.get("stripNamespaces", True),
-            "mergeTransformAndShape": False,  # Keep transform and shape separate
+            "mergeTransformAndShape": False,
             "exportDisplayColor": False,
             "exportVisibility": False,
             "exportColorSets": False,
-            "exportUVs": True,  # Keep UVs for texture mapping
+            "exportUVs": True,
             "exportInstances": False,
-            "defaultUSDFormat": "usdc",  # Compressed binary
-            "staticSingleSample": False,  # Keep animation keyframes
+            "defaultUSDFormat": "usdc",
+            "staticSingleSample": False,
             "eulerFilter": True,
         }
 
@@ -150,7 +155,9 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
             if maya_usd_version >= (0, 21, 0):
                 options["worldspace"] = True
             else:
-                self.log.debug(f"Maya USD {maya_usd_version} < 0.21.0, no worldspace")
+                self.log.debug(
+                    f"Maya USD {maya_usd_version} < 0.21.0, no worldspace"
+                )
         except Exception as e:
             self.log.debug(f"Could not determine Maya USD version: {e}")
 
@@ -173,3 +180,258 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
 
         self.log.debug(f"Exported point cache USD: {filepath}")
         return filepath
+
+    # ------------------------------------------------------------------
+    # Hierarchy remapping
+    # ------------------------------------------------------------------
+
+    def _remap_to_asset_hierarchy(self, filepath, instance):
+        """Remap exported USD hierarchy to match original asset prim path.
+
+        When exporting geometry from 'Edit as Maya Data', the Maya USD
+        exporter preserves the internal Maya scene hierarchy, producing
+        paths like::
+
+            /__mayaUsd__/rigParent/rig/<asset>/geo/mesh
+
+        For the LayCache sublayer to compose correctly over the original
+        asset in the shot stage, the hierarchy must match the original
+        prim path, e.g.::
+
+            /usdShot/assets/character/<asset>/geo/mesh
+
+        This method:
+        1. Finds the asset prim in the exported hierarchy by name
+        2. Creates a new layer with the correct target hierarchy
+        3. Copies the geometry subtree to the correct location
+        4. Cleans up non-geometry prims (rig controls, materials)
+        """
+        original_path = instance.data.get("originalAssetPrimPath", "")
+        if not original_path:
+            self.log.warning(
+                "No originalAssetPrimPath available. "
+                "Cannot remap LayCache hierarchy. The exported USD will "
+                "keep the Maya scene hierarchy which may not compose "
+                "correctly as a sublayer."
+            )
+            return
+
+        target_path = Sdf.Path(original_path)
+        asset_name = target_path.name
+
+        layer = Sdf.Layer.FindOrOpen(filepath)
+        if not layer:
+            self.log.error(f"Could not open exported USD: {filepath}")
+            return
+
+        # Find the asset prim in the exported hierarchy
+        source_path = self._find_prim_by_name(layer, asset_name)
+
+        # Fallback: try namespace-suffixed match (when stripNamespaces=False)
+        if not source_path:
+            source_path = self._find_prim_by_name_suffix(layer, asset_name)
+
+        if not source_path:
+            self.log.warning(
+                f"Could not find prim '{asset_name}' in exported USD. "
+                "Hierarchy remapping skipped."
+            )
+            return
+
+        if source_path == target_path:
+            self.log.debug("Hierarchy already correct, no remapping needed")
+            return
+
+        self.log.info(f"Remapping hierarchy: {source_path} -> {target_path}")
+
+        # Build new layer with correct hierarchy
+        new_layer = Sdf.Layer.CreateAnonymous()
+        self._copy_layer_metadata(layer, new_layer)
+
+        # Create parent Xform prims for the target path
+        prefixes = target_path.GetPrefixes()
+        for prefix in prefixes[:-1]:
+            if not new_layer.GetPrimAtPath(prefix):
+                prim_spec = Sdf.CreatePrimInLayer(new_layer, prefix)
+                prim_spec.specifier = Sdf.SpecifierDef
+                prim_spec.typeName = "Xform"
+
+        # Copy the asset subtree from source to target
+        if not Sdf.CopySpec(layer, source_path, new_layer, target_path):
+            self.log.error(
+                f"Failed to copy prim specs: {source_path} -> {target_path}"
+            )
+            return
+
+        # Set defaultPrim to the topmost prim
+        new_layer.defaultPrim = prefixes[0].name
+
+        # Clean up non-geometry prims (rig controls, materials, etc.)
+        self._cleanup_non_geometry(new_layer, target_path)
+
+        # Save the remapped layer
+        new_layer.Export(filepath)
+        self.log.info(
+            f"Hierarchy remapped successfully: {source_path} -> {target_path}"
+        )
+
+    def _copy_layer_metadata(self, source_layer, target_layer):
+        """Copy layer-level metadata (timeCode, upAxis, etc.)."""
+        source_root = source_layer.pseudoRoot
+        target_root = target_layer.pseudoRoot
+
+        skip_keys = {
+            "primChildren", "defaultPrim",
+            "subLayers", "subLayerOffsets",
+        }
+        for key in source_root.ListInfoKeys():
+            if key not in skip_keys:
+                try:
+                    target_root.SetInfo(key, source_root.GetInfo(key))
+                except Exception:
+                    pass
+
+    def _find_prim_by_name(self, layer, name):
+        """Find first prim with exact name match via depth-first search."""
+
+        def _search(parent_path):
+            spec = layer.GetPrimAtPath(parent_path)
+            if not spec:
+                return None
+            for child_spec in spec.nameChildren:
+                child_path = parent_path.AppendChild(child_spec.name)
+                if child_spec.name == name:
+                    return child_path
+                result = _search(child_path)
+                if result:
+                    return result
+            return None
+
+        for root_spec in layer.rootPrims:
+            root_path = Sdf.Path.absoluteRootPath.AppendChild(root_spec.name)
+            if root_spec.name == name:
+                return root_path
+            result = _search(root_path)
+            if result:
+                return result
+        return None
+
+    def _find_prim_by_name_suffix(self, layer, name):
+        """Find prim whose name ends with ':name' (namespace handling).
+
+        When stripNamespaces is False, prim names may include namespaces
+        like 'myNs:cone_character'. This matches those cases.
+        """
+        suffix = f":{name}"
+
+        def _search(parent_path):
+            spec = layer.GetPrimAtPath(parent_path)
+            if not spec:
+                return None
+            for child_spec in spec.nameChildren:
+                child_path = parent_path.AppendChild(child_spec.name)
+                if child_spec.name.endswith(suffix):
+                    return child_path
+                result = _search(child_path)
+                if result:
+                    return result
+            return None
+
+        for root_spec in layer.rootPrims:
+            root_path = Sdf.Path.absoluteRootPath.AppendChild(root_spec.name)
+            if root_spec.name.endswith(suffix):
+                return root_path
+            result = _search(root_path)
+            if result:
+                return result
+        return None
+
+    # ------------------------------------------------------------------
+    # Non-geometry cleanup
+    # ------------------------------------------------------------------
+
+    def _cleanup_non_geometry(self, layer, root_path):
+        """Remove non-geometry prims from the pointcache.
+
+        For a pointcache sublayer we only need Mesh geometry and its
+        parent hierarchy (Xform, Scope). This removes:
+        - BasisCurves (rig control shapes)
+        - Material / Shader / NodeGraph prims
+        - MayaReference prims
+        - Empty Xform/Scope containers with no geometry descendants
+        """
+        non_geo_types = {
+            "BasisCurves", "Material", "Shader",
+            "NodeGraph", "MayaReference",
+        }
+
+        # Pass 1: collect non-geometry typed prims
+        prims_to_remove = []
+
+        def _collect_non_geo(path):
+            spec = layer.GetPrimAtPath(path)
+            if not spec:
+                return
+            if spec.typeName in non_geo_types:
+                prims_to_remove.append(path)
+                return  # skip children - they'll be removed with parent
+            for child_spec in list(spec.nameChildren):
+                _collect_non_geo(path.AppendChild(child_spec.name))
+
+        _collect_non_geo(root_path)
+
+        if prims_to_remove:
+            edit = Sdf.BatchNamespaceEdit()
+            for path in reversed(prims_to_remove):
+                edit.Add(path, Sdf.Path.emptyPath)
+            layer.Apply(edit)
+            self.log.debug(
+                f"Removed {len(prims_to_remove)} non-geometry prims"
+            )
+
+        # Pass 2: remove empty Xform/Scope containers
+        self._remove_empty_containers(layer, root_path)
+
+    def _remove_empty_containers(self, layer, root_path):
+        """Remove Xform/Scope prims that have no geometry descendants."""
+        geo_types = {
+            "Mesh", "GeomSubset", "Points",
+            "NurbsPatch", "PointInstancer",
+        }
+
+        def _has_geometry(path):
+            spec = layer.GetPrimAtPath(path)
+            if not spec:
+                return False
+            if spec.typeName in geo_types:
+                return True
+            for child_spec in spec.nameChildren:
+                if _has_geometry(path.AppendChild(child_spec.name)):
+                    return True
+            return False
+
+        def _collect_empty(path):
+            spec = layer.GetPrimAtPath(path)
+            if not spec:
+                return []
+            empties = []
+            for child_spec in list(spec.nameChildren):
+                child_path = path.AppendChild(child_spec.name)
+                child_obj = layer.GetPrimAtPath(child_path)
+                if (child_obj
+                        and child_obj.typeName in ("Xform", "Scope")
+                        and not _has_geometry(child_path)):
+                    empties.append(child_path)
+                else:
+                    empties.extend(_collect_empty(child_path))
+            return empties
+
+        empties = _collect_empty(root_path)
+        if empties:
+            edit = Sdf.BatchNamespaceEdit()
+            for path in reversed(empties):
+                edit.Add(path, Sdf.Path.emptyPath)
+            layer.Apply(edit)
+            self.log.debug(
+                f"Removed {len(empties)} empty containers"
+            )
