@@ -168,12 +168,29 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
 
         # Create Maya Reference Prim
         try:
+            self.log.debug(
+                f"Creating Maya Reference Prim with:\n"
+                f"  UFE path: {ufe_path}\n"
+                f"  MB file: {mb_file}\n"
+                f"  Namespace: {instance.name}"
+            )
             prim = mayaUsdAddMayaReference.createMayaReferencePrim(
                 ufe_path,
                 mb_file,
                 instance.name,
             )
+
+            # Check if prim creation succeeded
+            if not prim:
+                raise PublishValidationError(
+                    f"createMayaReferencePrim() returned None for prim path {prim_path}. "
+                    f"Check UFE path format and file path: {mb_file}"
+                )
+
+            self.log.debug(f"Created Maya Reference Prim at: {prim.GetPath()}")
             return prim
+        except PublishValidationError:
+            raise
         except Exception as e:
             self.log.error(f"Error creating Maya Reference Prim: {str(e)}")
             raise PublishValidationError(
