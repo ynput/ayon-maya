@@ -83,26 +83,26 @@ class CreateMayaUsdRig(plugin.MayaCreator):
             self._validate_target_layer()
 
         # Call parent to create base instance
-        super().create(product_name, instance_data, pre_create_data)
+        instance = super().create(
+            product_name, instance_data, pre_create_data
+        )
 
-        instance_node = instance_data.get("instance_node")
-        if not instance_node:
-            # Fallback: try to get from instance object set in scene
-            instance_node = next(
-                (n for n in cmds.ls(type="objectSet")
-                 if cmds.getAttr(f"{n}.instance_node", asString=True) == ""),
-                None
-            )
-
+        instance_node = instance.get("instance_node")
         if instance_node:
             self.log.info("Creating Rig instance sets...")
-            # Create standard rig sets (similar to CreateRig)
-            controls = cmds.sets(name=f"{product_name}_controls_SET", empty=True)
-            skeleton = cmds.sets(name=f"{product_name}_skeleton_SET", empty=True)
-            geometry = cmds.sets(name=f"{product_name}_geo_SET", empty=True)
-
-            # Add sets to instance
-            cmds.sets([controls, skeleton, geometry], forceElement=instance_node)
+            controls = cmds.sets(
+                name=f"{product_name}_controls_SET", empty=True
+            )
+            skeleton = cmds.sets(
+                name=f"{product_name}_skeleton_SET", empty=True
+            )
+            geometry = cmds.sets(
+                name=f"{product_name}_geo_SET", empty=True
+            )
+            cmds.sets(
+                [controls, skeleton, geometry],
+                forceElement=instance_node
+            )
             self.log.info("Rig instance sets created successfully")
 
     def _validate_target_layer(self):

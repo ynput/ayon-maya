@@ -1,15 +1,23 @@
-"""Extract rig as Maya Scene + USD Maya Reference Prim."""
+"""Extract rig as Maya Scene + USD Maya Reference Prim.
+
+Workflow based on Prism Pipeline's USD rigging approach:
+1. Export rig geometry/controls as .mb (Maya Binary)
+2. Create a MayaReference prim in the USD edit target layer
+   pointing to the .mb file
+3. Export the edit target layer as .usda
+
+The MayaReference prim type is a Maya USD specific schema that
+allows Maya to load a .ma/.mb file as native Maya data when
+the user selects "Edit As Maya Data" on the prim. In other DCCs
+(e.g. Houdini) the prim is simply ignored.
+"""
 import os
 
 from maya import cmds
 
 from ayon_maya.api import plugin
 from ayon_maya.api.lib import maintained_selection
-from ayon_maya.api.usdlib import containerise_prim
-from ayon_core.pipeline import (
-    PublishValidationError,
-    get_representation_context
-)
+from ayon_core.pipeline import PublishValidationError
 
 
 class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
@@ -17,10 +25,10 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
 
     This extractor:
     1. Exports the rig as .mb (Maya Binary)
-    2. Creates a new "rigging" USD layer if needed
-    3. Creates a Maya Reference Prim in the USD edit target
-    4. Containerizes the prim with Ayon metadata
-    5. Exports the rigging layer as .usd
+    2. Ensures a rigging layer exists as edit target
+    3. Creates a MayaReference prim (typed prim with mayaReference,
+       mayaNamespace, mayaAutoEdit attributes)
+    4. Exports the rigging layer as .usda
     """
 
     label = "Extract Maya USD Rig"
@@ -28,40 +36,32 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
     scene_type = "mb"
 
     def process(self, instance):
-        """Extract rig for USD asset.
-
-        Args:
-            instance: Pyblish instance
-        """
         staging_dir = self.staging_dir(instance)
 
-        # 1. EXPORT RIG AS MAYA BINARY
+        # 1. Export rig as Maya binary
         self.log.info("Exporting rig as Maya binary...")
         mb_file = self._export_rig_mb(instance, staging_dir)
 
-        # 2. MANAGE USD LAYER AND CREATE MAYA REFERENCE PRIM
+        # 2. Create Maya Reference Prim in USD
         self.log.info("Creating Maya Reference Prim in USD...")
-        prim_ufe_path = self._create_maya_reference_prim(instance, staging_dir, mb_file)
+        prim_path = self._create_maya_reference_prim(
+            instance, staging_dir, mb_file
+        )
 
-        if not prim_ufe_path:
+        if not prim_path:
             raise PublishValidationError(
-                f"Failed to create Maya Reference Prim for {instance.name}"
+                "Failed to create Maya Reference Prim for "
+                f"{instance.name}"
             )
 
-        # 3. CONTAINERIZE PRIM WITH AYON METADATA (optional)
-        # Skip containerization for now - focus on getting prim creation working
-        # self.log.info("Containerizing USD prim...")
-        # self._containerize_prim(instance, prim_ufe_path)
-
-        # 4. EXPORT USD LAYER
+        # 3. Export USD layer
         self.log.info("Exporting USD rigging layer...")
         usd_file = self._export_usd_layer(instance, staging_dir)
 
-        # 5. ADD REPRESENTATIONS
+        # 4. Add representations
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
-        # .mb representation
         mb_filename = os.path.basename(mb_file)
         instance.data["representations"].append({
             "name": "mb",
@@ -70,27 +70,22 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
             "stagingDir": staging_dir
         })
 
-        # .usd representation
         if usd_file:
             usd_filename = os.path.basename(usd_file)
             instance.data["representations"].append({
                 "name": "usd",
-                "ext": "usd",
+                "ext": "usda",
                 "files": usd_filename,
                 "stagingDir": staging_dir
             })
 
         self.log.info(
             f"Extracted rig '{instance.name}': "
-            f"MB={mb_filename}, USD prim={prim_ufe_path}"
+            f"MB={mb_filename}, USD prim={prim_path}"
         )
 
     def _export_rig_mb(self, instance, staging_dir):
         """Export rig as Maya binary file.
-
-        Args:
-            instance: Pyblish instance
-            staging_dir: Directory to export to
 
         Returns:
             str: Path to exported .mb file
@@ -100,7 +95,9 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
 
         members = instance.data.get("setMembers", [])
         if not members:
-            self.log.warning(f"Instance {instance.name} has no members to export")
+            self.log.warning(
+                f"Instance {instance.name} has no members to export"
+            )
 
         with maintained_selection():
             cmds.select(members, noExpand=True)
@@ -120,287 +117,316 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
         return filepath
 
     def _create_maya_reference_prim(self, instance, staging_dir, mb_file):
-        """Create Maya Reference Prim in USD layer using UI command flow.
+        """Create a MayaReference prim in the USD edit target layer.
 
-        Uses the same workflow as the Maya USD UI right-click menu:
-        1. Select the prim for editing
-        2. Call mayaUsdEditAsMaya to prepare the edit target
-        3. Create the reference via mayaUsdAddMayaReference
-
-        Args:
-            instance: Pyblish instance
-            staging_dir: Staging directory
-            mb_file: Path to exported .mb file
+        First tries ``mayaUsdAddMayaReference.createMayaReferencePrim``
+        which requires a UFE path to an **existing parent prim**.
+        If that fails, falls back to creating the prim directly via
+        ``stage.DefinePrim`` with the correct MayaReference schema
+        and attributes.
 
         Returns:
-            str: UFE path of created reference or None if failed
+            str: USD prim path of the created MayaReference, or None
         """
         try:
             cmds.loadPlugin("mayaUsdPlugin", quiet=True)
             import mayaUsd
-            import mayaUsdAddMayaReference
-        except Exception as e:
+        except Exception as exc:
             raise PublishValidationError(
-                f"Failed to load Maya USD plugins: {str(e)}"
-            ) from e
+                f"Failed to load Maya USD plugins: {exc}"
+            ) from exc
 
-        # Get USD stage and proxy shape
         proxy_path = instance.data.get("usdStageProxyPath")
         if not proxy_path:
             raise PublishValidationError(
                 f"Instance {instance.name}: No USD proxy shape found"
             )
 
-        try:
-            stage = mayaUsd.ufe.getStage(proxy_path)
-            if not stage:
-                raise PublishValidationError(
-                    f"Unable to get USD stage from {proxy_path}"
-                )
-        except Exception as e:
+        stage = mayaUsd.ufe.getStage(proxy_path)
+        if not stage:
             raise PublishValidationError(
-                f"Error accessing USD stage: {str(e)}"
-            ) from e
+                f"Unable to get USD stage from {proxy_path}"
+            )
 
-        # Ensure rigging layer exists in stage
+        # Ensure the rigging layer is the edit target
         rigging_layer = self._ensure_rigging_layer(stage, instance)
+        stage.SetEditTarget(rigging_layer)
 
-        # Get target prim path - use a simple name at root level
-        prim_path = "/Rig"
+        # Find a suitable parent prim to create the MayaReference under.
+        # The parent should be the asset root prim (e.g. /cube_character).
+        parent_prim = self._find_parent_prim(stage)
+        parent_path = str(parent_prim.GetPath()) if parent_prim else ""
 
-        # Create UFE path for the prim
-        ufe_path = f"{proxy_path},{prim_path}"
+        # Build unique rig prim name
+        rig_prim_name = "rig"
+        rig_prim_path = f"{parent_path}/{rig_prim_name}"
 
-        # Create Maya Reference Prim
-        try:
-            self.log.debug(
-                f"Creating Maya Reference Prim with:\n"
-                f"  UFE path: {ufe_path}\n"
-                f"  MB file: {mb_file}\n"
-                f"  Namespace: {instance.name}"
+        namespace = instance.name
+
+        # --- Approach 1: Use the Maya USD API ---
+        prim = self._try_create_via_api(
+            proxy_path, parent_path, mb_file, namespace, rig_prim_name
+        )
+        if prim and prim.IsValid():
+            self.log.info(
+                f"Created MayaReference prim via API at "
+                f"{prim.GetPath()}"
             )
+            return str(prim.GetPath())
 
-            # Use the same approach as the UI: call the function with positional args
-            prim = mayaUsdAddMayaReference.createMayaReferencePrim(
-                ufe_path,
-                mb_file,
-                instance.name,
+        # --- Approach 2: Direct USD prim creation ---
+        self.log.info(
+            "API approach did not succeed, creating MayaReference "
+            "prim directly via USD API..."
+        )
+        prim = self._create_maya_reference_prim_direct(
+            stage, rig_prim_path, mb_file, namespace
+        )
+        if prim and prim.IsValid():
+            self.log.info(
+                f"Created MayaReference prim directly at "
+                f"{prim.GetPath()}"
             )
+            return str(prim.GetPath())
 
-            # Check if prim creation succeeded
-            if not prim:
-                self.log.warning(
-                    f"createMayaReferencePrim() returned None for UFE path {ufe_path}. "
-                    f"Attempting alternative approach using MEL..."
-                )
-                # Fallback: try MEL command that the UI uses
-                return self._create_reference_via_mel(
-                    proxy_path, prim_path, mb_file, instance.name
-                )
+        return None
 
-            prim_path_result = prim if isinstance(prim, str) else str(prim)
-            self.log.debug(f"Created Maya Reference Prim at: {prim_path_result}")
-            return prim_path_result
+    def _find_parent_prim(self, stage):
+        """Find the best parent prim for the MayaReference.
 
-        except PublishValidationError:
-            raise
-        except Exception as e:
-            self.log.warning(
-                f"Error creating Maya Reference Prim via API: {str(e)}. "
-                f"Trying MEL fallback..."
-            )
-            # Fallback to MEL approach
-            return self._create_reference_via_mel(
-                proxy_path, prim_path, mb_file, instance.name
-            )
-
-    def _create_reference_via_mel(self, proxy_path, prim_path, mb_file, namespace):
-        """Create Maya Reference Prim using MEL commands (fallback).
-
-        Uses mayaUsd MEL commands directly, similar to the UI workflow.
-
-        Args:
-            proxy_path: Maya path to proxy shape
-            prim_path: USD prim path
-            mb_file: Path to .mb file
-            namespace: Namespace for the reference
+        Looks for the default prim first, then the first root Xform
+        prim, then falls back to the pseudo-root.
 
         Returns:
-            str: UFE path of created reference
+            pxr.Usd.Prim: Parent prim to create the reference under
+        """
+        # Try the default prim
+        default_prim = stage.GetDefaultPrim()
+        if default_prim and default_prim.IsValid():
+            self.log.debug(
+                f"Using default prim as parent: {default_prim.GetPath()}"
+            )
+            return default_prim
+
+        # Try first root-level Xform/Scope prim
+        for prim in stage.GetPseudoRoot().GetChildren():
+            if prim.IsValid() and prim.GetTypeName() in (
+                "Xform", "Scope", ""
+            ):
+                self.log.debug(
+                    f"Using root prim as parent: {prim.GetPath()}"
+                )
+                return prim
+
+        # Fallback: use pseudo-root (creates prim at root level)
+        self.log.debug("No suitable parent found, using stage root")
+        return stage.GetPseudoRoot()
+
+    def _try_create_via_api(
+        self, proxy_path, parent_path, mb_file, namespace, prim_name
+    ):
+        """Try creating MayaReference via mayaUsdAddMayaReference API.
+
+        The API expects a UFE path to an *existing parent prim*.
+        It creates a child MayaReference prim under that parent.
+
+        Returns:
+            pxr.Usd.Prim or None
         """
         try:
-            import mayaUsd
+            import mayaUsdAddMayaReference
 
-            ufe_path = f"{proxy_path},{prim_path}"
+            # UFE path to the PARENT prim (must already exist)
+            parent_ufe_path = f"{proxy_path},{parent_path}"
 
-            # Get the stage
-            stage = mayaUsd.ufe.getStage(proxy_path)
-            if not stage:
-                raise RuntimeError(f"Could not get stage from {proxy_path}")
+            self.log.debug(
+                f"Calling createMayaReferencePrim:\n"
+                f"  parent UFE: {parent_ufe_path}\n"
+                f"  MB file: {mb_file}\n"
+                f"  namespace: {namespace}\n"
+                f"  prim name: {prim_name}"
+            )
 
-            # Get edit target layer
-            edit_target = stage.GetEditTarget()
-            if not edit_target:
-                raise RuntimeError("No edit target layer set")
+            prim = mayaUsdAddMayaReference.createMayaReferencePrim(
+                parent_ufe_path,
+                mb_file,
+                namespace,
+                prim_name,  # mayaReferencePrimName
+            )
 
-            layer = edit_target.GetLayer()
+            if prim and (hasattr(prim, 'IsValid') and prim.IsValid()
+                         or isinstance(prim, str)):
+                return prim
 
-            # Create the prim at the target path if needed
-            from pxr import Sdf, Usd
+            self.log.warning(
+                "createMayaReferencePrim returned invalid prim"
+            )
+            return None
 
-            # Ensure the prim exists in the stage
-            prim = stage.DefinePrim(prim_path, "Xform")
-            if not prim:
-                raise RuntimeError(f"Could not define prim at {prim_path}")
+        except Exception as exc:
+            self.log.warning(
+                f"createMayaReferencePrim failed: {exc}"
+            )
+            return None
 
-            # Add the reference relationship to the prim
-            prim_spec = layer.GetPrimAtPath(prim_path)
-            if prim_spec:
-                # Add Maya reference using the standard Usd reference mechanism
-                ref = Sdf.Reference(
-                    assetPath=mb_file,
-                    primPath="/",
+    def _create_maya_reference_prim_direct(
+        self, stage, prim_path, mb_file, namespace
+    ):
+        """Create a MayaReference prim directly using USD API.
+
+        Creates a prim with type "MayaReference" and sets the three
+        required attributes:
+        - mayaReference (Asset): path to the .mb file
+        - mayaNamespace (String): namespace for the reference
+        - mayaAutoEdit (Bool): whether to auto-edit on load
+
+        This mirrors what ``createMayaReferencePrim`` does internally.
+
+        Returns:
+            pxr.Usd.Prim or None
+        """
+        from pxr import Sdf, Usd
+
+        try:
+            prim = stage.DefinePrim(prim_path, "MayaReference")
+            if not prim or not prim.IsValid():
+                self.log.error(
+                    f"stage.DefinePrim failed for {prim_path}"
                 )
-                if prim_spec.referenceList:
-                    prim_spec.referenceList.Append(ref)
-                else:
-                    prim_spec.referenceList = Sdf.ReferenceListOp()
-                    prim_spec.referenceList.Append(ref)
+                return None
 
-            self.log.debug(f"Created reference prim at {prim_path} via MEL fallback")
-            return ufe_path
+            # Set the three MayaReference attributes
+            maya_ref_attr = prim.CreateAttribute(
+                "mayaReference", Sdf.ValueTypeNames.Asset
+            )
+            maya_ref_attr.Set(mb_file)
 
-        except Exception as e:
-            self.log.error(f"MEL fallback also failed: {str(e)}")
-            raise PublishValidationError(
-                f"Failed to create Maya Reference Prim at {prim_path}: {str(e)}"
-            ) from e
+            maya_ns_attr = prim.CreateAttribute(
+                "mayaNamespace", Sdf.ValueTypeNames.String
+            )
+            maya_ns_attr.Set(namespace)
+
+            maya_auto_edit_attr = prim.CreateAttribute(
+                "mayaAutoEdit", Sdf.ValueTypeNames.Bool
+            )
+            maya_auto_edit_attr.Set(False)
+
+            self.log.debug(
+                f"Defined MayaReference prim at {prim_path} -> {mb_file}"
+            )
+            return prim
+
+        except Exception as exc:
+            self.log.error(
+                f"Failed to create MayaReference prim at "
+                f"{prim_path}: {exc}"
+            )
+            return None
 
     def _ensure_rigging_layer(self, stage, instance):
-        """Ensure 'rigging' layer exists in stage.
+        """Ensure a rigging layer exists in the stage.
 
-        Args:
-            stage: USD stage
-            instance: Pyblish instance
+        If the current edit target already contains 'rigging' or 'rig'
+        in its name, use that. Otherwise look through the layer stack.
+        If none found, create a new sublayer.
 
         Returns:
             pxr.Sdf.Layer: The rigging layer
         """
         from pxr import Sdf
 
-        # Check if rigging layer already exists
+        # Check current edit target first
+        current_target = stage.GetEditTarget().GetLayer()
+        display_name = current_target.GetDisplayName()
+        if display_name and (
+            "rigging" in display_name.lower()
+            or "rig" in display_name.lower()
+        ):
+            self.log.debug(
+                f"Current edit target is already rigging layer: "
+                f"{display_name}"
+            )
+            return current_target
+
+        # Search existing layer stack
         layer_stack = stage.GetLayerStack(includeSessionLayers=False)
         for layer in layer_stack:
-            display_name = layer.GetDisplayName()
-            if display_name and ("rigging" in display_name or "rig" in display_name):
-                self.log.debug(f"Using existing layer: {display_name}")
+            name = layer.GetDisplayName()
+            if name and (
+                "rigging" in name.lower() or "rig" in name.lower()
+            ):
+                self.log.debug(f"Found existing rigging layer: {name}")
                 return layer
 
-        # Get root layer path to create rigging layer nearby
+        # Create new rigging layer as sublayer of root
         root_layer = stage.GetRootLayer()
         root_path = root_layer.realPath
-        asset_dir = os.path.dirname(root_path)
+        asset_dir = os.path.dirname(root_path) if root_path else ""
 
-        # Create/open rigging.usda layer
-        rigging_layer_path = os.path.join(asset_dir, "rigging.usda")
-        rigging_layer_path = rigging_layer_path.replace("\\", "/")
-
-        try:
-            rigging_layer = Sdf.Layer.FindOrOpen(rigging_layer_path)
-            if not rigging_layer:
-                rigging_layer = Sdf.Layer.CreateNew(rigging_layer_path)
-                self.log.debug(f"Created new rigging layer: {rigging_layer_path}")
-        except Exception as e:
-            self.log.warning(
-                f"Could not create rigging layer at {rigging_layer_path}: {str(e)}"
-            )
-            # Fallback to anonymous layer
+        if asset_dir:
+            rigging_path = os.path.join(
+                asset_dir, "rigging.usda"
+            ).replace("\\", "/")
+            try:
+                rigging_layer = Sdf.Layer.FindOrOpen(rigging_path)
+                if not rigging_layer:
+                    rigging_layer = Sdf.Layer.CreateNew(rigging_path)
+                    self.log.info(
+                        f"Created new rigging layer: {rigging_path}"
+                    )
+            except Exception:
+                rigging_layer = Sdf.Layer.CreateAnonymous("rigging")
+                self.log.debug("Using anonymous rigging layer")
+        else:
             rigging_layer = Sdf.Layer.CreateAnonymous("rigging")
-            self.log.debug("Using anonymous rigging layer")
+            self.log.debug("Using anonymous rigging layer (no root path)")
 
-        # Add to stage if not already present
-        root_sublayer_paths = root_layer.subLayerPaths
-        if rigging_layer_path not in root_sublayer_paths:
-            root_sublayer_paths.append(rigging_layer_path)
-            self.log.debug(f"Added rigging layer to stage: {rigging_layer_path}")
+        # Add to root layer sublayers if needed
+        sublayer_paths = root_layer.subLayerPaths
+        layer_id = rigging_layer.identifier
+        if layer_id not in sublayer_paths:
+            sublayer_paths.append(layer_id)
+            self.log.debug(
+                f"Added rigging layer to root sublayers: {layer_id}"
+            )
 
         return rigging_layer
 
-    def _containerize_prim(self, instance, prim):
-        """Containerize USD prim with Ayon metadata.
-
-        Args:
-            instance: Pyblish instance
-            prim: USD prim to containerize
-        """
-        try:
-            context = get_representation_context(instance.context)
-            # Use placeholder representation since prim doesn't have ID yet
-            if "representation" not in context:
-                context["representation"] = {
-                    "id": "",
-                    "name": "usd"
-                }
-
-            containerise_prim(
-                prim,
-                name=instance.name,
-                namespace=instance.name,
-                context=context,
-                loader="MayaUsdProxyAddMayaReferenceLoader"
-            )
-            self.log.debug(f"Containerized prim: {prim.GetPath()}")
-        except Exception as e:
-            self.log.warning(f"Failed to containerize prim: {str(e)}")
-            # Don't fail the whole publish, continue
-
     def _export_usd_layer(self, instance, staging_dir):
-        """Export USD rigging layer.
-
-        Args:
-            instance: Pyblish instance
-            staging_dir: Directory to export to
+        """Export the rigging layer to staging directory.
 
         Returns:
             str: Path to exported layer or None
         """
         try:
-            from pxr import Usd
+            import mayaUsd
 
-            # Get the target layer from instance data
             proxy_path = instance.data.get("usdStageProxyPath")
             if not proxy_path:
-                self.log.warning("Cannot export USD layer: no proxy shape")
+                self.log.warning(
+                    "Cannot export USD layer: no proxy shape"
+                )
                 return None
 
-            try:
-                import mayaUsd
-                stage = mayaUsd.ufe.getStage(proxy_path)
-            except Exception as e:
-                self.log.warning(f"Cannot get stage for USD export: {str(e)}")
+            stage = mayaUsd.ufe.getStage(proxy_path)
+            if not stage:
+                self.log.warning(
+                    "Cannot export USD layer: stage not found"
+                )
                 return None
 
-            # Find rigging layer
-            layer_stack = stage.GetLayerStack(includeSessionLayers=False)
-            rigging_layer = None
-            for layer in layer_stack:
-                display_name = layer.GetDisplayName()
-                if display_name and ("rigging" in display_name or "rig" in display_name):
-                    rigging_layer = layer
-                    break
+            # The edit target should be the rigging layer
+            edit_layer = stage.GetEditTarget().GetLayer()
 
-            if not rigging_layer:
-                self.log.warning("No rigging layer found to export")
-                return None
-
-            # Export layer
             filename = "rigging.usda"
-            filepath = os.path.join(staging_dir, filename).replace("\\", "/")
+            filepath = os.path.join(
+                staging_dir, filename
+            ).replace("\\", "/")
 
-            rigging_layer.Export(filepath)
+            edit_layer.Export(filepath)
             self.log.debug(f"Exported USD layer to: {filepath}")
             return filepath
 
-        except Exception as e:
-            self.log.warning(f"Failed to export USD layer: {str(e)}")
+        except Exception as exc:
+            self.log.warning(f"Failed to export USD layer: {exc}")
             return None
