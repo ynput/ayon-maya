@@ -1,0 +1,222 @@
+"""Extract Animation Cache USD.
+
+Exports animated geometry as USD with sparse or per-frame animation data,
+and generates a contribution layer that overrides the original asset's
+geometry in the shot composition.
+
+Outputs two representations:
+1. animationCacheUsd: The animation cache USD file (standalone)
+2. animationContribution: Override layer for shot USD composition
+"""
+
+import os
+from typing import Optional
+
+from ayon_core.pipeline import PublishValidationError
+from ayon_maya.api import plugin
+from ayon_maya.api.lib import maintained_selection, maintained_time
+from maya import cmds
+from pxr import Sdf, Usd
+
+
+class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
+    """Extract animation cache as USD with contribution layer."""
+
+    label = "Extract Animation Cache USD"
+    families = ["animationCacheUsd"]
+    hosts = ["maya"]
+    scene_type = "usd"
+
+    def process(self, instance):
+        """Process the animation cache USD extraction.
+
+        Steps:
+        1. Export animated members as USD with animation data
+        2. Create contribution layer that overrides original asset /geo
+        3. Generate both representations
+        """
+
+        staging_dir = self.staging_dir(instance)
+
+        # 1. Export animation cache USD
+        self.log.info("Exporting animation cache USD...")
+        cache_file = self._export_animation_cache(instance, staging_dir)
+        cache_filename = os.path.basename(cache_file)
+
+        # 2. Create contribution layer with override structure
+        self.log.info("Creating USD contribution layer...")
+        contribution_file = self._create_contribution_layer(
+            instance, staging_dir, cache_filename
+        )
+        contribution_filename = os.path.basename(contribution_file)
+
+        # 3. Add representations
+        if "representations" not in instance.data:
+            instance.data["representations"] = []
+
+        # Representation 1: Animation cache
+        instance.data["representations"].append({
+            "name": "animationCacheUsd",
+            "ext": "usda",
+            "files": cache_filename,
+            "stagingDir": staging_dir
+        })
+
+        # Representation 2: Contribution layer
+        instance.data["representations"].append({
+            "name": "animationContribution",
+            "ext": "usda",
+            "files": contribution_filename,
+            "stagingDir": staging_dir,
+            "outputName": "contribution"
+        })
+
+        self.log.info(
+            f"Extracted animation cache: "
+            f"cache={cache_filename}, "
+            f"contribution={contribution_filename}"
+        )
+
+    def _export_animation_cache(self, instance, staging_dir) -> str:
+        """Export animated members as USD animation cache.
+
+        Args:
+            instance: Publish instance
+            staging_dir: Staging directory for output
+
+        Returns:
+            str: Path to exported USD file
+        """
+
+        # Load Maya USD plugin
+        cmds.loadPlugin("mayaUsdPlugin", quiet=True)
+
+        # Prepare output file
+        filename = f"{instance.name}_cache.usda"
+        filepath = os.path.join(staging_dir, filename).replace("\\", "/")
+
+        # Get animation settings
+        attr_values = self.get_attr_values_from_data(instance.data)
+        sampling_mode = instance.data.get("samplingMode", "sparse")
+        custom_step = instance.data.get("customStepSize", 1.0)
+
+        # Determine frame step based on sampling mode
+        frame_step = 1.0
+        if sampling_mode == "sparse":
+            # Sparse: export only keyframes
+            # We'll set this via exportAnimationData and let USD figure it out
+            frame_step = 1.0
+        elif sampling_mode == "per_frame":
+            frame_step = 1.0
+        elif sampling_mode == "custom":
+            frame_step = custom_step
+
+        # Get members to export
+        members = instance.data.get("setMembers", [])
+        if not members:
+            raise PublishValidationError(
+                f"No members to export for {instance.name}"
+            )
+
+        # Prepare export options
+        options = {
+            "file": filepath,
+            "exportAnimationData": True,
+            "frameRange": (
+                instance.data.get("frameStart", 1),
+                instance.data.get("frameEnd", 1)
+            ),
+            "frameStride": frame_step,
+            "stripNamespaces": attr_values.get("stripNamespaces", True),
+            "mergeTransformAndShape": True,
+            "exportDisplayColor": False,
+            "exportVisibility": True,
+            "staticSingleSample": False,  # Important: allow animation
+            "worldspace": True,
+            "defaultUSDFormat": attr_values.get("defaultUSDFormat", "usda"),
+        }
+
+        # Export USD with animation
+        with maintained_selection():
+            cmds.select(members, noExpand=True)
+            try:
+                cmds.mayaUSDExport(**options)
+            except RuntimeError as e:
+                raise PublishValidationError(
+                    f"Failed to export USD animation cache: {e}"
+                )
+
+        if not os.path.exists(filepath):
+            raise PublishValidationError(
+                f"USD export failed, file not created: {filepath}"
+            )
+
+        self.log.debug(f"Exported animation cache: {filepath}")
+        return filepath
+
+    def _create_contribution_layer(
+        self,
+        instance,
+        staging_dir,
+        cache_filename: str
+    ) -> str:
+        """Create USD contribution layer that overrides asset /geo.
+
+        This layer uses over opinions to replace the original asset's
+        geometry with the animation cache, allowing the shot USD to
+        reference both the asset and this override layer.
+
+        Args:
+            instance: Publish instance
+            staging_dir: Staging directory
+            cache_filename: Name of exported cache file
+
+        Returns:
+            str: Path to contribution layer file
+        """
+
+        asset_prim_path = instance.data.get("originalAssetPrimPath", "")
+        if not asset_prim_path:
+            self.log.warning(
+                f"No asset prim path for {instance.name}, "
+                "contribution layer may not be placed correctly"
+            )
+            asset_prim_path = "/layout/character"  # Default fallback
+
+        # Get asset name for contribution layer naming
+        asset_name = instance.name
+        department = instance.data.get("departmentLayer", "animation")
+
+        # Prepare contribution layer filename
+        filename = f"{department}_{asset_name}_animation.usda"
+        filepath = os.path.join(staging_dir, filename).replace("\\", "/")
+
+        # Create Sdf layer
+        layer = Sdf.Layer.CreateNew(filepath)
+
+        # Create override prim at asset location
+        # This will override the /geo prims with a reference to the cache
+        root_prim = Sdf.PrimSpec(layer, asset_prim_path.split("/")[-1])
+
+        # Create /geo sub-prim with reference to cache
+        geo_prim = Sdf.PrimSpec(root_prim, "geo")
+
+        # Add reference to animation cache
+        # This will load the cache as a sub-reference
+        cache_ref = Sdf.Reference(cache_filename)
+        geo_prim.referenceList.Append(cache_ref)
+
+        # Add comment
+        root_prim.comment = (
+            f"Animation contribution layer for {asset_name}\n"
+            f"Overrides {asset_prim_path}/geo with animation cache"
+        )
+
+        # Save layer
+        layer.Save()
+
+        self.log.debug(f"Created contribution layer: {filepath}")
+        self.log.debug(f"  Asset prim path: {asset_prim_path}")
+        self.log.debug(f"  Cache reference: {cache_filename}")
+
+        return filepath
