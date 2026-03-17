@@ -27,7 +27,7 @@ class CreateMayaUsdRig(plugin.MayaCreator):
 
     def get_publish_families(self):
         """Return publish families for extractors."""
-        return ["rig", "mayaUsdRig"]
+        return ["rig", "usd", "mayaUsdRig"]
 
     def get_instance_attr_defs(self):
         """Define instance attributes specific to USD rig."""

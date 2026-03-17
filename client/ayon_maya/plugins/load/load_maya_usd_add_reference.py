@@ -337,7 +337,7 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
       {name}, {folder_name}, {folder_path}, {folder_type}, {product_name}, {parent_folder}
     """
 
-    product_types = {"model", "usd", "pointcache", "animation"}
+    product_types = {"model", "usd", "rig", "pointcache", "animation"}
     representations = ["usd", "usda", "usdc", "usdz", "abc"]
 
     label = "USD Add Reference"

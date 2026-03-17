@@ -10,6 +10,11 @@ The MayaReference prim type is a Maya USD specific schema that
 allows Maya to load a .ma/.mb file as native Maya data when
 the user selects "Edit As Maya Data" on the prim. In other DCCs
 (e.g. Houdini) the prim is simply ignored.
+
+The .mb rig file is published both as its own representation and
+transferred to ``publishDir`` so the .usda layer can reference it
+by filename (relative path).  This follows the same pattern used
+by the OBJ extractor for .mtl files.
 """
 import os
 
@@ -27,8 +32,10 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
     1. Exports the rig as .mb (Maya Binary)
     2. Ensures a rigging layer exists as edit target
     3. Creates a MayaReference prim (typed prim with mayaReference,
-       mayaNamespace, mayaAutoEdit attributes)
+       mayaNamespace, mayaAutoEdit attributes) referencing the .mb
+       by filename so the path resolves relative to the published layer
     4. Exports the rigging layer as .usda
+    5. Transfers the .mb to publishDir so both files are co-located
     """
 
     label = "Extract Maya USD Rig"
@@ -41,11 +48,14 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
         # 1. Export rig as Maya binary
         self.log.info("Exporting rig as Maya binary...")
         mb_file = self._export_rig_mb(instance, staging_dir)
+        mb_filename = os.path.basename(mb_file)
 
-        # 2. Create Maya Reference Prim in USD
+        # 2. Create Maya Reference Prim in USD using *only* the filename
+        #    so the path resolves relative to the layer location after
+        #    publishing.
         self.log.info("Creating Maya Reference Prim in USD...")
         prim_path = self._create_maya_reference_prim(
-            instance, staging_dir, mb_file
+            instance, staging_dir, mb_filename
         )
 
         if not prim_path:
@@ -58,11 +68,23 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
         self.log.info("Exporting USD rigging layer...")
         usd_file = self._export_usd_layer(instance, staging_dir)
 
-        # 4. Add representations
+        # 4. Transfer .mb to publishDir so it lives next to the .usda
+        #    after integration (same pattern as OBJ .mtl files).
+        publish_dir = instance.data.get("publishDir")
+        if publish_dir:
+            mb_destination = os.path.join(
+                publish_dir, mb_filename
+            ).replace("\\", "/")
+            transfers = instance.data.setdefault("transfers", [])
+            transfers.append((mb_file, mb_destination))
+            self.log.debug(
+                f"Transfer .mb to publishDir: {mb_file} -> {mb_destination}"
+            )
+
+        # 5. Add representations
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
-        mb_filename = os.path.basename(mb_file)
         instance.data["representations"].append({
             "name": "mb",
             "ext": "mb",
@@ -116,7 +138,7 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
         self.log.debug(f"Exported rig to: {filepath}")
         return filepath
 
-    def _create_maya_reference_prim(self, instance, staging_dir, mb_file):
+    def _create_maya_reference_prim(self, instance, staging_dir, mb_ref_path):
         """Create a MayaReference prim in the USD edit target layer.
 
         First tries ``mayaUsdAddMayaReference.createMayaReferencePrim``
@@ -125,8 +147,16 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
         ``stage.DefinePrim`` with the correct MayaReference schema
         and attributes.
 
+        Args:
+            instance: Pyblish instance.
+            staging_dir (str): Staging directory path.
+            mb_ref_path (str): Value for the ``mayaReference`` attribute.
+                This should be a **filename only** (e.g. ``"rigMain.mb"``)
+                so USD resolves it relative to the layer file after
+                publishing.
+
         Returns:
-            str: USD prim path of the created MayaReference, or None
+            str: USD prim path of the created MayaReference, or None.
         """
         try:
             cmds.loadPlugin("mayaUsdPlugin", quiet=True)
@@ -165,7 +195,7 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
 
         # --- Approach 1: Use the Maya USD API ---
         prim = self._try_create_via_api(
-            proxy_path, parent_path, mb_file, namespace, rig_prim_name
+            proxy_path, parent_path, mb_ref_path, namespace, rig_prim_name
         )
         if prim and prim.IsValid():
             self.log.info(
@@ -180,7 +210,7 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
             "prim directly via USD API..."
         )
         prim = self._create_maya_reference_prim_direct(
-            stage, rig_prim_path, mb_file, namespace
+            stage, rig_prim_path, mb_ref_path, namespace
         )
         if prim and prim.IsValid():
             self.log.info(
@@ -223,7 +253,7 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
         return stage.GetPseudoRoot()
 
     def _try_create_via_api(
-        self, proxy_path, parent_path, mb_file, namespace, prim_name
+        self, proxy_path, parent_path, mb_ref_path, namespace, prim_name
     ):
         """Try creating MayaReference via mayaUsdAddMayaReference API.
 
@@ -242,14 +272,14 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
             self.log.debug(
                 f"Calling createMayaReferencePrim:\n"
                 f"  parent UFE: {parent_ufe_path}\n"
-                f"  MB file: {mb_file}\n"
+                f"  MB ref path: {mb_ref_path}\n"
                 f"  namespace: {namespace}\n"
                 f"  prim name: {prim_name}"
             )
 
             prim = mayaUsdAddMayaReference.createMayaReferencePrim(
                 parent_ufe_path,
-                mb_file,
+                mb_ref_path,
                 namespace,
                 prim_name,  # mayaReferencePrimName
             )
@@ -270,13 +300,13 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
             return None
 
     def _create_maya_reference_prim_direct(
-        self, stage, prim_path, mb_file, namespace
+        self, stage, prim_path, mb_ref_path, namespace
     ):
         """Create a MayaReference prim directly using USD API.
 
         Creates a prim with type "MayaReference" and sets the three
         required attributes:
-        - mayaReference (Asset): path to the .mb file
+        - mayaReference (Asset): path to the .mb file (relative filename)
         - mayaNamespace (String): namespace for the reference
         - mayaAutoEdit (Bool): whether to auto-edit on load
 
@@ -285,7 +315,7 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
         Returns:
             pxr.Usd.Prim or None
         """
-        from pxr import Sdf, Usd
+        from pxr import Sdf
 
         try:
             prim = stage.DefinePrim(prim_path, "MayaReference")
@@ -299,7 +329,7 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
             maya_ref_attr = prim.CreateAttribute(
                 "mayaReference", Sdf.ValueTypeNames.Asset
             )
-            maya_ref_attr.Set(mb_file)
+            maya_ref_attr.Set(mb_ref_path)
 
             maya_ns_attr = prim.CreateAttribute(
                 "mayaNamespace", Sdf.ValueTypeNames.String
@@ -312,7 +342,8 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
             maya_auto_edit_attr.Set(False)
 
             self.log.debug(
-                f"Defined MayaReference prim at {prim_path} -> {mb_file}"
+                f"Defined MayaReference prim at {prim_path} -> "
+                f"{mb_ref_path}"
             )
             return prim
 
