@@ -78,7 +78,8 @@ class CreateMayaUsdRig(plugin.MayaCreator):
         """Create rig instance with USD target layer validation."""
 
         # Validate target layer if requested
-        if pre_create_data.get("validateTargetLayer", True):
+        validate_target = pre_create_data.pop("validateTargetLayer", True)
+        if validate_target:
             self._validate_target_layer()
 
         # Call parent to create base instance
