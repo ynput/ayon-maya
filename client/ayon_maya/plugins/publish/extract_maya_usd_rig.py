@@ -112,7 +112,7 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
             usd_filename = os.path.basename(usd_file)
             instance.data["representations"].append({
                 "name": "usd",
-                "ext": "usda",
+                "ext": "usd",
                 "files": usd_filename,
                 "stagingDir": staging_dir
             })
@@ -466,12 +466,12 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
             # The edit target should be the rigging layer
             edit_layer = stage.GetEditTarget().GetLayer()
 
-            filename = "rigging.usda"
+            filename = "rigging.usd"
             filepath = os.path.join(
                 staging_dir, filename
             ).replace("\\", "/")
 
-            edit_layer.Export(filepath)
+            edit_layer.Export(filepath, args={"format": "usda"})
             self.log.debug(f"Exported USD layer to: {filepath}")
             return filepath
 
