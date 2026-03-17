@@ -129,9 +129,29 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
             )
             transforms = members
 
-        self.log.debug(f"Members to export: {members}")
-        self.log.debug(f"Transforms selected: {transforms}")
-        self.log.info(f"Exporting {len(transforms)} transform(s) with animation")
+        # CRITICAL: Only export leaf transforms (not parent groups)
+        # This prevents exporting the full hierarchy (rigParent/rig/asset)
+        # and focuses only on the actual animated asset transform(s)
+        leaf_transforms = []
+        for xf in transforms:
+            # Check if this transform has any children that are also in the export list
+            children = cmds.listRelatives(xf, children=True, allDescendents=False) or []
+            has_exported_children = any(child in transforms for child in children)
+
+            if not has_exported_children:
+                # This is a leaf (no children in the export list)
+                leaf_transforms.append(xf)
+
+        # Use leaf transforms only
+        transforms_to_export = leaf_transforms if leaf_transforms else transforms
+
+        self.log.debug(f"Original members: {members}")
+        self.log.debug(f"All transforms: {transforms}")
+        self.log.debug(f"Leaf transforms (for export): {transforms_to_export}")
+        self.log.info(
+            f"Exporting {len(transforms_to_export)} animated transform(s)\n"
+            f"(filtered to leaf nodes only, avoiding parent hierarchies)"
+        )
 
         # Prepare export options
         options = {
@@ -177,7 +197,7 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
 
         # Export USD with animation
         with maintained_selection():
-            cmds.select(transforms, replace=True, noExpand=True)
+            cmds.select(transforms_to_export, replace=True, noExpand=True)
             try:
                 cmds.mayaUSDExport(**options)
             except RuntimeError as e:
@@ -224,13 +244,27 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
             str: Path to contribution layer file
         """
 
+        # Determine the asset prim path where the animation should override
         asset_prim_path = instance.data.get("originalAssetPrimPath", "")
+
         if not asset_prim_path:
+            # Try to deduce from instance name or use common paths
+            asset_name = instance.name
+
+            # Common patterns: /assets/character, /layout/character, etc
+            possible_paths = [
+                f"/assets/{asset_name}",
+                f"/layout/{asset_name}",
+                f"/assets/character/{asset_name}",
+            ]
+
             self.log.warning(
-                f"No asset prim path for {instance.name}, "
-                "contribution layer will use default fallback"
+                f"No originalAssetPrimPath for {instance.name}\n"
+                f"Will try these paths: {possible_paths}\n"
+                f"Consider setting originalAssetPrimPath in the creator to be explicit"
             )
-            asset_prim_path = "/layout/character"
+            # Use the first one for now (user can override with originalAssetPrimPath)
+            asset_prim_path = f"/assets/{asset_name}"
 
         # Get asset name for contribution layer naming
         asset_name = instance.name
