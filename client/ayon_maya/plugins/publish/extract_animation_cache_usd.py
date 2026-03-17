@@ -40,6 +40,8 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
         3. Generate both representations
         """
 
+        staging_dir = self.staging_dir(instance)
+
         # 1. Export animation cache USD
         self.log.info("Exporting animation cache USD...")
         cache_file = self._export_animation_cache(instance, staging_dir)
