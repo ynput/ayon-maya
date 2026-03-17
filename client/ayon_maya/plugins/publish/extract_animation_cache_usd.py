@@ -201,23 +201,44 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
         # Create Sdf layer
         layer = Sdf.Layer.CreateNew(filepath)
 
-        # Create override prim at asset location
-        # This will override the /geo prims with a reference to the cache
-        root_prim = Sdf.PrimSpec(layer, asset_prim_path.split("/")[-1])
+        # Build the full hierarchy as "over" opinions
+        # Split the prim path into components: /assets/character/cone -> ['assets', 'character', 'cone']
+        prim_parts = [p for p in asset_prim_path.strip("/").split("/") if p]
 
-        # Create /geo sub-prim with reference to cache
-        geo_prim = Sdf.PrimSpec(root_prim, "geo")
+        if not prim_parts:
+            self.log.warning(f"Invalid asset prim path: {asset_prim_path}")
+            return filepath
+
+        # Create hierarchy of over prims
+        current_path = ""
+        current_prim = None
+
+        for part in prim_parts:
+            current_path += "/" + part
+            prim_spec = Sdf.PrimSpec(
+                current_prim or layer,
+                part,
+                Sdf.SpecifierOver
+            )
+            current_prim = prim_spec
+
+        # Now add /geo as a child with the animation cache reference
+        geo_prim = Sdf.PrimSpec(
+            current_prim,
+            "geo",
+            Sdf.SpecifierOver
+        )
 
         # Add reference to animation cache
-        # This will load the cache as a sub-reference
         cache_ref = Sdf.Reference(cache_filename)
         geo_prim.referenceList.Append(cache_ref)
 
-        # Add comment
-        root_prim.comment = (
-            f"Animation contribution layer for {asset_name}\n"
-            f"Overrides {asset_prim_path}/geo with animation cache"
-        )
+        # Add comment to root prim
+        if current_prim:
+            current_prim.comment = (
+                f"Animation contribution layer for {asset_name}\n"
+                f"Overrides {asset_prim_path}/geo with animation cache"
+            )
 
         # Save layer
         layer.Save()
