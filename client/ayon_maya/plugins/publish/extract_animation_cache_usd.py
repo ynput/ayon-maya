@@ -54,15 +54,23 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
         )
         contribution_filename = os.path.basename(contribution_file)
 
-        # 3. Add representation
+        # 3. Add representations
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
-        # Main representation: Animation cache USD
+        # Main representation: Animation cache USD (binary format)
         instance.data["representations"].append({
             "name": "usd",
-            "ext": "usda",
+            "ext": "usd",  # Binary USD (usdc format, exported as .usd)
             "files": cache_filename,
+            "stagingDir": staging_dir
+        })
+
+        # Also add contribution layer as optional representation
+        instance.data["representations"].append({
+            "name": "contribution",
+            "ext": "usda",  # ASCII override layer
+            "files": contribution_filename,
             "stagingDir": staging_dir
         })
 
@@ -121,6 +129,10 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
             )
             transforms = members
 
+        self.log.debug(f"Members to export: {members}")
+        self.log.debug(f"Transforms selected: {transforms}")
+        self.log.info(f"Exporting {len(transforms)} transform(s) with animation")
+
         # Prepare export options
         options = {
             "file": filepath,
@@ -131,24 +143,23 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
             "frameStride": frame_step,
             "stripNamespaces": creator_attrs.get("stripNamespaces", True),
             "exportRoots": transforms,  # Only export selected transforms
-            "mergeTransformAndShape": False,  # Keep transforms separate
+            "mergeTransformAndShape": False,  # Keep transforms separate (don't merge with shapes)
             "exportDisplayColor": False,
             "exportVisibility": False,  # Don't export visibility
             "exportComponentTags": False,
-            "staticSingleSample": False,  # Allow animation
-            "defaultUSDFormat": "usd",  # Use binary format for publishing
+            "staticSingleSample": False,  # CRITICAL: Keep animation keyframes!
+            "defaultUSDFormat": "usdc",  # Compressed binary USD
+            "renderableOnly": False,
+            "exportInstances": False,
+            "exportColorSets": False,
+            "exportUVs": False,
+            "exportRefsAsInstanceable": False,
+            "eulerFilter": True,
         }
 
-        # Add filterTypes to exclude geometry/shapes
-        # This prevents exporting mesh/geometry that would duplicate assets
-        options["filterTypes"] = [
-            "mesh",
-            "constraint",
-            "camera",
-            "light",
-            "shader",
-            "place2dTexture",
-        ]
+        # filterTypes INCLUDES only these types (doesn't exclude)
+        # This ensures we export ONLY transforms, not mesh/camera/light/etc
+        options["filterTypes"] = ["xform", "transform"]
 
         # worldspace parameter requires Maya USD 0.21.0+
         try:
