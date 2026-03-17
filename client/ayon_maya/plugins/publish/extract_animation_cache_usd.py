@@ -75,6 +75,10 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
     def _export_animation_cache(self, instance, staging_dir) -> str:
         """Export animated members as USD animation cache.
 
+        This exports ONLY the animated transforms (not geometry) so the
+        result can be used as an override layer that doesn't duplicate
+        the asset hierarchy or break references.
+
         Args:
             instance: Publish instance
             staging_dir: Staging directory for output
@@ -86,8 +90,8 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
         # Load Maya USD plugin
         cmds.loadPlugin("mayaUsdPlugin", quiet=True)
 
-        # Prepare output file
-        filename = f"{instance.name}_cache.usda"
+        # Prepare output file (use .usd not .usda for publishing)
+        filename = f"{instance.name}_cache.usd"
         filepath = os.path.join(staging_dir, filename).replace("\\", "/")
 
         # Get animation settings from creator attributes
@@ -107,6 +111,16 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
                 f"No members to export for {instance.name}"
             )
 
+        # Get only transform nodes (filters out shapes/geometry)
+        # This ensures we export only animation data, not duplicate geometry
+        transforms = cmds.ls(members, type="transform", long=True)
+        if not transforms:
+            self.log.warning(
+                f"No transform nodes found in {instance.name}, "
+                "will export all members"
+            )
+            transforms = members
+
         # Prepare export options
         options = {
             "file": filepath,
@@ -116,12 +130,25 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
             ),
             "frameStride": frame_step,
             "stripNamespaces": creator_attrs.get("stripNamespaces", True),
-            "mergeTransformAndShape": True,
+            "exportRoots": transforms,  # Only export selected transforms
+            "mergeTransformAndShape": False,  # Keep transforms separate
             "exportDisplayColor": False,
-            "exportVisibility": True,
-            "staticSingleSample": False,
-            "defaultUSDFormat": creator_attrs.get("defaultUSDFormat", "usda"),
+            "exportVisibility": False,  # Don't export visibility
+            "exportComponentTags": False,
+            "staticSingleSample": False,  # Allow animation
+            "defaultUSDFormat": "usd",  # Use binary format for publishing
         }
+
+        # Add filterTypes to exclude geometry/shapes
+        # This prevents exporting mesh/geometry that would duplicate assets
+        options["filterTypes"] = [
+            "mesh",
+            "constraint",
+            "camera",
+            "light",
+            "shader",
+            "place2dTexture",
+        ]
 
         # worldspace parameter requires Maya USD 0.21.0+
         try:
@@ -134,9 +161,11 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
             # If we can't determine version, skip worldspace parameter
             pass
 
+        self.log.debug(f"Export options: {options}")
+
         # Export USD with animation
         with maintained_selection():
-            cmds.select(members, noExpand=True)
+            cmds.select(transforms, replace=True, noExpand=True)
             try:
                 cmds.mayaUSDExport(**options)
             except RuntimeError as e:
@@ -158,16 +187,26 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
         staging_dir,
         cache_filename: str
     ) -> str:
-        """Create USD contribution layer that overrides asset /geo.
+        """Create USD contribution layer as pure override.
 
-        This layer uses over opinions to replace the original asset's
-        geometry with the animation cache, allowing the shot USD to
-        reference both the asset and this override layer.
+        This creates a .usda layer file that can be manually composed into
+        the shot USD as an additional layer. It contains ONLY "over" opinions
+        that reference the animation cache, so it doesn't duplicate any
+        hierarchy or break existing references.
+
+        The layer is meant to be added to the shot composition like:
+        ```
+        subLayers = [
+            @usdMain.usd@,
+            @usdShot_layout.usda@,
+            @animation_cache_override.usda@  # <- This file
+        ]
+        ```
 
         Args:
             instance: Publish instance
             staging_dir: Staging directory
-            cache_filename: Name of exported cache file
+            cache_filename: Name of exported animation cache USD file
 
         Returns:
             str: Path to contribution layer file
@@ -177,23 +216,24 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
         if not asset_prim_path:
             self.log.warning(
                 f"No asset prim path for {instance.name}, "
-                "contribution layer may not be placed correctly"
+                "contribution layer will use default fallback"
             )
-            asset_prim_path = "/layout/character"  # Default fallback
+            asset_prim_path = "/layout/character"
 
         # Get asset name for contribution layer naming
         asset_name = instance.name
         department = instance.data.get("departmentLayer", "animation")
 
-        # Prepare contribution layer filename
+        # Prepare contribution layer filename (.usda for override layers)
         filename = f"{department}_{asset_name}_animation.usda"
         filepath = os.path.join(staging_dir, filename).replace("\\", "/")
 
         # Create Sdf layer
         layer = Sdf.Layer.CreateNew(filepath)
 
-        # Build the full hierarchy as "over" opinions
-        # Split the prim path into components: /assets/character/cone -> ['assets', 'character', 'cone']
+        # Build the prim hierarchy as "over" opinions
+        # This creates a structure like:
+        #   over "/layout/character" { ... }
         prim_parts = [p for p in asset_prim_path.strip("/").split("/") if p]
 
         if not prim_parts:
@@ -201,11 +241,9 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
             return filepath
 
         # Create hierarchy of over prims
-        current_path = ""
         current_prim = None
 
         for part in prim_parts:
-            current_path += "/" + part
             prim_spec = Sdf.PrimSpec(
                 current_prim or layer,
                 part,
@@ -213,23 +251,21 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
             )
             current_prim = prim_spec
 
-        # Now add /geo as a child with the animation cache reference
-        geo_prim = Sdf.PrimSpec(
-            current_prim,
-            "geo",
-            Sdf.SpecifierOver
-        )
-
-        # Add reference to animation cache
-        cache_ref = Sdf.Reference(cache_filename)
-        geo_prim.referenceList.Append(cache_ref)
-
-        # Add comment to root prim
+        # Add a comment explaining the layer
         if current_prim:
             current_prim.comment = (
-                f"Animation contribution layer for {asset_name}\n"
-                f"Overrides {asset_prim_path}/geo with animation cache"
+                f"Animation override layer for {asset_name}\n"
+                f"Imports animation cache: {cache_filename}\n"
+                f"This layer should be added after usdShot_layout in "
+                f"the shot composition.\n"
+                f"It does NOT duplicate the asset hierarchy, only "
+                f"references the animation data."
             )
+
+        # Now add reference to animation cache at the asset root prim
+        # This ensures the animation data is loaded alongside the asset
+        cache_ref = Sdf.Reference(cache_filename)
+        current_prim.referenceList.Append(cache_ref)
 
         # Save layer
         layer.Save()
@@ -237,5 +273,9 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
         self.log.debug(f"Created contribution layer: {filepath}")
         self.log.debug(f"  Asset prim path: {asset_prim_path}")
         self.log.debug(f"  Cache reference: {cache_filename}")
+        self.log.info(
+            f"Contribution layer '{filename}' can be manually added to "
+            f"the shot USD composition as an additional layer."
+        )
 
         return filepath
