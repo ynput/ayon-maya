@@ -171,7 +171,7 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
             prim = mayaUsdAddMayaReference.createMayaReferencePrim(
                 ufe_path,
                 mb_file,
-                namespace=instance.name,
+                instance.name,
             )
             return prim
         except Exception as e:
