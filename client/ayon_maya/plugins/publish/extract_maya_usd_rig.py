@@ -11,10 +11,11 @@ allows Maya to load a .ma/.mb file as native Maya data when
 the user selects "Edit As Maya Data" on the prim. In other DCCs
 (e.g. Houdini) the prim is simply ignored.
 
-The .mb rig file is published both as its own representation and
-transferred to ``publishDir`` so the .usda layer can reference it
-by filename (relative path).  This follows the same pattern used
-by the OBJ extractor for .mtl files.
+The .mb rig file is published as its own AYON representation and
+also transferred to ``publishDir`` (same pattern as OBJ .mtl files).
+The MayaReference prim stores the **absolute published path** so
+the .mb resolves correctly both during the session (after integration)
+and when the layer is loaded from a different context.
 """
 import os
 
@@ -31,11 +32,10 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
     This extractor:
     1. Exports the rig as .mb (Maya Binary)
     2. Ensures a rigging layer exists as edit target
-    3. Creates a MayaReference prim (typed prim with mayaReference,
-       mayaNamespace, mayaAutoEdit attributes) referencing the .mb
-       by filename so the path resolves relative to the published layer
+    3. Creates a MayaReference prim with the **absolute published path**
+       to the .mb so "Edit as Maya Data" works after integration
     4. Exports the rigging layer as .usda
-    5. Transfers the .mb to publishDir so both files are co-located
+    5. Transfers the .mb to publishDir so it lives at the referenced path
     """
 
     label = "Extract Maya USD Rig"
@@ -50,12 +50,28 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
         mb_file = self._export_rig_mb(instance, staging_dir)
         mb_filename = os.path.basename(mb_file)
 
-        # 2. Create Maya Reference Prim in USD using *only* the filename
-        #    so the path resolves relative to the layer location after
-        #    publishing.
+        # 2. Compute the absolute published path for the .mb.
+        #    This is where the .mb will live after integration (via
+        #    transfer).  Using the absolute path ensures "Edit as Maya
+        #    Data" resolves correctly regardless of where the rigging
+        #    layer is anchored (work dir during session, publish dir
+        #    after reload).
+        publish_dir = instance.data.get("publishDir", "")
+        if publish_dir:
+            mb_ref_path = os.path.join(
+                publish_dir, mb_filename
+            ).replace("\\", "/")
+        else:
+            # Fallback: just the filename (relative to layer location)
+            self.log.warning(
+                "publishDir not available, using relative .mb path"
+            )
+            mb_ref_path = mb_filename
+
+        # 3. Create Maya Reference Prim in USD
         self.log.info("Creating Maya Reference Prim in USD...")
         prim_path = self._create_maya_reference_prim(
-            instance, staging_dir, mb_filename
+            instance, staging_dir, mb_ref_path
         )
 
         if not prim_path:
@@ -64,13 +80,13 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
                 f"{instance.name}"
             )
 
-        # 3. Export USD layer
+        # 4. Export USD layer
         self.log.info("Exporting USD rigging layer...")
         usd_file = self._export_usd_layer(instance, staging_dir)
 
-        # 4. Transfer .mb to publishDir so it lives next to the .usda
-        #    after integration (same pattern as OBJ .mtl files).
-        publish_dir = instance.data.get("publishDir")
+        # 5. Transfer .mb to publishDir so it lives at the path
+        #    referenced by the MayaReference prim (same pattern as
+        #    OBJ .mtl files in extract_obj.py).
         if publish_dir:
             mb_destination = os.path.join(
                 publish_dir, mb_filename
@@ -81,7 +97,7 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
                 f"Transfer .mb to publishDir: {mb_file} -> {mb_destination}"
             )
 
-        # 5. Add representations
+        # 6. Add representations
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
@@ -103,7 +119,8 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
 
         self.log.info(
             f"Extracted rig '{instance.name}': "
-            f"MB={mb_filename}, USD prim={prim_path}"
+            f"MB={mb_filename}, USD prim={prim_path}, "
+            f"MB published at={mb_ref_path}"
         )
 
     def _export_rig_mb(self, instance, staging_dir):
@@ -151,9 +168,9 @@ class ExtractMayaUsdRig(plugin.MayaExtractorPlugin):
             instance: Pyblish instance.
             staging_dir (str): Staging directory path.
             mb_ref_path (str): Value for the ``mayaReference`` attribute.
-                This should be a **filename only** (e.g. ``"rigMain.mb"``)
-                so USD resolves it relative to the layer file after
-                publishing.
+                Typically the **absolute published path** to the ``.mb``
+                file so the reference resolves correctly regardless of
+                where the rigging layer is loaded from.
 
         Returns:
             str: USD prim path of the created MayaReference, or None.
