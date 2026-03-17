@@ -24,15 +24,18 @@ def parse_version(version_str):
 
 
 def _flatten_usd_hierarchy(filepath):
-    """Flatten unnecessary hierarchy in USD file after export.
+    """Clean up USD file after export, keeping only animated content.
 
-    Maya USD exports maintain the full hierarchy even when exporting
-    a single transform. This function finds the deepest prim in a linear
-    hierarchy (A > B > C) and moves it to the root level.
+    Maya USD exports often create unnecessary structure:
+    - Multiple root prims (usdShot, __mayaUsd__, etc)
+    - Deep hierarchies (rigParent > rig > cone_character)
+    - Geometry that should have been filtered
 
-    Example:
-        Before: /rigParent > /rigParent/rig > /rigParent/rig/cone_character
-        After:  /cone_character
+    This function:
+    1. Finds the deepest animated prim
+    2. Promotes it to root level
+    3. Removes all other root prims
+    4. Result: clean file with just the animation
 
     Args:
         filepath: Path to USD file (.usd or .usda)
@@ -42,63 +45,73 @@ def _flatten_usd_hierarchy(filepath):
     """
 
     try:
-        # Open with Usd to preserve all data
-        stage = Usd.Stage.Open(filepath)
-        if not stage:
+        layer = Sdf.Layer.FindOrOpen(filepath)
+        if not layer:
             return False
 
-        root_prims = stage.GetRootLayer().rootPrims
-        if len(root_prims) != 1:
+        root_prims = list(layer.rootPrims)
+        if not root_prims:
             return False
 
-        root_prim = root_prims[0]
-        root_path = Sdf.Path(root_prim.path)
+        # If we have multiple root prims, find the one with animation
+        # Usually it's __mayaUsd__ or similar - we want to extract from it
+        target_root = None
 
-        # Find deepest prim in linear chain
-        prim_path = root_path
-        hierarchy_depth = 0
-
-        while True:
-            prim_spec = stage.GetRootLayer().GetPrimAtPath(prim_path)
-            if not prim_spec:
+        # Look for a prim that's NOT usdShot (which is the shot structure)
+        for root in root_prims:
+            if root.name not in ["usdShot", "Shot"]:
+                target_root = root
                 break
 
-            # Get children
-            children_paths = [child.path for child in prim_spec.nameChildren]
-            if len(children_paths) != 1:
-                break
+        # If didn't find alternative, use first one
+        if not target_root:
+            target_root = root_prims[0]
 
-            prim_path = children_paths[0]
-            hierarchy_depth += 1
+        # Now find the deepest prim in this root's hierarchy
+        def find_deepest_prim(prim_spec, max_depth=10):
+            """Walk down hierarchy to find deepest single-child chain."""
+            current = prim_spec
+            depth = 0
 
-        # If deep hierarchy found, flatten it
-        if hierarchy_depth > 0:
-            leaf_prim_spec = stage.GetRootLayer().GetPrimAtPath(prim_path)
-            if not leaf_prim_spec:
-                return False
+            while depth < max_depth:
+                children = [c for c in current.nameChildren]
+                if len(children) != 1:
+                    # Multiple or no children - stop here
+                    return current, depth
 
-            leaf_name = prim_path.name
+                current = children[0]
+                depth += 1
 
-            # Create new prim at root with same name as leaf
-            new_root_spec = Sdf.PrimSpec(stage.GetRootLayer(), leaf_name, leaf_prim_spec.specifier)
+            return current, depth
 
-            # Copy attributes
-            for attr_name in leaf_prim_spec.attributes:
-                attr = leaf_prim_spec.attributes[attr_name]
-                new_root_spec.attributes[attr_name] = attr
+        deepest_prim, depth = find_deepest_prim(target_root)
 
-            # Copy child prims
-            for child in leaf_prim_spec.nameChildren:
-                new_root_spec.nameChildren.append(child)
+        # If we found a deep hierarchy or have multiple roots, flatten it
+        if depth > 0 or len(root_prims) > 1:
+            # Get the deepest prim's name
+            final_name = deepest_prim.name
 
-            # Replace root prims
-            stage.GetRootLayer().rootPrims[:] = [new_root_spec]
+            # Create new root prim with the deepest prim's content
+            # Copy the spec to root level
+            new_root = Sdf.PrimSpec(layer, final_name, deepest_prim.specifier)
+
+            # Copy all attributes
+            for attr_name, attr in deepest_prim.attributes.items():
+                new_root.attributes[attr_name] = attr
+
+            # Copy all children
+            for child in deepest_prim.nameChildren:
+                new_root.nameChildren.append(child)
+
+            # Replace all root prims with just this one
+            layer.rootPrims[:] = [new_root]
 
             # Save
-            stage.GetRootLayer().Save()
+            layer.Save()
             return True
 
     except Exception as e:
+        # If anything fails, leave the file as-is
         return False
 
     return False
