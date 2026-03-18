@@ -122,6 +122,22 @@ class CreateAnimationCacheUsd(plugin.MayaCreator):
                     tooltip="Output USD file format")
         )
 
+        # Reset Xform Stack (prevent double-transforms from layout)
+        defs.append(
+            BoolDef("resetXformStack",
+                    label="Reset Xform Stack",
+                    default=True,
+                    tooltip=(
+                        "Add !resetXformStack! to the exported cache prims.\n"
+                        "This prevents double-transforms when the cache is "
+                        "composed as a sublayer under an Xform that still "
+                        "carries the layout transform.\n\n"
+                        "When enabled (and worldspace export is used), the "
+                        "cache points are already in worldspace and ancestor "
+                        "transforms will be ignored during composition."
+                    ))
+        )
+
         # Strip namespaces
         defs.append(
             BoolDef("stripNamespaces",

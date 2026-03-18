@@ -28,7 +28,7 @@ from ayon_core.pipeline import PublishValidationError
 from ayon_maya.api import plugin
 from ayon_maya.api.lib import maintained_selection
 from maya import cmds
-from pxr import Sdf, Usd
+from pxr import Sdf, Usd, UsdGeom
 
 
 def parse_version(version_str):
@@ -50,7 +50,8 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
         Steps:
         1. Export selected geometry with animation (as point cache)
         2. Remap hierarchy to match original asset prim path
-        3. Generate representation
+        3. Add !resetXformStack! to prevent double-transforms
+        4. Generate representation
         """
 
         staging_dir = self.staging_dir(instance)
@@ -62,9 +63,18 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
         # 2. Remap hierarchy to match original asset prim path
         self._remap_to_asset_hierarchy(cache_file, instance)
 
+        # 3. Add !resetXformStack! to prevent double-transforms
+        #    When the cache is exported with worldspace=True, the point
+        #    positions already include the layout transform. Adding
+        #    resetXformStack ensures ancestor transforms (from layout
+        #    positioning) are ignored during composition.
+        creator_attrs = instance.data.get("creator_attributes", {})
+        if creator_attrs.get("resetXformStack", True):
+            self._add_reset_xform_stack(cache_file, instance)
+
         cache_filename = os.path.basename(cache_file)
 
-        # 3. Add representation
+        # 4. Add representation
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
@@ -180,6 +190,84 @@ class ExtractAnimationCacheUsd(plugin.MayaExtractorPlugin):
 
         self.log.debug(f"Exported point cache USD: {filepath}")
         return filepath
+
+    # ------------------------------------------------------------------
+    # resetXformStack — prevent double-transforms from layout
+    # ------------------------------------------------------------------
+
+    def _add_reset_xform_stack(self, filepath, instance):
+        """Add !resetXformStack! to geometry prims in the cache.
+
+        When the cache is exported with ``worldspace=True``, the point
+        positions already include the layout transform baked in.  If the
+        cache is then composed as a sublayer in a shot stage where an
+        ancestor Xform still carries the layout transform, the geometry
+        would be double-transformed.
+
+        ``!resetXformStack!`` is a USD directive in ``xformOpOrder`` that
+        tells the renderer to ignore all ancestor transforms above this
+        prim, effectively anchoring it in worldspace.
+
+        This method opens the exported cache and sets
+        ``resetXformStack`` on:
+        - The asset root prim (if it is Xformable)
+        - All direct geometry children (Mesh, etc.)
+        """
+        original_path = instance.data.get("originalAssetPrimPath", "")
+
+        stage = Usd.Stage.Open(filepath)
+        if not stage:
+            self.log.warning(
+                f"Could not open USD stage for resetXformStack: {filepath}"
+            )
+            return
+
+        modified = False
+
+        # Determine which prim to apply resetXformStack to
+        if original_path:
+            target_prim = stage.GetPrimAtPath(original_path)
+        else:
+            # Fallback: use the defaultPrim or first root prim
+            target_prim = stage.GetDefaultPrim()
+            if not target_prim or not target_prim.IsValid():
+                root_prims = [
+                    p for p in stage.GetPseudoRoot().GetChildren()
+                ]
+                target_prim = root_prims[0] if root_prims else None
+
+        if not target_prim or not target_prim.IsValid():
+            self.log.warning(
+                "No valid prim found for resetXformStack application"
+            )
+            return
+
+        # Apply to the asset root prim itself
+        xformable = UsdGeom.Xformable(target_prim)
+        if xformable:
+            xformable.SetResetXformStack(True)
+            modified = True
+            self.log.debug(
+                f"Added resetXformStack to: {target_prim.GetPath()}"
+            )
+
+        # Also apply to geometry children that are Xformable
+        for child in target_prim.GetAllChildren():
+            child_xformable = UsdGeom.Xformable(child)
+            if child_xformable and child.GetTypeName() in (
+                "Mesh", "Xform", "Scope"
+            ):
+                child_xformable.SetResetXformStack(True)
+                modified = True
+                self.log.debug(
+                    f"Added resetXformStack to child: {child.GetPath()}"
+                )
+
+        if modified:
+            stage.GetRootLayer().Save()
+            self.log.info(
+                "Applied !resetXformStack! to prevent double-transforms"
+            )
 
     # ------------------------------------------------------------------
     # Hierarchy remapping
