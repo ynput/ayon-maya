@@ -1,6 +1,8 @@
 import os
 import contextlib
 from collections import OrderedDict
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ayon_core.lib import (
     BoolDef,
@@ -21,8 +23,24 @@ from ayon_maya.api.lib import (
     suspended_refresh,
     force_shader_assignments_to_faces
 )
+
+from ayon_core.pipeline.publish import add_trait_representations
+
+from ayon_core.pipeline.traits import (
+    FrameRanged,
+    Geometry,
+    FileLocation,
+    Spatial,
+    Persistent,
+    Tagged,
+    Representation,
+)
+
 from ayon_maya.api import plugin
 from maya import cmds
+
+if TYPE_CHECKING:
+    from ayon_core.pipeline.traits import TraitBase
 
 
 class ExtractAlembic(plugin.MayaExtractorPlugin,
@@ -252,16 +270,31 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
             )
             extract_alembic(**kwargs)
 
-        if "representations" not in instance.data:
-            instance.data["representations"] = []
+        common_traits: list[TraitBase] = [
+                Geometry(),
+                Spatial(
+                    up_axis="Y",
+                    handedness="right",
+                    meters_per_unit=1.0
+                ),
+                FrameRanged(
+                    frame_start=int(start),
+                    frame_end=int(end),
+                    frames_per_second=cmds.currentUnit(query=True, time=True),
+                    step=instance.data.get(
+                        "creator_attributes", {}).get("step", 1.0)
+                ),
+                Persistent(),
+        ]
 
-        representation = {
-            "name": "abc",
-            "ext": "abc",
-            "files": filename,
-            "stagingDir": dirname
-        }
-        instance.data["representations"].append(representation)
+        main_traits: list[TraitBase] = common_traits + [
+            FileLocation(file_path=Path(path)),
+        ]
+
+        rep = Representation(
+            name="abc",
+            traits=main_traits
+        )
 
         if not instance.data.get("stagingDir_persistent", False):
             instance.context.data["cleanupFullPaths"].append(path)
@@ -270,6 +303,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
 
         # Extract proxy.
         if not instance.data.get("proxy"):
+            add_trait_representations(instance, [rep])
             self.log.debug("No proxy nodes found. Skipping proxy extraction.")
             return
 
@@ -285,14 +319,19 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
             with maintained_selection():
                 cmds.select(instance.data["proxy"])
                 extract_alembic(**kwargs)
-        representation = {
-            "name": "proxy",
-            "ext": "abc",
-            "files": os.path.basename(path),
-            "stagingDir": dirname,
-            "outputName": "proxy"
-        }
-        instance.data["representations"].append(representation)
+
+        proxy_traits: list[TraitBase] = common_traits + [
+            FileLocation(file_path=Path(path)),
+            Tagged(tags=["proxy"]),
+        ]
+
+        proxy_rep = Representation(
+            name="proxy",
+            traits=proxy_traits
+        )
+
+        add_trait_representations(instance, [rep, proxy_rep])
+
 
     def get_members_and_roots(self, instance):
         return instance[:], instance.data.get("setMembers")

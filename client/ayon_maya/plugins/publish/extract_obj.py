@@ -1,11 +1,28 @@
-# -*- coding: utf-8 -*-
 import os
-
+from pathlib import Path
+from typing import TYPE_CHECKING
 import pyblish.api
 from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from maya import cmds
+
+from ayon_core.pipeline.publish import add_trait_representations
+
+if TYPE_CHECKING:
+    from ayon_core.pipeline.traits import TraitBase
+
+from ayon_core.pipeline.traits import (
+    FrameRanged,
+    Geometry,
+    FileLocation,
+    Spatial,
+    Persistent,
+    Tagged,
+    Representation,
+    Image,
+    Fragment
+)
 
 
 def get_textures_from_mtl(mtl_filepath: str) -> "set[str]":
@@ -132,6 +149,19 @@ class ExtractObj(plugin.MayaExtractorPlugin,
                               preserveReferences=True,
                               force=True)
 
+        traits: list[TraitBase] = [
+            Geometry(),
+            FileLocation(file_path=Path(path)),
+            Persistent(),
+        ]
+
+        rep = Representation(
+            name="obj",
+            traits=traits,
+        )
+
+        representations = [rep]
+
         if include_shaders:
             # Materials for `.obj` files are exported to a `.mtl` file that
             # usually lives next to the `.obj` and is referenced to by filename
@@ -148,23 +178,35 @@ class ExtractObj(plugin.MayaExtractorPlugin,
             transfers.append((mtl_source, mtl_destination))
             self.log.debug(f"Including .mtl file: {mtl_filename}")
 
+            mtl_rep = Representation(
+                name="mtl",
+                traits=[
+                    FileLocation(file_path=Path(mtl_source)),
+                    Persistent(),
+                    Fragment(parent=rep.representation_id),
+                ]
+            )
+            representations.append(mtl_rep)
+
             # Include any images from the obj export
             textures = get_textures_from_mtl(mtl_source)
-            for texture_src in textures:
+            for idx, texture_src in enumerate(textures):
                 texture_dest = os.path.join(publish_dir,
                                             os.path.basename(texture_src))
                 self.log.debug(f"Including texture: {texture_src}")
                 transfers.append((texture_src, texture_dest))
 
-        if "representation" not in instance.data:
-            instance.data["representation"] = []
+                texture_rep = Representation(
+                    name=f"texture_{idx}",
+                    traits=[
+                        Image(),
+                        FileLocation(file_path=Path(texture_src)),
+                        Persistent(),
+                        Fragment(parent=rep.representation_id),
+                    ]
+                )
+                representations.append(texture_rep)
 
-        representation = {
-            'name': 'obj',
-            'ext': 'obj',
-            'files': filename,
-            "stagingDir": staging_dir,
-        }
-        instance.data["representations"].append(representation)
+        add_trait_representations(instance, representations)
 
         self.log.debug("Extract OBJ successful to: {0}".format(path))
