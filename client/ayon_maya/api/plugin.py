@@ -215,11 +215,12 @@ class MayaCreatorBase:
         data["__creator_attributes_keys"] = ",".join(creator_attributes.keys())
 
         # Kill any existing attributes just so we can imprint cleanly again
-        for attr in data.keys():
-            if cmds.attributeQuery(attr, node=node, exists=True):
-                cmds.deleteAttr("{}.{}".format(node, attr))
+        with lib.undo_chunk():
+            for attr in data.keys():
+                if cmds.attributeQuery(attr, node=node, exists=True):
+                    cmds.deleteAttr("{}.{}".format(node, attr))
 
-        return imprint(node, data)
+            return imprint(node, data)
 
     def read_instance_node(self, node):
         node_data = read(node)
@@ -270,6 +271,7 @@ class MayaCreatorBase:
             created_instance = CreatedInstance.from_existing(node_data, self)
             self._add_instance_to_context(created_instance)
 
+    @lib.undo_chunk()
     def _default_update_instances(self, update_list):
 
         for created_inst, _changes in update_list:
