@@ -45,7 +45,8 @@ class YetiCacheLoader(plugin.Loader):
 
     product_base_types = {"yeticache", "yetiRig"}
     product_types = product_base_types
-    representations = {"fur"}
+    representations = {"*"}
+    extensions = {"fur"}
 
     label = "Load Yeti Cache"
     order = -9
