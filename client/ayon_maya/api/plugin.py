@@ -122,16 +122,15 @@ def _convert_uri(uri: str) -> str:
     version = results["version"]
     # strip the "v" from version and convert to int
     version_number = int(version[1:])
-    if version_number < 0:
-        version = "hero"
+    if version_number > 0:
+        return uri
 
     return (
-        "ayon+entity://{project}{folder_path}?product={product}&version={version}"
+        "ayon+entity://{project}{folder_path}?product={product}&version=hero"
         "&representation={representation}".format(
             project=results["project"],
             folder_path=results["folderPath"],
             product=results["product"],
-            version=version,
             representation=results["representation"]
         )
     )
