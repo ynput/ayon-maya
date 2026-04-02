@@ -2,6 +2,7 @@
 from __future__ import annotations
 import json
 import os
+from urllib.parse import urlparse
 
 import ayon_api
 import qargparse
@@ -20,6 +21,7 @@ from ayon_core.pipeline import (
     get_current_project_name,
     publish,
 )
+from ayon_core.pipeline.entity_uri import parse_ayon_entity_uri
 from ayon_core.pipeline.load import LoadError
 from ayon_core.settings import get_project_settings
 
@@ -104,7 +106,37 @@ def get_ayon_entity_uri_from_representation_context(context: dict) -> str:
             f"representation id '{representation_id}' to single URI. "
             f"Received data: {response.data}"
         )
-    return uris[0]["uri"]
+    return _convert_uri(uris[0]["uri"])
+
+
+def _convert_uri(uri: str) -> str:
+    """Convert an AYON entity URI to its hero version.
+
+    Args:
+        uri (str): The AYON entity URI to convert.
+
+    Returns:
+        str: The converted hero AYON entity URI.
+
+    """
+    results = parse_ayon_entity_uri(uri)
+    version = results["version"]
+    # strip the "v" from version and convert to int
+    version_number = int(version[1:])
+    if version_number > 0:
+        return uri
+
+    scheme = urlparse(uri).scheme
+    return (
+        "{scheme}://{project}{folder_path}?product={product}&version=hero"
+        "&representation={representation}".format(
+            scheme=scheme,
+            project=results["project"],
+            folder_path=results["folderPath"],
+            product=results["product"],
+            representation=results["representation"]
+        )
+    )
 
 
 class MayaCreatorBase:
