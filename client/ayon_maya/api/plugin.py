@@ -2,6 +2,7 @@
 from __future__ import annotations
 import json
 import os
+from urllib.parse import urlparse
 
 import ayon_api
 import qargparse
@@ -125,9 +126,11 @@ def _convert_uri(uri: str) -> str:
     if version_number > 0:
         return uri
 
+    scheme = urlparse(uri).scheme
     return (
-        "ayon+entity://{project}{folder_path}?product={product}&version=hero"
+        "{scheme}://{project}{folder_path}?product={product}&version=hero"
         "&representation={representation}".format(
+            scheme=scheme,
             project=results["project"],
             folder_path=results["folderPath"],
             product=results["product"],
