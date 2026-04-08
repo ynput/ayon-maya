@@ -219,6 +219,8 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "staticSingleSample": bool,
             "worldspace": bool,
             "exportSkels": str,
+            "exportSkin": str,
+            "exportBlendShapes": bool,
         }
 
     @property
@@ -248,7 +250,9 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "filterTypes": None,
             "staticSingleSample": True,
             "worldspace": True,
-            "exportSkels": "auto"
+            "exportBlendShapes": False,
+            "exportSkels": "auto",
+            "exportSkin": "auto"
         }
 
     def parse_overrides(self, overrides, options):
@@ -599,6 +603,29 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                     ),
                     visible=visible,
                     default=True),
+            EnumDef("exportSkin",
+                    label="Export Skin",
+                    items=[
+                        {"value": "none", "label": "None"},
+                        {"value": "auto", "label": "Auto"},
+                        {"value": "explicit", "label": "Explicit"},
+                    ],
+                    tooltip=(
+                        "Export skin cluster data.\n\n"
+                        "None: do not export skin clusters.\n"
+                        "Auto: export skin clusters if present.\n"
+                        "Explicit: only export explicitly tagged skin clusters."
+                    ),
+                    visible=visible,
+                    default="none"
+            ),
+            BoolDef("exportBlendShapes",
+                    label="Export Blendshapes",
+                    tooltip=(
+                        "Export Blendshapes with Animation"
+                    ),
+                    visible=visible,
+                    default=False),
             EnumDef("defaultMeshScheme",
                     label="Default Subdivision Method",
                     items=[
