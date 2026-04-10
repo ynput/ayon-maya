@@ -191,6 +191,10 @@ class CreatorsModel(BaseSettingsModel):
         default_factory=BasicCreatorModel,
         title="Create Maya USD"
     )
+    CreateMayaUsdModel: BasicCreatorModel = SettingsField(
+        default_factory=BasicCreatorModel,
+        title="Create Maya USD: Model"
+    )
     CreateMayaUsdLayer: BasicCreatorModel = SettingsField(
         default_factory=BasicCreatorModel,
         title="Create Maya USD Export Layer"
@@ -338,6 +342,7 @@ DEFAULT_CREATORS_SETTINGS = {
     "CreateMatchmove": {"default_variants": ["Main"], "enabled": True},
     "CreateMayaScene": {"default_variants": ["Main"], "enabled": True},
     "CreateMayaUsd": {"default_variants": ["Main"], "enabled": True},
+    "CreateMayaUsdModel": {"default_variants": ["Main"], "enabled": True},
     "CreateMayaUsdLayer": {"default_variants": ["Main"], "enabled": True},
     "CreateModel": {
         "default_variants": ["Main", "Proxy", "Sculpt"],
