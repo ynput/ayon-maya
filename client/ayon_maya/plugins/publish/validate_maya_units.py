@@ -43,12 +43,12 @@ class ValidateMayaUnits(plugin.MayaContextPlugin,
             return
 
         # Collected units
-        scene_linear_units = context.data.get('linearUnits')
-        scene_angular_units = context.data.get('angularUnits')
-        scene_fps = context.data.get('fps')
-        self.log.info('Units (linear): {0}'.format(scene_linear_units))
-        self.log.info('Units (angular): {0}'.format(scene_angular_units))
-        self.log.info('Units (time): {0} FPS'.format(scene_fps))
+        scene_linear_units = context.data.get("linearUnits")
+        scene_angular_units = context.data.get("angularUnits")
+        scene_fps = context.data.get("fps")
+        self.log.info(f"Units (linear): {scene_linear_units}")
+        self.log.info(f"Units (angular): {scene_angular_units}")
+        self.log.info(f"Units (time): {scene_fps} FPS")
 
         context_fps = mayalib.convert_to_maya_fps(
             self._get_context_fps(context)
@@ -109,11 +109,11 @@ class ValidateMayaUnits(plugin.MayaContextPlugin,
 
         linear_units, angular_units = get_scene_units_settings()
         if cls.validate_angular_units:
-            cls.log.info("Setting angular unit to '{}'".format(angular_units))
+            cls.log.info(f"Setting angular unit to '{angular_units}'")
             cmds.currentUnit(angle=angular_units)
 
         if cls.validate_linear_units:
-            cls.log.info("Setting linear unit to '{}'".format(linear_units))
+            cls.log.info(f"Setting linear unit to '{linear_units}'")
             cmds.currentUnit(linear=linear_units)
 
         context_fps = cls._get_context_fps(context)
