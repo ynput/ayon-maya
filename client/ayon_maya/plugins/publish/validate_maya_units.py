@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import pyblish.api
+
 import ayon_maya.api.lib as mayalib
 import maya.cmds as cmds
 from ayon_core.pipeline.publish import (
@@ -37,58 +41,56 @@ class ValidateMayaUnits(plugin.MayaContextPlugin,
     def process(self, context):
         if not self.is_active(context.data):
             return
+
         # Collected units
-        linearunits = context.data.get('linearUnits')
-        angularunits = context.data.get('angularUnits')
+        scene_linear_units = context.data.get('linearUnits')
+        scene_angular_units = context.data.get('angularUnits')
+        scene_fps = context.data.get('fps')
+        self.log.info('Units (linear): {0}'.format(scene_linear_units))
+        self.log.info('Units (angular): {0}'.format(scene_angular_units))
+        self.log.info('Units (time): {0} FPS'.format(scene_fps))
 
-        fps = context.data.get('fps')
-
-        folder_attributes = context.data["folderEntity"]["attrib"]
-        folder_fps = mayalib.convert_to_maya_fps(folder_attributes["fps"])
-
-        self.log.info('Units (linear): {0}'.format(linearunits))
-        self.log.info('Units (angular): {0}'.format(angularunits))
-        self.log.info('Units (time): {0} FPS'.format(fps))
-
-        invalid = []
+        context_fps = mayalib.convert_to_maya_fps(
+            self._get_context_fps(context)
+        )
 
         project_settings: dict = context.data["project_settings"]
         linear_units, angular_units = get_scene_units_settings(
             project_settings
         )
 
+        invalid = []
         # Check if units are correct
         if (
             self.validate_linear_units
-            and linearunits
-            and linearunits != linear_units
+            and scene_linear_units
+            and scene_linear_units != linear_units
         ):
             invalid.append({
                 "setting": "Linear units",
                 "required_value": linear_units,
-                "current_value": linearunits
+                "current_value": scene_linear_units
             })
 
         if (
             self.validate_angular_units
-            and angularunits
-            and angularunits != angular_units
+            and scene_angular_units
+            and scene_angular_units != angular_units
         ):
             invalid.append({
                 "setting": "Angular units",
                 "required_value": angular_units,
-                "current_value": angularunits
+                "current_value": scene_angular_units
             })
 
-        if self.validate_fps and fps and fps != folder_fps:
+        if self.validate_fps and scene_fps and scene_fps != context_fps:
             invalid.append({
                 "setting": "FPS",
-                "required_value": folder_fps,
-                "current_value": fps
+                "required_value": context_fps,
+                "current_value": scene_fps
             })
 
         if invalid:
-
             issues = []
             for data in invalid:
                 self.log.error(self.log_message_format.format(**data))
@@ -114,6 +116,10 @@ class ValidateMayaUnits(plugin.MayaContextPlugin,
             cls.log.info("Setting linear unit to '{}'".format(linear_units))
             cmds.currentUnit(linear=linear_units)
 
-        cls.log.info("Setting time unit to match project")
-        folder_entity = context.data["folderEntity"]
-        mayalib.set_scene_fps(folder_entity["attrib"]["fps"])
+        context_fps = cls._get_context_fps(context)
+        cls.log.info(f"Setting time unit to match context: {context_fps}")
+        mayalib.set_scene_fps(context_fps)
+
+    @staticmethod
+    def _get_context_fps(context: pyblish.api.Context) -> float:
+        return context.data["taskEntity"]["attrib"]["fps"]
