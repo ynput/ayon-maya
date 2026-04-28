@@ -101,12 +101,12 @@ class ValidateFrameRange(plugin.MayaInstancePlugin,
             if task_name:
                 report = (
                     "Frame range settings do not match"
-                    f"task '{task_name}' in folder '{folder_path}'.\n\n"
+                    f" task '{task_name}' in folder '{folder_path}'.\n\n"
                 )
             else:
                 report = (
-                    "Frame range settings do not match \n\n"
-                    f"folder '{folder_path}'.\n\n"
+                    "Frame range settings do not match"
+                    f" folder '{folder_path}'.\n\n"
                 )
             for error in errors:
                 report += "- {}\n\n".format(error)
