@@ -81,25 +81,9 @@ class ValidateFrameRange(plugin.MayaInstancePlugin,
         ]:
             return
 
-        if (inst_start != frame_start_handle):
-            errors.append("Instance start frame [ {} ] doesn't "
-                          "match the one set on folder [ {} ]: "
-                          "{}/{}/{}/{} (handle/start/end/handle)".format(
-                              inst_start,
-                              frame_start_handle,
-                              handle_start, frame_start, frame_end, handle_end
-                          ))
-
-        if (inst_end != frame_end_handle):
-            errors.append("Instance end frame [ {} ] doesn't "
-                          "match the one set on folder [ {} ]: "
-                          "{}/{}/{}/{} (handle/start/end/handle)".format(
-                              inst_end,
-                              frame_end_handle,
-                              handle_start, frame_start, frame_end, handle_end
-                          ))
-
         checks = {
+            "frame start handle": (frame_start_handle, inst_start),
+            "frame end handle": (frame_end_handle, inst_end),
             "frame start": (frame_start, inst_frame_start),
             "frame end": (frame_end, inst_frame_end),
             "handle start": (handle_start, inst_handle_start),
