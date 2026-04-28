@@ -92,12 +92,24 @@ class ValidateFrameRange(plugin.MayaInstancePlugin,
         for label, values in checks.items():
             if values[0] != values[1]:
                 errors.append(
-                    "{} on instance ({}) does not match with the folder "
-                    "({}).".format(label.title(), values[1], values[0])
+                    "{} on instance is {} but should be {}. ".format(
+                        label.title(), values[0], values[1]
+                    )
                 )
 
         if errors:
-            report = "Frame range settings are incorrect.\n\n"
+            task_name = context.data.get("task")
+            folder_path = context.data.get("folderPath")
+            if task_name:
+                report = (
+                    "Frame range settings do not match \n\n"
+                    f"task '{task_name}' in folder '{folder_path}'.\n\n"
+                )
+            else:
+                report = (
+                    "Frame range settings do not match \n\n"
+                    f"folder '{folder_path}'.\n\n"
+                )
             for error in errors:
                 report += "- {}\n\n".format(error)
 
