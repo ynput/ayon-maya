@@ -82,10 +82,10 @@ class ValidateFrameRange(plugin.MayaInstancePlugin,
             return
 
         checks = {
+            "frame start from context": (frame_start_handle, inst_start),
+            "frame end from context": (frame_end_handle, inst_end),
             "frame start": (frame_start, inst_frame_start),
             "frame end": (frame_end, inst_frame_end),
-            "frame start handle": (frame_start_handle, inst_start),
-            "frame end handle": (frame_end_handle, inst_end),
             "handle start": (handle_start, inst_handle_start),
             "handle end": (handle_end, inst_handle_end)
         }
