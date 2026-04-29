@@ -160,7 +160,7 @@ class ExtractCameraMayaScene(plugin.MayaExtractorPlugin,
             stack.enter_context(lib.maintained_selection())
             stack.enter_context(lib.evaluation("off"))
             stack.enter_context(lib.suspended_refresh())
-            stack.enter_context(rendersetup_use_untitled_collection())
+            stack.enter_context(rendersetup_disable_untitled_collection())
             if bake_to_worldspace:
                 baked = lib.bake_to_world_space(
                     transforms,
@@ -306,7 +306,7 @@ def transfer_image_planes(source_cameras, target_cameras,
 
 
 @contextlib.contextmanager
-def rendersetup_use_untitled_collection():
+def rendersetup_disable_untitled_collection():
     """Disable MAYA_RENDER_SETUP_USE_UNTITLED_COLLECTIONS environment
     variable during context to ensure no trailing collection after the publish.
     """
