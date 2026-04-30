@@ -3,6 +3,7 @@ from maya import cmds
 import os
 import inspect
 import pyblish.api
+import pyblish.logic
 from ayon_maya.api.action import SelectInvalidAction
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
@@ -60,9 +61,26 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
             for item in maya_settings["ext_mapping"]
         }
         current_file = context.data["currentFile"]
-        extension = os.path.splitext(current_file)[-1].strip(".")
-        correct_extension = ext_mapping.get(context.data["productBaseType"])
-        return extension == correct_extension
+        if not current_file:
+            # Unsaved file
+            return True
+        workfile_extension = os.path.splitext(current_file)[-1].strip(".")
+        for instance in context:
+            # Skip inactivate instances
+            if not instance.data.get("publish", True):
+                continue
+            # Consider only relevant instances
+            if not pyblish.logic.plugins_by_families(
+                [self.__class__],
+                self.families
+            ):
+                continue
+            instance_extension = ext_mapping.get(
+                instance.data["productBaseType"]
+            )
+            if workfile_extension != instance_extension:
+                return False
+        return True
 
     @staticmethod
     def get_invalid(context) -> list:
@@ -100,14 +118,14 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
     def get_description() -> str:
         return inspect.cleandoc("""
             ## Unknown Nodes Found
-            
+
             Unknown nodes were found in the scene. This often happens if nodes
             from plug-ins are used but are not available on this machine.
-            Note: Some studios use unknown nodes to store data on (as 
+            Note: Some studios use unknown nodes to store data on (as
             attributes) because it's a lightweight node.
-            
+
             ### How to Fix
-            
+
             You can either:
             - Install the missing plug-in that the unknown nodes belong to.
             - Delete the unknown nodes from the scene. You can use the "Repair"
