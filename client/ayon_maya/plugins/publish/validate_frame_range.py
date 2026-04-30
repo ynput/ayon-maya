@@ -81,39 +81,33 @@ class ValidateFrameRange(plugin.MayaInstancePlugin,
         ]:
             return
 
-        if (inst_start != frame_start_handle):
-            errors.append("Instance start frame [ {} ] doesn't "
-                          "match the one set on folder [ {} ]: "
-                          "{}/{}/{}/{} (handle/start/end/handle)".format(
-                              inst_start,
-                              frame_start_handle,
-                              handle_start, frame_start, frame_end, handle_end
-                          ))
-
-        if (inst_end != frame_end_handle):
-            errors.append("Instance end frame [ {} ] doesn't "
-                          "match the one set on folder [ {} ]: "
-                          "{}/{}/{}/{} (handle/start/end/handle)".format(
-                              inst_end,
-                              frame_end_handle,
-                              handle_start, frame_start, frame_end, handle_end
-                          ))
-
         checks = {
+            "frame start including handles": (frame_start_handle, inst_start),
+            "frame end including handles": (frame_end_handle, inst_end),
             "frame start": (frame_start, inst_frame_start),
             "frame end": (frame_end, inst_frame_end),
             "handle start": (handle_start, inst_handle_start),
             "handle end": (handle_end, inst_handle_end)
         }
-        for label, values in checks.items():
-            if values[0] != values[1]:
+        for label, (required, current) in checks.items():
+            if current != required:
                 errors.append(
-                    "{} on instance ({}) does not match with the folder "
-                    "({}).".format(label.title(), values[1], values[0])
+                    f"{label.title()} on instance is {current} but should be {required}. "
                 )
 
         if errors:
-            report = "Frame range settings are incorrect.\n\n"
+            task_name = context.data.get("task")
+            folder_path = context.data.get("folderPath")
+            if task_name:
+                report = (
+                    "Frame range settings do not match"
+                    f" task '{task_name}' in folder '{folder_path}'.\n\n"
+                )
+            else:
+                report = (
+                    "Frame range settings do not match"
+                    f" folder '{folder_path}'.\n\n"
+                )
             for error in errors:
                 report += "- {}\n\n".format(error)
 
