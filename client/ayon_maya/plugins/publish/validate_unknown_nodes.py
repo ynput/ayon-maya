@@ -1,9 +1,9 @@
 from maya import cmds
 
 import os
+import inspect
 import pyblish.api
 from ayon_maya.api.action import SelectInvalidAction
-from ayon_core.pipeline import registered_host
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     RepairContextAction,
@@ -59,8 +59,7 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
             item["name"]: item["value"]
             for item in maya_settings["ext_mapping"]
         }
-        host = registered_host()
-        current_file = host.get_current_workfile()
+        current_file = context.data["currentFile"]
         extension = os.path.splitext(current_file)[-1].strip(".")
         correct_extension = ext_mapping.get(context.data["productBaseType"])
         return extension == correct_extension
@@ -83,7 +82,10 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
 
         invalid = self.get_invalid(context)
         if invalid:
-            raise PublishValidationError("Unknown nodes found: {0}".format(invalid))
+            raise PublishValidationError(
+                "Unknown nodes found: {0}".format(invalid),
+                description=self.get_description()
+            )
 
     @classmethod
     def repair(cls, context):
@@ -92,3 +94,17 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
                 force_delete(node)
             except RuntimeError as exc:
                 cls.log.error(exc)
+
+    def get_description(self) -> str:
+        return inspect.cleandoc("""
+            ## Unknown Nodes Found
+            Unknown nodes were found in the scene. This often happens if nodes from
+            plug-ins are used but are not available on this machine.
+            Note: Some studios use unknown nodes to store data on (as attributes)
+            because it's a lightweight node.
+            ### How to Fix
+            You can either:
+            - Install the missing plug-in that the unknown nodes belong to.
+            - Delete the unknown nodes from the scene. You can use the "Repair"
+            action to automatically delete the unknown nodes.
+        """)
