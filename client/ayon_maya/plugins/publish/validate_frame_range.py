@@ -57,8 +57,6 @@ class ValidateFrameRange(plugin.MayaInstancePlugin,
         frame_start = int(context.data.get("frameStart"))
         frame_end = int(context.data.get("frameEnd"))
 
-        inst_start = int(instance.data.get("frameStartHandle"))
-        inst_end = int(instance.data.get("frameEndHandle"))
         inst_frame_start = int(instance.data.get("frameStart"))
         inst_frame_end = int(instance.data.get("frameEnd"))
         inst_handle_start = int(instance.data.get("handleStart"))
@@ -82,8 +80,6 @@ class ValidateFrameRange(plugin.MayaInstancePlugin,
             return
 
         checks = {
-            "frame start including handles": (frame_start_handle, inst_start),
-            "frame end including handles": (frame_end_handle, inst_end),
             "frame start": (frame_start, inst_frame_start),
             "frame end": (frame_end, inst_frame_end),
             "handle start": (handle_start, inst_handle_start),
