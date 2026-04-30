@@ -1147,6 +1147,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Extract Skeleton Mesh"
     )
+    ExtractUnrealSkeletalMeshAbc: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Unreal Skeletal Mesh - Alembic"
+    )
 
 
 DEFAULT_SUFFIX_NAMING = {
@@ -1791,5 +1795,10 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "active": True,
-    }
+    },
+    "ExtractUnrealSkeletalMeshAbc": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
 }
