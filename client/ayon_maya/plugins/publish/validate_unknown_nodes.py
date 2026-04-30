@@ -42,7 +42,7 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
     hosts = ['maya']
     families = ["model", "rig", "mayaScene", "look", "renderlayer", "yetiRig"]
     optional = True
-    label = "Unknown Nodes"
+    label = "Unknown Nodes in Scene"
     actions = [SelectInvalidAction, RepairContextAction]
 
     def _is_workfile_extension_align_with_extension_mapping(self, context) -> bool:
