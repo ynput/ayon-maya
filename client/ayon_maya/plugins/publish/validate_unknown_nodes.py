@@ -96,14 +96,18 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
             except RuntimeError as exc:
                 cls.log.error(exc)
 
-    def get_description(self) -> str:
+    @staticmethod
+    def get_description() -> str:
         return inspect.cleandoc("""
             ## Unknown Nodes Found
-            Unknown nodes were found in the scene. This often happens if nodes from
-            plug-ins are used but are not available on this machine.
-            Note: Some studios use unknown nodes to store data on (as attributes)
-            because it's a lightweight node.
+            
+            Unknown nodes were found in the scene. This often happens if nodes
+            from plug-ins are used but are not available on this machine.
+            Note: Some studios use unknown nodes to store data on (as 
+            attributes) because it's a lightweight node.
+            
             ### How to Fix
+            
             You can either:
             - Install the missing plug-in that the unknown nodes belong to.
             - Delete the unknown nodes from the scene. You can use the "Repair"
