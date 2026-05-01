@@ -273,6 +273,8 @@ class MayaCreatorBase:
         for created_inst, _changes in update_list:
             data = created_inst.data_to_store()
             node = data.get("instance_node")
+            if not node or not cmds.objExists(node):
+                continue
             with unlocked(node):
                 self.imprint_instance_node(node, data)
 
