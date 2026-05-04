@@ -1,3 +1,4 @@
+from __future__ import annotations
 from maya import cmds
 
 from ayon_core.pipeline.workfile.workfile_template_builder import (
@@ -6,6 +7,7 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
 )
 from ayon_maya.api.lib import (
     get_container_transforms,
+    get_highest_in_hierarchy,
     get_node_parent,
     get_node_index_under_parent
 )
@@ -27,12 +29,14 @@ class MayaPlaceholderLoadPlugin(MayaPlaceholderPlugin, PlaceholderLoadMixin):
         parts = [prefix]
 
         # add family if any
-        placeholder_product_type = placeholder_data.get("product_type")
-        if placeholder_product_type is None:
-            placeholder_product_type = placeholder_data.get("family")
+        placeholder_product_base_type = (
+            placeholder_data.get("product_base_type")
+            or placeholder_data.get("product_type")
+            or placeholder_data.get("family")
+        )
 
-        if placeholder_product_type:
-            parts.append(placeholder_product_type)
+        if placeholder_product_base_type:
+            parts.append(placeholder_product_base_type)
 
         # add loader arguments if any
         loader_args = placeholder_data["loader_args"]
@@ -90,17 +94,18 @@ class MayaPlaceholderLoadPlugin(MayaPlaceholderPlugin, PlaceholderLoadMixin):
         if not container:
             return
 
-        # TODO: This currently returns only a single root but a loaded scene
-        #   could technically load more than a single root
-        container_root = get_container_transforms(container, root=True)
+        container_roots: list[str] = get_container_transforms(container)
 
-        # Bugfix: The get_container_transforms does not recognize the load
-        # reference group currently
-        # TODO: Remove this when it does
-        parent = get_node_parent(container_root)
-        if parent:
-            container_root = parent
-        roots = [container_root]
+        roots: list[str] = []
+        for container_root in get_highest_in_hierarchy(container_roots):
+            # Bugfix: The get_container_transforms does not recognize the load
+            # reference group currently
+            # TODO: Remove this when it does
+            parent = get_node_parent(container_root)
+            if parent:
+                container_root = parent
+
+            roots.append(container_root)
 
         # Add the loaded roots to the holding sets if they exist
         holding_sets = cmds.listSets(object=placeholder.scene_identifier) or []

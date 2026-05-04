@@ -47,7 +47,7 @@ class Container:
 class LayoutElement:
     """Single element representing a loaded container in the layout.json"""
     # Loaded representation
-    product_type: str
+    product_base_type: str
     instance_name: str
     representation: str
     version: str
@@ -156,12 +156,30 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         #  be querying here using the project name from the container instead.
         project_name = instance.context.data["projectName"]
         representation_ids = {c.representation for c in included_containers}
-        representations = ayon_api.get_representations(
-            project_name,
-            representation_ids=representation_ids,
-            fields={"id", "versionId", "context", "name"}
-        )
-        representations_by_id = {r["id"]: r for r in representations}
+        representations_by_id = {
+            r["id"]: r
+            for r in ayon_api.get_representations(
+                project_name,
+                representation_ids=representation_ids,
+                fields={"id", "versionId", "context", "name"}
+            )
+        }
+        version_ids = {r["versionId"] for r in representations_by_id.values()}
+        product_id_by_version_id = {
+            v["id"]: v["productId"]
+            for v in ayon_api.get_versions(
+                project_name,
+                version_ids=version_ids,
+                fields={"id", "productId"},
+            )
+        }
+        product_ids = set(product_id_by_version_id.values())
+        products_by_id = {
+            p["id"]: p
+            for p in ayon_api.get_products(
+                project_name, product_ids=product_ids
+            )
+        }
 
         # Process each container found in the layout instance
         elements: list[LayoutElement] = []
@@ -170,14 +188,20 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
             representation = representations_by_id.get(representation_id)
             if not representation:
                 self.log.warning(
-                    "Representation not found in current project "
-                    "for container: {}".format(container))
+                    "Representation not found in current project"
+                    f" for container: {container}"
+                )
                 continue
+
+            version_id: str = representation["versionId"]
+            product_id = product_id_by_version_id[version_id]
+            product_entity = products_by_id[product_id]
 
             element = self.get_container_element(
                 container=container,
                 representation=representation,
-                allow_obj_transforms=allow_obj_transforms
+                product_entity=product_entity,
+                allow_obj_transforms=allow_obj_transforms,
             )
             self.log.debug("Layout element collected: %s", element)
             elements.append(element)
@@ -243,17 +267,17 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         self,
         container: Container,
         representation: dict[str, Any],
-        allow_obj_transforms: bool
+        product_entity: dict[str, Any],
+        allow_obj_transforms: bool,
     ) -> LayoutElement:
         """Get layout element data from the container root."""
 
         container_root = self.get_container_root(container)
-        # TODO use product entity to get product type rather than
-        #    data in representation 'context'
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
+
         repre_context = representation["context"]
-        product_type: str = repre_context.get("product", {}).get("type")
-        if not product_type:
-            product_type = repre_context.get("family")
 
         # Get transformation data
         local_matrix = cmds.xform(container_root, query=True, matrix=True)
@@ -270,7 +294,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin):
         }
 
         element = LayoutElement(
-            product_type=product_type,
+            product_base_type=product_base_type,
             instance_name=container.namespace,
             representation=representation["id"],
             version=representation["versionId"],

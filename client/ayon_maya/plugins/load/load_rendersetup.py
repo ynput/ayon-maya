@@ -46,9 +46,11 @@ def mark_all_imported(enabled):
 class RenderSetupLoader(plugin.Loader):
     """Load json preset for RenderSetup overwriting current one."""
 
-    product_types = {"rendersetup"}
-    representations = {"json"}
-    defaults = ['Main']
+    product_base_types = {"rendersetup"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"json"}
+    defaults = ["Main"]
 
     label = "Load RenderSetup template"
     icon = "tablet"

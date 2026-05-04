@@ -8,14 +8,16 @@ import os
 
 from ayon_core.settings import get_project_settings
 from ayon_maya.api import plugin
-from ayon_maya.api.plugin import get_load_color_for_product_type
+from ayon_maya.api.plugin import get_load_color_for_product_base_type
 
 
 class LoadVDBtoArnold(plugin.Loader):
     """Load OpenVDB for Arnold in aiVolume"""
 
-    product_types = {"vdbcache"}
-    representations = {"vdb"}
+    product_base_types = {"vdbcache"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"vdb"}
 
     label = "Load VDB to Arnold"
     icon = "cloud"
@@ -26,8 +28,6 @@ class LoadVDBtoArnold(plugin.Loader):
         from ayon_maya.api.lib import unique_namespace
         from ayon_maya.api.pipeline import containerise
         from maya import cmds
-
-        product_type = context["product"]["productType"]
 
         # Check if the plugin for arnold is available on the pc
         try:
@@ -48,8 +48,16 @@ class LoadVDBtoArnold(plugin.Loader):
         root = cmds.group(name=label, empty=True)
 
         project_name = context["project"]["name"]
+
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
+
         settings = get_project_settings(project_name)
-        color = get_load_color_for_product_type(product_type, settings)
+        color = get_load_color_for_product_base_type(
+            product_base_type, settings
+        )
         if color is not None:
             red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", 1)

@@ -11,7 +11,7 @@ from ayon_maya.api.lib import (
     unique_namespace,
 )
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import get_load_color_for_product_type
+from ayon_maya.api.plugin import get_load_color_for_product_base_type
 from ayon_maya.api import plugin
 
 
@@ -35,7 +35,7 @@ def is_sequence(path: str) -> bool:
 class ArnoldStandinLoader(plugin.Loader):
     """Load as Arnold standin"""
 
-    product_types = {
+    product_base_types = {
         "ass",
         "assProxy",
         "animation",
@@ -45,7 +45,9 @@ class ArnoldStandinLoader(plugin.Loader):
         "usd",
         "oxcache"
     }
-    representations = {"ass", "abc", "usda", "usdc", "usd"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"ass", "abc", "usda", "usdc", "usd"}
 
     label = "Load as Arnold standin"
     order = -5
@@ -81,7 +83,7 @@ class ArnoldStandinLoader(plugin.Loader):
 
         # Set color.
         settings = get_project_settings(context["project"]["name"])
-        color = get_load_color_for_product_type("ass", settings)
+        color = get_load_color_for_product_base_type("ass", settings)
         if color is not None:
             red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", True)

@@ -46,12 +46,14 @@ def _process_reference(file_url, name, namespace, options):
 class AbcLoader(ayon_maya.api.plugin.ReferenceLoader):
     """Loader to reference an Alembic file"""
 
-    product_types = {
+    product_base_types = {
         "animation",
         "camera",
         "pointcache",
     }
-    representations = {"abc"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"abc"}
 
     label = "Reference animation"
     order = -10
@@ -77,11 +79,13 @@ class AbcLoader(ayon_maya.api.plugin.ReferenceLoader):
 class FbxLoader(ayon_maya.api.plugin.ReferenceLoader):
     """Loader to reference an Fbx files"""
 
-    product_types = {
+    product_base_types = {
         "animation",
         "camera",
     }
-    representations = {"fbx"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"fbx"}
 
     label = "Reference animation"
     order = -10

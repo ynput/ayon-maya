@@ -9,8 +9,8 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
     """Workfile auto-creator."""
     identifier = "io.openpype.creators.maya.workfile"
     label = "Workfile"
-    product_type = "workfile"
     product_base_type = "workfile"
+    product_type = product_base_type
     icon = "fa5.file"
 
     default_variant = "Main"
@@ -48,18 +48,10 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
                 "task": task_name,
                 "variant": variant
             }
-            data.update(
-                self.get_dynamic_data(
-                    project_name,
-                    folder_entity,
-                    task_entity,
-                    variant,
-                    host_name,
-                    current_instance)
-            )
             self.log.info("Auto-creating workfile instance...")
             current_instance = CreatedInstance(
-                product_type=self.product_type,
+                product_base_type=self.product_base_type,
+                product_type=self.product_base_type,
                 product_name=product_name,
                 data=data,
                 creator=self,

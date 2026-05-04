@@ -42,7 +42,7 @@ class ExtractWorkfileXgen(plugin.MayaExtractorPlugin):
 
             is_renderlayer = (
                 "renderlayer" in i.data.get("families", []) or
-                i.data["productType"] == "renderlayer"
+                i.data["productBaseType"] == "renderlayer"
             )
             return is_renderlayer
 
