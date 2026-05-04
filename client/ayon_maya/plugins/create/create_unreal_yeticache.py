@@ -10,8 +10,8 @@ class CreateUnrealYetiCache(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.unrealyeticache"
     label = "Unreal - Yeti Cache"
-    product_type = "yeticacheUE"
     product_base_type = "yeticacheUE"
+    product_type = product_base_type
     icon = "pagelines"
 
     def get_instance_attr_defs(self):

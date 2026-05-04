@@ -15,7 +15,7 @@ class ExtractPlayblast(plugin.MayaExtractorPlugin):
     """
 
     label = "Extract Playblast"
-    families = ["review"]
+    families = ["review.playblast"]
     optional = True
     capture_preset = {}
     profiles = None

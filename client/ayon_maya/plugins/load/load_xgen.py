@@ -17,8 +17,10 @@ from qtpy import QtWidgets
 class XgenLoader(plugin.ReferenceLoader):
     """Load Xgen as reference"""
 
-    product_types = {"xgen"}
-    representations = {"ma", "mb"}
+    product_base_types = {"xgen"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"ma", "mb"}
 
     label = "Reference Xgen"
     icon = "code-fork"

@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from maya import cmds
 import xgenm
 
@@ -27,7 +29,8 @@ class ConnectXgen(InventoryAction):
             return
 
         # Categorize containers by product type.
-        containers_by_product_type = {}
+        containers_by_product_base_type = defaultdict(list)
+
         repre_ids = {
             container["representation"]
             for container in containers
@@ -37,14 +40,18 @@ class ConnectXgen(InventoryAction):
             repre_id = container["representation"]
             repre_context = repre_contexts_by_id[repre_id]
 
-            product_type = repre_context["product"]["productType"]
+            product_entity = repre_context["product"]
+            product_base_type = product_entity.get("productBaseType")
+            if not product_base_type:
+                product_base_type = product_entity["productType"]
 
-            containers_by_product_type.setdefault(product_type, [])
-            containers_by_product_type[product_type].append(container)
+            containers_by_product_base_type[product_base_type].append(
+                container
+            )
 
         # Validate to only 1 source container.
-        source_containers = containers_by_product_type.get("animation", [])
-        source_containers += containers_by_product_type.get("pointcache", [])
+        source_containers = containers_by_product_base_type["animation"]
+        source_containers += containers_by_product_base_type["pointcache"]
         source_container_namespaces = [
             x["namespace"] for x in source_containers
         ]
@@ -79,8 +86,10 @@ class ConnectXgen(InventoryAction):
 
         # Target containers.
         target_containers = []
-        for product_type, containers in containers_by_product_type.items():
-            if product_type in ["animation", "pointcache"]:
+        for product_base_type, containers in (
+            containers_by_product_base_type.items()
+        ):
+            if product_base_type in {"animation", "pointcache"}:
                 continue
 
             target_containers.extend(containers)

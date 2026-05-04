@@ -10,8 +10,8 @@ class CreateMultiverseLook(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.mvlook"
     label = "Multiverse Look"
-    product_type = "mvLook"
     product_base_type = "mvLook"
+    product_type = product_base_type
     icon = "cubes"
 
     def get_instance_attr_defs(self):

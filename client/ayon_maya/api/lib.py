@@ -10,6 +10,7 @@ import logging
 import contextlib
 from collections import OrderedDict, defaultdict
 from math import ceil
+from typing import Optional
 
 import capture
 import clique
@@ -1850,7 +1851,8 @@ def get_container_members(container, include_reference_associated_nodes=False):
     This includes the nodes from any loaded references in the container.
 
     Arguments:
-        container (str | dict): container data or name of container node
+        container (str | dict): The container name or a container dictionary
+            with the "objectName" key.
         include_reference_associated_nodes (bool): whether to include the
             associated nodes of references, like those produced from
             referencing with `groupReference`. This is disabled by default,
@@ -1897,12 +1899,23 @@ def get_container_members(container, include_reference_associated_nodes=False):
         all_members.update(reference_members)
 
         if include_reference_associated_nodes:
-            associated_nodes: list[str] = cmds.listConnections(
-                f"{ref}.associatedNode",
-                source=True,
-                destination=False,
-                fullNodeName=True
-            ) or []
+            if cmds.about(apiVersion=True) >= 20240000:
+                associated_nodes: list[str] = cmds.listConnections(
+                    f"{ref}.associatedNode",
+                    source=True,
+                    destination=False,
+                    fullNodeName=True
+                ) or []
+            else:
+                # fullNodeName argument is Maya 2023.1+
+                associated_nodes = cmds.listConnections(
+                    f"{ref}.associatedNode",
+                    source=True,
+                    destination=False
+                ) or []
+                associated_nodes = cmds.ls(
+                    associated_nodes, long=True
+                ) or []
             all_members.update(associated_nodes)
 
     return list(all_members)
@@ -1935,6 +1948,8 @@ def list_looks(project_name, folder_id):
         list[dict[str, Any]]: List of look products.
 
     """
+    # TODO this should filter by 'product_base_types'
+    # - can be used only with server version >= 1.14.0
     return list(ayon_api.get_products(
         project_name, folder_ids=[folder_id], product_types={"look"}
     ))
@@ -2252,12 +2267,13 @@ def get_container_transforms(container, members=None, root=False):
     transform is stored in the container information
 
     Args:
-        container (dict): the container
+        container (dict | str): the container
         members (list): optional and convenience argument
         root (bool): return highest node in hierarchy if True
 
     Returns:
-        root (list / str):
+        list[str] | str: List of highest nodes, or first entry if
+            root argument is True
     """
 
     if not members:
@@ -2377,7 +2393,15 @@ def remove_other_uv_sets(mesh):
 
 
 def get_node_parent(node):
-    """Return full path name for parent of node"""
+    """Return full path name for parent of node
+
+    Arguments:
+        node (str): The node path of the node to get the parent for.
+
+    Returns:
+        str | None: The full path name of the parent node or None.
+
+    """
     parents = cmds.listRelatives(node, parent=True, fullPath=True)
     return parents[0] if parents else None
 
@@ -4362,21 +4386,33 @@ def create_rig_animation_instance(
     folder_entity = context["folder"]
     product_entity = context["product"]
     product_type = product_entity["productType"]
+    product_base_type = product_entity.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
     product_name = product_entity["name"]
 
     custom_product_name = options.get("animationProductName")
     if custom_product_name:
+        for old_key, new_key in (
+            ("{family}", "{product[basetype]}"),
+            ("{asset}", "{folder[name]}"),
+            ("{subset}", "asset"),
+        ):
+            if old_key in custom_product_name:
+                log.warning(f"Using deprecated template key '{old_key}'")
+                custom_product_name = custom_product_name.replace(
+                    old_key, new_key
+                )
+
         formatting_data = {
             "folder": {
                 "name": folder_entity["name"]
             },
             "product": {
-                "type": product_type,
                 "name": product_name,
+                "type": product_type,
+                "basetype": product_base_type,
             },
-            "asset": folder_entity["name"],
-            "subset": product_name,
-            "family": product_type
         }
         namespace = get_custom_namespace(
             custom_product_name.format(**formatting_data)
@@ -4432,21 +4468,33 @@ def create_camera_instance(
     folder_entity: dict = context["folder"]
     product_entity: dict = context["product"]
     product_type: str = product_entity["productType"]
+    product_base_type: Optional[str] = product_entity.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
     product_name: str = product_entity["name"]
 
     custom_product_name = options.get("cameraProductName")
     if custom_product_name:
+        for old_key, new_key in (
+            ("{family}", "{product[basetype]}"),
+            ("{asset}", "{folder[name]}"),
+            ("{subset}", "asset"),
+        ):
+            if old_key in custom_product_name:
+                log.warning(f"Using deprecated template key '{old_key}'")
+                custom_product_name = custom_product_name.replace(
+                    old_key, new_key
+                )
+
         formatting_data = {
             "folder": {
-                "name": folder_entity["name"]
+                "name": folder_entity["name"],
             },
             "product": {
-                "type": product_type,
                 "name": product_name,
+                "type": product_type,
+                "basetype": product_base_type,
             },
-            "asset": folder_entity["name"],
-            "subset": product_name,
-            "family": product_type
         }
         namespace = get_custom_namespace(
             custom_product_name.format(**formatting_data)

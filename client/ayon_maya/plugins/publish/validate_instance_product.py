@@ -17,7 +17,7 @@ def validate_name(product_name):
     return all(x in allowed for x in product_name)
 
 
-class ValidateSubsetName(plugin.MayaInstancePlugin):
+class ValidateProductName(plugin.MayaInstancePlugin):
     """Validates product name has only valid characters"""
 
     order = ValidateContentsOrder

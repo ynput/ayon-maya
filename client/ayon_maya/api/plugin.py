@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json
 import os
-from typing import Any, Optional
+from urllib.parse import urlparse
 
 import ayon_api
 import qargparse
@@ -21,11 +21,12 @@ from ayon_core.pipeline import (
     get_current_project_name,
     publish,
 )
-from ayon_core.pipeline.create import get_product_name
+from ayon_core.pipeline.entity_uri import parse_ayon_entity_uri
 from ayon_core.pipeline.load import LoadError
 from ayon_core.settings import get_project_settings
+
 from maya import cmds
-from maya.app.renderSetup.model import renderSetup
+from maya.app.renderSetup.model import renderSetup, renderLayer
 from pyblish.api import ContextPlugin, InstancePlugin
 
 from . import lib
@@ -105,7 +106,37 @@ def get_ayon_entity_uri_from_representation_context(context: dict) -> str:
             f"representation id '{representation_id}' to single URI. "
             f"Received data: {response.data}"
         )
-    return uris[0]["uri"]
+    return _convert_uri(uris[0]["uri"])
+
+
+def _convert_uri(uri: str) -> str:
+    """Convert an AYON entity URI to its hero version.
+
+    Args:
+        uri (str): The AYON entity URI to convert.
+
+    Returns:
+        str: The converted hero AYON entity URI.
+
+    """
+    results = parse_ayon_entity_uri(uri)
+    version = results["version"]
+    # strip the "v" from version and convert to int
+    version_number = int(version[1:])
+    if version_number > 0:
+        return uri
+
+    scheme = urlparse(uri).scheme
+    return (
+        "{scheme}://{project}{folder_path}?product={product}&version=hero"
+        "&representation={representation}".format(
+            scheme=scheme,
+            project=results["project"],
+            folder_path=results["folderPath"],
+            product=results["product"],
+            representation=results["representation"]
+        )
+    )
 
 
 class MayaCreatorBase:
@@ -161,7 +192,7 @@ class MayaCreatorBase:
         specify `usd` but apply different extractors like `usdMultiverse`.
 
         There is no need to override this method if you only have the
-        'product_type' required for publish filtering.
+        'product_base_type' required for publish filtering.
 
         Returns:
             list: families for instances of this creator
@@ -216,11 +247,12 @@ class MayaCreatorBase:
         data["__creator_attributes_keys"] = ",".join(creator_attributes.keys())
 
         # Kill any existing attributes just so we can imprint cleanly again
-        for attr in data.keys():
-            if cmds.attributeQuery(attr, node=node, exists=True):
-                cmds.deleteAttr("{}.{}".format(node, attr))
+        with lib.undo_chunk():
+            for attr in data.keys():
+                if cmds.attributeQuery(attr, node=node, exists=True):
+                    cmds.deleteAttr("{}.{}".format(node, attr))
 
-        return imprint(node, data)
+            return imprint(node, data)
 
     def read_instance_node(self, node):
         node_data = read(node)
@@ -271,6 +303,7 @@ class MayaCreatorBase:
             created_instance = CreatedInstance.from_existing(node_data, self)
             self._add_instance_to_context(created_instance)
 
+    @lib.undo_chunk()
     def _default_update_instances(self, update_list):
 
         for created_inst, _changes in update_list:
@@ -318,9 +351,13 @@ class MayaCreator(Creator, MayaCreatorBase):
             instance_node = cmds.sets(members, name=product_name)
             instance_data["instance_node"] = instance_node
 
-            # product base type support is added in ayon-core 1.7.0
+            product_type = instance_data.get("productType")
+            if not product_type:
+                product_type = self.product_base_type
+
             instance = CreatedInstance(
-                product_type=self.product_type,
+                product_base_type=self.product_base_type,
+                product_type=product_type,
                 product_name=product_name,
                 data=instance_data,
                 creator=self,
@@ -425,29 +462,30 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
     # These are required to be overridden in subclass
     singleton_node_name = ""
 
-    # These are optional to be overridden in subclass
-    layer_instance_prefix = None
-
     def _get_singleton_node(self, return_all=False):
         nodes = lib.lsattr("pre_creator_identifier", self.identifier)
         if nodes:
             return nodes if return_all else nodes[0]
 
     def create(self, product_name, instance_data, pre_create_data):
-        # A Renderlayer is never explicitly created using the create method.
-        # Instead, renderlayers from the scene are collected. Thus "create"
-        # would only ever be called to say, 'hey, please refresh collect'
-        self.create_singleton_node()
+        if not self._get_singleton_node():
+            self.create_singleton_node()
 
         variant_name: str = instance_data.get("variant", "Main")
 
-        # if no render layers are present, create default one with
-        # asterisk selector using the chosen variant name
+        # Create a new renderlayer to represent the new instance
         rs = renderSetup.instance()
-        if not rs.getRenderLayers():
-            render_layer = rs.createRenderLayer(variant_name)
-            collection = render_layer.createCollection("defaultCollection")
-            collection.getSelector().setPattern('*')
+        render_layer = rs.createRenderLayer(variant_name)
+        collection = render_layer.createCollection("defaultCollection")
+        collection.getSelector().setPattern('*')
+
+        # Ensure a node exists to persist the data to
+        instance_node = self._create_layer_instance_node(render_layer)
+        instance_data["instance_node"] = instance_node
+        instance_data["creator_identifier"] = self.identifier
+        instance_data["productName"] = product_name
+        self.imprint_instance_node(instance_node,
+                                   data=instance_data)
 
         # By RenderLayerCreator.create we make it so that the renderlayer
         # instances directly appear even though it just collects scene
@@ -468,7 +506,6 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         return node
 
     def collect_instances(self):
-
         # We only collect if the global render instance exists
         if not self._get_singleton_node():
             return
@@ -476,6 +513,11 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         host_name = self.create_context.host_name
         rs = renderSetup.instance()
         layers = rs.getRenderLayers()
+        fallback_product_type = None
+        product_type_items = self.get_product_type_items()
+        if product_type_items:
+            fallback_product_type = product_type_items[0].product_type
+
         for layer in layers:
             layer_instance_node = self.find_layer_instance_node(layer)
             if layer_instance_node:
@@ -501,10 +543,11 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
                     task_entity,
                     layer.name(),
                     host_name,
+                    product_type=fallback_product_type,
                 )
-
                 instance = CreatedInstance(
-                    product_type=self.product_type,
+                    product_base_type=self.product_base_type,
+                    product_type=fallback_product_type,
                     product_name=product_name,
                     data=instance_data,
                     creator=self
@@ -582,8 +625,7 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         data.pop("renderlayer", None)
         data.get("creator_attributes", {}).pop("renderlayer", None)
 
-        return super(RenderlayerCreator, self).imprint_instance_node(node,
-                                                                     data=data)
+        return super().imprint_instance_node(node, data=data)
 
     def remove_instances(self, instances):
         """Remove specified instances from the scene.
@@ -592,61 +634,33 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         instance, because it might contain valuable data for artist.
 
         """
-        # Instead of removing the single instance or renderlayers we instead
-        # remove the CreateRender node this creator relies on to decide whether
-        # it should collect anything at all.
-        nodes = self._get_singleton_node(return_all=True)
-        if nodes:
-            cmds.delete(nodes)
+        for instance in instances:
+            self._remove_instance_from_context(instance)
 
-        # Remove ALL the instances even if only one gets deleted
-        for instance in list(self.create_context.instances):
-            if instance.get("creator_identifier") == self.identifier:
-                self._remove_instance_from_context(instance)
+            # Remove the stored settings per renderlayer too
+            node = instance.data.get("instance_node")
+            if node and cmds.objExists(node):
+                cmds.delete(node)
 
-                # Remove the stored settings per renderlayer too
-                node = instance.data.get("instance_node")
-                if node and cmds.objExists(node):
-                    cmds.delete(node)
+            # Also delete the renderlayer, because with the singleton still
+            # existing it'll just mean it'll get recreated on collect
+            layer = instance.transient_data.get("layer")
+            if layer:
+                renderLayer.delete(layer)
 
-    def get_product_name(
-        self,
-        project_name: str,
-        folder_entity: dict[str, Any],
-        task_entity: Optional[dict[str, Any]],
-        variant: str,
-        host_name: Optional[str] = None,
-        instance: Optional[CreatedInstance] = None,
-        project_entity: Optional[dict[str, Any]] = None,
-    ) -> str:
-        if host_name is None:
-            host_name = self.create_context.host_name
-        dynamic_data = self.get_dynamic_data(
-            project_name,
-            folder_entity,
-            task_entity,
-            variant,
-            host_name,
-            instance
+        # If no render instances are remaining, then remove the singleton node
+        # as well.
+        has_render_instances = any(
+            instance.get("creator_identifier") == self.identifier
+            for instance in self.create_context.instances
         )
-        task_name = task_type = None
-        if task_entity:
-            task_name = task_entity["name"]
-            task_type = task_entity["taskType"]
-        # creator.product_type != 'render' as expected
-        return get_product_name(
-            project_name=project_name,
-            task_name=task_name,
-            task_type=task_type,
-            host_name=host_name,
-            product_type=self.layer_instance_prefix or self.product_type,
-            variant=variant,
-            dynamic_data=dynamic_data,
-            project_settings=self.project_settings,
-        )
+        if not has_render_instances:
+            nodes = self._get_singleton_node(return_all=True)
+            if nodes:
+                cmds.delete(nodes)
 
 
-def get_load_color_for_product_type(product_base_type, settings=None):
+def get_load_color_for_product_base_type(product_base_type, settings=None):
     """Get color for product type from settings.
 
     Args:
@@ -727,9 +741,10 @@ class Loader(LoaderPlugin):
         product_entity = context["product"]
         product_name = product_entity["name"]
         product_type = product_entity["productType"]
-        product_base_type = (
-            product_entity.get("productBaseType") or product_type
-        )
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+             product_base_type = product_type
+
         formatting_data = {
             "folder": {
                 "name": folder_entity["name"],
@@ -739,23 +754,41 @@ class Loader(LoaderPlugin):
                 "type": product_type,
                 "baseType": product_base_type,
             },
-            # Legacy: Backwards compatibilty
-            "family": product_type,
-            "asset_name": folder_entity["name"],
-            "asset_type": "asset",
-            "subset": product_name,
         }
+        namespace_template = custom_naming["namespace"]
+        group_name_template = custom_naming["group_name"]
 
-        custom_namespace = custom_naming["namespace"].format(
-            **formatting_data
-        )
+        # Backwards compatibilty: log out old formatting options
+        for old_key, new_key in (
+            ("{family}", "{product[basetype]}"),
+            ("{asset_name}", "{folder[name]}"),
+            ("{asset_type}", "asset"),
+            ("{subset}", "asset"),
+        ):
+            if old_key in namespace_template:
+                log.warning(
+                    f"Using deprecated template key '{old_key}'"
+                    f" in ayon+settings://maya/load/{loader_key}/namespace"
+                )
+                namespace_template = namespace_template.replace(
+                    old_key, new_key
+                )
+
+            if old_key in group_name_template:
+                log.warning(
+                    f"Using deprecated template key '{old_key}'"
+                    f" in ayon+settings://maya/load/{loader_key}/group_name"
+                )
+                group_name_template = group_name_template.replace(
+                    old_key, new_key
+                )
+
+        custom_namespace = namespace_template.format(**formatting_data)
 
         # Keep namespace dynamic, because we want to use the actual resolved
         # unique namespace to format with instead
         formatting_data["namespace"] = "{namespace}"
-        custom_group_name = custom_naming["group_name"].format(
-            **formatting_data
-        )
+        custom_group_name = group_name_template.format(**formatting_data)
 
         return custom_group_name, custom_namespace, options
 

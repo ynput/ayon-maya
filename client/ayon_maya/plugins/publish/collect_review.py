@@ -13,7 +13,7 @@ class CollectReview(plugin.MayaInstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.3
     label = 'Collect Review Data'
-    families = ["review"]
+    families = ["review.playblast"]
 
     def process(self, instance):
 
@@ -70,12 +70,13 @@ class CollectReview(plugin.MayaInstancePlugin):
             data = reviewable_inst.data
 
             self.log.debug(
-                'Adding review family to {}'.format(reviewable_product)
+                'Adding review families to {}'.format(reviewable_product)
             )
+            review_families = ["review", "review.playblast"]
             if data.get('families'):
-                data['families'].append('review')
+                data['families'].extend(review_families)
             else:
-                data['families'] = ['review']
+                data['families'] = review_families
 
             data["cameras"] = cameras
             data['review_camera'] = camera

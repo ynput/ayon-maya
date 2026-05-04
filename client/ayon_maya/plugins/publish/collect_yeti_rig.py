@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 
 import re
@@ -23,10 +24,6 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
     families = ["yetiRig"]
 
     def process(self, instance):
-
-        assert "input_SET" in instance.data["setMembers"], (
-            "Yeti Rig must have an input_SET")
-
         input_connections = self.collect_input_connections(instance)
 
         # Collect any textures if used
@@ -52,8 +49,16 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
         """Collect the inputs for all nodes in the input_SET"""
 
         # Get the input meshes information
-        input_content = cmds.ls(cmds.sets("input_SET", query=True), long=True)
-
+        yeti_sets = self.get_yeti_sets(instance)
+        if not yeti_sets:
+            raise KnownPublishError(
+                "Yeti Rig instance is missing its input_SET. "
+                "Please recreate the instance."
+            )
+        input_content: list[str] = cmds.ls(
+            cmds.sets(yeti_sets["input_SET"], query=True), 
+            long=True
+        ) or []
         # Include children
         input_content += cmds.listRelatives(input_content,
                                             allDescendents=True,
@@ -84,15 +89,44 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
             # current instance's hierarchy. If so, we ignore that connection
             # as we will want to preserve it even over a publish.
             if source_node in instance:
-                self.log.debug("Ignoring input connection between nodes "
-                               "inside the instance: %s -> %s" % (src, dest))
+                self.log.debug(
+                    "Ignoring input connection between nodes inside the "
+                    "instance: %s -> %s" % (src, dest)
+                )
                 continue
 
-            inputs.append({"connections": [source_attr, dest_attr],
-                           "sourceID": lib.get_id(source_node),
-                           "destinationID": lib.get_id(dest_node)})
+            inputs.append({
+                "connections": [source_attr, dest_attr],
+                "sourceID": lib.get_id(source_node),
+                "destinationID": lib.get_id(dest_node),
+                "sourceNode": source_node,
+                "destinationNode": dest_node,
+            })
 
         return inputs
+
+    def get_yeti_sets(self, instance):
+        """Get all Yeti sets from the instance
+
+        Args:
+            instance (pyblish.Instance): instance to collect from
+        Returns:
+            dict[str, str]: mapping of set names to their members
+        """
+        # Find required sets by suffix
+        searching = {"input_SET"}
+        yeti_sets: dict[str, str] = instance.data.setdefault("yeti_sets", {})
+        for node in cmds.ls(instance, exactType="objectSet"):
+            for suffix in searching:
+                if node.endswith(suffix):
+                    yeti_sets[suffix] = node
+                    searching.remove(suffix)
+                    break
+            if not searching:
+                break
+
+        self.log.debug(f"Found sets: {yeti_sets}")
+        return yeti_sets
 
     def get_yeti_resources(self, node):
         """Get all resource file paths

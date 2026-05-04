@@ -7,9 +7,11 @@ from maya import cmds, mel
 class AudioLoader(plugin.Loader):
     """Specific loader of audio."""
 
-    product_types = {"audio"}
+    product_base_types = {"audio"}
+    product_types = product_base_types
     label = "Load audio"
-    representations = {"wav"}
+    representations = {"*"}
+    extensions = {"wav"}
     icon = "volume-up"
     color = "orange"
 
