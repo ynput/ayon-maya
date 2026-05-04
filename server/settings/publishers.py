@@ -943,6 +943,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Node No Ghosting",
     )
+    ValidateSceneUnknownNodes: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Scene Unknown Nodes"
+    )
     ValidateShapeDefaultNames: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Shape Default Names",
@@ -1586,6 +1590,11 @@ DEFAULT_PUBLISH_SETTINGS = {
     "ValidateRigControllersArnoldAttributes": {
         "enabled": True,
         "optional": False,
+        "active": True
+    },
+    "ValidateSceneUnknownNodes": {
+        "enabled": True,
+        "optional": True,
         "active": True
     },
     "ValidateSingleAssembly": {
