@@ -8,13 +8,14 @@ from ayon_core.settings import get_project_settings
 from ayon_maya.api import plugin
 from ayon_maya.api.lib import maintained_selection, namespaced, unique_namespace
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import get_load_color_for_product_type
+from ayon_maya.api.plugin import get_load_color_for_product_base_type
 
 
 class RedshiftProxyLoader(plugin.Loader):
     """Load Redshift proxy"""
 
-    product_types = {"*"}
+    product_base_types = {"*"}
+    product_types = product_base_types
     representations = {"*"}
     extensions = {"rs", "usd", "usda", "usdc", "abc"}
 
@@ -25,8 +26,6 @@ class RedshiftProxyLoader(plugin.Loader):
 
     def load(self, context, name=None, namespace=None, options=None):
         """Plugin entry point."""
-        product_type = context["product"]["productType"]
-
         folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
             folder_name + "_",
@@ -52,8 +51,14 @@ class RedshiftProxyLoader(plugin.Loader):
 
         # colour the group node
         project_name = context["project"]["name"]
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
         settings = get_project_settings(project_name)
-        color = get_load_color_for_product_type(product_type, settings)
+        color = get_load_color_for_product_base_type(
+            product_base_type, settings
+        )
         if color is not None:
             red, green, blue = color
             cmds.setAttr("{0}.useOutlinerColor".format(group_node), 1)

@@ -56,7 +56,13 @@ class CollectVrayScene(plugin.MayaInstancePlugin):
             frame_end_handle = frame_end_render
 
         # Get layer specific settings, might be overrides
-        product_type = "vrayscene_layer"
+        i_product_type = instance.data.get("productType")
+        i_product_base_type = instance.data.get("productBaseType")
+        product_base_type = "vrayscene_layer"
+        product_type = product_base_type
+        if i_product_type != i_product_base_type:
+            product_type = i_product_type
+
         data = {
             "productName": layer_name,
             "layer": layer_name,
@@ -75,10 +81,11 @@ class CollectVrayScene(plugin.MayaInstancePlugin):
                 self.get_render_attribute("byFrameStep",
                                           layer=layer_name)),
             "renderer": renderer,
-            # instance product type
             "productType": product_type,
-            "family": product_type,
-            "families": [product_type],
+            # instance product base type
+            "productBaseType": product_base_type,
+            "family": product_base_type,
+            "families": [product_base_type],
             "time": get_formatted_current_time(),
             "author": context.data["user"],
             # Add source to allow tracing back to the scene from

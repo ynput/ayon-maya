@@ -12,7 +12,7 @@ class CollectModelData(plugin.MayaInstancePlugin):
         Validate if is this plugin still useful.
 
     Note:
-        This is a workaround so that the `model` product type can use the
+        This is a workaround so that the `model` product base type can use the
         same pointcache extractor implementation as animation and pointcaches.
         This always enforces the "current" frame to be published.
 
@@ -27,3 +27,9 @@ class CollectModelData(plugin.MayaInstancePlugin):
         frame = cmds.currentTime(query=True)
         instance.data["frameStart"] = frame
         instance.data["frameEnd"] = frame
+
+        # Explicitly set no handles at all
+        instance.data["handleStart"] = 0
+        instance.data["handleEnd"] = 0
+        instance.data["frameStartHandle"] = frame
+        instance.data["frameEndHandle"] = frame

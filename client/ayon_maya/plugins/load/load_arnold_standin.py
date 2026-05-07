@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 
 import clique
@@ -10,22 +11,31 @@ from ayon_maya.api.lib import (
     unique_namespace,
 )
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import get_load_color_for_product_type
+from ayon_maya.api.plugin import get_load_color_for_product_base_type
 from ayon_maya.api import plugin
 
 
-def is_sequence(files):
-    sequence = False
-    collections, remainder = clique.assemble(files, minimum_items=1)
+def is_sequence(path: str) -> bool:
+    """From single frame check if it is part of a sequence."""
+    # Given all the files matching the representation's extension
+    # check if we can detect a sequence of more than one file.
+    extension = os.path.splitext(path)[1]
+    files: list[str] = [
+        fname for fname in
+        os.listdir(os.path.dirname(path))
+        if fname.endswith(extension)
+    ]
+
+    collections, _remainder = clique.assemble(files)
     if collections:
-        sequence = True
-    return sequence
+        return True
+    return False
 
 
 class ArnoldStandinLoader(plugin.Loader):
     """Load as Arnold standin"""
 
-    product_types = {
+    product_base_types = {
         "ass",
         "assProxy",
         "animation",
@@ -35,7 +45,9 @@ class ArnoldStandinLoader(plugin.Loader):
         "usd",
         "oxcache"
     }
-    representations = {"ass", "abc", "usda", "usdc", "usd"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"ass", "abc", "usda", "usdc", "usd"}
 
     label = "Load as Arnold standin"
     order = -5
@@ -71,7 +83,7 @@ class ArnoldStandinLoader(plugin.Loader):
 
         # Set color.
         settings = get_project_settings(context["project"]["name"])
-        color = get_load_color_for_product_type("ass", settings)
+        color = get_load_color_for_product_base_type("ass", settings)
         if color is not None:
             red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", True)
@@ -96,7 +108,7 @@ class ArnoldStandinLoader(plugin.Loader):
                 standin_shape, repre_path, namespace
             )
             cmds.setAttr(standin_shape + ".dso", path, type="string")
-            sequence = is_sequence(os.listdir(os.path.dirname(repre_path)))
+            sequence = is_sequence(path)
             cmds.setAttr(standin_shape + ".useFrameExtension", sequence)
             cmds.setAttr(standin_shape + ".aiNamespace", namespace, type="string")
 
@@ -117,7 +129,7 @@ class ArnoldStandinLoader(plugin.Loader):
             context=context,
             loader=self.__class__.__name__)
 
-    def get_next_free_multi_index(self, attr_name):
+    def get_next_free_multi_index(self, attr_name: str) -> int:
         """Find the next unconnected multi index at the input attribute."""
         for index in range(10000000):
             connection_info = cmds.connectionInfo(
@@ -126,8 +138,9 @@ class ArnoldStandinLoader(plugin.Loader):
             )
             if len(connection_info or []) == 0:
                 return index
+        return -1
 
-    def _get_proxy_path(self, path):
+    def _get_proxy_path(self, path: str) -> tuple[str, str]:
         basename_split = os.path.basename(path).split(".")
         proxy_basename = (
             basename_split[0] + "_proxy." + ".".join(basename_split[1:])
@@ -213,7 +226,7 @@ class ArnoldStandinLoader(plugin.Loader):
             dso_path = proxy_path
         cmds.setAttr(standin + ".dso", dso_path, type="string")
 
-        sequence = is_sequence(os.listdir(os.path.dirname(path)))
+        sequence = is_sequence(dso_path)
         cmds.setAttr(standin + ".useFrameExtension", sequence)
 
         cmds.setAttr(

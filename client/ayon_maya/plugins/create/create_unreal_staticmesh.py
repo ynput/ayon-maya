@@ -9,44 +9,12 @@ class CreateUnrealStaticMesh(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.unrealstaticmesh"
     label = "Unreal - Static Mesh"
-    product_type = "staticMesh"
+    product_base_type = "staticMesh"
+    product_type = product_base_type
     icon = "cube"
 
     # Defined in settings
     collision_prefixes = []
-
-    def get_dynamic_data(
-        self,
-        project_name,
-        folder_entity,
-        task_entity,
-        variant,
-        host_name,
-        instance
-    ):
-        """
-        The default product name templates for Unreal include {asset} and thus
-        we should pass that along as dynamic data.
-        """
-        dynamic_data = super(CreateUnrealStaticMesh, self).get_dynamic_data(
-            project_name,
-            folder_entity,
-            task_entity,
-            variant,
-            host_name,
-            instance
-        )
-        
-        dynamic_data.update(
-            {
-                "asset": folder_entity["name"],
-                "folder": {
-                            "name": folder_entity["name"]
-                }
-            }
-        )
-        
-        return dynamic_data
 
     def create(self, product_name, instance_data, pre_create_data):
 

@@ -24,14 +24,15 @@ class CollectAnimationOutputGeometry(plugin.MayaInstancePlugin):
     def process(self, instance):
         """Collect the hierarchy nodes"""
 
-        product_type = instance.data["productType"]
+        product_base_type = instance.data["productBaseType"]
         out_set = next((i for i in instance.data["setMembers"] if
                         i.endswith("out_SET")), None)
 
         if out_set is None:
-            self.log.warning((
-                "Expecting out_SET for instance of product type '{}'"
-            ).format(product_type))
+            self.log.warning(
+                "Expecting out_SET for instance of product base type"
+                f" '{product_base_type}'"
+            )
             return
 
         members = cmds.ls(cmds.sets(out_set, query=True), long=True)

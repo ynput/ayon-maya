@@ -177,9 +177,9 @@ class ValidateFrameRangeModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="ValidateFrameRange")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
-    exclude_product_types: list[str] = SettingsField(
+    exclude_product_base_types: list[str] = SettingsField(
         default_factory=list,
-        title="Exclude product types"
+        title="Exclude product base types"
     )
 
 
@@ -314,12 +314,6 @@ class ValidateRenderSettingsModel(BaseSettingsModel):
         default_factory=list, title="Redshift Render Attributes")
     renderman_render_attributes: list[RendererAttributesModel] = SettingsField(
         default_factory=list, title="Renderman Render Attributes")
-
-
-class BasicValidateModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    optional: bool = SettingsField(title="Optional")
-    active: bool = SettingsField(title="Active")
 
 
 class ValidateCameraContentsModel(BaseSettingsModel):
@@ -949,6 +943,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Node No Ghosting",
     )
+    ValidateSceneUnknownNodes: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Scene Unknown Nodes"
+    )
     ValidateShapeDefaultNames: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Shape Default Names",
@@ -1022,7 +1020,7 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Animation Out Set Related Node Ids",
     )
-    ValidateAnimationProductTypePublish: BasicValidateModel = SettingsField(
+    ValidateAnimationProductBaseTypePublish: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Animation Product Type Publish",
     )
@@ -1078,18 +1076,6 @@ class PublishersModel(BaseSettingsModel):
     ValidateCameraAttributes: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Camera Attributes"
-    )
-    ValidateAssemblyName: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Assembly Name"
-    )
-    ValidateAssemblyNamespaces: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Assembly Namespaces"
-    )
-    ValidateAssemblyModelTransforms: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Assembly Model Transforms"
     )
     ValidateAssRelativePaths: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -1165,6 +1151,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Extract Skeleton Mesh"
     )
+    ExtractUnrealSkeletalMeshAbc: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Unreal Skeletal Mesh - Alembic"
+    )
 
 
 DEFAULT_SUFFIX_NAMING = {
@@ -1214,7 +1204,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "active": True,
-        "exclude_product_types": [
+        "exclude_product_base_types": [
             "model",
             "rig",
             "staticMesh"
@@ -1596,7 +1586,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": False,
         "active": True
     },
-    "ValidateAnimationProductTypePublish": {
+    "ValidateAnimationProductBaseTypePublish": {
         "enabled": True,
         "optional": False,
         "active": True
@@ -1604,6 +1594,11 @@ DEFAULT_PUBLISH_SETTINGS = {
     "ValidateRigControllersArnoldAttributes": {
         "enabled": True,
         "optional": False,
+        "active": True
+    },
+    "ValidateSceneUnknownNodes": {
+        "enabled": True,
+        "optional": True,
         "active": True
     },
     "ValidateSingleAssembly": {
@@ -1659,21 +1654,6 @@ DEFAULT_PUBLISH_SETTINGS = {
     "ValidateCameraAttributes": {
         "enabled": False,
         "optional": True,
-        "active": True
-    },
-    "ValidateAssemblyName": {
-        "enabled": True,
-        "optional": True,
-        "active": True
-    },
-    "ValidateAssemblyNamespaces": {
-        "enabled": True,
-        "optional": False,
-        "active": True
-    },
-    "ValidateAssemblyModelTransforms": {
-        "enabled": True,
-        "optional": False,
         "active": True
     },
     "ValidateAssRelativePaths": {
@@ -1824,5 +1804,10 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "active": True,
-    }
+    },
+    "ExtractUnrealSkeletalMeshAbc": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
 }
