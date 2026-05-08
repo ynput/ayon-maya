@@ -120,10 +120,6 @@ def unlocked(node):
     Args:
         node (str): The name of the node to unlock.
     """
-    if not cmds.objExists(node):
-        yield
-        return
-
     has_locked = cmds.lockNode(node, query=True, lock=True)[0]
     cmds.lockNode(node, lock=False)
 
