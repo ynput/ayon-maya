@@ -22,7 +22,6 @@ class ExtractSkeletonMesh(plugin.MayaExtractorPlugin,
     order = pyblish.api.ExtractorOrder
     label = "Extract Skeleton Mesh"
     families = ["rig.fbx"]
-    optional = True
 
     def process(self, instance):
         if not self.is_active(instance.data):

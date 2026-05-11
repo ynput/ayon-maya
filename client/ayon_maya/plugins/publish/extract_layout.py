@@ -105,7 +105,6 @@ class ExtractLayout(plugin.MayaExtractorPlugin,
 
     label = "Extract Layout"
     families = ["layout"]
-    optional = True
 
     def process(self, instance: pyblish.api.Instance):
         if not self.is_active(instance.data):

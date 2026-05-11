@@ -13,7 +13,6 @@ class ExtractRenderSetup(plugin.MayaExtractorPlugin,
 
     This will save whole renderSetup to json file for later use.
     """
-    optional = True
 
     label = "Extract RenderSetup"
     families = ["rendersetup"]

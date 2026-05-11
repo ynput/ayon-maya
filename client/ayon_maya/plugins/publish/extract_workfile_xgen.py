@@ -20,7 +20,6 @@ class ExtractWorkfileXgen(plugin.MayaExtractorPlugin,
     order = pyblish.api.ExtractorOrder - 0.499
     label = "Extract Workfile Xgen"
     families = ["workfile"]
-    optional = True
 
     def get_render_max_frame_range(self, context):
         """Return start to end frame range including all renderlayers in

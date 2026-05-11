@@ -16,7 +16,6 @@ class ExtractMayaUsdLayer(publish.Extractor,
     label = "Extract Maya USD Layer"
     hosts = ["maya"]
     families = ["mayaUsdLayer"]
-    optional = True
 
     def process(self, instance):
         if not self.is_active(instance.data):

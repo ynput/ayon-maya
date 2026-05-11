@@ -19,7 +19,6 @@ class ExtractProxyAlembic(plugin.MayaExtractorPlugin,
     label = "Extract Proxy (Alembic)"
     families = ["proxyAbc"]
     targets = ["local", "remote"]
-    optional = True
 
     def process(self, instance):
         if not self.is_active(instance.data):

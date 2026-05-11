@@ -18,7 +18,6 @@ class ExtractVRayProxy(plugin.MayaExtractorPlugin,
     label = "VRay Proxy (.vrmesh)"
     families = ["vrayproxy.vrmesh"]
     targets = ["local", "remote"]
-    optional = True
 
     def process(self, instance):
         if not self.is_active(instance.data):

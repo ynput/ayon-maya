@@ -21,7 +21,6 @@ class ExtractFBX(plugin.MayaExtractorPlugin,
     order = pyblish.api.ExtractorOrder
     label = "Extract FBX"
     families = ["fbx"]
-    optional = True
 
     def process(self, instance):
         if not self.is_active(instance.data):

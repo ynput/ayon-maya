@@ -39,7 +39,6 @@ class ExtractMultiverseLook(plugin.MayaExtractorPlugin,
     families = ["mvLook"]
     scene_type = "usda"
     file_formats = ["usda", "usd"]
-    optional = True
 
     @property
     def options(self):

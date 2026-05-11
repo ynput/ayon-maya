@@ -30,7 +30,6 @@ class ExtractMultiverseUsd(plugin.MayaExtractorPlugin,
     families = ["mvUsd"]
     scene_type = "usd"
     file_formats = ["usd", "usda", "usdz"]
-    optional = True
 
     @property
     def options(self):

@@ -170,7 +170,6 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
     """
 
     enabled = True
-    optional = True
     label = "Extract Maya USD Asset"
     families = ["mayaUsd"]
 

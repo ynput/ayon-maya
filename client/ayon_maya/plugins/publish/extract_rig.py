@@ -15,7 +15,6 @@ class ExtractRig(plugin.MayaExtractorPlugin,
     label = "Extract Rig (Maya Scene)"
     families = ["rig"]
     scene_type = "ma"
-    optional = True
 
     def process(self, instance):
         """Plugin entry point."""

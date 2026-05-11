@@ -27,7 +27,6 @@ class ExtractUnrealSkeletalMeshFbx(plugin.MayaExtractorPlugin,
     order = pyblish.api.ExtractorOrder - 0.1
     label = "Extract Unreal Skeletal Mesh - FBX"
     families = ["skeletalMesh"]
-    optional = True
 
     def process(self, instance):
         if not self.is_active(instance.data):

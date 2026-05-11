@@ -87,7 +87,6 @@ class ExtractYetiRig(plugin.MayaExtractorPlugin,
     label = "Extract Yeti Rig"
     families = ["yetiRig"]
     scene_type = "ma"
-    optional = True
 
     def process(self, instance):
         """Plugin entry point."""

@@ -22,7 +22,6 @@ class ExtractActiveViewThumbnail(plugin.MayaInstancePlugin,
     order = pyblish.api.ExtractorOrder + 0.49
     label = "Active View Thumbnail"
     families = ["workfile"]
-    optional = True
 
     def process(self, instance):
         if not self.is_active(instance.data):

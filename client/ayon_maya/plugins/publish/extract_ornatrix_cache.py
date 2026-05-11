@@ -17,7 +17,6 @@ class ExtractOxCache(plugin.MayaExtractorPlugin,
     label = "Extract Ornatrix Cache"
     families = ["oxrig", "oxcache"]
     targets = ["local", "remote"]
-    optional = True
 
     def process(self, instance):
         if not self.is_active(instance.data):

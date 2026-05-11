@@ -14,7 +14,6 @@ class ExtractUnrealYetiCache(plugin.MayaExtractorPlugin,
 
     label = "Extract Yeti Cache (Unreal)"
     families = ["yeticacheUE"]
-    optional = True
 
     def process(self, instance):
         if not self.is_active(instance.data):

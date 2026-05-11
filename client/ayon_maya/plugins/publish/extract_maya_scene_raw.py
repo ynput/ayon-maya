@@ -29,7 +29,6 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin,
                 "layout",
                 "camerarig"]
     scene_type = "ma"
-    optional = True
 
     # Defined by settings
     add_for_families: list[str] = []

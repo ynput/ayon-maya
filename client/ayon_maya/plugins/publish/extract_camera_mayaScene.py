@@ -103,7 +103,6 @@ class ExtractCameraMayaScene(plugin.MayaExtractorPlugin,
     hosts = ["maya"]
     families = ["camera", "matchmove"]
     scene_type = "ma"
-    optional = True
 
     keep_image_planes = True
 

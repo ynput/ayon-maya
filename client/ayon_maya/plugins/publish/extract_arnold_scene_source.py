@@ -16,7 +16,6 @@ class ExtractArnoldSceneSource(plugin.MayaExtractorPlugin,
     families = ["ass"]
     targets = ["local", "remote"]
     asciiAss = False
-    optional = True
 
     def _pre_process(self, instance, staging_dir):
         file_path = os.path.join(staging_dir, "{}.ass".format(instance.name))

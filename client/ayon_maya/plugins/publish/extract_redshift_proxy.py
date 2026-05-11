@@ -20,7 +20,6 @@ class ExtractRedshiftProxy(plugin.MayaExtractorPlugin,
     label = "Redshift Proxy (.rs)"
     families = ["redshiftproxy"]
     targets = ["local", "remote"]
-    optional = True
 
     def process(self, instance):
         """Extractor entry point."""

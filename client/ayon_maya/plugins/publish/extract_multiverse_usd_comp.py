@@ -26,7 +26,6 @@ class ExtractMultiverseUsdComposition(plugin.MayaExtractorPlugin,
 
     label = "Extract Multiverse USD Composition"
     families = ["mvUsdComposition"]
-    optional = True
     scene_type = "usd"
     # Order of `fileFormat` must match create_multiverse_usd_comp.py
     file_formats = ["usda", "usd"]

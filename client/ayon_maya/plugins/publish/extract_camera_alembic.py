@@ -23,7 +23,6 @@ class ExtractCameraAlembic(plugin.MayaExtractorPlugin,
     hosts = ["maya"]
     families = ["camera", "matchmove"]
     bake_attributes = "[]"
-    optional = True
 
     def process(self, instance):
         if not self.is_active(instance.data):

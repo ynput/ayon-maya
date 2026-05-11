@@ -17,7 +17,6 @@ class ExtractOxRig(plugin.MayaExtractorPlugin,
     label = "Extract Ornatrix Rig"
     families = ["oxrig"]
     scene_type = "ma"
-    optional = True
 
     def process(self, instance):
         """Plugin entry point."""

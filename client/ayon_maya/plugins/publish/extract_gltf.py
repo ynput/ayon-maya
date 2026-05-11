@@ -15,7 +15,6 @@ class ExtractGLB(plugin.MayaExtractorPlugin,
     label = "Extract GLB"
     families = ["gltf"]
     targets = ["local", "remote"]
-    optional = True
 
     def process(self, instance):
         if not self.is_active(instance.data):

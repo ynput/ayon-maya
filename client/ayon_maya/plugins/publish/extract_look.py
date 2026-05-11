@@ -420,7 +420,6 @@ class ExtractLook(plugin.MayaExtractorPlugin,
     hosts = ["maya"]
     families = ["look", "mvLook"]
     order = pyblish.api.ExtractorOrder + 0.2
-    optional = True
     scene_type = "ma"
     look_data_type = "json"
 

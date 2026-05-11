@@ -16,7 +16,6 @@ class ExtractVrayscene(plugin.MayaExtractorPlugin,
 
     label = "VRay Scene (.vrscene)"
     families = ["vrayscene_layer"]
-    optional = True
 
     def process(self, instance):
         """Plugin entry point."""

@@ -21,7 +21,6 @@ class ExtractPlayblast(plugin.MayaExtractorPlugin,
     optional = True
     capture_preset = {}
     profiles = None
-    optional = True
 
     def process(self, instance):
         if not self.is_active(instance.data):

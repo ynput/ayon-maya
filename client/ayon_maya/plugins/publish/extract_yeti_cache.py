@@ -12,7 +12,6 @@ class ExtractYetiCache(plugin.MayaExtractorPlugin,
 
     This will extract Yeti cache file sequence and fur settings.
     """
-    optional = True
 
     label = "Extract Yeti Cache"
     families = ["yetiRig", "yeticache"]
