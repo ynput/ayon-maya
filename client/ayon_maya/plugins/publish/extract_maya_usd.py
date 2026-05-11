@@ -3,7 +3,7 @@ import json
 import os
 from typing import Any
 
-from ayon_core.pipeline import publish
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_core.lib import BoolDef, EnumDef, UILabelDef, UISeparatorDef
 from ayon_maya.api.lib import maintained_selection, maintained_time
 from ayon_maya.api import plugin
@@ -163,13 +163,14 @@ def usd_export_attributes(
 
 
 class ExtractMayaUsd(plugin.MayaExtractorPlugin,
-                     publish.OptionalPyblishPluginMixin):
+                     OptionalPyblishPluginMixin):
     """Extractor for Maya USD Asset data.
 
     Upon publish a .usd (or .usdz) asset file will typically be written.
     """
 
     enabled = True
+    optional = True
     label = "Extract Maya USD Asset"
     families = ["mayaUsd"]
 

@@ -2,20 +2,26 @@ import json
 import os
 
 import maya.app.renderSetup.model.renderSetup as renderSetup
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import plugin
 
 
-class ExtractRenderSetup(plugin.MayaExtractorPlugin):
+class ExtractRenderSetup(plugin.MayaExtractorPlugin,
+                         OptionalPyblishPluginMixin):
     """
     Produce renderSetup template file
 
     This will save whole renderSetup to json file for later use.
     """
+    optional = True
 
     label = "Extract RenderSetup"
     families = ["rendersetup"]
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
+
         parent_dir = self.staging_dir(instance)
         json_filename = "{}.json".format(instance.name)
         json_path = os.path.join(parent_dir, json_filename)

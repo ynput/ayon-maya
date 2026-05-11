@@ -324,6 +324,8 @@ class ValidateCameraContentsModel(BaseSettingsModel):
 
 class ExtractProxyAlembicModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
     families: list[str] = SettingsField(
         default_factory=list,
         title="Families")
@@ -331,6 +333,8 @@ class ExtractProxyAlembicModel(BaseSettingsModel):
 
 class ExtractAlembicModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
     families: list[str] = SettingsField(
         default_factory=list,
         title="Families")
@@ -518,6 +522,7 @@ class ExtractAlembicModel(BaseSettingsModel):
 class ExtractObjModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
 
 
 class ExtractModelModel(BaseSettingsModel):
@@ -601,6 +606,21 @@ class ExtractMayaUsdModel(BaseSettingsModel):
         return value
 
 
+class ExtractMayaUsdGeneralModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    custom_attr_namespace: str = SettingsField(
+        title="Custom Attribute Default Namespace", default="userProperties:"
+    )
+    custom_attr_name_mapping: list[str] = SettingsField(
+        title="Custom Attribute Name Mapping", default_factory=list
+    )
+    custom_attr_mapping: str = SettingsField(
+        title="Advanced Custom Attribute Mapping", default="{}"
+    )
+
+
 class ExtractMayaUsdModelModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
@@ -622,6 +642,8 @@ class ExtractMayaUsdAnimModel(BaseSettingsModel):
 class ExtractMayaSceneRawModel(BaseSettingsModel):
     """Add loaded instances to those published families:"""
     enabled: bool = SettingsField(title="ExtractMayaSceneRaw")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
     add_for_families: list[str] = SettingsField(
         default_factory=list, title="Families"
     )
@@ -654,9 +676,16 @@ class ExtractCameraAlembicModel(BaseSettingsModel):
         return value
 
 
+class ExtractFBXAnimationModel(BaseSettingsModel):
+    enabled: bool = True
+    active: bool = SettingsField(title="Active")
+    optional: bool = SettingsField(title="Optional")
+
+
 class ExtractGLBModel(BaseSettingsModel):
     enabled: bool = True
     active: bool = SettingsField(title="Active")
+    optional: bool = SettingsField(title="Optional")
     ogsfx_path: str = SettingsField(title="GLSL Shader Directory")
 
 
@@ -668,6 +697,9 @@ class ExtractLookArgsModel(BaseSettingsModel):
 
 
 class ExtractLookModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
     maketx_arguments: list[ExtractLookArgsModel] = SettingsField(
         default_factory=list,
         title="Extra arguments for maketx command line"
@@ -1098,6 +1130,27 @@ class PublishersModel(BaseSettingsModel):
         title="Extract Playblast Settings",
         section="Extractors"
     )
+    ExtractActiveViewThumbnail: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Active View Thumbnail",
+        section="Extractors"
+    )
+    ExtractArnoldSceneSource: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Arnold Scene Source"
+    )
+    ExtractCameraMayaScene: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Camera Maya Scene"
+    )
+    ExtractFBXAnimation: ExtractFBXAnimationModel = SettingsField(
+        default_factory=ExtractFBXAnimationModel,
+        title="Extract Animation FBX"
+    )
+    ExtractFBX: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract FBX"
+    )
     ExtractMayaSceneRaw: ExtractMayaSceneRawModel = SettingsField(
         default_factory=ExtractMayaSceneRawModel,
         title="Maya Scene(Raw)"
@@ -1118,6 +1171,14 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ExtractGPUCacheModel,
         title="Extract GPU Cache",
     )
+    ExtractLayout: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Layout"
+    )
+    ExtractMayaUsdLayer: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Maya USD Layer"
+    )
     ExtractModel: ExtractModelModel = SettingsField(
         default_factory=ExtractModelModel,
         title="Extract Model (Maya Scene)"
@@ -1131,8 +1192,8 @@ class PublishersModel(BaseSettingsModel):
         title="Extract Animation (Alembic)",
         description="Alembic extractor for loaded rigs"
     )
-    ExtractMayaUsd: ExtractMayaUsdModel = SettingsField(
-        default_factory=ExtractMayaUsdModel,
+    ExtractMayaUsd: ExtractMayaUsdGeneralModel = SettingsField(
+        default_factory=ExtractMayaUsdGeneralModel,
         title="Extract Maya USD"
     )
     ExtractMayaUsdModel: ExtractMayaUsdModelModel = SettingsField(
@@ -1147,13 +1208,89 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ExtractMayaUsdAnimModel,
         title="Extract Maya USD with Animation"
     )
+    ExtractMultiverseLook: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Multiverse Look"
+    )
+    ExtractMultiverseUsdComposition: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Multiverse USD Composition"
+    )
+    ExtractMultiverseUsdOverride: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Multiverse USD Override"
+    )
+    ExtractMultiverseUsd: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Multiverse USD"
+    )
+    ExtractOxCache: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Ornatrix Cache"
+    )
+    ExtractOxRig: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Ornatrix Rig"
+    )
+    ExtractRedshiftProxy: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Redshift Proxy"
+    )
+    ExtractRenderSetup: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Render Setup"
+    )
+    ExtractRig: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Rig"
+    )
     ExtractSkeletonMesh: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Extract Skeleton Mesh"
     )
+    ExtractThumbnail: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Thumbnail"
+    )
     ExtractUnrealSkeletalMeshAbc: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Extract Unreal Skeletal Mesh - Alembic"
+    )
+    ExtractUnrealSkeletalMeshFbx: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Unreal Skeletal Mesh - FBX"
+    )
+    ExtractUnrealStaticMesh: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Unreal Static Mesh"
+    )
+    ExtractUnrealYetiCache: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Unreal Yeti Cache"
+    )
+    ExtractVRayProxy: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract VRay Proxy"
+    )
+    ExtractVrayscene: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract VRay Scene"
+    )
+    ExtractWorkfileXgen: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Workfile Xgen"
+    )
+    ExtractXgen: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Xgen"
+    )
+    ExtractYetiCache: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Yeti Cache"
+    )
+    ExtractYetiRig: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Yeti Rig"
     )
 
 
@@ -1552,6 +1689,8 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "ExtractProxyAlembic": {
         "enabled": False,
+        "optional": True,
+        "active": True,
         "families": [
             "proxyAbc"
         ]
@@ -1687,8 +1826,35 @@ DEFAULT_PUBLISH_SETTINGS = {
         "active": True
     },
     "ExtractPlayblast": DEFAULT_PLAYBLAST_SETTING,
+    "ExtractActiveViewThumbnail": {
+        "enabled": True,
+        "optional": True,
+        "active": True
+    },
+    "ExtractArnoldSceneSource": {
+        "enabled": True,
+        "optional": True,
+        "active": True
+    },
+    "ExtractCameraMayaScene": {
+        "enabled": True,
+        "optional": True,
+        "active": True
+    },
+    "ExtractFBXAnimation": {
+        "enabled": True,
+        "optional": True,
+        "active": True
+    },
+    "ExtractFBX": {
+        "enabled": True,
+        "optional": True,
+        "active": True
+    },
     "ExtractMayaSceneRaw": {
         "enabled": True,
+        "optional": True,
+        "active": True,
         "add_for_families": [
             "layout"
         ]
@@ -1702,9 +1868,13 @@ DEFAULT_PUBLISH_SETTINGS = {
     "ExtractGLB": {
         "enabled": False,
         "active": True,
+        "optional": True,
         "ogsfx_path": "/maya2glTF/PBR/shaders/glTF_PBR.ogsfx"
     },
     "ExtractLook": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
         "maketx_arguments": []
     },
     "ExtractGPUCache": {
@@ -1724,6 +1894,16 @@ DEFAULT_PUBLISH_SETTINGS = {
         "writeMaterials": True,
         "useBaseTessellation": True
     },
+    "ExtractLayout": {
+        "enabled": True,
+        "optional": True,
+        "active": True
+    },
+    "ExtractMayaUsdLayer": {
+        "enabled": True,
+        "optional": True,
+        "active": True
+    },
     "ExtractModel": {
         "enabled": True,
         "optional": True,
@@ -1731,6 +1911,8 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "ExtractAlembic": {
         "enabled": True,
+        "optional": True,
+        "active": True,
         "families": [
             "pointcache",
             "model",
@@ -1781,6 +1963,9 @@ DEFAULT_PUBLISH_SETTINGS = {
         "active": True,
     },
     "ExtractMayaUsd": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
         "custom_attr_namespace": "userProperties:",
         "custom_attr_name_mapping": [],
         "custom_attr_mapping": "{}",
@@ -1800,7 +1985,57 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": True,
         "active": False,
     },
+    "ExtractMultiverseLook": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractMultiverseUsdComposition": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractMultiverseUsdOverride": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractMultiverseUsd": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractOxCache": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractOxRig": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractRedshiftProxy": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractRenderSetup": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractRig": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
     "ExtractSkeletonMesh": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractThumbnail": {
         "enabled": True,
         "optional": True,
         "active": True,
@@ -1810,4 +2045,49 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": True,
         "active": True,
     },
+    "ExtractUnrealSkeletalMeshFbx": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractUnrealStaticMesh": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractUnrealYetiCache": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractVRayProxy": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractVrayscene": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractWorkfileXgen": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractXgen": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractYetiCache": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractYetiRig": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    }
 }

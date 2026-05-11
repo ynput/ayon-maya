@@ -1,5 +1,6 @@
 import os
 
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api.alembic import extract_alembic
 from ayon_maya.api.lib import (
     iter_visible_nodes_in_range,
@@ -10,15 +11,19 @@ from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractProxyAlembic(plugin.MayaExtractorPlugin):
+class ExtractProxyAlembic(plugin.MayaExtractorPlugin,
+                          OptionalPyblishPluginMixin):
     """Produce an alembic for bounding box geometry
     """
 
     label = "Extract Proxy (Alembic)"
     families = ["proxyAbc"]
     targets = ["local", "remote"]
+    optional = True
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         name_suffix = instance.data.get("nameSuffix")
         # Collect the start and end including handles
         start = float(instance.data.get("frameStartHandle", 1))

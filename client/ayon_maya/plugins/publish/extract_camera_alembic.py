@@ -3,12 +3,12 @@ import json
 
 from maya import cmds
 from ayon_maya.api import plugin
-from ayon_core.pipeline import publish
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import lib
 
 
 class ExtractCameraAlembic(plugin.MayaExtractorPlugin,
-                           publish.OptionalPyblishPluginMixin):
+                           OptionalPyblishPluginMixin):
     """Extract a Camera as Alembic.
 
     The camera gets baked to world space by default. Only when the instance's
@@ -23,9 +23,11 @@ class ExtractCameraAlembic(plugin.MayaExtractorPlugin,
     hosts = ["maya"]
     families = ["camera", "matchmove"]
     bake_attributes = "[]"
+    optional = True
 
     def process(self, instance):
-
+        if not self.is_active(instance.data):
+            return
         # Collect the start and end including handles
         start = instance.data["frameStartHandle"]
         end = instance.data["frameEndHandle"]

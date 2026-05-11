@@ -3,20 +3,26 @@
 import os
 import re
 
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api.lib import maintained_selection
 from ayon_maya.api import plugin
 from ayon_maya.api.render_setup_tools import export_in_rs_layer
 from maya import cmds
 
 
-class ExtractVrayscene(plugin.MayaExtractorPlugin):
+class ExtractVrayscene(plugin.MayaExtractorPlugin,
+                        OptionalPyblishPluginMixin):
     """Extractor for vrscene."""
 
     label = "VRay Scene (.vrscene)"
     families = ["vrayscene_layer"]
+    optional = True
 
     def process(self, instance):
         """Plugin entry point."""
+        if not self.is_active(instance.data):
+            return
+
         if instance.data.get("exportOnFarm"):
             self.log.debug("vrayscenes will be exported on farm.")
             raise NotImplementedError(

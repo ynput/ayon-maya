@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 from typing import Union
 
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api.lib import maintained_selection, renderlayer
 from ayon_maya.api import plugin
 from ayon_maya.api.render_setup_tools import (
@@ -12,16 +13,19 @@ from ayon_maya.api.render_setup_tools import (
 from maya import cmds
 
 
-class ExtractRedshiftProxy(plugin.MayaExtractorPlugin):
+class ExtractRedshiftProxy(plugin.MayaExtractorPlugin,
+                           OptionalPyblishPluginMixin):
     """Extract the content of the instance to a redshift proxy file."""
 
     label = "Redshift Proxy (.rs)"
     families = ["redshiftproxy"]
     targets = ["local", "remote"]
+    optional = True
 
     def process(self, instance):
         """Extractor entry point."""
-
+        if not self.is_active(instance.data):
+            return
         # Make sure Redshift is loaded
         cmds.loadPlugin("redshift4maya", quiet=True)
 

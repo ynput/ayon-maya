@@ -2,11 +2,13 @@ import os
 
 from maya import cmds
 
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api.lib import maintained_selection
 from ayon_maya.api import plugin
 
 
-class ExtractMultiverseLook(plugin.MayaExtractorPlugin):
+class ExtractMultiverseLook(plugin.MayaExtractorPlugin,
+                            OptionalPyblishPluginMixin):
     """Extractor for Multiverse USD look data.
 
     This will extract:
@@ -37,6 +39,7 @@ class ExtractMultiverseLook(plugin.MayaExtractorPlugin):
     families = ["mvLook"]
     scene_type = "usda"
     file_formats = ["usda", "usd"]
+    optional = True
 
     @property
     def options(self):
@@ -88,6 +91,8 @@ class ExtractMultiverseLook(plugin.MayaExtractorPlugin):
             self.scene_type = self.file_formats[fileFormat]
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         # Load plugin first
         cmds.loadPlugin("MultiverseForMaya", quiet=True)
 
