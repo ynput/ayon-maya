@@ -173,7 +173,7 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             return {}
 
         data = data[0]  # Maya seems to return a list
-        # Always base64 decode
+        # Maya 2027+ does not return bytes, so we convert it
         if int(cmds.about(version=True)) > 2027 and isinstance(data, str):
             data = data.encode("utf-8")
         decoded = base64.b64decode(data).decode("utf-8")
