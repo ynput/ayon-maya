@@ -182,12 +182,12 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     def update_context_data(self, data, changes):
         json_str = json.dumps(data)
         # Always base64 encode
-        encoded_bytes = base64.b64encode(json_str.encode("utf-8"))
-        # Convert bytes to str for fileInfo storage
+        encoded = base64.b64encode(json_str.encode("utf-8"))
+        # Convert bytes to str for fileInfo storage in Maya 2027+
+        # because it doesn't take `bytes` anymore
         if int(cmds.about(version=True)) > 2027:
-            encoded_str = encoded_bytes.decode("utf-8")
-            return cmds.fileInfo("OpenPypeContext", encoded_str)
-        return cmds.fileInfo("OpenPypeContext", encoded_bytes)
+            encoded = encoded.decode("utf-8")
+        return cmds.fileInfo("OpenPypeContext", encoded)
 
     def _register_callbacks(self):
         for handler, event in self._op_events.copy().items():
