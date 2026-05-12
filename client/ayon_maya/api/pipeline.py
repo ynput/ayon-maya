@@ -173,13 +173,17 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             return {}
 
         data = data[0]  # Maya seems to return a list
-        decoded = base64.b64decode(data).decode("utf-8")
-        return json.loads(decoded)
+        if int(cmds.about(version=True)) < 2027:
+            decoded = base64.b64decode(data).decode("utf-8")
+            return json.loads(decoded)
+        return json.loads(data)
 
     def update_context_data(self, data, changes):
         json_str = json.dumps(data)
-        encoded = base64.b64encode(json_str.encode("utf-8"))
-        return cmds.fileInfo("OpenPypeContext", encoded)
+        if int(cmds.about(version=True)) < 2027:
+            encoded = base64.b64encode(json_str.encode("utf-8"))
+            return cmds.fileInfo("OpenPypeContext", encoded)
+        return cmds.fileInfo("OpenPypeContext", json_str)
 
     def _register_callbacks(self):
         for handler, event in self._op_events.copy().items():
