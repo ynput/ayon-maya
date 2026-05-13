@@ -1976,7 +1976,7 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "ExtractRig": {
         "enabled": True,
-        "optional": True,
+        "optional": False,
         "active": True,
     },
     "ExtractSkeletonMesh": {
@@ -2001,12 +2001,12 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "ExtractUnrealStaticMesh": {
         "enabled": True,
-        "optional": True,
+        "optional": False,
         "active": True,
     },
     "ExtractUnrealYetiCache": {
         "enabled": True,
-        "optional": True,
+        "optional": False,
         "active": True,
     },
     "ExtractVRayProxy": {
