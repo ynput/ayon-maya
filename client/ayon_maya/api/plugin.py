@@ -310,6 +310,9 @@ class MayaCreatorBase:
             data = created_inst.data_to_store()
             node = data.get("instance_node")
             if not node or not cmds.objExists(node):
+                self.log.warning(
+                    f"Skipping update for missing instance node: '{node}'"
+                )
                 continue
             with unlocked(node):
                 self.imprint_instance_node(node, data)
