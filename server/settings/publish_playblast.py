@@ -272,6 +272,8 @@ class PlayblastProfilesModel(BaseSettingsModel):
 
 
 class ExtractPlayblastSetting(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
     capture_preset: CapturePresetSetting = SettingsField(
         default_factory=CapturePresetSetting,
@@ -284,6 +286,8 @@ class ExtractPlayblastSetting(BaseSettingsModel):
 
 
 DEFAULT_PLAYBLAST_SETTING = {
+    "enabled": True,
+    "optional": False,
     "active": True,
     "capture_preset": {
         "Codec": {
