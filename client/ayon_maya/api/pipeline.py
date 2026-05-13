@@ -174,7 +174,7 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         data = data[0]  # Maya seems to return a list
         # Maya 2027+ does not return bytes, so we convert it
-        if int(cmds.about(version=True)) > 2027 and isinstance(data, str):
+        if int(cmds.about(version=True)) >= 2027 and isinstance(data, str):
             data = data.encode("utf-8")
         decoded = base64.b64decode(data).decode("utf-8")
         return json.loads(decoded)
@@ -183,9 +183,9 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         json_str = json.dumps(data)
         # Always base64 encode
         encoded = base64.b64encode(json_str.encode("utf-8"))
-        # Convert bytes to str for fileInfo storage in Maya 2027+
-        # because it doesn't take `bytes` anymore
-        if int(cmds.about(version=True)) > 2027:
+        # Convert bytes to str for fileInfo storage
+        # fileInfo expects a string value, not bytes
+        if int(cmds.about(version=True)) >= 2027 and isinstance(encoded, bytes):
             encoded = encoded.decode("utf-8")
         return cmds.fileInfo("OpenPypeContext", encoded)
 
