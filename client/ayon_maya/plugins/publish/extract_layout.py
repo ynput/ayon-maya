@@ -7,7 +7,10 @@ import attr
 from typing import Any, List, TYPE_CHECKING
 
 import ayon_api
-from ayon_core.pipeline import registered_host
+from ayon_core.pipeline import (
+    registered_host,
+    OptionalPyblishPluginMixin,
+)
 from ayon_maya.api import plugin
 from ayon_maya.api.lib import (
     get_highest_in_hierarchy,
@@ -96,13 +99,16 @@ def convert_matrix_to_4x4_list(
     return result
 
 
-class ExtractLayout(plugin.MayaExtractorPlugin):
+class ExtractLayout(plugin.MayaExtractorPlugin,
+                    OptionalPyblishPluginMixin):
     """Extract a layout."""
 
     label = "Extract Layout"
     families = ["layout"]
 
     def process(self, instance: pyblish.api.Instance):
+        if not self.is_active(instance.data):
+            return
         self.log.debug("Performing layout extraction..")
         allow_obj_transforms: bool = instance.data.get(
             "allowObjectTransforms",

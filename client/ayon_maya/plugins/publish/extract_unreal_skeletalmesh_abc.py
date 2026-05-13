@@ -15,7 +15,6 @@ class ExtractUnrealSkeletalMeshAbc(plugin.MayaExtractorPlugin,
 
     label = "Extract Unreal Skeletal Mesh - Alembic"
     families = ["skeletalMesh"]
-    optional = True
 
     def process(self, instance):
         if not self.is_active(instance.data):
