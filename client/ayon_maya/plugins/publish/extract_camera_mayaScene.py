@@ -108,6 +108,8 @@ class ExtractCameraMayaScene(plugin.MayaExtractorPlugin,
 
     def process(self, instance):
         """Plugin entry point."""
+        if not self.is_active(instance.data):
+            return
         # get settings
         maya_settings = instance.context.data["project_settings"]["maya"]
         ext_mapping = {

@@ -1,11 +1,13 @@
 import os
 
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api.lib import maintained_selection
 from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractMultiverseUsdComposition(plugin.MayaExtractorPlugin):
+class ExtractMultiverseUsdComposition(plugin.MayaExtractorPlugin,
+                                      OptionalPyblishPluginMixin):
     """Extractor of Multiverse USD Composition data.
 
     This will extract settings for a Multiverse Write Composition operation:
@@ -88,6 +90,8 @@ class ExtractMultiverseUsdComposition(plugin.MayaExtractorPlugin):
         return options
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         # Load plugin first
         cmds.loadPlugin("MultiverseForMaya", quiet=True)
 
