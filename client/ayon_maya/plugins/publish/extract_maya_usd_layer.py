@@ -4,7 +4,8 @@ from maya import cmds
 from ayon_core.pipeline import publish
 
 
-class ExtractMayaUsdLayer(publish.Extractor):
+class ExtractMayaUsdLayer(publish.Extractor,
+                          publish.OptionalPyblishPluginMixin):
     """Extractor for Maya USD Layer from `mayaUsdProxyShape`
 
     Exports a single Sdf.Layer from a mayaUsdPlugin `mayaUsdProxyShape`.
@@ -17,7 +18,8 @@ class ExtractMayaUsdLayer(publish.Extractor):
     families = ["mayaUsdLayer"]
 
     def process(self, instance):
-
+        if not self.is_active(instance.data):
+            return
         import mayaUsd
 
         # Load plugin first

@@ -1,13 +1,15 @@
 import os
 
 import pyblish.api
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import lib
 from ayon_maya.api.gltf import extract_gltf
 from ayon_maya.api import plugin
 from maya import cmds, mel
 
 
-class ExtractGLB(plugin.MayaExtractorPlugin):
+class ExtractGLB(plugin.MayaExtractorPlugin,
+                 OptionalPyblishPluginMixin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract GLB"
@@ -15,6 +17,8 @@ class ExtractGLB(plugin.MayaExtractorPlugin):
     targets = ["local", "remote"]
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         staging_dir = self.staging_dir(instance)
         filename = "{0}.glb".format(instance.name)
         path = os.path.join(staging_dir, filename)

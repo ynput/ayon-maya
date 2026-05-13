@@ -3,11 +3,13 @@ import os
 from collections import defaultdict
 
 import arnold
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import lib, plugin
 from maya import cmds
 
 
-class ExtractArnoldSceneSource(plugin.MayaExtractorPlugin):
+class ExtractArnoldSceneSource(plugin.MayaExtractorPlugin,
+                               OptionalPyblishPluginMixin):
     """Extract the content of the instance to an Arnold Scene Source file."""
 
     label = "Extract Arnold Scene Source"
@@ -77,6 +79,8 @@ class ExtractArnoldSceneSource(plugin.MayaExtractorPlugin):
         return attribute_data, kwargs
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         staging_dir = self.staging_dir(instance)
         attribute_data, kwargs = self._pre_process(instance, staging_dir)
 

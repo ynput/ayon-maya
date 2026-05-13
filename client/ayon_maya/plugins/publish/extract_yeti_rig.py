@@ -5,6 +5,7 @@ import contextlib
 import json
 import os
 
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from maya import cmds
@@ -79,7 +80,8 @@ def yetigraph_attribute_values(assumed_destination, resources):
                 pass
 
 
-class ExtractYetiRig(plugin.MayaExtractorPlugin):
+class ExtractYetiRig(plugin.MayaExtractorPlugin,
+                     OptionalPyblishPluginMixin):
     """Extract the Yeti rig to a Maya Scene and write the Yeti rig data."""
 
     label = "Extract Yeti Rig"
@@ -88,6 +90,8 @@ class ExtractYetiRig(plugin.MayaExtractorPlugin):
 
     def process(self, instance):
         """Plugin entry point."""
+        if not self.is_active(instance.data):
+            return
         maya_settings = instance.context.data["project_settings"]["maya"]
         ext_mapping = {
             item["name"]: item["value"]
