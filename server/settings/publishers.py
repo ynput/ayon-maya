@@ -2001,7 +2001,7 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "ExtractUnrealStaticMesh": {
         "enabled": True,
-        "optional": True,
+        "optional": False,
         "active": True,
     },
     "ExtractUnrealYetiCache": {
