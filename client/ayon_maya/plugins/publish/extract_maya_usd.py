@@ -575,6 +575,102 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
     @classmethod
     def _get_additional_attr_defs(cls, visible: bool) -> list:
         return {
+            "exportBlendshapes": BoolDef(
+                label="Export Blendshapes",
+                tooltip="Enable or disable export of blend shapes.",
+                visible=visible,
+                default=True
+            ),
+            "exportCollectionBasedBindings": BoolDef(
+                label="Export Collection Based Bindings",
+                tooltip=(
+                    "Enable or disable export of collection-based material "
+                    "assigments. If this option is enabled, export of material "
+                    "collections (-mcs) is also enabled, which causes collections "
+                    "representing sets of geometry with the same material binding "
+                    "to be exported. Materials are bound to the created collections "
+                    "on the prim at materialCollectionsPath (specfied via the -mcp "
+                    "option). Direct (or per-gprim) bindings are not authored when "
+                    "collection-based bindings are enabled."
+                ),
+                visible=visible,
+                default=False
+            ),
+            "exportColorSets": BoolDef(
+                label="Export Color Sets",
+                tooltip="Enable or disable the export of color sets.",
+                visible=visible,
+                default=True
+            ),
+            "exportDisplayColor": BoolDef(
+                label="Export Display Color",
+                tooltip="Enable or disable the export of display color.",
+                visible=visible,
+                default=False
+            ),
+            "exportMaterials": BoolDef(
+                label="Export Materials",
+                tooltip="Enable or disable the export of materials.",
+                visible=visible,
+                default=True
+            ),
+            "exportAssignedMaterials": BoolDef(
+                label="Export Assigned Materials",
+                tooltip="Export materials only if they are assigned to a mesh.",
+                visible=visible,
+                default=False
+            ),
+            "exportInstances": BoolDef(
+                label="Export Instances",
+                tooltip="Enable or disable the export of instances.",
+                visible=visible,
+                default=True
+            ),
+            "exportUVs": BoolDef(
+                label="Export UVs",
+                tooltip="Enable or disable the export of UV sets.",
+                visible=visible,
+                default=True
+            ),
+            "upAxis": EnumDef(
+                label="Up Axis",
+                items=[
+                    {"value": "mayaPrefs", "label": "Maya Preferences"},
+                    {"value": "none", "label": "None"},
+                    {"value": "y", "label": "Y"},
+                    {"value": "z", "label": "Z"},
+                ],
+                tooltip=(
+                    "How the up-axis of the exported USD is controlled. "
+                    "\"mayaPrefs\" follows the current Maya Preferences. "
+                    "\"none\" does not author up-axis. \"y\" or \"z\" author "
+                    "that axis and convert data if the Maya preferences does "
+                    "not match."
+                ),
+                visible=visible,
+                default="mayaPrefs"
+            ),
+            "unit": EnumDef(
+                label="Export Unit",
+                items=[
+                    {"value": "mayaPrefs", "label": "Maya Preferences"},
+                    {"value": "none", "label": "None"},
+                    {"value": "mm", "label": "Millimeters"},
+                    {"value": "cm", "label": "Centimeters"},
+                    {"value": "m", "label": "Meters"},
+                    {"value": "in", "label": "Inches"},
+                    {"value": "ft", "label": "Feet"},
+                ],
+                tooltip=(
+                    "How the measuring units of the exported USD is controlled. "
+                    "\"mayaPrefs\" follows the current Maya Preferences. "
+                    "\"none\" does not author units. Explicit units (cm, inch, etc) "
+                    "author that and convert data if the Maya preferences does "
+                    "not match."
+                ),
+                visible=visible,
+                default="mayaPrefs"
+            ),
             "stripNamespaces": BoolDef(
                 label="Strip Namespaces",
                 tooltip="Strip Namespaces in the USD Export",

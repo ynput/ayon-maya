@@ -14,6 +14,16 @@ from .publish_playblast import (
 
 def extract_maya_usd_overrides_enum():
     return [
+        {"label": "Export Blendshapes", "value": "exportBlendShapes"},
+        {"label": "Export Collection Based Bindings", "value": "exportCollectionBasedBindings"},
+        {"label": "Export Color Sets", "value": "exportColorSets"},
+        {"label": "Export Display Color", "value": "exportDisplayColor"},
+        {"label": "Export Materials", "value": "exportMaterials"},
+        {"label": "Export Assigned Materials", "value": "exportAssignedMaterials"},
+        {"label": "Export Instances", "value": "exportInstances"},
+        {"label": "Export UVs", "value": "exportUVs"},
+        {"label": "Up Axis", "value": "upAxis"},
+        {"label": "Export Unit", "value": "unit"},
         {"label": "Strip Namespaces", "value": "stripNamespaces"},
         {"label": "World-Space", "value": "worldspace"},
         {"label": "Export Component Tags", "value": "exportComponentTags"},
@@ -1933,7 +1943,10 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": False,
         "active": True,
-        "overrides": [],
+        "overrides": [
+            "stripNamespaces",
+            "worldSpace"
+        ],
         "custom_attr_namespace": "userProperties:",
         "custom_attr_name_mapping": [],
         "custom_attr_mapping": "{}",
