@@ -173,6 +173,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
     label = "Extract Maya USD Asset"
     families = ["mayaUsd"]
 
+    overrides = []
     # Default prefix for custom attributes to USD attributes
     # if no other mapping is provided
     custom_attr_namespace: str = ""
@@ -516,15 +517,27 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 .get(cls.__name__, {})
             )
             is_enabled = plugin_attr_values.get("active", cls.active)
+        defs = super().get_attr_defs_for_instance(create_context, instance)
+        if not cls.overrides:
+            return defs
 
         attr_defs = [
             UISeparatorDef("sep_usd_options"),
             UILabelDef("USD Options"),
         ]
-        attr_defs.extend(
-            super().get_attr_defs_for_instance(create_context, instance)
+        attr_defs.extend(defs)
+        # The Arguments that can be modified by the Publisher
+        override_defs = cls._get_additional_attr_defs(is_enabled)
+        overrides = set(cls.overrides)
+        for key, value in override_defs.items():
+            if key not in overrides:
+                continue
+
+            attr_defs.append(value)
+
+        attr_defs.append(
+            UISeparatorDef("sep_alembic_options_end")
         )
-        attr_defs.extend(cls._get_additional_attr_defs(is_enabled))
         attr_defs.append(
             UISeparatorDef("sep_usd_options_end")
         )
@@ -561,61 +574,66 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
 
     @classmethod
     def _get_additional_attr_defs(cls, visible: bool) -> list:
-        return [
-            BoolDef("stripNamespaces",
-                    label="Strip Namespaces",
-                    tooltip="Strip Namespaces in the USD Export",
-                    visible=visible,
-                    default=True),
-            BoolDef("worldspace",
-                    label="World-Space",
-                    tooltip="Export all root prim using their full worldspace "
-                            "transform instead of their local transform.",
-                    visible=visible,
-                    default=True),
-            BoolDef("exportComponentTags",
-                    label="Export Component Tags",
-                    tooltip="When enabled, export any geometry component tags "
-                            "as UsdGeomSubset data.",
-                    visible=visible,
-                    default=False),
-            BoolDef("exportVisibility",
-                    label="Export Visibility",
-                    tooltip="Export any state and animation on Maya visibility"
-                            " attributes.",
-                    visible=visible,
-                    default=True),
-            BoolDef("mergeTransformAndShape",
-                    label="Merge Transform and Shape",
-                    tooltip=(
-                        "Combine Maya transform and shape into a single USD"
-                        "prim that has transform and geometry, for all"
-                        " \"geometric primitives\" (gprims).\n"
-                        "This results in smaller and faster scenes. Gprims "
-                        "will be \"unpacked\" back into transform and shape "
-                        "nodes when imported into Maya from USD."
-                    ),
-                    visible=visible,
-                    default=True),
-            EnumDef("defaultMeshScheme",
-                    label="Default Subdivision Method",
-                    items=[
-                        {"value": "catmullClark", "label": "Catmull Clark"},
-                        {"value": "loop", "label": "Loop"},
-                        {"value": "bilinear", "label": "Bilinear"},
-                        {"value": "none", "label": "None"},
-                    ],
-                    tooltip=(
-                        "Default subdivision method for meshes.\n"
-                        "Options are: catmullClark, loop, bilinear, none."
-                        "\n\n"
-                        "To specify per mesh subdivision schemes add a "
-                        "USD_ATTR_subdivisionScheme attribute."
-                    ),
-                    visible=visible,
-                    default="catmullClark"
+        return {
+            "stripNamespaces": BoolDef(
+                label="Strip Namespaces",
+                tooltip="Strip Namespaces in the USD Export",
+                visible=visible,
+                default=True
+            ),
+            "worldspace": BoolDef(
+                label="World-Space",
+                tooltip="Export all root prim using their full worldspace "
+                        "transform instead of their local transform.",
+                visible=visible,
+                default=True
+            ),
+            "exportComponentTags": BoolDef(
+                label="Export Component Tags",
+                tooltip="When enabled, export any geometry component tags "
+                        "as UsdGeomSubset data.",
+                visible=visible,
+                default=False
+            ),
+            "exportVisibility": BoolDef(
+                label="Export Visibility",
+                tooltip="Export any state and animation on Maya visibility"
+                        " attributes.",
+                visible=visible,
+                default=True
+            ),
+            "mergeTransformAndShape": BoolDef(
+                label="Merge Transform and Shape",
+                tooltip=(
+                    "Combine Maya transform and shape into a single USD"
+                    "prim that has transform and geometry, for all"
+                    " \"geometric primitives\" (gprims).\n"
+                    "This results in smaller and faster scenes. Gprims "
+                    "will be \"unpacked\" back into transform and shape "
+                    "nodes when imported into Maya from USD."
+                ),
+                visible=visible,
+                default=True
+            ),
+            "defaultMeshScheme": EnumDef(
+                label="Default Subdivision Method",
+                items=[
+                    {"value": "catmullClark", "label": "Catmull Clark"},
+                    {"value": "loop", "label": "Loop"},
+                    {"value": "bilinear", "label": "Bilinear"},
+                    {"value": "none", "label": "None"},
+                ],
+                tooltip=(
+                    "Default subdivision method for meshes.\n"
+                    "Options are: catmullClark, loop, bilinear, none."
+                    "\n\n"
+                    "To specify per mesh subdivision schemes add a "
+                    "USD_ATTR_subdivisionScheme attribute."
+                ),
+                visible=visible,
+                default="catmullClark"
             )
-        ]
+        }
 
 
 class ExtractMayaUsdAnim(ExtractMayaUsd):
