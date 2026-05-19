@@ -14,6 +14,12 @@ from .publish_playblast import (
 
 def extract_maya_usd_overrides_enum():
     return [
+        {"label": "Strip Namespaces", "value": "stripNamespaces"},
+        {"label": "World-Space", "value": "worldspace"},
+        {"label": "Export Component Tags", "value": "exportComponentTags"},
+        {"label": "Export Visibility", "value": "exportVisibility"},
+        {"label": "Merge Transform and Shape", "value": "mergeTransformAndShape"},
+        {"label": "Default Subdivision Method", "value": "defaultMeshScheme"},
         {"label": "Export Blendshapes", "value": "exportBlendShapes"},
         {"label": "Export Collection Based Bindings", "value": "exportCollectionBasedBindings"},
         {"label": "Export Color Sets", "value": "exportColorSets"},
@@ -24,12 +30,6 @@ def extract_maya_usd_overrides_enum():
         {"label": "Export UVs", "value": "exportUVs"},
         {"label": "Up Axis", "value": "upAxis"},
         {"label": "Export Unit", "value": "unit"},
-        {"label": "Strip Namespaces", "value": "stripNamespaces"},
-        {"label": "World-Space", "value": "worldspace"},
-        {"label": "Export Component Tags", "value": "exportComponentTags"},
-        {"label": "Export Visibility", "value": "exportVisibility"},
-        {"label": "Merge Transform and Shape", "value": "mergeTransformAndShape"},
-        {"label": "Default Subdivision Method", "value": "defaultMeshScheme"},
     ]
 
 
@@ -1945,7 +1945,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "active": True,
         "overrides": [
             "stripNamespaces",
-            "worldSpace"
+            "worldSpace",
+            "exportComponentTags",
+            "exportVisibility",
+            "mergeTransformAndShape",
+            "defaultMeshScheme"
         ],
         "custom_attr_namespace": "userProperties:",
         "custom_attr_name_mapping": [],
