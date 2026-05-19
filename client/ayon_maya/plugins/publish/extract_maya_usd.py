@@ -548,9 +548,6 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             attr_defs.append(value)
 
         attr_defs.append(
-            UISeparatorDef("sep_alembic_options_end")
-        )
-        attr_defs.append(
             UISeparatorDef("sep_usd_options_end")
         )
         return attr_defs
