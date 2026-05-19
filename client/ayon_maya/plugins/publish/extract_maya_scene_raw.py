@@ -6,7 +6,6 @@ import contextlib
 from ayon_core.lib import BoolDef
 from ayon_core.pipeline import AVALON_CONTAINER_ID, AYON_CONTAINER_ID
 from ayon_core.pipeline.publish import (
-    AYONPyblishPluginMixin,
     OptionalPyblishPluginMixin,
 )
 from ayon_maya.api.lib import maintained_selection, shader
