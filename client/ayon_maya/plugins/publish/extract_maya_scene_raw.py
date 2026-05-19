@@ -15,7 +15,6 @@ from maya import cmds
 
 
 class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin,
-                          AYONPyblishPluginMixin,
                           OptionalPyblishPluginMixin):
     """Extract as Maya Scene (raw).
 
