@@ -20,7 +20,7 @@ def extract_maya_usd_overrides_enum():
         {"label": "Export Visibility", "value": "exportVisibility"},
         {"label": "Merge Transform and Shape", "value": "mergeTransformAndShape"},
         {"label": "Default Subdivision Method", "value": "defaultMeshScheme"},
-        {"label": "Export Blendshapes", "value": "exportBlendShapes"},
+        {"label": "Export BlendShapes", "value": "exportBlendShapes"},
         {"label": "Export Collection Based Bindings", "value": "exportCollectionBasedBindings"},
         {"label": "Export Color Sets", "value": "exportColorSets"},
         {"label": "Export Display Color", "value": "exportDisplayColor"},
