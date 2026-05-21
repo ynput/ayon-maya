@@ -585,15 +585,17 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 instance.publish_attributes[class_name][key] = value
 
     @classmethod
-    def _get_additional_attr_defs(cls, visible: bool) -> list:
+    def _get_additional_attr_defs(cls, visible: bool) -> dict:
         return {
             "stripNamespaces": BoolDef(
+                "stripNamespaces",
                 label="Strip Namespaces",
                 tooltip="Strip Namespaces in the USD Export",
                 visible=visible,
                 default=True
             ),
             "worldspace": BoolDef(
+                "worldspace",
                 label="World-Space",
                 tooltip="Export all root prim using their full worldspace "
                         "transform instead of their local transform.",
@@ -601,6 +603,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 default=True
             ),
             "exportComponentTags": BoolDef(
+                "exportComponentTags",
                 label="Export Component Tags",
                 tooltip="When enabled, export any geometry component tags "
                         "as UsdGeomSubset data.",
@@ -608,6 +611,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 default=False
             ),
             "exportVisibility": BoolDef(
+                "exportVisibility",
                 label="Export Visibility",
                 tooltip="Export any state and animation on Maya visibility"
                         " attributes.",
@@ -615,6 +619,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 default=True
             ),
             "mergeTransformAndShape": BoolDef(
+                "mergeTransformAndShape",
                 label="Merge Transform and Shape",
                 tooltip=(
                     "Combine Maya transform and shape into a single USD"
@@ -628,6 +633,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 default=True
             ),
             "defaultMeshScheme": EnumDef(
+                "defaultMeshScheme",
                 label="Default Subdivision Method",
                 items=[
                     {"value": "catmullClark", "label": "Catmull Clark"},
@@ -646,12 +652,14 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 default="catmullClark"
             ),
             "exportBlendshapes": BoolDef(
+                "exportBlendshapes",
                 label="Export Blendshapes",
                 tooltip="Enable or disable export of blend shapes.",
                 visible=visible,
                 default=True
             ),
             "exportCollectionBasedBindings": BoolDef(
+                "exportCollectionBasedBindings",
                 label="Export Collection Based Bindings",
                 tooltip=(
                     "Enable or disable export of collection-based material "
@@ -667,42 +675,49 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 default=False
             ),
             "exportColorSets": BoolDef(
+                "exportColorSets",
                 label="Export Color Sets",
                 tooltip="Enable or disable the export of color sets.",
                 visible=visible,
                 default=True
             ),
             "exportDisplayColor": BoolDef(
+                "exportDisplayColor",
                 label="Export Display Color",
                 tooltip="Enable or disable the export of display color.",
                 visible=visible,
                 default=False
             ),
             "exportMaterials": BoolDef(
+                "exportMaterials",
                 label="Export Materials",
                 tooltip="Enable or disable the export of materials.",
                 visible=visible,
                 default=True
             ),
             "exportAssignedMaterials": BoolDef(
+                "exportAssignedMaterials",
                 label="Export Assigned Materials",
                 tooltip="Export materials only if they are assigned to a mesh.",
                 visible=visible,
                 default=False
             ),
             "exportInstances": BoolDef(
+                "exportInstances",
                 label="Export Instances",
                 tooltip="Enable or disable the export of instances.",
                 visible=visible,
                 default=True
             ),
             "exportUVs": BoolDef(
+                "exportUVs",
                 label="Export UVs",
                 tooltip="Enable or disable the export of UV sets.",
                 visible=visible,
                 default=True
             ),
             "upAxis": EnumDef(
+                "upAxis",
                 label="Up Axis",
                 items=[
                     {"value": "mayaPrefs", "label": "Maya Preferences"},
@@ -721,6 +736,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 default="mayaPrefs"
             ),
             "unit": EnumDef(
+                "unit",
                 label="Export Unit",
                 items=[
                     {"value": "mayaPrefs", "label": "Maya Preferences"},
