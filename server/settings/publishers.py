@@ -12,6 +12,27 @@ from .publish_playblast import (
 )
 
 
+def extract_maya_usd_overrides_enum():
+    return [
+        {"label": "Strip Namespaces", "value": "stripNamespaces"},
+        {"label": "World-Space", "value": "worldspace"},
+        {"label": "Export Component Tags", "value": "exportComponentTags"},
+        {"label": "Export Visibility", "value": "exportVisibility"},
+        {"label": "Merge Transform and Shape", "value": "mergeTransformAndShape"},
+        {"label": "Default Subdivision Method", "value": "defaultMeshScheme"},
+        {"label": "Export BlendShapes", "value": "exportBlendShapes"},
+        {"label": "Export Collection Based Bindings", "value": "exportCollectionBasedBindings"},
+        {"label": "Export Color Sets", "value": "exportColorSets"},
+        {"label": "Export Display Color", "value": "exportDisplayColor"},
+        {"label": "Export Materials", "value": "exportMaterials"},
+        {"label": "Export Assigned Materials", "value": "exportAssignedMaterials"},
+        {"label": "Export Instances", "value": "exportInstances"},
+        {"label": "Export UVs", "value": "exportUVs"},
+        {"label": "Up Axis", "value": "upAxis"},
+        {"label": "Export Unit", "value": "unit"},
+    ]
+
+
 def up_axis_enum():
     """Get Up Axis enumerator."""
     return [
@@ -595,6 +616,13 @@ class ExtractMayaUsdModel(BaseSettingsModel):
 
 
 class ExtractMayaUsdGeneralModel(BasicExtractorModel):
+    overrides: list[str] = SettingsField(
+        enum_resolver=extract_maya_usd_overrides_enum,
+        title="Exposed Overrides",
+        description=(
+            "Expose the attribute in this list to the user when publishing."
+        )
+    )
     custom_attr_namespace: str = SettingsField(
         title="Custom Attribute Default Namespace", default="userProperties:"
     )
@@ -1915,6 +1943,14 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": False,
         "active": True,
+        "overrides": [
+            "stripNamespaces",
+            "worldSpace",
+            "exportComponentTags",
+            "exportVisibility",
+            "mergeTransformAndShape",
+            "defaultMeshScheme"
+        ],
         "custom_attr_namespace": "userProperties:",
         "custom_attr_name_mapping": [],
         "custom_attr_mapping": "{}",
