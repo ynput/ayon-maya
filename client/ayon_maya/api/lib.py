@@ -4647,53 +4647,38 @@ def force_shader_assignments_to_faces(shapes):
 
     shapes_lookup = set(shapes)
 
-    # Maya has the tendency to return component assignment using the transform
-    # name instead of the shape name, like `pCube1.f[1]` instead of
-    # `pCube1Shape.f[1]` so we need to take those into consideration as members
-    def get_parent(_shape: str) -> str:
-        return _shape.rsplit("|", 1)[0]
-
-    components_lookup = {f"{shape}." for shape in shapes}
-    components_lookup.update(f"{get_parent(shape)}." for shape in shapes)
-    components_lookup = tuple(components_lookup)  # support str.startswith
-
     original_assignments = {}
-    override_assignments = defaultdict(list)
+    override_assignments = defaultdict(OpenMaya.MSelectionList)
+    
+    def get_mobject(node_name: str) -> OpenMaya.MObject:
+        sel = OpenMaya.MSelectionList()
+        sel.add(node_name)
+        return sel.getDependNode(0)
+    
+    fn_set = OpenMaya.MFnSet()
     for shading_engine in cmds.ls(list(all_render_sets), type="shadingEngine"):
-        members = cmds.sets(shading_engine, query=True)
-        if not members:
-            continue
-
-        members = cmds.ls(members, long=True)
+        fn_set.setObject(get_mobject(shading_engine))
 
         # Include ALL originals, even those not among our shapes
+        members = fn_set.getMembers(flatten=False)
         original_assignments[shading_engine] = members
 
         has_conversions = False
-        for member in members:
-            # Only consider shapes from our inputs
-            if (
-                    member not in shapes_lookup
-                    and not member.startswith(components_lookup)
-            ):
+        for i in range(members.length()):
+            dag, component = members.getComponent(i)
+            shape_path = dag.fullPathName()
+            if shape_path not in shapes_lookup:
                 continue
 
-            if "." not in member:
-                # Convert to face assignments
-                member = f"{member}.f[*]"
-                if not cmds.objExists(member):
-                    # It is possible for a mesh to have no faces at all
-                    # for which we cannot convert to face assignments anyway.
-                    # It is a `mesh` node type - it just would error on
-                    # 'No object matches name' when trying to assign to the
-                    # faces. So we skip the conversion
-                    log.debug(
-                        "Skipping face assignment conversion because "
-                        f"no mesh faces were found: {member}")
-                    continue
-
+            if component.isNull():
+                # Convert to face assignment
+                override_assignments[shading_engine].add(
+                    f'{shape_path}.f[*]'
+                )
                 has_conversions = True
-            override_assignments[shading_engine].append(member)
+            else:
+                # Preserve component assignment
+                override_assignments[shading_engine].add((dag, component))
 
         if not has_conversions:
             # We can skip this shading engine completely because
@@ -4704,18 +4689,17 @@ def force_shader_assignments_to_faces(shapes):
     try:
         # Apply overrides
         for shading_engine, override_members in override_assignments.items():
-            # We force remove the members because this allows maya to take
-            # out the mesh (also without the components)
-            cmds.sets(clear=shading_engine)
-            cmds.sets(override_members, forceElement=shading_engine)
-
+            fn_set.setObject(get_mobject(shading_engine))
+            fn_set.clear()
+            fn_set.addMembers(override_members)
         yield
 
     finally:
         # Revert to original assignments
         for shading_engine, original_members in original_assignments.items():
-            cmds.sets(clear=shading_engine)
-            cmds.sets(original_members, forceElement=shading_engine)
+           fn_set.setObject(get_mobject(shading_engine))
+           fn_set.clear()
+           fn_set.addMembers(original_members)
 
 
 def nodetype_exists(nodetype: str) -> bool:
