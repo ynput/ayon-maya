@@ -4645,8 +4645,13 @@ def force_shader_assignments_to_faces(shapes):
         if render_sets:
             all_render_sets.update(render_sets)
 
-    shapes_lookup = set(shapes)
+    shading_engines = cmds.ls(list(all_render_sets), type="shadingEngine")
+    if not shading_engines:
+        # Do nothing
+        yield
+        return
 
+    shapes_lookup = set(shapes)
     original_assignments = {}
     override_assignments = defaultdict(OpenMaya.MSelectionList)
     
@@ -4656,7 +4661,7 @@ def force_shader_assignments_to_faces(shapes):
         return sel.getDependNode(0)
     
     fn_set = OpenMaya.MFnSet()
-    for shading_engine in cmds.ls(list(all_render_sets), type="shadingEngine"):
+    for shading_engine in shading_engines:
         fn_set.setObject(get_mobject(shading_engine))
 
         # Include ALL originals, even those not among our shapes
