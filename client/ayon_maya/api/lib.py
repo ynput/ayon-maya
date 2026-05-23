@@ -4624,6 +4624,32 @@ def get_sequence(filepath, pattern="%04d"):
     ]
 
 
+def _get_mobject(node_name: str) -> OpenMaya.MObject:
+    sel = OpenMaya.MSelectionList()
+    sel.add(node_name)
+    return sel.getDependNode(0)
+
+
+def _fast_clear_set(object_set: str):
+    """MFnSet.clear() can be very slow for shading engines that contain many
+    face assignment. By just breaking all connections to the "dagSetMembers"
+    we get the same result without the slow performance.
+
+    Arguments:
+        object_set (str): The name of the objectSet or shadingEngine to clear.
+    """
+    fn = OpenMaya.MFnDependencyNode(_get_mobject(object_set))
+    dag_set_members = fn.findPlug("dagSetMembers", False)
+    mod = OpenMaya.MDGModifier()
+    for i in range(dag_set_members.numElements()):
+        elem = dag_set_members.elementByPhysicalIndex(i)
+        if elem.isConnected:
+            src_plugs = elem.connectedTo(True, False)
+            for src in src_plugs:
+                mod.disconnect(src, elem)
+    mod.doIt()
+
+
 @contextlib.contextmanager
 def force_shader_assignments_to_faces(shapes):
     """Replaces any non-face shader assignments with shader assignments
@@ -4655,14 +4681,9 @@ def force_shader_assignments_to_faces(shapes):
     original_assignments = {}
     override_assignments = defaultdict(OpenMaya.MSelectionList)
     
-    def get_mobject(node_name: str) -> OpenMaya.MObject:
-        sel = OpenMaya.MSelectionList()
-        sel.add(node_name)
-        return sel.getDependNode(0)
-    
     fn_set = OpenMaya.MFnSet()
     for shading_engine in shading_engines:
-        fn_set.setObject(get_mobject(shading_engine))
+        fn_set.setObject(_get_mobject(shading_engine))
 
         # Include ALL originals, even those not among our shapes
         members = fn_set.getMembers(flatten=False)
@@ -4694,17 +4715,17 @@ def force_shader_assignments_to_faces(shapes):
     try:
         # Apply overrides
         for shading_engine, override_members in override_assignments.items():
-            fn_set.setObject(get_mobject(shading_engine))
-            fn_set.clear()
+            _fast_clear_set(shading_engine)
+            fn_set.setObject(_get_mobject(shading_engine))
             fn_set.addMembers(override_members)
         yield
 
     finally:
         # Revert to original assignments
         for shading_engine, original_members in original_assignments.items():
-           fn_set.setObject(get_mobject(shading_engine))
-           fn_set.clear()
-           fn_set.addMembers(original_members)
+            _fast_clear_set(shading_engine)
+            fn_set.setObject(_get_mobject(shading_engine))
+            fn_set.addMembers(original_members)
 
 
 def nodetype_exists(nodetype: str) -> bool:
