@@ -397,6 +397,14 @@ class ExtractAlembicModel(BasicExtractorModel):
         title="Write Face Sets",
         description="Write face sets with the geometry."
     )
+    writeFaceSetsForceFaceAssignment: bool = SettingsField(
+        title="Write Face Sets: Force all assignments",
+        description=(
+            "When writing with face sets is enabled then force all"
+            " assignments to be face assignments on export so that all"
+            " material assignments become face sets."
+        )
+    )
     writeNormals: bool = SettingsField(
         title="Write Normals",
         description="Write normals with the deforming geometry."
@@ -1902,6 +1910,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "writeColorSets": False,
         "writeCreases": False,
         "writeFaceSets": False,
+        "writeFaceSetsForceFaceAssignment": False,
         "writeNormals": True,
         "writeUVSets": False,
         "writeVisibility": False
