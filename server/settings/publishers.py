@@ -2155,7 +2155,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "active": True,
         "overrides": [
             "stripNamespaces",
-            "worldSpace",
+            "worldspace",
             "exportComponentTags",
             "exportVisibility",
             "mergeTransformAndShape",
