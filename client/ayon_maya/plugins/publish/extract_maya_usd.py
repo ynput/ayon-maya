@@ -173,7 +173,27 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
     label = "Extract Maya USD Asset"
     families = ["mayaUsd"]
 
+    # Settings
     overrides = []
+    stripNamespaces: bool = True
+    worldspace: bool = True
+    exportComponentTags: bool = False
+    exportVisibility: bool = True
+    mergeTransformAndShape: bool = True
+    defaultMeshScheme: str = "catmullClark"
+    exportBlendShapes: bool = True
+    exportSkin: str = "none"
+    exportSkels: str = "none"
+    exportCollectionBasedBindings: bool = False
+    exportColorSets: bool = True
+    exportDisplayColor: bool = False
+    exportMaterials: bool = True
+    exportAssignedMaterials: bool = False
+    exportInstances: bool = True
+    exportUVs: bool = True
+    upAxis: str = "mayaPrefs"
+    unit: str = "mayaPrefs"
+
     # Default prefix for custom attributes to USD attributes
     # if no other mapping is provided
     custom_attr_namespace: str = ""
@@ -238,15 +258,15 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "chaser": None,
             "chaserArgs": None,
             "defaultUSDFormat": "usdc",
-            "defaultMeshScheme": "catmullClark",
-            "stripNamespaces": True,
-            "mergeTransformAndShape": True,
-            "exportDisplayColor": False,
-            "exportColorSets": True,
-            "exportInstances": True,
-            "exportUVs": True,
-            "exportVisibility": True,
-            "exportComponentTags": False,
+            "defaultMeshScheme": self.defaultMeshScheme,
+            "stripNamespaces": self.stripNamespaces,
+            "mergeTransformAndShape": self.mergeTransformAndShape,
+            "exportDisplayColor": self.exportDisplayColor,
+            "exportColorSets": self.exportColorSets,
+            "exportInstances": self.exportInstances,
+            "exportUVs": self.exportUVs,
+            "exportVisibility": self.exportVisibility,
+            "exportComponentTags": self.exportComponentTags,
             "exportRefsAsInstanceable": False,
             "eulerFilter": True,
             "renderableOnly": False,
@@ -255,15 +275,17 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "jobContext": None,
             "filterTypes": None,
             "staticSingleSample": True,
-            "worldspace": True,
-            "exportCollectionBasedBindings": False,
+            "worldspace": self.worldspace,
+            "exportCollectionBasedBindings": (
+                self.exportCollectionBasedBindings
+            ),
             "exportBlendShapes": True,
-            "exportSkels": "none",
-            "exportSkin": "none",
-            "exportMaterials": False,
-            "exportAssignedMaterials": False,
-            "upAxis": "mayaPrefs",
-            "unit": "mayaPrefs",
+            "exportSkels": self.exportSkels,
+            "exportSkin": self.exportSkin,
+            "exportMaterials": self.exportMaterials,
+            "exportAssignedMaterials": self.exportAssignedMaterials,
+            "upAxis": self.upAxis,
+            "unit": self.unit,
         }
 
     def parse_overrides(self, overrides, options):
@@ -593,7 +615,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 label="Strip Namespaces",
                 tooltip="Strip Namespaces in the USD Export",
                 visible=visible,
-                default=True
+                default=cls.stripNamespaces,
             ),
             "worldspace": BoolDef(
                 "worldspace",
@@ -601,7 +623,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 tooltip="Export all root prim using their full worldspace "
                         "transform instead of their local transform.",
                 visible=visible,
-                default=True
+                default=cls.worldspace,
             ),
             "exportComponentTags": BoolDef(
                 "exportComponentTags",
@@ -609,7 +631,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 tooltip="When enabled, export any geometry component tags "
                         "as UsdGeomSubset data.",
                 visible=visible,
-                default=False
+                default=cls.exportComponentTags,
             ),
             "exportVisibility": BoolDef(
                 "exportVisibility",
@@ -617,7 +639,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 tooltip="Export any state and animation on Maya visibility"
                         " attributes.",
                 visible=visible,
-                default=True
+                default=cls.exportVisibility,
             ),
             "mergeTransformAndShape": BoolDef(
                 "mergeTransformAndShape",
@@ -631,7 +653,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                     "nodes when imported into Maya from USD."
                 ),
                 visible=visible,
-                default=True
+                default=cls.mergeTransformAndShape,
             ),
             "defaultMeshScheme": EnumDef(
                 "defaultMeshScheme",
@@ -650,14 +672,14 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                     "USD_ATTR_subdivisionScheme attribute."
                 ),
                 visible=visible,
-                default="catmullClark"
+                default=cls.defaultMeshScheme,
             ),
             "exportBlendShapes": BoolDef(
                 "exportBlendShapes",
                 label="Export Blendshapes",
                 tooltip="Enable or disable export of blend shapes.",
                 visible=visible,
-                default=True
+                default=cls.exportBlendShapes,
             ),
             "exportSkin": EnumDef("exportSkin",
                     label="Export Skin",
@@ -673,7 +695,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                         "Explicit: only export explicitly tagged skin clusters."
                     ),
                     visible=visible,
-                    default="none"
+                    default=cls.exportSkin,
             ),
             "exportSkels": EnumDef("exportSkels",
                     label="Export Skeletons",
@@ -690,7 +712,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                         "Explicit: only export those under SkelRoots."
                     ),
                     visible=visible,
-                    default="none"
+                    default=cls.exportSkels,
             ),
             "exportCollectionBasedBindings": BoolDef(
                 "exportCollectionBasedBindings",
@@ -706,49 +728,49 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                     "collection-based bindings are enabled."
                 ),
                 visible=visible,
-                default=False
+                default=cls.exportCollectionBasedBindings,
             ),
             "exportColorSets": BoolDef(
                 "exportColorSets",
                 label="Export Color Sets",
                 tooltip="Enable or disable the export of color sets.",
                 visible=visible,
-                default=True
+                default=cls.exportColorSets,
             ),
             "exportDisplayColor": BoolDef(
                 "exportDisplayColor",
                 label="Export Display Color",
                 tooltip="Enable or disable the export of display color.",
                 visible=visible,
-                default=False
+                default=cls.exportDisplayColor,
             ),
             "exportMaterials": BoolDef(
                 "exportMaterials",
                 label="Export Materials",
                 tooltip="Enable or disable the export of materials.",
                 visible=visible,
-                default=True
+                default=cls.exportMaterials,
             ),
             "exportAssignedMaterials": BoolDef(
                 "exportAssignedMaterials",
                 label="Export Assigned Materials",
                 tooltip="Export materials only if they are assigned to a mesh.",
                 visible=visible,
-                default=False
+                default=cls.exportAssignedMaterials,
             ),
             "exportInstances": BoolDef(
                 "exportInstances",
                 label="Export Instances",
                 tooltip="Enable or disable the export of instances.",
                 visible=visible,
-                default=True
+                default=cls.exportInstances,
             ),
             "exportUVs": BoolDef(
                 "exportUVs",
                 label="Export UVs",
                 tooltip="Enable or disable the export of UV sets.",
                 visible=visible,
-                default=True
+                default=cls.exportUVs,
             ),
             "upAxis": EnumDef(
                 "upAxis",
@@ -767,7 +789,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                     "not match."
                 ),
                 visible=visible,
-                default="mayaPrefs"
+                default=cls.upAxis,
             ),
             "unit": EnumDef(
                 "unit",
@@ -789,7 +811,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                     "not match."
                 ),
                 visible=visible,
-                default="mayaPrefs"
+                default=cls.unit,
             )
         }
 

@@ -625,7 +625,7 @@ class ExtractMayaUsdModel(BaseSettingsModel):
         return value
 
 
-def default_mesh_scheme_enum():
+def maya_usd_default_mesh_scheme_enum():
     return [
         {"label": "Catmull Clark", "value": "catmullClark"},
         {"label": "Loop", "value": "loop"},
@@ -634,7 +634,7 @@ def default_mesh_scheme_enum():
     ]
 
 
-def export_skin_enum():
+def maya_usd_export_skin_enum():
     return [
         {"label": "None", "value": "none"},
         {"label": "Auto", "value": "auto"},
@@ -642,7 +642,7 @@ def export_skin_enum():
     ]
 
 
-def unit_enum():
+def maya_usd_unit_enum():
     return [
         {"label": "Maya Preferences", "value": "mayaPrefs"},
         {"label": "None", "value": "none"},
@@ -651,6 +651,16 @@ def unit_enum():
         {"label": "Meters", "value": "m"},
         {"label": "Inches", "value": "in"},
         {"label": "Feet", "value": "ft"},
+    ]
+
+
+def maya_usd_up_axis_enum():
+    """Get Up Axis enumerator."""
+    return [
+        {"value": "mayaPrefs", "label": "Maya Preferences"},
+        {"value": "none", "label": "None"},
+        {"value": "y", "label": "y"},
+        {"value": "z", "label": "z"},
     ]
 
 
@@ -664,27 +674,71 @@ class ExtractMayaUsdGeneralModel(BasicExtractorModel):
         )
     )
     # Maya USD export options exposed to settings so defaults can be set
-    stripNamespaces: bool = SettingsField(title="Strip Namespaces", default=True)
+    stripNamespaces: bool = SettingsField(
+        title="Strip Namespaces", default=True, section="Defaults"
+    )
     worldspace: bool = SettingsField(title="World-Space", default=True)
-    exportComponentTags: bool = SettingsField(title="Export Component Tags", default=False)
-    exportVisibility: bool = SettingsField(title="Export Visibility", default=True)
-    mergeTransformAndShape: bool = SettingsField(title="Merge Transform and Shape", default=True)
-    defaultMeshScheme: str = SettingsField(enum_resolver=default_mesh_scheme_enum, default="catmullClark", title="Default Subdivision Method")
-    exportBlendShapes: bool = SettingsField(title="Export BlendShapes", default=True)
-    exportSkin: str = SettingsField(enum_resolver=export_skin_enum, default="none", title="Export Skin")
-    exportSkels: str = SettingsField(enum_resolver=export_skin_enum, default="none", title="Export Skeletons")
-    exportCollectionBasedBindings: bool = SettingsField(title="Export Collection Based Bindings", default=False)
-    exportColorSets: bool = SettingsField(title="Export Color Sets", default=True)
-    exportDisplayColor: bool = SettingsField(title="Export Display Color", default=False)
-    exportMaterials: bool = SettingsField(title="Export Materials", default=True)
-    exportAssignedMaterials: bool = SettingsField(title="Export Assigned Materials", default=False)
-    exportInstances: bool = SettingsField(title="Export Instances", default=True)
+    exportComponentTags: bool = SettingsField(
+        title="Export Component Tags", default=False
+    )
+    exportVisibility: bool = SettingsField(
+        title="Export Visibility", default=True
+    )
+    mergeTransformAndShape: bool = SettingsField(
+        title="Merge Transform and Shape", default=True
+    )
+    defaultMeshScheme: str = SettingsField(
+        enum_resolver=maya_usd_default_mesh_scheme_enum,
+        default="catmullClark",
+        title="Default Subdivision Method",
+    )
+    exportBlendShapes: bool = SettingsField(
+        title="Export BlendShapes", default=True
+    )
+    exportSkin: str = SettingsField(
+        enum_resolver=maya_usd_export_skin_enum,
+        default="none",
+        title="Export Skin",
+    )
+    exportSkels: str = SettingsField(
+        enum_resolver=maya_usd_export_skin_enum,
+        default="none",
+        title="Export Skeletons",
+    )
+    exportCollectionBasedBindings: bool = SettingsField(
+        title="Export Collection Based Bindings", default=False
+    )
+    exportColorSets: bool = SettingsField(
+        title="Export Color Sets", default=True
+    )
+    exportDisplayColor: bool = SettingsField(
+        title="Export Display Color", default=False
+    )
+    exportMaterials: bool = SettingsField(
+        title="Export Materials", default=True
+    )
+    exportAssignedMaterials: bool = SettingsField(
+        title="Export Assigned Materials", default=False
+    )
+    exportInstances: bool = SettingsField(
+        title="Export Instances", default=True
+    )
     exportUVs: bool = SettingsField(title="Export UVs", default=True)
-    upAxis: str = SettingsField(enum_resolver=up_axis_enum, title="Up Axis", default="mayaPrefs")
-    unit: str = SettingsField(enum_resolver=unit_enum, title="Export Unit", default="mayaPrefs")
+    upAxis: str = SettingsField(
+        enum_resolver=maya_usd_up_axis_enum,
+        title="Up Axis",
+        default="mayaPrefs",
+    )
+    unit: str = SettingsField(
+        enum_resolver=maya_usd_unit_enum,
+        title="Export Unit",
+        default="mayaPrefs",
+    )
 
     custom_attr_namespace: str = SettingsField(
-        title="Custom Attribute Default Namespace", default="userProperties:"
+        title="Custom Attribute Default Namespace",
+        default="userProperties:",
+        section="Custom Attributes",
     )
     custom_attr_name_mapping: list[str] = SettingsField(
         title="Custom Attribute Name Mapping", default_factory=list
@@ -2012,6 +2066,24 @@ DEFAULT_PUBLISH_SETTINGS = {
             "mergeTransformAndShape",
             "defaultMeshScheme"
         ],
+        "stripNamespaces": True,
+        "worldspace": True,
+        "exportComponentTags": False,
+        "exportVisibility": True,
+        "mergeTransformAndShape": True,
+        "defaultMeshScheme": "catmullClark",
+        "exportBlendShapes": True,
+        "exportSkin": "none",
+        "exportSkels": "none",
+        "exportCollectionBasedBindings": False,
+        "exportColorSets": True,
+        "exportDisplayColor": False,
+        "exportMaterials": True,
+        "exportAssignedMaterials": False,
+        "exportInstances": True,
+        "exportUVs": True,
+        "upAxis": "mayaPrefs",
+        "unit": "mayaPrefs",
         "custom_attr_namespace": "userProperties:",
         "custom_attr_name_mapping": [],
         "custom_attr_mapping": "{}",
