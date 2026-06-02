@@ -556,6 +556,7 @@ class ExtractMayaUsdCustomAttrNameMappingModel(BaseSettingsModel):
     usd_name: str = SettingsField("", title="USD name")
 
 
+# TODO: This model seems to be unused?
 class ExtractMayaUsdModel(BaseSettingsModel):
     """Export USD using Maya's mayaUsd plug-in
 
@@ -824,7 +825,9 @@ class ExtractMayaUsdGeneralModel(BasicExtractorModel):
             " attributes to USD when no explicit usdAttrName is provided."
         ),
     )
-    custom_attr_name_mapping: list[str] = SettingsField(
+    custom_attr_name_mapping: list[
+        ExtractMayaUsdCustomAttrNameMappingModel
+    ] = SettingsField(
         title="Custom Attribute Name Mapping",
         default_factory=list,
         description=(
