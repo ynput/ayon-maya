@@ -665,86 +665,181 @@ def maya_usd_up_axis_enum():
 
 
 class ExtractMayaUsdGeneralModel(BasicExtractorModel):
-
     overrides: list[str] = SettingsField(
         enum_resolver=extract_maya_usd_overrides_enum,
         title="Exposed Overrides",
         description=(
             "Expose the attribute in this list to the user when publishing."
-        )
+        ),
     )
     # Maya USD export options exposed to settings so defaults can be set
     stripNamespaces: bool = SettingsField(
-        title="Strip Namespaces", default=True, section="Defaults"
+        title="Strip Namespaces",
+        default=True,
+        description="Strip namespaces from Maya node names when writing USD.",
     )
-    worldspace: bool = SettingsField(title="World-Space", default=True)
+    worldspace: bool = SettingsField(
+        title="World-Space",
+        default=True,
+        description=(
+            "Export root prims using their full world-space transforms "
+            "instead of local transforms."
+        ),
+    )
     exportComponentTags: bool = SettingsField(
-        title="Export Component Tags", default=False
+        title="Export Component Tags",
+        default=False,
+        description=(
+            "When enabled, export geometry component tags as UsdGeomSubset "
+            "data."
+        ),
     )
     exportVisibility: bool = SettingsField(
-        title="Export Visibility", default=True
+        title="Export Visibility",
+        default=True,
+        description=(
+            "Export visibility state and animation from Maya visibility"
+            " attributes."
+        ),
     )
     mergeTransformAndShape: bool = SettingsField(
-        title="Merge Transform and Shape", default=True
+        title="Merge Transform and Shape",
+        default=True,
+        description=(
+            "Combine Maya transform and shape into a single USD prim that has "
+            "transform and geometry. Results in smaller and faster scenes; "
+            "gprims are unpacked back into transform+shape when imported into "
+            "Maya."
+        ),
     )
     defaultMeshScheme: str = SettingsField(
         enum_resolver=maya_usd_default_mesh_scheme_enum,
         default="catmullClark",
         title="Default Subdivision Method",
+        description=(
+            "Default subdivision method for meshes. Options: catmullClark, "
+            "loop, bilinear, none. Per-mesh scheme can be authored with a "
+            "USD_ATTR_subdivisionScheme attribute."
+        ),
     )
     exportBlendShapes: bool = SettingsField(
-        title="Export BlendShapes", default=True
+        title="Export BlendShapes",
+        default=True,
+        description="Enable or disable export of blend shape (morph) data.",
     )
     exportSkin: str = SettingsField(
         enum_resolver=maya_usd_export_skin_enum,
         default="none",
         title="Export Skin",
+        description=(
+            "How to export skin cluster data:\n"
+            "- **none** do not export\n"
+            "- **auto** export if present\n"
+            "- **explicit** - export only explicitly tagged skin clusters."
+        ),
     )
     exportSkels: str = SettingsField(
         enum_resolver=maya_usd_export_skin_enum,
         default="none",
         title="Export Skeletons",
+        description=(
+            "How to export skeletons:\n"
+            "- **none** none\n"
+            "- **auto** export all skeletons (may create SkelRoots)\n"
+            "- **explicit** only those under SkelRoots."
+        ),
     )
     exportCollectionBasedBindings: bool = SettingsField(
-        title="Export Collection Based Bindings", default=False
+        title="Export Collection Based Bindings",
+        default=False,
+        description=(
+            "When enabled, export material bindings as collection-based"
+            " assignments. This authors materialCollections (`-mcs`) and binds"
+            " materials to collections instead of per-gprim direct bindings."
+        ),
     )
     exportColorSets: bool = SettingsField(
-        title="Export Color Sets", default=True
+        title="Export Color Sets",
+        default=True,
+        description="Enable or disable exporting of color sets.",
     )
     exportDisplayColor: bool = SettingsField(
-        title="Export Display Color", default=False
+        title="Export Display Color",
+        default=False,
+        description=(
+            "Enable or disable exporting of display color information."
+        ),
     )
     exportMaterials: bool = SettingsField(
-        title="Export Materials", default=True
+        title="Export Materials",
+        default=True,
+        description="Enable or disable export of materials.",
     )
     exportAssignedMaterials: bool = SettingsField(
-        title="Export Assigned Materials", default=False
+        title="Export Assigned Materials",
+        default=False,
+        description="Only export materials that are assigned to meshes.",
     )
     exportInstances: bool = SettingsField(
-        title="Export Instances", default=True
+        title="Export Instances",
+        default=True,
+        description="Enable or disable export of instanced geometry.",
     )
-    exportUVs: bool = SettingsField(title="Export UVs", default=True)
+    exportUVs: bool = SettingsField(
+        title="Export UVs",
+        default=True,
+        description="Enable or disable export of UV sets.",
+    )
     upAxis: str = SettingsField(
         enum_resolver=maya_usd_up_axis_enum,
         title="Up Axis",
         default="mayaPrefs",
+        description=(
+            "Control the up-axis authored in USD:\n"
+            "- **mayaPrefs** follows Maya preferences\n"
+            "- **none** authors no up-axis\n"
+            "- or explicitly choose **y** or **z** to author that axis and "
+            "convert data if needed."
+        ),
     )
     unit: str = SettingsField(
         enum_resolver=maya_usd_unit_enum,
         title="Export Unit",
         default="mayaPrefs",
+        description=(
+            "Control units authored in USD:\n"
+            "- **mayaPrefs** follows Maya preferences\n"
+            "- **none** authors no units\n"
+            "- or choose explicit units (mm, cm, m, in, ft) to author and"
+            " convert data accordingly."
+        ),
     )
 
     custom_attr_namespace: str = SettingsField(
         title="Custom Attribute Default Namespace",
         default="userProperties:",
         section="Custom Attributes",
+        description=(
+            "Default namespace prefix used when exporting custom Maya"
+            " attributes to USD when no explicit usdAttrName is provided."
+        ),
     )
     custom_attr_name_mapping: list[str] = SettingsField(
-        title="Custom Attribute Name Mapping", default_factory=list
+        title="Custom Attribute Name Mapping",
+        default_factory=list,
+        description=(
+            "Direct mappings from Maya attribute names to USD attribute"
+            " names. Specify as a list of mappings."
+        ),
     )
     custom_attr_mapping: str = SettingsField(
-        title="Advanced Custom Attribute Mapping", default="{}"
+        title="Advanced Custom Attribute Mapping",
+        default="{}",
+        description=(
+            "Advanced JSON mapping for Maya->USD attribute conversions."
+            " Matches the USD_UserExportedAttributesJson structure used by"
+            " mayaUSDExport."
+        ),
     )
 
 
