@@ -625,6 +625,35 @@ class ExtractMayaUsdModel(BaseSettingsModel):
         return value
 
 
+def default_mesh_scheme_enum():
+    return [
+        {"label": "Catmull Clark", "value": "catmullClark"},
+        {"label": "Loop", "value": "loop"},
+        {"label": "Bilinear", "value": "bilinear"},
+        {"label": "None", "value": "none"},
+    ]
+
+
+def export_skin_enum():
+    return [
+        {"label": "None", "value": "none"},
+        {"label": "Auto", "value": "auto"},
+        {"label": "Explicit", "value": "explicit"},
+    ]
+
+
+def unit_enum():
+    return [
+        {"label": "Maya Preferences", "value": "mayaPrefs"},
+        {"label": "None", "value": "none"},
+        {"label": "Millimeters", "value": "mm"},
+        {"label": "Centimeters", "value": "cm"},
+        {"label": "Meters", "value": "m"},
+        {"label": "Inches", "value": "in"},
+        {"label": "Feet", "value": "ft"},
+    ]
+
+
 class ExtractMayaUsdGeneralModel(BasicExtractorModel):
 
     overrides: list[str] = SettingsField(
@@ -640,10 +669,10 @@ class ExtractMayaUsdGeneralModel(BasicExtractorModel):
     exportComponentTags: bool = SettingsField(title="Export Component Tags", default=False)
     exportVisibility: bool = SettingsField(title="Export Visibility", default=True)
     mergeTransformAndShape: bool = SettingsField(title="Merge Transform and Shape", default=True)
-    defaultMeshScheme: str = SettingsField(default="catmullClark", title="Default Subdivision Method")
+    defaultMeshScheme: str = SettingsField(enum_resolver=default_mesh_scheme_enum, default="catmullClark", title="Default Subdivision Method")
     exportBlendShapes: bool = SettingsField(title="Export BlendShapes", default=True)
-    exportSkin: str = SettingsField(default="none", title="Export Skin")
-    exportSkels: str = SettingsField(default="none", title="Export Skeletons")
+    exportSkin: str = SettingsField(enum_resolver=export_skin_enum, default="none", title="Export Skin")
+    exportSkels: str = SettingsField(enum_resolver=export_skin_enum, default="none", title="Export Skeletons")
     exportCollectionBasedBindings: bool = SettingsField(title="Export Collection Based Bindings", default=False)
     exportColorSets: bool = SettingsField(title="Export Color Sets", default=True)
     exportDisplayColor: bool = SettingsField(title="Export Display Color", default=False)
@@ -652,7 +681,7 @@ class ExtractMayaUsdGeneralModel(BasicExtractorModel):
     exportInstances: bool = SettingsField(title="Export Instances", default=True)
     exportUVs: bool = SettingsField(title="Export UVs", default=True)
     upAxis: str = SettingsField(enum_resolver=up_axis_enum, title="Up Axis", default="mayaPrefs")
-    unit: str = SettingsField(title="Export Unit", default="mayaPrefs")
+    unit: str = SettingsField(enum_resolver=unit_enum, title="Export Unit", default="mayaPrefs")
 
     custom_attr_namespace: str = SettingsField(
         title="Custom Attribute Default Namespace", default="userProperties:"
