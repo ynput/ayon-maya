@@ -556,76 +556,6 @@ class ExtractMayaUsdCustomAttrNameMappingModel(BaseSettingsModel):
     usd_name: str = SettingsField("", title="USD name")
 
 
-# TODO: This model seems to be unused?
-class ExtractMayaUsdModel(BaseSettingsModel):
-    """Export USD using Maya's mayaUsd plug-in
-
-    Custom attributes overrides allow user defined attributes to be exported
-    using custom naming overrides, e.g. by prefixing them all with a default
-    namespace or specifying explict Maya name to USD name mapping.
-
-    You can also customize it with the mapping JSON which expects a key
-    for each Maya attribute name to customize output values for, using the
-    [custom attribute `USD_UserExportedAttributesJson` syntax](https://github.com/Autodesk/maya-usd/blob/dev/lib/mayaUsd/commands/Readme.md#specifying-arbitrary-attributes-for-export).
-
-    Any existing `USD_UserExportedAttributesJson` attribute on nodes in the
-    scene will still be the strongest opinion - hence these mappings only
-    apply defaults if not explicitly specified in the scene.
-    """
-    custom_attr_namespace: str = SettingsField(
-        section="Custom Attributes",
-        title="Custom Attribute Default Namespace",
-        description=(
-            "Default USD attribute name prefix for custom attributes to be"
-            " exported. For example, setting this to an empty string would"
-            " make custom attribute `myAttr` exported directly as `myAttr`"
-            " instead of `userProperties:myAttr` in the resulting USD file."
-            " In the majority of cases you will want to leave this at the"
-            " default `userProperties:` because that is where you store user"
-            " defined properties."
-        )
-    )
-    custom_attr_name_mapping: list[
-        ExtractMayaUsdCustomAttrNameMappingModel
-    ] = SettingsField(
-        title="Custom Attribute Name Mapping",
-        description=(
-            "Specify a Maya name to USD attribute name mapping "
-            "for custom attributes"
-        )
-    )
-    custom_attr_mapping: str = SettingsField(
-        title="Advanced Custom Attribute Mapping",
-        widget="textarea",
-        description=(
-            "Default [custom attribute `USD_UserExportedAttributesJson`](https://github.com/Autodesk/maya-usd/blob/dev/lib/mayaUsd/commands/Readme.md#specifying-arbitrary-attributes-for-export)."
-            "\n\n"
-            "Use this if you want to override other data or more than just "
-            "the name, like e.g. `usdAttrType` or "
-            "`translateMayaDoubleToUsdSinglePrecision`."
-            "\n\n"
-            "Any `USD_UserExportedAttributesJson` attribute existing"
-            " on the node attribute will not be overridden."
-        )
-    )
-
-    @validator("custom_attr_mapping")
-    def validate_json(cls, value):
-        if not value.strip():
-            return "{}"
-        try:
-            converted_value = json.loads(value)
-            success = isinstance(converted_value, dict)
-        except json.JSONDecodeError:
-            success = False
-
-        if not success:
-            raise BadRequestException(
-                "The attributes can't be parsed as json object"
-            )
-        return value
-
-
 def maya_usd_default_mesh_scheme_enum():
     return [
         {"label": "Catmull Clark", "value": "catmullClark"},
@@ -816,6 +746,19 @@ class ExtractMayaUsdGeneralModel(BasicExtractorModel):
         ),
     )
 
+    """
+    Custom attributes overrides allow user defined attributes to be exported
+    using custom naming overrides, e.g. by prefixing them all with a default
+    namespace or specifying explict Maya name to USD name mapping.
+
+    You can also customize it with the mapping JSON which expects a key
+    for each Maya attribute name to customize output values for, using the
+    [custom attribute `USD_UserExportedAttributesJson` syntax](https://github.com/Autodesk/maya-usd/blob/dev/lib/mayaUsd/commands/Readme.md#specifying-arbitrary-attributes-for-export).
+
+    Any existing `USD_UserExportedAttributesJson` attribute on nodes in the
+    scene will still be the strongest opinion - hence these mappings only
+    apply defaults if not explicitly specified in the scene.
+    """  # noqa
     custom_attr_namespace: str = SettingsField(
         title="Custom Attribute Default Namespace",
         default="userProperties:",
@@ -843,7 +786,24 @@ class ExtractMayaUsdGeneralModel(BasicExtractorModel):
             " Matches the USD_UserExportedAttributesJson structure used by"
             " mayaUSDExport."
         ),
+        syntax="json",
     )
+
+    @validator("custom_attr_mapping")
+    def validate_json(cls, value):
+        if not value.strip():
+            return "{}"
+        try:
+            converted_value = json.loads(value)
+            success = isinstance(converted_value, dict)
+        except json.JSONDecodeError:
+            success = False
+
+        if not success:
+            raise BadRequestException(
+                "The attributes can't be parsed as json object"
+            )
+        return value
 
 
 class ExtractMayaSceneRawModel(BasicExtractorModel):
