@@ -608,6 +608,7 @@ class ExtractMayaUsdGeneralModel(BasicExtractorModel):
         title="Strip Namespaces",
         default=True,
         description="Strip namespaces from Maya node names when writing USD.",
+        section="Export defaults",
     )
     worldspace: bool = SettingsField(
         title="World-Space",
@@ -675,7 +676,7 @@ class ExtractMayaUsdGeneralModel(BasicExtractorModel):
         title="Export Skeletons",
         description=(
             "How to export skeletons:\n"
-            "- **none** none\n"
+            "- **none** do not export\n"
             "- **auto** export all skeletons (may create SkelRoots)\n"
             "- **explicit** only those under SkelRoots."
         ),
