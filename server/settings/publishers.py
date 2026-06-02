@@ -626,6 +626,7 @@ class ExtractMayaUsdModel(BaseSettingsModel):
 
 
 class ExtractMayaUsdGeneralModel(BasicExtractorModel):
+
     overrides: list[str] = SettingsField(
         enum_resolver=extract_maya_usd_overrides_enum,
         title="Exposed Overrides",
@@ -633,6 +634,26 @@ class ExtractMayaUsdGeneralModel(BasicExtractorModel):
             "Expose the attribute in this list to the user when publishing."
         )
     )
+    # Maya USD export options exposed to settings so defaults can be set
+    stripNamespaces: bool = SettingsField(title="Strip Namespaces", default=True)
+    worldspace: bool = SettingsField(title="World-Space", default=True)
+    exportComponentTags: bool = SettingsField(title="Export Component Tags", default=False)
+    exportVisibility: bool = SettingsField(title="Export Visibility", default=True)
+    mergeTransformAndShape: bool = SettingsField(title="Merge Transform and Shape", default=True)
+    defaultMeshScheme: str = SettingsField(default="catmullClark", title="Default Subdivision Method")
+    exportBlendShapes: bool = SettingsField(title="Export BlendShapes", default=True)
+    exportSkin: str = SettingsField(default="none", title="Export Skin")
+    exportSkels: str = SettingsField(default="none", title="Export Skeletons")
+    exportCollectionBasedBindings: bool = SettingsField(title="Export Collection Based Bindings", default=False)
+    exportColorSets: bool = SettingsField(title="Export Color Sets", default=True)
+    exportDisplayColor: bool = SettingsField(title="Export Display Color", default=False)
+    exportMaterials: bool = SettingsField(title="Export Materials", default=True)
+    exportAssignedMaterials: bool = SettingsField(title="Export Assigned Materials", default=False)
+    exportInstances: bool = SettingsField(title="Export Instances", default=True)
+    exportUVs: bool = SettingsField(title="Export UVs", default=True)
+    upAxis: str = SettingsField(enum_resolver=up_axis_enum, title="Up Axis", default="mayaPrefs")
+    unit: str = SettingsField(title="Export Unit", default="mayaPrefs")
+
     custom_attr_namespace: str = SettingsField(
         title="Custom Attribute Default Namespace", default="userProperties:"
     )
