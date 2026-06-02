@@ -279,7 +279,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "exportCollectionBasedBindings": (
                 self.exportCollectionBasedBindings
             ),
-            "exportBlendShapes": True,
+            "exportBlendShapes": self.exportBlendShapes,
             "exportSkels": self.exportSkels,
             "exportSkin": self.exportSkin,
             "exportMaterials": self.exportMaterials,
