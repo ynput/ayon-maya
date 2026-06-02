@@ -221,6 +221,8 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "worldspace": bool,
             "exportCollectionBasedBindings": bool,
             "exportBlendShapes": bool,
+            "exportSkels": str,
+            "exportSkin": str,
             "exportMaterials": bool,
             "exportAssignedMaterials": bool,
             "upAxis": str,
@@ -256,6 +258,8 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "worldspace": True,
             "exportCollectionBasedBindings": False,
             "exportBlendShapes": True,
+            "exportSkels": "none",
+            "exportSkin": "none",
             "exportMaterials": False,
             "exportAssignedMaterials": False,
             "upAxis": "mayaPrefs",
@@ -654,6 +658,39 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 tooltip="Enable or disable export of blend shapes.",
                 visible=visible,
                 default=True
+            ),
+            "exportSkin": EnumDef("exportSkin",
+                    label="Export Skin",
+                    items=[
+                        {"value": "none", "label": "None"},
+                        {"value": "auto", "label": "Auto"},
+                        {"value": "explicit", "label": "Explicit"},
+                    ],
+                    tooltip=(
+                        "Export skin cluster data.\n\n"
+                        "None: do not export skin clusters.\n"
+                        "Auto: export skin clusters if present.\n"
+                        "Explicit: only export explicitly tagged skin clusters."
+                    ),
+                    visible=visible,
+                    default="none"
+            ),
+            "exportSkels": EnumDef("exportSkels",
+                    label="Export Skeletons",
+                    items=[
+                        {"value": "none", "label": "None"},
+                        {"value": "auto", "label": "Auto"},
+                        {"value": "explicit", "label": "Explicit"},
+                    ],
+                    tooltip=(
+                        "Determines how to export skeletons.\n\n"
+                        "None: No skeleton are exported.\n"
+                        "Auto: All skeletons will be exported, SkelRoots"
+                        " may be created.\n"
+                        "Explicit: only export those under SkelRoots."
+                    ),
+                    visible=visible,
+                    default="none"
             ),
             "exportCollectionBasedBindings": BoolDef(
                 "exportCollectionBasedBindings",
