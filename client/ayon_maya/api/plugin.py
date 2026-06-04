@@ -5,9 +5,8 @@ import os
 from urllib.parse import urlparse
 
 import ayon_api
-import qargparse
 
-from ayon_core.lib import BoolDef, Logger
+from ayon_core.lib import BoolDef, Logger, NumberDef
 from ayon_core.pipeline import (
     AVALON_INSTANCE_ID,
     AYON_INSTANCE_ID,
@@ -808,24 +807,28 @@ class ReferenceLoader(Loader):
     """
 
     options = [
-        qargparse.Integer(
+        NumberDef(
             "count",
             label="Count",
             default=1,
-            min=1,
-            help="How many times to load?"
+            minimum=1,
+            decimals=0,
+            tooltip="How many times to load?"
         ),
-        qargparse.Double3(
+        NumberDef(
             "offset",
             label="Position Offset",
-            help="Offset loaded models for easier selection."
+            decimals=4,
+            tooltip="Offset loaded models for easier selection."
         ),
-        qargparse.Boolean(
+        BoolDef(
             "attach_to_root",
             label="Group imported asset",
             default=True,
-            help="Should a group be created to encapsulate"
-                 " imported representation ?"
+            tooltip=(
+                "Should a group be created to encapsulate"
+                " imported representation?"
+            )
         )
     ]
 
