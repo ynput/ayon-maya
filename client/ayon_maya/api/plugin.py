@@ -816,8 +816,20 @@ class ReferenceLoader(Loader):
             tooltip="How many times to load?"
         ),
         NumberDef(
-            "offset",
-            label="Position Offset",
+            "offsetX",
+            label="Position Offset X",
+            decimals=4,
+            tooltip="Offset loaded models for easier selection."
+        ),
+        NumberDef(
+            "offsetY",
+            label="Position Offset Y",
+            decimals=4,
+            tooltip="Offset loaded models for easier selection."
+        ),
+        NumberDef(
+            "offsetZ",
+            label="Position Offset Z",
             decimals=4,
             tooltip="Offset loaded models for easier selection."
         ),
@@ -859,8 +871,13 @@ class ReferenceLoader(Loader):
             options['group_name'] = group_name
 
             # Offset loaded product
-            if "offset" in options:
-                offset = [i * c for i in options["offset"]]
+            offset_step = [
+                options.get("offsetX") or 0,
+                options.get("offsetY") or 0,
+                options.get("offsetZ") or 0,
+            ]
+            if any(offset_step):
+                offset = [i * c for i in offset_step]
                 options["translate"] = offset
 
             self.log.info(options)
