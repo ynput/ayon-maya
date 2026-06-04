@@ -1,8 +1,8 @@
 import contextlib
 import difflib
 
-import qargparse
 from ayon_core.settings import get_project_settings
+from ayon_core.lib import BoolDef, TextDef
 from ayon_core.pipeline import get_current_project_name
 from ayon_core.pipeline.load import get_representation_context
 from ayon_maya.api import plugin
@@ -404,17 +404,17 @@ class MayaUSDReferenceLoader(ReferenceLoader):
     extensions = {"usd", "usda", "usdc"}
 
     options = ReferenceLoader.options + [
-        qargparse.Boolean(
+        BoolDef(
             "readAnimData",
             label="Load anim data",
             default=True,
-            help="Load animation data from USD file"
+            tooltip="Load animation data from USD file"
         ),
-        qargparse.Boolean(
+        BoolDef(
             "useAsAnimationCache",
             label="Use as animation cache",
             default=True,
-            help=(
+            tooltip=(
                 "Imports geometry prims with time-sampled point data using a "
                 "point-based deformer that references the imported "
                 "USD file.\n"
@@ -423,20 +423,20 @@ class MayaUSDReferenceLoader(ReferenceLoader):
                 "reduce the weight of the resulting Maya scene."
             )
         ),
-        qargparse.Boolean(
+        BoolDef(
             "importInstances",
             label="Import instances",
             default=True,
-            help=(
+            tooltip=(
                 "Import USD instanced geometries as Maya instanced shapes. "
                 "Will flatten the scene otherwise."
             )
         ),
-        qargparse.String(
+        TextDef(
             "primPath",
             label="Prim Path",
             default="/",
-            help=(
+            tooltip=(
                 "Name of the USD scope where traversing will begin.\n"
                 "The prim at the specified primPath (including the prim) will "
                 "be imported.\n"
