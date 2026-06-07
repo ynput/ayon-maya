@@ -787,6 +787,7 @@ class ExtractMayaUsdGeneralModel(BasicExtractorModel):
             " Matches the USD_UserExportedAttributesJson structure used by"
             " mayaUSDExport."
         ),
+        widget="textarea",
         syntax="json",
     )
 
