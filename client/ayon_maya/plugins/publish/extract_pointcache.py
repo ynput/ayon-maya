@@ -86,6 +86,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
     writeColorSets = False
     writeCreases = False
     writeFaceSets = False
+    writeFaceSetsForceFaceAssignment = False
     writeNormals = True
     writeUVSets = False
     writeVisibility = False
@@ -260,7 +261,10 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
         with contextlib.ExitStack() as stack:
             stack.enter_context(suspended_refresh(suspend=suspend))
             stack.enter_context(maintained_selection())
-            if instance.data.get("writeFaceSets", True):
+            if (
+                kwargs.get("writeFaceSets")
+                and self.writeFaceSetsForceFaceAssignment
+            ):
                 meshes = cmds.ls(nodes, type="mesh", long=True)
                 stack.enter_context(force_shader_assignments_to_faces(meshes))
             cmds.select(nodes, noExpand=True)

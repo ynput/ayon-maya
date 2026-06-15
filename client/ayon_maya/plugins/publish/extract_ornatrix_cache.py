@@ -1,12 +1,14 @@
 import os
 import json
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from maya import cmds
 from ayon_maya.api.lib import get_frame_range
 
 
-class ExtractOxCache(plugin.MayaExtractorPlugin):
+class ExtractOxCache(plugin.MayaExtractorPlugin,
+                     OptionalPyblishPluginMixin):
     """Producing Ornatrix cache files using scene time range.
 
     This will extract Ornatrix cache file sequence and fur settings.
@@ -17,6 +19,8 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
     targets = ["local", "remote"]
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         cmds.loadPlugin("Ornatrix", quiet=True)
         dirname = self.staging_dir(instance)
 

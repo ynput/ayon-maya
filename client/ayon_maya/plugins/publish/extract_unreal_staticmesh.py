@@ -3,13 +3,15 @@
 import os
 
 import pyblish.api
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import fbx
 from ayon_maya.api.lib import maintained_selection, parent_nodes
 from ayon_maya.api import plugin
 from maya import cmds  # noqa
 
 
-class ExtractUnrealStaticMesh(plugin.MayaExtractorPlugin):
+class ExtractUnrealStaticMesh(plugin.MayaExtractorPlugin,
+                              OptionalPyblishPluginMixin):
     """Extract Unreal Static Mesh as FBX from Maya. """
 
     order = pyblish.api.ExtractorOrder - 0.1
@@ -17,6 +19,8 @@ class ExtractUnrealStaticMesh(plugin.MayaExtractorPlugin):
     families = ["staticMesh"]
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         members = instance.data.get("geometryMembers", [])
         if instance.data.get("collisionMembers"):
             members = members + instance.data.get("collisionMembers")

@@ -5,11 +5,13 @@ from ayon_core.lib import is_in_tests
 import maya.api.OpenMaya as om
 import maya.api.OpenMayaUI as omui
 import pyblish.api
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api.lib import IS_HEADLESS
 from ayon_maya.api import plugin
 
 
-class ExtractActiveViewThumbnail(plugin.MayaInstancePlugin):
+class ExtractActiveViewThumbnail(plugin.MayaInstancePlugin,
+                                 OptionalPyblishPluginMixin):
     """Set instance thumbnail to a screengrab of current active viewport.
 
     This makes it so that if an instance does not have a thumbnail set yet that
@@ -22,6 +24,8 @@ class ExtractActiveViewThumbnail(plugin.MayaInstancePlugin):
     families = ["workfile"]
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         if IS_HEADLESS or is_in_tests():
             self.log.debug(
                 "Skip extraction of active view thumbnail, due to being in"

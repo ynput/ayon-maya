@@ -3,12 +3,14 @@ import os
 import shutil
 
 import pyblish.api
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api.alembic import extract_alembic
 from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractWorkfileXgen(plugin.MayaExtractorPlugin):
+class ExtractWorkfileXgen(plugin.MayaExtractorPlugin,
+                          OptionalPyblishPluginMixin):
     """Extract Workfile Xgen.
 
     When submitting a render, we need to prep Xgen side car files.
@@ -72,6 +74,8 @@ class ExtractWorkfileXgen(plugin.MayaExtractorPlugin):
         return start_frame, end_frame
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         transfers = []
 
         # Validate there is any palettes in the scene.

@@ -82,6 +82,7 @@ class ExtractObj(plugin.MayaExtractorPlugin,
     order = pyblish.api.ExtractorOrder
     label = "Extract OBJ"
     families = ["model"]
+    optional = True
 
     # Default OBJ export options.
     obj_options = {

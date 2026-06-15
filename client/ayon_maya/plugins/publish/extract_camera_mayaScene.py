@@ -108,6 +108,8 @@ class ExtractCameraMayaScene(plugin.MayaExtractorPlugin,
 
     def process(self, instance):
         """Plugin entry point."""
+        if not self.is_active(instance.data):
+            return
         # get settings
         maya_settings = instance.context.data["project_settings"]["maya"]
         ext_mapping = {
@@ -142,8 +144,7 @@ class ExtractCameraMayaScene(plugin.MayaExtractorPlugin,
         # get cameras
         members = set(cmds.ls(instance.data['setMembers'], leaf=True,
                       shapes=True, long=True, dag=True))
-        cameras = set(cmds.ls(members, leaf=True, shapes=True, long=True,
-                      dag=True, type="camera"))
+        cameras = set(cmds.ls(members, type="camera", long=True))
 
         # validate required settings
         assert isinstance(step, float), "Step must be a float value"
@@ -160,6 +161,7 @@ class ExtractCameraMayaScene(plugin.MayaExtractorPlugin,
             stack.enter_context(lib.maintained_selection())
             stack.enter_context(lib.evaluation("off"))
             stack.enter_context(lib.suspended_refresh())
+            stack.enter_context(rendersetup_disable_untitled_collection())
             if bake_to_worldspace:
                 baked = lib.bake_to_world_space(
                     transforms,
@@ -302,6 +304,23 @@ def transfer_image_planes(source_cameras, target_cameras,
         for camera, image_planes in originals.items():
             for image_plane in image_planes:
                 _attach_image_plane(camera, image_plane)
+
+
+@contextlib.contextmanager
+def rendersetup_disable_untitled_collection():
+    """Disable MAYA_RENDER_SETUP_USE_UNTITLED_COLLECTIONS environment
+    variable during context to ensure no trailing collection after the publish.
+    """
+    key = "MAYA_RENDER_SETUP_USE_UNTITLED_COLLECTIONS"
+    original_value = os.getenv(key)
+    try:
+        os.environ[key] = str(int(False))
+        yield
+    finally:
+        if original_value is not None:
+            os.environ[key] = original_value
+        else:
+            del os.environ[key]
 
 
 def _attach_image_plane(camera, image_plane):

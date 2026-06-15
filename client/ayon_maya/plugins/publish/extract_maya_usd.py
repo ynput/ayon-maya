@@ -3,7 +3,7 @@ import json
 import os
 from typing import Any
 
-from ayon_core.pipeline import publish
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_core.lib import BoolDef, EnumDef, UILabelDef, UISeparatorDef
 from ayon_maya.api.lib import maintained_selection, maintained_time
 from ayon_maya.api import plugin
@@ -163,7 +163,7 @@ def usd_export_attributes(
 
 
 class ExtractMayaUsd(plugin.MayaExtractorPlugin,
-                     publish.OptionalPyblishPluginMixin):
+                     OptionalPyblishPluginMixin):
     """Extractor for Maya USD Asset data.
 
     Upon publish a .usd (or .usdz) asset file will typically be written.
@@ -172,6 +172,27 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
     enabled = True
     label = "Extract Maya USD Asset"
     families = ["mayaUsd"]
+
+    # Settings
+    overrides = []
+    stripNamespaces: bool = True
+    worldspace: bool = True
+    exportComponentTags: bool = False
+    exportVisibility: bool = True
+    mergeTransformAndShape: bool = True
+    defaultMeshScheme: str = "catmullClark"
+    exportBlendShapes: bool = True
+    exportSkin: str = "none"
+    exportSkels: str = "none"
+    exportCollectionBasedBindings: bool = False
+    exportColorSets: bool = True
+    exportDisplayColor: bool = False
+    exportMaterials: bool = True
+    exportAssignedMaterials: bool = False
+    exportInstances: bool = True
+    exportUVs: bool = True
+    upAxis: str = "mayaPrefs"
+    unit: str = "mayaPrefs"
 
     # Default prefix for custom attributes to USD attributes
     # if no other mapping is provided
@@ -218,6 +239,14 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "filterTypes": (list, None),  # optional list
             "staticSingleSample": bool,
             "worldspace": bool,
+            "exportCollectionBasedBindings": bool,
+            "exportBlendShapes": bool,
+            "exportSkels": str,
+            "exportSkin": str,
+            "exportMaterials": bool,
+            "exportAssignedMaterials": bool,
+            "upAxis": str,
+            "unit": (str, None),  # optional str
         }
 
     @property
@@ -229,15 +258,15 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "chaser": None,
             "chaserArgs": None,
             "defaultUSDFormat": "usdc",
-            "defaultMeshScheme": "catmullClark",
-            "stripNamespaces": True,
-            "mergeTransformAndShape": True,
-            "exportDisplayColor": False,
-            "exportColorSets": True,
-            "exportInstances": True,
-            "exportUVs": True,
-            "exportVisibility": True,
-            "exportComponentTags": False,
+            "defaultMeshScheme": self.defaultMeshScheme,
+            "stripNamespaces": self.stripNamespaces,
+            "mergeTransformAndShape": self.mergeTransformAndShape,
+            "exportDisplayColor": self.exportDisplayColor,
+            "exportColorSets": self.exportColorSets,
+            "exportInstances": self.exportInstances,
+            "exportUVs": self.exportUVs,
+            "exportVisibility": self.exportVisibility,
+            "exportComponentTags": self.exportComponentTags,
             "exportRefsAsInstanceable": False,
             "eulerFilter": True,
             "renderableOnly": False,
@@ -246,7 +275,17 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "jobContext": None,
             "filterTypes": None,
             "staticSingleSample": True,
-            "worldspace": True
+            "worldspace": self.worldspace,
+            "exportCollectionBasedBindings": (
+                self.exportCollectionBasedBindings
+            ),
+            "exportBlendShapes": self.exportBlendShapes,
+            "exportSkels": self.exportSkels,
+            "exportSkin": self.exportSkin,
+            "exportMaterials": self.exportMaterials,
+            "exportAssignedMaterials": self.exportAssignedMaterials,
+            "upAxis": self.upAxis,
+            "unit": self.unit,
         }
 
     def parse_overrides(self, overrides, options):
@@ -516,15 +555,24 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 .get(cls.__name__, {})
             )
             is_enabled = plugin_attr_values.get("active", cls.active)
+        defs = super().get_attr_defs_for_instance(create_context, instance)
+        if not cls.overrides:
+            return defs
 
         attr_defs = [
             UISeparatorDef("sep_usd_options"),
             UILabelDef("USD Options"),
         ]
-        attr_defs.extend(
-            super().get_attr_defs_for_instance(create_context, instance)
-        )
-        attr_defs.extend(cls._get_additional_attr_defs(is_enabled))
+        attr_defs.extend(defs)
+        # The Arguments that can be modified by the Publisher
+        override_defs = cls._get_additional_attr_defs(is_enabled)
+        overrides = set(cls.overrides)
+        for key, value in override_defs.items():
+            if key not in overrides:
+                continue
+
+            attr_defs.append(value)
+
         attr_defs.append(
             UISeparatorDef("sep_usd_options_end")
         )
@@ -560,62 +608,212 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 instance.publish_attributes[class_name][key] = value
 
     @classmethod
-    def _get_additional_attr_defs(cls, visible: bool) -> list:
-        return [
-            BoolDef("stripNamespaces",
-                    label="Strip Namespaces",
-                    tooltip="Strip Namespaces in the USD Export",
-                    visible=visible,
-                    default=True),
-            BoolDef("worldspace",
-                    label="World-Space",
-                    tooltip="Export all root prim using their full worldspace "
-                            "transform instead of their local transform.",
-                    visible=visible,
-                    default=True),
-            BoolDef("exportComponentTags",
-                    label="Export Component Tags",
-                    tooltip="When enabled, export any geometry component tags "
-                            "as UsdGeomSubset data.",
-                    visible=visible,
-                    default=False),
-            BoolDef("exportVisibility",
-                    label="Export Visibility",
-                    tooltip="Export any state and animation on Maya visibility"
-                            " attributes.",
-                    visible=visible,
-                    default=True),
-            BoolDef("mergeTransformAndShape",
-                    label="Merge Transform and Shape",
-                    tooltip=(
-                        "Combine Maya transform and shape into a single USD"
-                        "prim that has transform and geometry, for all"
-                        " \"geometric primitives\" (gprims).\n"
-                        "This results in smaller and faster scenes. Gprims "
-                        "will be \"unpacked\" back into transform and shape "
-                        "nodes when imported into Maya from USD."
-                    ),
-                    visible=visible,
-                    default=True),
-            EnumDef("defaultMeshScheme",
-                    label="Default Subdivision Method",
+    def _get_additional_attr_defs(cls, visible: bool) -> dict:
+        return {
+            "stripNamespaces": BoolDef(
+                "stripNamespaces",
+                label="Strip Namespaces",
+                tooltip="Strip Namespaces in the USD Export",
+                visible=visible,
+                default=cls.stripNamespaces,
+            ),
+            "worldspace": BoolDef(
+                "worldspace",
+                label="World-Space",
+                tooltip="Export all root prim using their full worldspace "
+                        "transform instead of their local transform.",
+                visible=visible,
+                default=cls.worldspace,
+            ),
+            "exportComponentTags": BoolDef(
+                "exportComponentTags",
+                label="Export Component Tags",
+                tooltip="When enabled, export any geometry component tags "
+                        "as UsdGeomSubset data.",
+                visible=visible,
+                default=cls.exportComponentTags,
+            ),
+            "exportVisibility": BoolDef(
+                "exportVisibility",
+                label="Export Visibility",
+                tooltip="Export any state and animation on Maya visibility"
+                        " attributes.",
+                visible=visible,
+                default=cls.exportVisibility,
+            ),
+            "mergeTransformAndShape": BoolDef(
+                "mergeTransformAndShape",
+                label="Merge Transform and Shape",
+                tooltip=(
+                    "Combine Maya transform and shape into a single USD"
+                    "prim that has transform and geometry, for all"
+                    " \"geometric primitives\" (gprims).\n"
+                    "This results in smaller and faster scenes. Gprims "
+                    "will be \"unpacked\" back into transform and shape "
+                    "nodes when imported into Maya from USD."
+                ),
+                visible=visible,
+                default=cls.mergeTransformAndShape,
+            ),
+            "defaultMeshScheme": EnumDef(
+                "defaultMeshScheme",
+                label="Default Subdivision Method",
+                items=[
+                    {"value": "catmullClark", "label": "Catmull Clark"},
+                    {"value": "loop", "label": "Loop"},
+                    {"value": "bilinear", "label": "Bilinear"},
+                    {"value": "none", "label": "None"},
+                ],
+                tooltip=(
+                    "Default subdivision method for meshes.\n"
+                    "Options are: catmullClark, loop, bilinear, none."
+                    "\n\n"
+                    "To specify per mesh subdivision schemes add a "
+                    "USD_ATTR_subdivisionScheme attribute."
+                ),
+                visible=visible,
+                default=cls.defaultMeshScheme,
+            ),
+            "exportBlendShapes": BoolDef(
+                "exportBlendShapes",
+                label="Export Blendshapes",
+                tooltip="Enable or disable export of blend shapes.",
+                visible=visible,
+                default=cls.exportBlendShapes,
+            ),
+            "exportSkin": EnumDef("exportSkin",
+                    label="Export Skin",
                     items=[
-                        {"value": "catmullClark", "label": "Catmull Clark"},
-                        {"value": "loop", "label": "Loop"},
-                        {"value": "bilinear", "label": "Bilinear"},
                         {"value": "none", "label": "None"},
+                        {"value": "auto", "label": "Auto"},
+                        {"value": "explicit", "label": "Explicit"},
                     ],
                     tooltip=(
-                        "Default subdivision method for meshes.\n"
-                        "Options are: catmullClark, loop, bilinear, none."
-                        "\n\n"
-                        "To specify per mesh subdivision schemes add a "
-                        "USD_ATTR_subdivisionScheme attribute."
+                        "Export skin cluster data.\n\n"
+                        "None: do not export skin clusters.\n"
+                        "Auto: export skin clusters if present.\n"
+                        "Explicit: only export explicitly tagged skin clusters."
                     ),
                     visible=visible,
-                    default="catmullClark"
+                    default=cls.exportSkin,
+            ),
+            "exportSkels": EnumDef("exportSkels",
+                    label="Export Skeletons",
+                    items=[
+                        {"value": "none", "label": "None"},
+                        {"value": "auto", "label": "Auto"},
+                        {"value": "explicit", "label": "Explicit"},
+                    ],
+                    tooltip=(
+                        "Determines how to export skeletons.\n\n"
+                        "None: No skeleton are exported.\n"
+                        "Auto: All skeletons will be exported, SkelRoots"
+                        " may be created.\n"
+                        "Explicit: only export those under SkelRoots."
+                    ),
+                    visible=visible,
+                    default=cls.exportSkels,
+            ),
+            "exportCollectionBasedBindings": BoolDef(
+                "exportCollectionBasedBindings",
+                label="Export Collection Based Bindings",
+                tooltip=(
+                    "Enable or disable export of collection-based material "
+                    "assigments. If this option is enabled, export of material "
+                    "collections (-mcs) is also enabled, which causes collections "
+                    "representing sets of geometry with the same material binding "
+                    "to be exported. Materials are bound to the created collections "
+                    "on the prim at materialCollectionsPath (specfied via the -mcp "
+                    "option). Direct (or per-gprim) bindings are not authored when "
+                    "collection-based bindings are enabled."
+                ),
+                visible=visible,
+                default=cls.exportCollectionBasedBindings,
+            ),
+            "exportColorSets": BoolDef(
+                "exportColorSets",
+                label="Export Color Sets",
+                tooltip="Enable or disable the export of color sets.",
+                visible=visible,
+                default=cls.exportColorSets,
+            ),
+            "exportDisplayColor": BoolDef(
+                "exportDisplayColor",
+                label="Export Display Color",
+                tooltip="Enable or disable the export of display color.",
+                visible=visible,
+                default=cls.exportDisplayColor,
+            ),
+            "exportMaterials": BoolDef(
+                "exportMaterials",
+                label="Export Materials",
+                tooltip="Enable or disable the export of materials.",
+                visible=visible,
+                default=cls.exportMaterials,
+            ),
+            "exportAssignedMaterials": BoolDef(
+                "exportAssignedMaterials",
+                label="Export Assigned Materials",
+                tooltip="Export materials only if they are assigned to a mesh.",
+                visible=visible,
+                default=cls.exportAssignedMaterials,
+            ),
+            "exportInstances": BoolDef(
+                "exportInstances",
+                label="Export Instances",
+                tooltip="Enable or disable the export of instances.",
+                visible=visible,
+                default=cls.exportInstances,
+            ),
+            "exportUVs": BoolDef(
+                "exportUVs",
+                label="Export UVs",
+                tooltip="Enable or disable the export of UV sets.",
+                visible=visible,
+                default=cls.exportUVs,
+            ),
+            "upAxis": EnumDef(
+                "upAxis",
+                label="Up Axis",
+                items=[
+                    {"value": "mayaPrefs", "label": "Maya Preferences"},
+                    {"value": "none", "label": "None"},
+                    {"value": "y", "label": "Y"},
+                    {"value": "z", "label": "Z"},
+                ],
+                tooltip=(
+                    "How the up-axis of the exported USD is controlled. "
+                    "\"mayaPrefs\" follows the current Maya Preferences. "
+                    "\"none\" does not author up-axis. \"y\" or \"z\" author "
+                    "that axis and convert data if the Maya preferences does "
+                    "not match."
+                ),
+                visible=visible,
+                default=cls.upAxis,
+            ),
+            "unit": EnumDef(
+                "unit",
+                label="Export Unit",
+                items=[
+                    {"value": "mayaPrefs", "label": "Maya Preferences"},
+                    {"value": "none", "label": "None"},
+                    {"value": "mm", "label": "Millimeters"},
+                    {"value": "cm", "label": "Centimeters"},
+                    {"value": "m", "label": "Meters"},
+                    {"value": "in", "label": "Inches"},
+                    {"value": "ft", "label": "Feet"},
+                ],
+                tooltip=(
+                    "How the measuring units of the exported USD is controlled. "
+                    "\"mayaPrefs\" follows the current Maya Preferences. "
+                    "\"none\" does not author units. Explicit units (cm, inch, etc) "
+                    "author that and convert data if the Maya preferences does "
+                    "not match."
+                ),
+                visible=visible,
+                default=cls.unit,
             )
-        ]
+        }
 
 
 class ExtractMayaUsdAnim(ExtractMayaUsd):

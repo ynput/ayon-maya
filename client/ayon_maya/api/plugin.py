@@ -5,9 +5,8 @@ import os
 from urllib.parse import urlparse
 
 import ayon_api
-import qargparse
 
-from ayon_core.lib import BoolDef, Logger
+from ayon_core.lib import BoolDef, Logger, NumberDef
 from ayon_core.pipeline import (
     AVALON_INSTANCE_ID,
     AYON_INSTANCE_ID,
@@ -309,6 +308,11 @@ class MayaCreatorBase:
         for created_inst, _changes in update_list:
             data = created_inst.data_to_store()
             node = data.get("instance_node")
+            if not node or not cmds.objExists(node):
+                self.log.warning(
+                    f"Skipping update for missing instance node: '{node}'"
+                )
+                continue
             with unlocked(node):
                 self.imprint_instance_node(node, data)
 
@@ -803,24 +807,40 @@ class ReferenceLoader(Loader):
     """
 
     options = [
-        qargparse.Integer(
+        NumberDef(
             "count",
             label="Count",
             default=1,
-            min=1,
-            help="How many times to load?"
+            minimum=1,
+            decimals=0,
+            tooltip="How many times to load?"
         ),
-        qargparse.Double3(
-            "offset",
-            label="Position Offset",
-            help="Offset loaded models for easier selection."
+        NumberDef(
+            "offsetX",
+            label="Position Offset X",
+            decimals=4,
+            tooltip="Offset loaded models for easier selection."
         ),
-        qargparse.Boolean(
+        NumberDef(
+            "offsetY",
+            label="Position Offset Y",
+            decimals=4,
+            tooltip="Offset loaded models for easier selection."
+        ),
+        NumberDef(
+            "offsetZ",
+            label="Position Offset Z",
+            decimals=4,
+            tooltip="Offset loaded models for easier selection."
+        ),
+        BoolDef(
             "attach_to_root",
             label="Group imported asset",
             default=True,
-            help="Should a group be created to encapsulate"
-                 " imported representation ?"
+            tooltip=(
+                "Should a group be created to encapsulate"
+                " imported representation?"
+            )
         )
     ]
 
@@ -851,8 +871,13 @@ class ReferenceLoader(Loader):
             options['group_name'] = group_name
 
             # Offset loaded product
-            if "offset" in options:
-                offset = [i * c for i in options["offset"]]
+            offset_step = [
+                options.get("offsetX") or 0,
+                options.get("offsetY") or 0,
+                options.get("offsetZ") or 0,
+            ]
+            if any(offset_step):
+                offset = [i * c for i in offset_step]
                 options["translate"] = offset
 
             self.log.info(options)

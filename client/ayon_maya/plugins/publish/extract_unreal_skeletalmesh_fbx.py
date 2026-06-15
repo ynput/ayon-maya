@@ -4,6 +4,7 @@ import os
 from contextlib import contextmanager
 
 import pyblish.api
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import fbx
 from ayon_maya.api import plugin
 from maya import cmds  # noqa
@@ -19,15 +20,18 @@ def renamed(original_name, renamed_name):
         cmds.rename(renamed_name, original_name)
 
 
-class ExtractUnrealSkeletalMeshFbx(plugin.MayaExtractorPlugin):
+class ExtractUnrealSkeletalMeshFbx(plugin.MayaExtractorPlugin,
+                                   OptionalPyblishPluginMixin):
     """Extract Unreal Skeletal Mesh as FBX from Maya. """
 
     order = pyblish.api.ExtractorOrder - 0.1
     label = "Extract Unreal Skeletal Mesh - FBX"
     families = ["skeletalMesh"]
-    optional = True
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
+
         fbx_exporter = fbx.FBXExtractor(log=self.log)
 
         # Define output path

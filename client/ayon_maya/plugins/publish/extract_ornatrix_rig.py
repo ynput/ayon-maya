@@ -4,12 +4,14 @@
 import os
 import json
 
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractOxRig(plugin.MayaExtractorPlugin):
+class ExtractOxRig(plugin.MayaExtractorPlugin,
+                   OptionalPyblishPluginMixin):
     """Extract the Ornatrix rig to a Maya Scene and write the Ornatrix rig data."""
 
     label = "Extract Ornatrix Rig"
@@ -18,6 +20,8 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
 
     def process(self, instance):
         """Plugin entry point."""
+        if not self.is_active(instance.data):
+            return
         cmds.loadPlugin("Ornatrix", quiet=True)
         maya_settings = instance.context.data["project_settings"]["maya"]
         ext_mapping = {

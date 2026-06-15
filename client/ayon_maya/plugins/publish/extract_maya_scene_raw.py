@@ -5,13 +5,16 @@ import os
 import contextlib
 from ayon_core.lib import BoolDef
 from ayon_core.pipeline import AVALON_CONTAINER_ID, AYON_CONTAINER_ID
-from ayon_core.pipeline.publish import AYONPyblishPluginMixin
+from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+)
 from ayon_maya.api.lib import maintained_selection, shader
 from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
+class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin,
+                          OptionalPyblishPluginMixin):
     """Extract as Maya Scene (raw).
 
     This will preserve all references, construction history, etc.
@@ -46,6 +49,8 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
 
     def process(self, instance):
         """Plugin entry point."""
+        if not self.is_active(instance.data):
+            return
         maya_settings = instance.context.data["project_settings"]["maya"]
         ext_mapping = {
             item["name"]: item["value"]
