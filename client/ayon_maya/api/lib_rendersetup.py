@@ -14,6 +14,7 @@ import logging
 import maya.app.renderSetup.model.utils as utils
 from maya.app.renderSetup.model import renderSetup
 from maya.app.renderSetup.model.override import (
+    Override,
     AbsOverride,
     RelOverride,
     UniqueOverride
@@ -299,7 +300,7 @@ def get_attr_overrides(node_attr, layer,
     # Iterate over the overrides in reverse so we get the last
     # overrides first and can "break" whenever an absolute
     # override is reached
-    layer_overrides = list(utils.getOverridesRecursive(rs_layer))
+    layer_overrides = list(iter_layer_overrides(rs_layer))
     for layer_override in reversed(layer_overrides):
 
         if skip_disabled and not layer_override.isEnabled():
@@ -347,6 +348,23 @@ def get_attr_overrides(node_attr, layer,
             break
 
     return reversed(plug_overrides)
+
+
+def iter_layer_overrides(layer):
+    """Iterate layer overrides.
+
+    Args:
+        layer (RenderLayer): RenderLayer to iterate the overrides for
+
+    Yields:
+        Override: Each override object found in the layer hierarchy.
+    """
+    queue = [layer]
+    for obj in queue:
+        if isinstance(obj, Override):
+            yield obj
+        else:
+            queue.extend(obj.getChildren())
 
 
 def get_shader_in_layer(node, layer):
