@@ -11,7 +11,6 @@ from maya import cmds
 import maya.api.OpenMaya as om
 import logging
 
-import maya.app.renderSetup.model.utils as utils
 from maya.app.renderSetup.model import renderSetup
 from maya.app.renderSetup.model.override import (
     Override,
