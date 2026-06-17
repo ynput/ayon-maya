@@ -351,7 +351,13 @@ def get_attr_overrides(node_attr, layer,
 
 def iter_layer_overrides(layer):
     """Iterate layer overrides.
-
+    Note: We cannot use `maya.app.renderSetup.model.utils.getOverridesRecursive`
+        here because it traverses via `getChildren()` which, on a RenderLayer
+        (unlike on a Group or Collection), does NOT return groups. That means
+        any overrides living inside groups would be silently skipped.
+        We work around this by seeding the queue with both `getChildren()` and
+        `getGroups()` for the top-level layer only; from that point on,
+        `getChildren()` on groups/collections correctly returns nested items.
     Args:
         layer (RenderLayer): RenderLayer to iterate the overrides for
 
@@ -359,10 +365,17 @@ def iter_layer_overrides(layer):
         Override: Each override object found in the layer hierarchy.
     """
     queue = [layer]
+    # layer.getChildren() does not return groups even though
+    # getChildren on groups or collections does return them
+    queue.extend(layer.getGroups())
     for obj in queue:
         if isinstance(obj, Override):
             yield obj
         else:
+            if not obj.isEnabled():
+                # Skip disabled groups/collections as their overrides are not
+                # active
+                continue
             queue.extend(obj.getChildren())
 
 
