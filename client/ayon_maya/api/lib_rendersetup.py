@@ -367,16 +367,24 @@ def iter_layer_overrides(layer):
     queue = [layer]
     # layer.getChildren() does not return groups even though
     # getChildren on groups or collections does return them
-    queue.extend(layer.getGroups())
+    if hasattr(layer, "getChildren"):
+        queue.extend(layer.getChildren())
+    if hasattr(layer, "getGroups"):
+        queue.extend([g for g in layer.getGroups() if g.isEnabled()])
+
     for obj in queue:
         if isinstance(obj, Override):
             yield obj
         else:
-            if not obj.isEnabled():
+            if hasattr(obj, "isRenderable") and not obj.isRenderable():
                 # Skip disabled groups/collections as their overrides are not
                 # active
                 continue
-            queue.extend(obj.getChildren())
+            if hasattr(obj, "isEnabled") and not obj.isEnabled():
+                continue
+
+            if hasattr(obj, "getChildren"):
+                queue.extend(obj.getChildren())
 
 
 def get_shader_in_layer(node, layer):
