@@ -54,6 +54,10 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
 
         Args:
             context (pyblish.api.Context): The publish context.
+.
+        Returns:
+            bool: True if the workfile extension is aligned with the extension
+                mapping, False otherwise.
         """
         maya_settings = context.data["project_settings"]["maya"]
         ext_mapping = {
@@ -62,7 +66,7 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
         }
         current_file = context.data["currentFile"]
         if not current_file:
-            # Unsaved file
+            # Unsaved file: do not block validation
             return True
         workfile_extension = os.path.splitext(current_file)[-1].strip(".")
         for instance in context:
@@ -78,9 +82,9 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
             instance_extension = ext_mapping.get(
                 instance.data["productBaseType"]
             )
-            if workfile_extension != instance_extension:
-                return False
-        return True
+            if workfile_extension == instance_extension:
+                return True
+        return False
 
     @staticmethod
     def get_invalid(context) -> list:
@@ -91,7 +95,7 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
         if not self.is_active(context.data):
             return
 
-        if self._is_workfile_extension_align_with_extension_mapping(context):
+        if not self._is_workfile_extension_align_with_extension_mapping(context):
             self.log.warning(
                 "Workfile extension is not aligned with the extension mapping."
                 " Skipping unknown nodes validation to prevent false"
