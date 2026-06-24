@@ -683,9 +683,13 @@ def on_open():
 
 
 def on_new():
-    """Set project resolution and fps when create a new file"""
+    """Set project resolution and fps when create a new file.
+    If the project has a workfile template, create it.
+    """
     log.info("Running callback on new..")
     with lib.suspended_refresh():
+        from .workfile_template_builder import create_first_workfile_template
+        create_first_workfile_template()
         lib.set_context_settings()
 
     _remove_workfile_lock()
