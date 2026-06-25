@@ -248,15 +248,24 @@ class MayaPlaceholderPlugin(PlaceholderPlugin):
         return data
 
 
-def create_first_workfile_template(*args):
+def create_first_workfile_template(*args, **kwargs):
     builder = MayaTemplateBuilder(registered_host())
-    try:
-        builder.build_template(workfile_creation_enabled=True)
+    preset = builder.get_template_preset()
+    profile = preset["profile"]
+    is_new_workfile = False
+    host = registered_host()
+    is_new_file = not host.get_current_workfile()
+    if kwargs.get("on_new_scene"):
+        is_new_workfile = profile["apply_to_empty_scene"]
+    elif is_new_file:
+        is_new_workfile = profile["apply_on_app_launch"]
 
-    except TemplateProfileNotFound:
-        log.warning(
-            "Template profile not found. Skipping..."
-        )
+    builder.build_template(
+        template_path=preset["path"],
+        keep_placeholders=preset["keep_placeholder"],
+        create_first_version=preset["create_first_version"],
+        workfile_creation_enabled=is_new_workfile,
+    )
 
 
 def build_workfile_template(*args):
