@@ -54,7 +54,7 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
 
         Args:
             context (pyblish.api.Context): The publish context.
-.
+
         Returns:
             bool: True if the workfile extension is aligned with the extension
                 mapping, False otherwise.
@@ -82,9 +82,9 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
             instance_extension = ext_mapping.get(
                 instance.data["productBaseType"]
             )
-            if workfile_extension == instance_extension:
-                return True
-        return False
+            if workfile_extension != instance_extension:
+                return False
+        return True
 
     @staticmethod
     def get_invalid(context) -> list:
