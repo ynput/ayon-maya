@@ -97,9 +97,7 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
 
         if not self._is_workfile_extension_align_with_extension_mapping(context):
             self.log.warning(
-                "Workfile extension is not aligned with the extension mapping."
-                " Skipping unknown nodes validation to prevent false"
-                " positives."
+                "Skipping unknown nodes validation to prevent false positives."
             )
             return
 
