@@ -139,6 +139,8 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         )
         register_event_callback("workfile.save.after", after_workfile_save)
 
+        _trigger_on_app_launch()
+
         self._register_maya_usd_chasers()
 
     def open_workfile(self, filepath):
@@ -686,11 +688,11 @@ def on_new():
     """Set project resolution and fps when create a new file.
     If the project has a workfile template, create it.
     """
-    from .workfile_template_builder import create_first_workfile_template
+    from .workfile_template_builder import trigger_on_new_file
 
     log.info("Running callback on new..")
     with lib.suspended_refresh():
-        create_first_workfile_template()
+        trigger_on_new_file()
         lib.set_context_settings()
 
     _remove_workfile_lock()
@@ -833,6 +835,13 @@ def after_workfile_save(event):
     ):
         create_workfile_lock(workfile_name)
 
+
+def _trigger_on_app_launch() -> None:
+    """function to trigger workfile application launch.
+    Implementation to avoid circular import.
+    """
+    from .workfile_template_builder import trigger_on_app_launch
+    trigger_on_app_launch()
 
 class MayaDirmap(HostDirmap):
     def on_enable_dirmap(self):
