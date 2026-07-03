@@ -248,24 +248,25 @@ class MayaPlaceholderPlugin(PlaceholderPlugin):
         return data
 
 
-def create_first_workfile_template(*args, **kwargs):
+
+def trigger_on_app_launch() -> None:
+    """Build the workfile template during application
+    launch if the setting is enabled.
+    """
     builder = MayaTemplateBuilder(registered_host())
     preset = builder.get_template_preset()
-    profile = preset["profile"]
-    is_new_workfile = False
-    host = registered_host()
-    is_new_file = not host.get_current_workfile()
-    if kwargs.get("on_new_scene"):
-        is_new_workfile = profile["apply_to_empty_scene"]
-    elif is_new_file:
-        is_new_workfile = profile["apply_on_app_launch"]
+    if preset.execute_on_new_file:
+        return
 
-    builder.build_template(
-        template_path=preset["path"],
-        keep_placeholders=preset["keep_placeholder"],
-        create_first_version=preset["create_first_version"],
-        workfile_creation_enabled=is_new_workfile,
-    )
+    builder.trigger_on_app_launch(preset=preset)
+
+
+def trigger_on_new_file() -> None:
+    """Build the workfile template during new file creation
+    if the setting is enabled.
+    """
+    builder = MayaTemplateBuilder(registered_host())
+    builder.trigger_on_new_file()
 
 
 def build_workfile_template(*args):
