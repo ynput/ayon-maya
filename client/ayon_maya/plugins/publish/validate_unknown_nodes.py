@@ -88,7 +88,10 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
 
     @staticmethod
     def get_invalid(context) -> list:
-        return cmds.ls(type="unknown")
+        return (
+            (cmds.ls(type="unknown") or [])
+            + (cmds.ls(type="unknownDag") or [])
+        )
 
     def process(self, context):
         """Process all the nodes in the instance"""
