@@ -248,7 +248,6 @@ class MayaPlaceholderPlugin(PlaceholderPlugin):
         return data
 
 
-
 def trigger_on_app_launch() -> None:
     """Build the workfile template during application
     launch if the setting is enabled.
