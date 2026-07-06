@@ -66,7 +66,7 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
         }
         current_file = context.data["currentFile"]
         if not current_file:
-            # Unsaved file: do not block validation
+            # Unsaved file: can't validate extension alignment; allow validation to run
             return True
         workfile_extension = os.path.splitext(current_file)[-1].strip(".")
         for instance in context:
