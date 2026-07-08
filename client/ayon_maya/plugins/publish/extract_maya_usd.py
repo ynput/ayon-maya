@@ -413,7 +413,9 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         for key, required_minimal_version in {
             "exportComponentTags": (0, 14, 0),
             "jobContext": (0, 15, 0),
-            "worldspace": (0, 21, 0)
+            "worldspace": (0, 21, 0),
+            "unit": (0, 31, 0),
+            "upAxis": (0, 31, 0),
         }.items():
             if key in options and maya_usd_version < required_minimal_version:
                 self.log.warning(
