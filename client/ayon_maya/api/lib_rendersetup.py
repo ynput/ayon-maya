@@ -364,28 +364,29 @@ def iter_layer_overrides(layer):
     Yields:
         Override: Each override object found in the layer hierarchy.
     """
-    queue = [layer]
-    # layer.getChildren() does not return groups even though
-    # getChildren on groups or collections does return them
-    if hasattr(layer, "getChildren"):
-        queue.extend(layer.getChildren())
+    stack = []
+    # Seed stack with both the layer's children and groups (layer.getChildren()
+    # omits groups, unlike groups/collections themselves).
     if hasattr(layer, "getGroups"):
-        queue.extend([g for g in layer.getGroups() if g.isEnabled()])
+        stack.extend(reversed([g for g in layer.getGroups() if g.isEnabled()]))
+    if hasattr(layer, "getChildren"):
+        # Pushed last so it's visited first when popping from the stack.
+        stack.extend(reversed(layer.getChildren()))
 
-    for obj in queue:
+    while stack:
+        obj = stack.pop()
         if isinstance(obj, Override):
             yield obj
-        else:
-            if hasattr(obj, "isRenderable") and not obj.isRenderable():
-                # Skip disabled groups/collections as their overrides are not
-                # active
-                continue
-            if hasattr(obj, "isEnabled") and not obj.isEnabled():
-                continue
+            continue
 
-            if hasattr(obj, "getChildren"):
-                queue.extend(obj.getChildren())
+        if hasattr(obj, "isRenderable") and not obj.isRenderable():
+            # Skip disabled groups/collections as their overrides are not active
+            continue
+        if hasattr(obj, "isEnabled") and not obj.isEnabled():
+            continue
 
+        if hasattr(obj, "getChildren"):
+            stack.extend(reversed(obj.getChildren()))
 
 def get_shader_in_layer(node, layer):
     """Return the assigned shader in a renderlayer without switching layers.
