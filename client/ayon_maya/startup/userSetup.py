@@ -44,6 +44,12 @@ if path:
         _log_and_open,
         lowestPriority=True
     )
+else:
+    from ayon_maya.api.workfile_template_builder import trigger_on_app_launch
+    cmds.evalDeferred(
+        trigger_on_app_launch,
+        lowestPriority=True
+    )
 
 
 print("Finished AYON usersetup.")

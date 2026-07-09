@@ -139,8 +139,6 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         )
         register_event_callback("workfile.save.after", after_workfile_save)
 
-        _trigger_on_app_launch()
-
         self._register_maya_usd_chasers()
 
     def open_workfile(self, filepath):
@@ -844,13 +842,6 @@ def after_workfile_save(event):
     ):
         create_workfile_lock(workfile_name)
 
-
-def _trigger_on_app_launch() -> None:
-    """function to trigger workfile application launch.
-    Implementation to avoid circular import.
-    """
-    from .workfile_template_builder import trigger_on_app_launch
-    trigger_on_app_launch()
 
 class MayaDirmap(HostDirmap):
     def on_enable_dirmap(self):
