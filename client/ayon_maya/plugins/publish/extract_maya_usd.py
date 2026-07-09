@@ -416,6 +416,8 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             "exportComponentTags": (0, 14, 0),
             "jobContext": (0, 15, 0),
             "worldspace": (0, 21, 0),
+            "exportAssignedMaterials": (0, 29, 0),
+            "exportMaterials": (0, 29, 0),
             "unit": (0, 31, 0),
             "upAxis": (0, 31, 0),
         }.items():
