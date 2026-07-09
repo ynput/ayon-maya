@@ -690,10 +690,19 @@ def on_new():
     """
     from .workfile_template_builder import trigger_on_new_file
 
+    project_name = get_current_project_name()
+    project_settings = get_project_settings(project_name)
+    maya_settings = project_settings["maya"]
+    should_create_template = (
+        not os.getenv("AYON_MAYA_WORKFILE_PATH")
+        or maya_settings["open_workfile_post_initialization"]
+    )
+
     log.info("Running callback on new..")
     with lib.suspended_refresh():
-        trigger_on_new_file()
         lib.set_context_settings()
+        if should_create_template:
+            trigger_on_new_file()
 
     _remove_workfile_lock()
 
