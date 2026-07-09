@@ -690,8 +690,9 @@ def on_new():
 
     log.info("Running callback on new..")
     with lib.suspended_refresh():
-        create_first_workfile_template()
         lib.set_context_settings()
+        if not os.getenv("AYON_MAYA_WORKFILE_PATH"):
+            create_first_workfile_template()
 
     _remove_workfile_lock()
 
