@@ -11,7 +11,6 @@ from ayon_core.pipeline import (
 )
 from ayon_core.pipeline.workfile.workfile_template_builder import (
     TemplateAlreadyImported,
-    TemplateProfileNotFound,
     AbstractTemplateBuilder,
     PlaceholderPlugin,
     PlaceholderItem,
