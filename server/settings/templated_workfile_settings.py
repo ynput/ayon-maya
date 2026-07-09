@@ -23,11 +23,11 @@ class WorkfileBuildProfilesModel(BaseSettingsModel):
         True,
         title="Create first version"
     )
-    apply_to_empty_scene: bool = SettingsField(
+    execute_on_new_file: bool = SettingsField(
         False,
         title="Always apply to empty scene"
     )
-    apply_on_app_launch: bool = SettingsField(
+    execute_on_app_launch: bool = SettingsField(
         False,
         title="Apply on application launch"
     )
