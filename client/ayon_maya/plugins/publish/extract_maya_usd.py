@@ -407,13 +407,19 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         # Note: Maya 2022.3 ships with Maya USD 0.13.0.
         # TODO: Remove this backwards compatibility if Maya 2022 support is
         #   dropped
-        maya_usd_version = parse_version(
-            cmds.pluginInfo("mayaUsdPlugin", query=True, version=True)
+        plugin_version = cmds.pluginInfo(
+            "mayaUsdPlugin", query=True, version=True
         )
+        self.log.debug(f"Using mayaUsdPlugin version: {plugin_version}")
+        maya_usd_version = parse_version(plugin_version)
         for key, required_minimal_version in {
             "exportComponentTags": (0, 14, 0),
             "jobContext": (0, 15, 0),
-            "worldspace": (0, 21, 0)
+            "worldspace": (0, 21, 0),
+            "exportAssignedMaterials": (0, 29, 0),
+            "exportMaterials": (0, 29, 0),
+            "unit": (0, 31, 0),
+            "upAxis": (0, 31, 0),
         }.items():
             if key in options and maya_usd_version < required_minimal_version:
                 self.log.warning(
