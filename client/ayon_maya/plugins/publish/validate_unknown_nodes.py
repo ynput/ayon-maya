@@ -24,6 +24,12 @@ def force_delete(node: str) -> None:
         cmds.delete(node)
 
 
+class RemoveUnknownNodesAction(RepairContextAction):
+    """Repair action to remove unknown nodes from the scene."""
+
+    label = "Remove Unknown Nodes"
+
+
 class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
                                 OptionalPyblishPluginMixin):
     """Checks to see if there are any unknown nodes in the scene.
@@ -44,7 +50,7 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
     families = ["model", "rig", "mayaScene", "look", "renderlayer", "yetiRig"]
     optional = True
     label = "Unknown Nodes in Scene"
-    actions = [SelectInvalidAction, RepairContextAction]
+    actions = [SelectInvalidAction, RemoveUnknownNodesAction]
 
     def _is_workfile_extension_align_with_extension_mapping(self, context) -> bool:
         """Check if the workfile extension is aligned with the extension mapping.
@@ -134,6 +140,6 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
 
             You can either:
             - Install the missing plug-in that the unknown nodes belong to.
-            - Delete the unknown nodes from the scene. You can use the "Repair"
-            action to automatically delete the unknown nodes.
+            - Delete the unknown nodes from the scene. You can use the "Remove
+            Unknown Nodes" action to automatically delete the unknown nodes.
         """)
