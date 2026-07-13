@@ -741,24 +741,7 @@ class Loader(LoaderPlugin):
             self.log.debug("No custom group_name, no group will be created.")
             options["attach_to_root"] = False
 
-        folder_entity = context["folder"]
-        product_entity = context["product"]
-        product_name = product_entity["name"]
-        product_type = product_entity["productType"]
-        product_base_type = product_entity.get("productBaseType")
-        if not product_base_type:
-             product_base_type = product_type
-
-        formatting_data = {
-            "folder": {
-                "name": folder_entity["name"],
-            },
-            "product": {
-                "name": product_name,
-                "type": product_type,
-                "baseType": product_base_type,
-            },
-        }
+        formatting_data = self.get_namespace_template_data(context)
         namespace_template = custom_naming["namespace"]
         group_name_template = custom_naming["group_name"]
 
@@ -795,6 +778,48 @@ class Loader(LoaderPlugin):
         custom_group_name = group_name_template.format(**formatting_data)
 
         return custom_group_name, custom_namespace, options
+
+    def get_namespace_template_data(self, context: dict) -> dict:
+        """Get namespace template data
+
+        Args:
+            context (dict): Context data
+
+        Returns:
+            dict: template data for getting namespace
+        """
+        folder_entity = context["folder"]
+        product_entity = context["product"]
+        product_type = product_entity["productType"]
+        product_base_type = (
+            product_entity.get("productBaseType") or product_type
+        )
+
+        return {
+            "folder": {
+                "name": folder_entity["name"],
+            },
+            "product": {
+                "name": product_entity["name"],
+                "type": product_type,
+                "baseType": product_base_type,
+            },
+        }
+
+    def get_resolved_namespace_template(self, context: dict, loader_key: str) -> str:
+        """Get the resolved namespace template for a given loader key and context.
+
+        Args:
+            context (dict): The context dictionary.
+            loader_key (str): The loader key.
+
+        Returns:
+            str: The resolved namespace template.
+        """
+        settings = self.load_settings[loader_key]
+        namespace_template = settings.get("namespace")
+        formatting_data = self.get_namespace_template_data(context)
+        return namespace_template.format(**formatting_data)
 
 
 class ReferenceLoader(Loader):
@@ -1023,7 +1048,6 @@ class ReferenceLoader(Loader):
             ("project_name", context["project"]["name"]),
         ]:
             lib.set_attribute(node=node, attribute=attr_name, value=value)
-
         # When an animation or pointcache gets connected to an Xgen container,
         # the compound attribute "xgenContainers" gets created. When animation
         # containers gets updated we also need to update the cacheFileName on
