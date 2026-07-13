@@ -15,6 +15,10 @@ from ayon_maya.api.lib import (
     get_creator_identifier,
     maintained_selection,
     parent_nodes,
+    get_reference_node,
+    get_reference_node_parents,
+    get_custom_namespace,
+    set_attribute,
 )
 from maya import cmds
 
@@ -257,6 +261,12 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
     def switch(self, container, context):
         self.update(container, context)
+        project_name = context["project"]["name"]
+        settings = get_project_settings(project_name)
+        loader_settings = settings["maya"]["load"].get("reference_loader", {})
+        update_namespace = loader_settings.get("update_namespace_on_switch", False)
+        if update_namespace:
+            self._update_namespace(container, context, loader_settings)
 
     def update(self, container, context):
         with preserve_modelpanel_cameras(container, log=self.log):
@@ -392,6 +402,85 @@ class ReferenceLoader(plugin.ReferenceLoader):
         cmds.setAttr(f"{group_name}.selectHandleX", cx)
         cmds.setAttr(f"{group_name}.selectHandleY", cy)
         cmds.setAttr(f"{group_name}.selectHandleZ", cz)
+
+    def _update_namespace(
+            self,
+            container: dict,
+            context: dict,
+            settings: dict,
+        ) -> None:
+        """Update the namespace of the reference node.
+
+        Args:
+            container (dict): The container dictionary.
+            context (dict): The context dictionary.
+            settings (dict): The settings dictionary.
+        """
+        # Update namespace on reference node
+        container_node = container["objectName"]
+        members = get_container_members(container)
+        reference_node = get_reference_node(members, self.log)
+        custom_namespace = self._get_switch_namespace_template(
+            context, settings
+        )
+        new_namespace = get_custom_namespace(custom_namespace)
+        old_namespace = cmds.referenceQuery(
+            reference_node,
+            namespace=True
+        ).strip(":")
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
+        if product_base_type == "rig":
+            self.update_animation_instance(
+                container,
+                old_namespace,
+                new_namespace
+            )
+        cmds.namespace(rename=(old_namespace, new_namespace))
+        set_attribute(
+            node=container_node,
+            attribute="namespace",
+            value=new_namespace
+        )
+        container["namespace"] = new_namespace
+
+
+    def update_animation_instance(
+        self,
+        container: dict,
+        old_namespace: str,
+        new_namespace: str
+    ) -> None:
+        """Update the name of animation instance
+
+        Args:
+            container (dict): container
+            old_namespace (str): old_namespace
+            new_namespace (str): new_namespace
+        """
+        members = get_container_members(container)
+        object_sets = set()
+        for member in members:
+            object_sets.update(
+                cmds.listSets(object=member, extendToShape=False) or []
+            )
+        object_sets = cmds.ls(object_sets, type="objectSet")
+        for object_set in object_sets:
+            # Only consider empty object sets
+            members = cmds.sets(object_set, query=True)
+            if members:
+                continue
+            # Ignore referenced object sets
+            if cmds.referenceQuery(isNodeReferenced=object_set):
+                continue
+            # Then only here confirm whether this is an animation instance, if so
+            # then we will want to auto-remove the instance
+            if get_creator_identifier(object_set) == "io.openpype.creators.maya.animation":
+                new_objectset = object_set.replace(old_namespace, new_namespace)
+                cmds.rename(object_set, new_objectset)
+                set_attribute(node=object_set, attribute="productName", value=new_objectset)
 
 
 class MayaUSDReferenceLoader(ReferenceLoader):
