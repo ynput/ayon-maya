@@ -485,8 +485,8 @@ class ReferenceLoader(plugin.ReferenceLoader):
             # then we will want to auto-remove the instance
             if get_creator_identifier(object_set) == "io.openpype.creators.maya.animation":
                 new_objectset = object_set.replace(old_namespace, new_namespace)
-                cmds.rename(object_set, new_objectset)
-                set_attribute(node=object_set, attribute="productName", value=new_objectset)
+                new_objectset = cmds.rename(object_set, new_objectset)
+                set_attribute(node=new_objectset, attribute="productName", value=new_objectset)
 
 
 class MayaUSDReferenceLoader(ReferenceLoader):
