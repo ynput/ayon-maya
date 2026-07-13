@@ -135,6 +135,9 @@ class ReferenceLoaderModel(BaseSettingsModel):
             "directly."
         )
     )
+    update_namespace_on_switch: bool = SettingsField(
+        title="Update Namespace on Switch"
+    )
 
 
 class ImportLoaderModel(BaseSettingsModel):
@@ -322,7 +325,8 @@ DEFAULT_LOADERS_SETTING = {
         "group_name": "_GRP",
         "display_handle": True,
         "lock_animation_instance_on_load": False,
-        "create_camera_instance_on_load": False
+        "create_camera_instance_on_load": False,
+        "update_namespace_on_switch": False,
     },
     "import_loader": {
         "enabled": True,
