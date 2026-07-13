@@ -16,7 +16,6 @@ from ayon_maya.api.lib import (
     maintained_selection,
     parent_nodes,
     get_reference_node,
-    get_reference_node_parents,
     get_custom_namespace,
     set_attribute,
 )
