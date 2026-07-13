@@ -419,8 +419,15 @@ class ReferenceLoader(plugin.ReferenceLoader):
         container_node = container["objectName"]
         members = get_container_members(container)
         reference_node = get_reference_node(members, self.log)
-        custom_namespace = self._get_switch_namespace_template(
-            context, settings
+        namespace_template = settings.get("namespace")
+        if not namespace_template:
+            self.log.warning(
+                "No namespace template found in reference_loader settings; "
+                "skipping namespace update."
+            )
+            return
+        custom_namespace = namespace_template.format(
+            **self.get_namespace_template_data(context)
         )
         new_namespace = get_custom_namespace(custom_namespace)
         old_namespace = cmds.referenceQuery(
