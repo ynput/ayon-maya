@@ -693,7 +693,7 @@ def on_new():
     maya_settings = project_settings["maya"]
     should_create_template = (
         not os.getenv("AYON_MAYA_WORKFILE_PATH")
-        or maya_settings["open_workfile_post_initialization"]
+        and maya_settings["open_workfile_post_initialization"]
     )
 
     log.info("Running callback on new..")
