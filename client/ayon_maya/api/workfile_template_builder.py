@@ -266,7 +266,7 @@ def trigger_on_new_file() -> None:
 def build_workfile_template(*args):
     builder = MayaTemplateBuilder(registered_host())
     preset = builder.get_template_preset()
-    if preset is None:
+    if not preset.has_valid_path():
         return
     builder.build_template(preset=preset)
 
