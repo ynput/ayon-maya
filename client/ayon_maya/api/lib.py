@@ -127,7 +127,8 @@ def unlocked(node):
         yield
 
     finally:
-        cmds.lockNode(node, lock=has_locked)
+        if cmds.objExists(node):
+            cmds.lockNode(node, lock=has_locked)
 
 
 @contextlib.contextmanager

@@ -18,6 +18,7 @@ from ayon_maya.api.lib import (
     get_reference_node,
     get_custom_namespace,
     set_attribute,
+    unlocked,
 )
 from maya import cmds
 
@@ -444,14 +445,23 @@ class ReferenceLoader(plugin.ReferenceLoader):
                 old_namespace,
                 new_namespace
             )
-        cmds.namespace(rename=(old_namespace, new_namespace))
         set_attribute(
             node=container_node,
             attribute="namespace",
             value=new_namespace
         )
-        container["namespace"] = new_namespace
 
+        cmds.namespace(rename=(old_namespace, new_namespace))
+
+        with unlocked(reference_node):
+            new_ref_node = reference_node.replace(old_namespace, new_namespace)
+            cmds.rename(reference_node, new_ref_node)
+
+        # lock the reference node if it was locked before the namespace update
+        has_locked = cmds.lockNode(new_ref_node, query=True, lock=True)[0]
+        cmds.lockNode(new_ref_node, lock=has_locked)
+
+        container["namespace"] = new_namespace
 
     def update_animation_instance(
         self,
