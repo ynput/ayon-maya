@@ -19,10 +19,6 @@ class WorkfileBuildProfilesModel(BaseSettingsModel):
     keep_placeholder: bool = SettingsField(
         False,
         title="Keep placeholders")
-    create_first_version: bool = SettingsField(
-        True,
-        title="Create first version"
-    )
     execute_on_new_file: bool = SettingsField(
         False,
         title="Always apply to empty scene"
@@ -30,6 +26,10 @@ class WorkfileBuildProfilesModel(BaseSettingsModel):
     execute_on_app_launch: bool = SettingsField(
         True,
         title="Apply on application launch"
+    )
+    create_first_version: bool = SettingsField(
+        True,
+        title="Create first version"
     )
 
 
