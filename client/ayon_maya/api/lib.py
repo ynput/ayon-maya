@@ -4474,10 +4474,10 @@ def create_rig_animation_instance(
     )
     assert roots, "No root nodes in rig, this is a bug."
 
-    namespace = get_rig_animation_instance_variant(context, namespace, options=options)
+    variant = get_rig_animation_instance_variant(context, namespace, options=options)
 
     if log:
-        log.info("Creating product: {}".format(namespace))
+        log.info("Creating product: {}".format(variant))
 
     # Fill creator identifier
     creator_identifier = "io.openpype.creators.maya.animation"
@@ -4492,7 +4492,7 @@ def create_rig_animation_instance(
         cmds.select(rig_sets + roots, noExpand=True)
         create_context.create(
             creator_identifier=creator_identifier,
-            variant=namespace,
+            variant=variant,
             pre_create_data={
                 "use_selection": True,
                 "lock_instance": options.get("lock_instance", False)
