@@ -4341,6 +4341,91 @@ def get_creator_identifier(node: str) -> str | None:
     return get_attribute(f"{node}.creator_identifier")
 
 
+def update_animation_instance(
+    container: dict,
+    context: dict,
+    namespace: str
+) -> None:
+    """Update the name of animation instance
+
+    Args:
+        container (dict): container
+        context (dict): context
+        namespace (str): namespace
+    """
+    members = get_container_members(container)
+    object_sets = set()
+    for member in members:
+        object_sets.update(
+            cmds.listSets(object=member, extendToShape=False) or []
+        )
+    object_sets = cmds.ls(object_sets, type="objectSet")
+    create_context = CreateContext(registered_host(), discover_publish_plugins=False)
+    animation_creator_identifier = "io.openpype.creators.maya.animation"
+    animation_creator = create_context.creators.get(animation_creator_identifier)
+    variant = get_rig_animation_instance_variant(context, namespace)
+    target_name = animation_creator.get_product_name(
+        project_name=create_context.get_current_project_name(),
+        folder_entity=create_context.get_current_folder_entity(),
+        task_entity=create_context.get_current_task_entity(),
+        variant=variant,
+        instance=None
+    )
+
+    for object_set in object_sets:
+        # Only consider empty object sets
+        members = cmds.sets(object_set, query=True)
+        if members:
+            continue
+        # Ignore referenced object sets
+        if cmds.referenceQuery(object_set, isNodeReferenced=True):
+            continue
+        # Then only here confirm whether this is an animation instance, if so
+        # then we will want to auto-remove the instance
+        if get_creator_identifier(object_set) == animation_creator_identifier:
+            new_objectset = cmds.rename(object_set, target_name)
+            set_attribute(node=new_objectset, attribute="productName", value=new_objectset)
+
+
+def get_rig_animation_instance_variant(context, namespace, options=None)-> str:
+    folder_entity = context["folder"]
+    product_entity = context["product"]
+    product_type = product_entity["productType"]
+    product_base_type = product_entity.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
+    product_name = product_entity["name"]
+
+    custom_product_name = options.get("animationProductName")
+    if custom_product_name:
+        for old_key, new_key in (
+            ("{family}", "{product[basetype]}"),
+            ("{asset}", "{folder[name]}"),
+            ("{subset}", "asset"),
+        ):
+            if old_key in custom_product_name:
+                log.warning(f"Using deprecated template key '{old_key}'")
+                custom_product_name = custom_product_name.replace(
+                    old_key, new_key
+                )
+
+        formatting_data = {
+            "folder": {
+                "name": folder_entity["name"]
+            },
+            "product": {
+                "name": product_name,
+                "type": product_type,
+                "basetype": product_base_type,
+            },
+        }
+        return get_custom_namespace(
+            custom_product_name.format(**formatting_data)
+        )
+
+    return namespace
+
+
 def create_rig_animation_instance(
     nodes, context, namespace, options=None, log=None
 ):
@@ -4389,40 +4474,7 @@ def create_rig_animation_instance(
     )
     assert roots, "No root nodes in rig, this is a bug."
 
-    folder_entity = context["folder"]
-    product_entity = context["product"]
-    product_type = product_entity["productType"]
-    product_base_type = product_entity.get("productBaseType")
-    if not product_base_type:
-        product_base_type = product_type
-    product_name = product_entity["name"]
-
-    custom_product_name = options.get("animationProductName")
-    if custom_product_name:
-        for old_key, new_key in (
-            ("{family}", "{product[basetype]}"),
-            ("{asset}", "{folder[name]}"),
-            ("{subset}", "asset"),
-        ):
-            if old_key in custom_product_name:
-                log.warning(f"Using deprecated template key '{old_key}'")
-                custom_product_name = custom_product_name.replace(
-                    old_key, new_key
-                )
-
-        formatting_data = {
-            "folder": {
-                "name": folder_entity["name"]
-            },
-            "product": {
-                "name": product_name,
-                "type": product_type,
-                "basetype": product_base_type,
-            },
-        }
-        namespace = get_custom_namespace(
-            custom_product_name.format(**formatting_data)
-        )
+    namespace = get_rig_animation_instance_variant(context, namespace, options=options)
 
     if log:
         log.info("Creating product: {}".format(namespace))

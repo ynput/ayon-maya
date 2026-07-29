@@ -19,6 +19,7 @@ from ayon_maya.api.lib import (
     get_custom_namespace,
     set_attribute,
     unlocked,
+    update_animation_instance,
 )
 from maya import cmds
 
@@ -438,7 +439,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
         if not product_base_type:
             product_base_type = product_entity["productType"]
         if product_base_type == "rig":
-            self.update_animation_instance(
+            update_animation_instance(
                 container,
                 context,
                 new_namespace
@@ -454,65 +455,6 @@ class ReferenceLoader(plugin.ReferenceLoader):
         with unlocked(reference_node):
             new_ref_node = reference_node.replace(old_namespace, new_namespace)
             cmds.rename(reference_node, new_ref_node)
-
-        container["namespace"] = new_namespace
-
-    def update_animation_instance(
-        self,
-        container: dict,
-        context: dict,
-        new_namespace: str
-    ) -> None:
-        """Recreate rig animation instance with the new namespace."""
-        members = get_container_members(container)
-        object_sets = set()
-        for member in members:
-            object_sets.update(
-                cmds.listSets(object=member, extendToShape=False) or []
-            )
-
-        animation_sets = []
-        for object_set in cmds.ls(object_sets, type="objectSet") or []:
-            # Skip referenced sets
-            if cmds.referenceQuery(object_set, isNodeReferenced=True):
-                continue
-            # Keep only the rig animation instance sets
-            if get_creator_identifier(object_set) != "io.openpype.creators.maya.animation":
-                continue
-            animation_sets.append(object_set)
-
-        if not animation_sets:
-            self.log.debug("No existing local animation instance found to update.")
-            return
-
-        # Preserve whether the existing instance was locked
-        lock_instance = any(
-            cmds.lockNode(obj_set, query=True, lock=True)[0]
-            for obj_set in animation_sets
-        )
-
-        # Recreate using canonical creator logic so naming + productName are correct
-        try:
-            create_rig_animation_instance(
-                nodes=members,
-                context=context,
-                namespace=new_namespace,
-                options={"lock_instance": lock_instance},
-                log=self.log
-            )
-        except RigSetsNotExistError as exc:
-            self.log.warning(
-                "Failed to recreate animation instance after namespace update: %s",
-                exc
-            )
-            return
-
-        # Remove old animation instance set(s) only after successful recreation
-        for object_set in animation_sets:
-            if not cmds.objExists(object_set):
-                continue
-            with unlocked(object_set):
-                cmds.delete(object_set)
 
 
 class MayaUSDReferenceLoader(ReferenceLoader):
