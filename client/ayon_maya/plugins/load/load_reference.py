@@ -455,8 +455,6 @@ class ReferenceLoader(plugin.ReferenceLoader):
         with unlocked(reference_node):
             cmds.rename(reference_node, f"{new_namespace}RN")
 
-        # Keep container metadata in sync
-        container["namespace"] = new_namespace
 
 class MayaUSDReferenceLoader(ReferenceLoader):
     """Reference USD file to native Maya nodes using MayaUSDImport reference"""
