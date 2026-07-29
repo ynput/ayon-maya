@@ -128,8 +128,11 @@ def unlocked(node):
 
     finally:
         if not cmds.objExists(node):
-            # Try and find the node by uuid
-            node = cmds.ls(node_uuid)[0]
+            # Node might have been renamed or deleted; try and find it by uuid.
+            nodes_from_id = cmds.ls(node_uuid, long=True) or []
+            if not nodes_from_id:
+                return
+            node = nodes_from_id[0]
         cmds.lockNode(node, lock=has_locked)
 
 
