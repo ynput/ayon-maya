@@ -4373,10 +4373,6 @@ def update_animation_instance(
     )
 
     for object_set in object_sets:
-        # Only consider empty object sets
-        members = cmds.sets(object_set, query=True)
-        if members:
-            continue
         # Ignore referenced object sets
         if cmds.referenceQuery(object_set, isNodeReferenced=True):
             continue
