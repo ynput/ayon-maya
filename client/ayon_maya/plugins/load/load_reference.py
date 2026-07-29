@@ -319,11 +319,6 @@ class ReferenceLoader(plugin.ReferenceLoader):
         # locked
         object_sets = cmds.ls(object_sets, type="objectSet")
         for object_set in object_sets:
-            # Only consider empty object sets
-            members = cmds.sets(object_set, query=True)
-            if not members:
-                continue
-
             # Only consider locked object sets
             locked = cmds.lockNode(object_set, query=True)
             if not locked:
