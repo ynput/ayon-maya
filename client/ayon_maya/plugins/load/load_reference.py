@@ -320,7 +320,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
         for object_set in object_sets:
             # Only consider empty object sets
             members = cmds.sets(object_set, query=True)
-            if members:
+            if not members:
                 continue
 
             # Only consider locked object sets
