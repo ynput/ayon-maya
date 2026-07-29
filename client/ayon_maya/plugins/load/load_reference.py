@@ -440,7 +440,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
         if product_base_type == "rig":
             self.update_animation_instance(
                 container,
-                old_namespace,
+                context,
                 new_namespace
             )
         set_attribute(
@@ -460,37 +460,59 @@ class ReferenceLoader(plugin.ReferenceLoader):
     def update_animation_instance(
         self,
         container: dict,
-        old_namespace: str,
+        context: dict,
         new_namespace: str
     ) -> None:
-        """Update the name of animation instance
-
-        Args:
-            container (dict): container
-            old_namespace (str): old_namespace
-            new_namespace (str): new_namespace
-        """
+        """Recreate rig animation instance with the new namespace."""
         members = get_container_members(container)
         object_sets = set()
         for member in members:
             object_sets.update(
                 cmds.listSets(object=member, extendToShape=False) or []
             )
-        object_sets = cmds.ls(object_sets, type="objectSet")
-        for object_set in object_sets:
-            # Only consider empty object sets
-            members = cmds.sets(object_set, query=True)
-            if members:
-                continue
-            # Ignore referenced object sets
+
+        animation_sets = []
+        for object_set in cmds.ls(object_sets, type="objectSet") or []:
+            # Skip referenced sets
             if cmds.referenceQuery(object_set, isNodeReferenced=True):
                 continue
-            # Then only here confirm whether this is an animation instance, if so
-            # then we will want to auto-remove the instance
-            if get_creator_identifier(object_set) == "io.openpype.creators.maya.animation":
-                new_objectset = object_set.replace(old_namespace, new_namespace)
-                new_objectset = cmds.rename(object_set, new_objectset)
-                set_attribute(node=new_objectset, attribute="productName", value=new_objectset)
+            # Keep only the rig animation instance sets
+            if get_creator_identifier(object_set) != "io.openpype.creators.maya.animation":
+                continue
+            animation_sets.append(object_set)
+
+        if not animation_sets:
+            self.log.debug("No existing local animation instance found to update.")
+            return
+
+        # Preserve whether the existing instance was locked
+        lock_instance = any(
+            cmds.lockNode(obj_set, query=True, lock=True)[0]
+            for obj_set in animation_sets
+        )
+
+        # Recreate using canonical creator logic so naming + productName are correct
+        try:
+            create_rig_animation_instance(
+                nodes=members,
+                context=context,
+                namespace=new_namespace,
+                options={"lock_instance": lock_instance},
+                log=self.log
+            )
+        except RigSetsNotExistError as exc:
+            self.log.warning(
+                "Failed to recreate animation instance after namespace update: %s",
+                exc
+            )
+            return
+
+        # Remove old animation instance set(s) only after successful recreation
+        for object_set in animation_sets:
+            if not cmds.objExists(object_set):
+                continue
+            with unlocked(object_set):
+                cmds.delete(object_set)
 
 
 class MayaUSDReferenceLoader(ReferenceLoader):
