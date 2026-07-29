@@ -261,12 +261,10 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
     def switch(self, container, context):
         self.update(container, context)
-        project_name = context["project"]["name"]
-        settings = get_project_settings(project_name)
-        loader_settings = settings["maya"]["load"].get("reference_loader", {})
-        update_namespace = loader_settings.get("update_namespace_on_switch", False)
+        reference_loader_settings = self.load_settings.get("reference_loader", {})
+        update_namespace = reference_loader_settings.get("update_namespace_on_switch", False)
         if update_namespace:
-            self._update_namespace(container, context, loader_settings)
+            self._update_namespace(container, context, reference_loader_settings)
 
     def update(self, container, context):
         with preserve_modelpanel_cameras(container, log=self.log):
@@ -407,20 +405,20 @@ class ReferenceLoader(plugin.ReferenceLoader):
             self,
             container: dict,
             context: dict,
-            settings: dict,
+            reference_loader_settings: dict,
         ) -> None:
         """Update the namespace of the reference node.
 
         Args:
             container (dict): The container dictionary.
             context (dict): The context dictionary.
-            settings (dict): The settings dictionary.
+            reference_loader_settings (dict): The reference loader settings dictionary.
         """
         # Update namespace on reference node
         container_node = container["objectName"]
         members = get_container_members(container)
         reference_node = get_reference_node(members, self.log)
-        namespace_template = settings.get("namespace")
+        namespace_template = reference_loader_settings.get("namespace")
         if not namespace_template:
             self.log.warning(
                 "No namespace template found in reference_loader settings; "
