@@ -427,8 +427,8 @@ class ReferenceLoader(plugin.ReferenceLoader):
                 "skipping namespace update."
             )
             return
-        custom_namespace = namespace_template.format(
-            **self.get_namespace_template_data(context)
+        custom_namespace = namespace_template.format_map(
+            self.get_namespace_template_data(context)
         )
         new_namespace = get_custom_namespace(custom_namespace)
         old_namespace = cmds.referenceQuery(
