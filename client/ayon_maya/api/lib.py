@@ -121,14 +121,16 @@ def unlocked(node):
         node (str): The name of the node to unlock.
     """
     has_locked = cmds.lockNode(node, query=True, lock=True)[0]
-    cmds.lockNode(node, lock=False)
-
+    node_uuid = cmds.ls(node, uuid=True)[0]
     try:
+        cmds.lockNode(node, lock=False)
         yield
 
     finally:
-        if cmds.objExists(node):
-            cmds.lockNode(node, lock=has_locked)
+        if not cmds.objExists(node):
+            # Try and find the node by uuid
+            node = cmds.ls(node_uuid)[0]
+        cmds.lockNode(node, lock=has_locked)
 
 
 @contextlib.contextmanager
