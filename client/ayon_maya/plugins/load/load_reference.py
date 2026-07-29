@@ -455,10 +455,6 @@ class ReferenceLoader(plugin.ReferenceLoader):
             new_ref_node = reference_node.replace(old_namespace, new_namespace)
             cmds.rename(reference_node, new_ref_node)
 
-        # lock the reference node if it was locked before the namespace update
-        has_locked = cmds.lockNode(new_ref_node, query=True, lock=True)[0]
-        cmds.lockNode(new_ref_node, lock=has_locked)
-
         container["namespace"] = new_namespace
 
     def update_animation_instance(
