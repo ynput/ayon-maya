@@ -806,21 +806,6 @@ class Loader(LoaderPlugin):
             },
         }
 
-    def get_resolved_namespace_template(self, context: dict, loader_key: str) -> str:
-        """Get the resolved namespace template for a given loader key and context.
-
-        Args:
-            context (dict): The context dictionary.
-            loader_key (str): The loader key.
-
-        Returns:
-            str: The resolved namespace template.
-        """
-        settings = self.load_settings[loader_key]
-        namespace_template = settings.get("namespace")
-        formatting_data = self.get_namespace_template_data(context)
-        return namespace_template.format(**formatting_data)
-
 
 class ReferenceLoader(Loader):
     """A basic ReferenceLoader for Maya
