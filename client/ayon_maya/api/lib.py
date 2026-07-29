@@ -122,8 +122,8 @@ def unlocked(node):
     """
     has_locked = cmds.lockNode(node, query=True, lock=True)[0]
     node_uuid = cmds.ls(node, uuid=True)[0]
+    cmds.lockNode(node, lock=False)
     try:
-        cmds.lockNode(node, lock=False)
         yield
 
     finally:
