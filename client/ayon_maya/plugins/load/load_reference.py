@@ -15,6 +15,11 @@ from ayon_maya.api.lib import (
     get_creator_identifier,
     maintained_selection,
     parent_nodes,
+    get_reference_node,
+    get_custom_namespace,
+    set_attribute,
+    unlocked,
+    update_animation_instance,
 )
 from maya import cmds
 
@@ -257,6 +262,10 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
     def switch(self, container, context):
         self.update(container, context)
+        reference_loader_settings = self.load_settings.get("reference_loader", {})
+        update_namespace = reference_loader_settings.get("update_namespace_on_switch", False)
+        if update_namespace:
+            self._update_namespace(container, context, reference_loader_settings)
 
     def update(self, container, context):
         with preserve_modelpanel_cameras(container, log=self.log):
@@ -310,11 +319,6 @@ class ReferenceLoader(plugin.ReferenceLoader):
         # locked
         object_sets = cmds.ls(object_sets, type="objectSet")
         for object_set in object_sets:
-            # Only consider empty object sets
-            members = cmds.sets(object_set, query=True)
-            if members:
-                continue
-
             # Only consider locked object sets
             locked = cmds.lockNode(object_set, query=True)
             if not locked:
@@ -392,6 +396,59 @@ class ReferenceLoader(plugin.ReferenceLoader):
         cmds.setAttr(f"{group_name}.selectHandleX", cx)
         cmds.setAttr(f"{group_name}.selectHandleY", cy)
         cmds.setAttr(f"{group_name}.selectHandleZ", cz)
+
+    def _update_namespace(
+            self,
+            container: dict,
+            context: dict,
+            reference_loader_settings: dict,
+        ) -> None:
+        """Update the namespace of the reference node.
+
+        Args:
+            container (dict): The container dictionary.
+            context (dict): The context dictionary.
+            reference_loader_settings (dict): The reference loader settings dictionary.
+        """
+        # Update namespace on reference node
+        container_node = container["objectName"]
+        members = get_container_members(container)
+        reference_node = get_reference_node(members, self.log)
+        namespace_template = reference_loader_settings.get("namespace")
+        if not namespace_template:
+            self.log.warning(
+                "No namespace template found in reference_loader settings; "
+                "skipping namespace update."
+            )
+            return
+        custom_namespace = namespace_template.format_map(
+            self.get_namespace_template_data(context)
+        )
+        new_namespace = get_custom_namespace(custom_namespace)
+        old_namespace = cmds.referenceQuery(
+            reference_node,
+            namespace=True
+        ).strip(":")
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
+        if product_base_type == "rig":
+            update_animation_instance(
+                container,
+                context,
+                new_namespace
+            )
+        set_attribute(
+            node=container_node,
+            attribute="namespace",
+            value=new_namespace
+        )
+
+        cmds.namespace(rename=(old_namespace, new_namespace))
+
+        with unlocked(reference_node):
+            cmds.rename(reference_node, f"{new_namespace}RN")
 
 
 class MayaUSDReferenceLoader(ReferenceLoader):
