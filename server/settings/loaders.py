@@ -135,6 +135,15 @@ class ReferenceLoaderModel(BaseSettingsModel):
             "directly."
         )
     )
+    update_namespace_on_switch: bool = SettingsField(
+        title="Update Namespace on Switch",
+        description = (
+            "When enabled, the namespace of the reference node will be updated "
+            "accordingly to what folder path and task type the updated assets belong "
+            "to. This is useful when the reference is loaded with a different  "
+            "folder path or task type than the original one."
+        )
+    )
 
 
 class ImportLoaderModel(BaseSettingsModel):
@@ -322,7 +331,8 @@ DEFAULT_LOADERS_SETTING = {
         "group_name": "_GRP",
         "display_handle": True,
         "lock_animation_instance_on_load": False,
-        "create_camera_instance_on_load": False
+        "create_camera_instance_on_load": False,
+        "update_namespace_on_switch": False,
     },
     "import_loader": {
         "enabled": True,
