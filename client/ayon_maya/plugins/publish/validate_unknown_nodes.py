@@ -103,7 +103,7 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
 
         invalid = self.get_invalid(context)
         if invalid:
-            self.log.debug("Unknown {0} nodes found: {1}".format(len(invalid), invalid))
+            self.log.debug(f"Unknown {len(invalid)} nodes found: {invalid}")
             if not self._is_workfile_extension_align_with_extension_mapping(context):
                 self.log.warning(
                     "Allowing unknown nodes because file extension matches publish file "
