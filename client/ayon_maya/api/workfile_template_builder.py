@@ -254,6 +254,10 @@ def trigger_on_app_launch() -> None:
     builder = MayaTemplateBuilder(registered_host())
     preset = builder.get_template_preset()
     if preset.execute_on_new_file:
+        log.warning(
+            f"Preset path {preset.path} not found. "
+            "Skipping template build on app launch."
+        )
         return
     builder.trigger_on_app_launch()
 
@@ -270,6 +274,9 @@ def build_workfile_template(*args):
     builder = MayaTemplateBuilder(registered_host())
     preset = builder.get_template_preset()
     if not preset.has_valid_path():
+        log.warning(
+            f"Preset path {preset.path} not found. Skipping building template."
+        )
         return
     builder.build_template(preset=preset)
 
