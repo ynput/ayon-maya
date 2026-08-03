@@ -714,6 +714,10 @@ class RenderProductsArnold(ARenderProducts):
         ]
 
         default_ext = self._get_attr("defaultRenderGlobals.imfPluginKey")
+        # handle deep exrs (maya will report `deepexr` as the
+        # imfPluginKey but we want to use `exr` as extension)
+        if default_ext == "deepexr":
+            default_ext = "exr"
         colorspace = self._get_colorspace(
             "defaultArnoldDriver.colorManagement"
         )
