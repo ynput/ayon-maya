@@ -101,15 +101,16 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
         if not self.is_active(context.data):
             return
 
-        if not self._is_workfile_extension_align_with_extension_mapping(context):
-            self.log.warning(
-                "Skipping unknown nodes validation because the workfile extension "
-                "does not match extension mapping; this prevents false positives."
-            )
-            return
-
         invalid = self.get_invalid(context)
         if invalid:
+            self.log.debug("Unknown {0} nodes found: {1}".format(len(invalid), invalid))
+            if not self._is_workfile_extension_align_with_extension_mapping(context):
+                self.log.warning(
+                    "Allowing unknown nodes because file extension matches publish file "
+                    "export extensions. Skipping unknown nodes validation."
+                )
+                return
+
             raise PublishValidationError(
                 "Unknown nodes found: {0}".format(invalid),
                 description=self.get_description()
