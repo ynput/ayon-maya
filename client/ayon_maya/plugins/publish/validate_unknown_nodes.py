@@ -24,6 +24,12 @@ def force_delete(node: str) -> None:
         cmds.delete(node)
 
 
+class RemoveUnknownNodesAction(RepairContextAction):
+    """Repair action to remove unknown nodes from the scene."""
+
+    label = "Remove Unknown Nodes"
+
+
 class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
                                 OptionalPyblishPluginMixin):
     """Checks to see if there are any unknown nodes in the scene.
@@ -44,7 +50,7 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
     families = ["model", "rig", "mayaScene", "look", "renderlayer", "yetiRig"]
     optional = True
     label = "Unknown Nodes in Scene"
-    actions = [SelectInvalidAction, RepairContextAction]
+    actions = [SelectInvalidAction, RemoveUnknownNodesAction]
 
     def _is_workfile_extension_align_with_extension_mapping(self, context) -> bool:
         """Check if the workfile extension is aligned with the extension mapping.
@@ -54,6 +60,10 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
 
         Args:
             context (pyblish.api.Context): The publish context.
+
+        Returns:
+            bool: True if the workfile extension is aligned with the extension
+                mapping, False otherwise.
         """
         maya_settings = context.data["project_settings"]["maya"]
         ext_mapping = {
@@ -62,7 +72,7 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
         }
         current_file = context.data["currentFile"]
         if not current_file:
-            # Unsaved file
+            # Unsaved file: can't validate extension alignment; allow validation to run
             return True
         workfile_extension = os.path.splitext(current_file)[-1].strip(".")
         for instance in context:
@@ -84,23 +94,23 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
 
     @staticmethod
     def get_invalid(context) -> list:
-        return cmds.ls(type="unknown")
+        return cmds.ls(type=("unknown", "unknownDag"), long=True)
 
     def process(self, context):
         """Process all the nodes in the instance"""
         if not self.is_active(context.data):
             return
 
-        if self._is_workfile_extension_align_with_extension_mapping(context):
-            self.log.warning(
-                "Workfile extension is not aligned with the extension mapping."
-                " Skipping unknown nodes validation to prevent false"
-                " positives."
-            )
-            return
-
         invalid = self.get_invalid(context)
         if invalid:
+            self.log.debug(f"Unknown {len(invalid)} nodes found: {invalid}")
+            if not self._is_workfile_extension_align_with_extension_mapping(context):
+                self.log.warning(
+                    "Allowing unknown nodes because file extension matches publish file "
+                    "export extensions. Skipping unknown nodes validation."
+                )
+                return
+
             raise PublishValidationError(
                 "Unknown nodes found: {0}".format(invalid),
                 description=self.get_description()
@@ -128,6 +138,6 @@ class ValidateSceneUnknownNodes(pyblish.api.ContextPlugin,
 
             You can either:
             - Install the missing plug-in that the unknown nodes belong to.
-            - Delete the unknown nodes from the scene. You can use the "Repair"
-            action to automatically delete the unknown nodes.
+            - Delete the unknown nodes from the scene. You can use the "Remove
+            Unknown Nodes" action to automatically delete the unknown nodes.
         """)
