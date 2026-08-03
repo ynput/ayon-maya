@@ -14,35 +14,12 @@ class CreateUnrealSkeletalMesh(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.unrealskeletalmesh"
     label = "Unreal - Skeletal Mesh"
-    product_type = "skeletalMesh"
+    product_base_type = "skeletalMesh"
+    product_type = product_base_type
     icon = "thumbs-up"
 
     # Defined in settings
     joint_hints = set()
-
-    def get_dynamic_data(
-        self,
-        project_name,
-        folder_entity,
-        task_entity,
-        variant,
-        host_name,
-        instance
-    ):
-        """
-        The default product name templates for Unreal include {asset} and thus
-        we should pass that along as dynamic data.
-        """
-        dynamic_data = super(CreateUnrealSkeletalMesh, self).get_dynamic_data(
-            project_name,
-            folder_entity,
-            task_entity,
-            variant,
-            host_name,
-            instance
-        )
-        dynamic_data["asset"] = folder_entity["name"]
-        return dynamic_data
 
     def create(self, product_name, instance_data, pre_create_data):
 

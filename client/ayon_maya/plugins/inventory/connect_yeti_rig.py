@@ -7,9 +7,13 @@ from maya import cmds
 from ayon_core.pipeline import (
     InventoryAction,
     get_repres_contexts,
-    get_representation_path,
+    get_current_project_name,
 )
-from ayon_maya.api.lib import get_container_members, get_id
+from ayon_maya.api.lib import (
+    get_container_members,
+    get_id,
+    get_representation_path_by_project,
+)
 
 
 class ConnectYetiRig(InventoryAction):
@@ -29,7 +33,7 @@ class ConnectYetiRig(InventoryAction):
             return
 
         # Categorize containers by product type.
-        containers_by_product_type = defaultdict(list)
+        containers_by_product_base_type = defaultdict(list)
         repre_ids = {
             container["representation"]
             for container in containers
@@ -39,14 +43,18 @@ class ConnectYetiRig(InventoryAction):
             repre_id = container["representation"]
             repre_context = repre_contexts_by_id[repre_id]
 
-            product_type = repre_context["product"]["productType"]
+            product_entity = repre_context["product"]
+            product_base_type = product_entity.get("productBaseType")
+            if not product_base_type:
+                product_base_type = product_entity["productType"]
 
-            containers_by_product_type.setdefault(product_type, [])
-            containers_by_product_type[product_type].append(container)
+            containers_by_product_base_type[product_base_type].append(
+                container
+            )
 
         # Validate to only 1 source container.
-        source_containers = containers_by_product_type.get("animation", [])
-        source_containers += containers_by_product_type.get("pointcache", [])
+        source_containers = containers_by_product_base_type["animation"]
+        source_containers += containers_by_product_base_type["pointcache"]
         source_container_namespaces = [
             x["namespace"] for x in source_containers
         ]
@@ -62,12 +70,15 @@ class ConnectYetiRig(InventoryAction):
 
         source_container = source_containers[0]
         source_ids = self.nodes_by_id(source_container)
+        source_project = source_container.get(
+            "project_name", get_current_project_name()
+        )
 
         # Target containers.
         target_ids = {}
         inputs = []
 
-        yeti_rig_containers = containers_by_product_type.get("yetiRig")
+        yeti_rig_containers = containers_by_product_base_type["yetiRig"]
         if not yeti_rig_containers:
             self.display_warning(
                 "Select at least one yetiRig container"
@@ -78,7 +89,8 @@ class ConnectYetiRig(InventoryAction):
             target_ids.update(self.nodes_by_id(container))
             repre_id = container["representation"]
 
-            maya_file = get_representation_path(
+            maya_file = get_representation_path_by_project(
+                source_project,
                 repre_contexts_by_id[repre_id]["representation"]
             )
             _, ext = os.path.splitext(maya_file)

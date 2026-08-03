@@ -1,11 +1,13 @@
 import os
 
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api.lib import maintained_selection
 from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractVRayProxy(plugin.MayaExtractorPlugin):
+class ExtractVRayProxy(plugin.MayaExtractorPlugin,
+                       OptionalPyblishPluginMixin):
     """Extract the content of the instance to a vrmesh file
 
     Things to pay attention to:
@@ -15,8 +17,11 @@ class ExtractVRayProxy(plugin.MayaExtractorPlugin):
 
     label = "VRay Proxy (.vrmesh)"
     families = ["vrayproxy.vrmesh"]
+    targets = ["local", "remote"]
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
 
         staging_dir = self.staging_dir(instance)
         file_name = "{}.vrmesh".format(instance.name)

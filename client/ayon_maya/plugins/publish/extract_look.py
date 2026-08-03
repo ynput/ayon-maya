@@ -19,7 +19,10 @@ from ayon_core.lib import (
     run_subprocess,
     source_hash,
 )
-from ayon_core.pipeline import KnownPublishError
+from ayon_core.pipeline import (
+    KnownPublishError,
+    OptionalPyblishPluginMixin,
+)
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from maya import cmds  # noqa
@@ -403,7 +406,8 @@ class MakeTX(TextureProcessor):
             return False
 
 
-class ExtractLook(plugin.MayaExtractorPlugin):
+class ExtractLook(plugin.MayaExtractorPlugin,
+                  OptionalPyblishPluginMixin):
     """Extract Look (Maya Scene + JSON)
 
     Only extracts the sets (shadingEngines and alike) alongside a .json file
@@ -454,6 +458,8 @@ class ExtractLook(plugin.MayaExtractorPlugin):
             instance: Instance to process.
 
         """
+        if not self.is_active(instance.data):
+            return
         _scene_type = self.get_maya_scene_type(instance)
 
         # Define extract output file path
@@ -473,6 +479,7 @@ class ExtractLook(plugin.MayaExtractorPlugin):
             self.log.debug("No sets found for the look")
             return
 
+        texture_objs = instance.data.get("textureReferenceObjects", [])
         # Specify texture processing executables to activate
         # TODO: Load these more dynamically once we support more processors
         processors = []
@@ -513,7 +520,9 @@ class ExtractLook(plugin.MayaExtractorPlugin):
                 with no_workspace_dir():
                     with lib.attribute_values(remap):
                         with lib.maintained_selection():
-                            cmds.select(sets, noExpand=True)
+                            # texture reference objects would publish along with
+                            # construction history and constraints
+                            cmds.select(sets + texture_objs, noExpand=True)
                             cmds.file(
                                 maya_path,
                                 force=True,
@@ -531,6 +540,8 @@ class ExtractLook(plugin.MayaExtractorPlugin):
             "attributes": lookdata["attributes"],
             "relationships": relationships
         }
+        if instance.data.get("includeTextureReferenceObjects"):
+            data["connections"] = lookdata["connections"]
 
         self.log.debug("Extracting json file: {}".format(json_path))
         with open(json_path, "w") as f:

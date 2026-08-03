@@ -12,17 +12,26 @@ from .publish_playblast import (
 )
 
 
-def linear_unit_enum():
-    """Get linear units enumerator."""
+def extract_maya_usd_overrides_enum():
     return [
-        {"label": "millimeter", "value": "mm"},
-        {"label": "centimeter", "value": "cm"},
-        {"label": "meter", "value": "m"},
-        {"label": "kilometer", "value": "km"},
-        {"label": "inch", "value": "in"},
-        {"label": "foot", "value": "ft"},
-        {"label": "yard", "value": "yd"},
-        {"label": "mile", "value": "mi"}
+        {"label": "Strip Namespaces", "value": "stripNamespaces"},
+        {"label": "World-Space", "value": "worldspace"},
+        {"label": "Export Component Tags", "value": "exportComponentTags"},
+        {"label": "Export Visibility", "value": "exportVisibility"},
+        {"label": "Merge Transform and Shape", "value": "mergeTransformAndShape"},
+        {"label": "Default Subdivision Method", "value": "defaultMeshScheme"},
+        {"label": "Export BlendShapes", "value": "exportBlendShapes"},
+        {"label": "Export Skins", "value": "exportSkin"},
+        {"label": "Export Skeletons", "value": "exportSkels"},
+        {"label": "Export Collection Based Bindings", "value": "exportCollectionBasedBindings"},
+        {"label": "Export Color Sets", "value": "exportColorSets"},
+        {"label": "Export Display Color", "value": "exportDisplayColor"},
+        {"label": "Export Materials", "value": "exportMaterials"},
+        {"label": "Export Assigned Materials", "value": "exportAssignedMaterials"},
+        {"label": "Export Instances", "value": "exportInstances"},
+        {"label": "Export UVs", "value": "exportUVs"},
+        {"label": "Up Axis", "value": "upAxis"},
+        {"label": "Export Unit", "value": "unit"},
     ]
 
 
@@ -31,14 +40,6 @@ def up_axis_enum():
     return [
         {"label": "y", "value": "y"},
         {"label": "z", "value": "z"},
-    ]
-
-
-def angular_unit_enum():
-    """Get angular units enumerator."""
-    return [
-        {"label": "degree", "value": "deg"},
-        {"label": "radian", "value": "rad"},
     ]
 
 
@@ -84,6 +85,12 @@ def extract_alembic_overrides_enum():
         {"label": "Write UV Sets", "value": "writeUVSets"},
         {"label": "Write Visibility", "value": "writeVisibility"}
     ]
+
+
+class BasicExtractorModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
 
 
 class BasicValidateModel(BaseSettingsModel):
@@ -162,8 +169,15 @@ class CollectFbxAnimationModel(BaseSettingsModel):
         enum_resolver=up_axis_enum, title="Up Axis"
     )
 
+
 class CollectFbxCameraModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="CollectFbxCamera")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    input_connections: bool = SettingsField(True, title="Input Connections")
+    up_axis: str = SettingsField(
+        enum_resolver=up_axis_enum, title="Up Axis"
+    )
 
 
 class CollectGLTFModel(BaseSettingsModel):
@@ -192,9 +206,9 @@ class ValidateFrameRangeModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="ValidateFrameRange")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
-    exclude_product_types: list[str] = SettingsField(
+    exclude_product_base_types: list[str] = SettingsField(
         default_factory=list,
-        title="Exclude product types"
+        title="Exclude product base types"
     )
 
 
@@ -247,17 +261,26 @@ class ValidateLoadedPluginModel(BaseSettingsModel):
 class ValidateMayaUnitsModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="ValidateMayaUnits")
     optional: bool = SettingsField(title="Optional")
-    validate_linear_units: bool = SettingsField(title="Validate linear units")
-    linear_units: str = SettingsField(
-        enum_resolver=linear_unit_enum, title="Linear Units"
+    validate_linear_units: bool = SettingsField(
+        title="Validate linear units",
+        description=(
+            "Whether to validate the Maya scene linear units against "
+            "the _Scene Unit_ settings"
+        ),
     )
     validate_angular_units: bool = SettingsField(
-        title="Validate angular units"
+        title="Validate angular units",
+        description=(
+            "Whether to validate the Maya scene angular units against "
+            "the _Scene Unit_ settings"
+        ),
     )
-    angular_units: str = SettingsField(
-        enum_resolver=angular_unit_enum, title="Angular units"
-    )
-    validate_fps: bool = SettingsField(title="Validate fps")
+    validate_fps: bool = SettingsField(
+        title="Validate FPS",
+        description=(
+            "Whether to validate the Maya scene FPS against the task "
+            "context's FPS"
+        ))
 
 
 class ValidateUnrealStaticMeshNameModel(BaseSettingsModel):
@@ -322,27 +345,19 @@ class ValidateRenderSettingsModel(BaseSettingsModel):
         default_factory=list, title="Renderman Render Attributes")
 
 
-class BasicValidateModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    optional: bool = SettingsField(title="Optional")
-    active: bool = SettingsField(title="Active")
-
-
 class ValidateCameraContentsModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
     validate_shapes: bool = SettingsField(title="Validate presence of shapes")
 
 
-class ExtractProxyAlembicModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
+class ExtractProxyAlembicModel(BasicExtractorModel):
     families: list[str] = SettingsField(
         default_factory=list,
         title="Families")
 
 
-class ExtractAlembicModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
+class ExtractAlembicModel(BasicExtractorModel):
     families: list[str] = SettingsField(
         default_factory=list,
         title="Families")
@@ -404,6 +419,14 @@ class ExtractAlembicModel(BaseSettingsModel):
     writeFaceSets: bool = SettingsField(
         title="Write Face Sets",
         description="Write face sets with the geometry."
+    )
+    writeFaceSetsForceFaceAssignment: bool = SettingsField(
+        title="Write Face Sets: Force all assignments",
+        description=(
+            "When writing with face sets is enabled then force all"
+            " assignments to be face assignments on export so that all"
+            " material assignments become face sets."
+        )
     )
     writeNormals: bool = SettingsField(
         title="Write Normals",
@@ -527,38 +550,266 @@ class ExtractAlembicModel(BaseSettingsModel):
     )
 
 
-class ExtractObjModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    optional: bool = SettingsField(title="Optional")
+class ExtractMayaUsdCustomAttrNameMappingModel(BaseSettingsModel):
+    _layout = "compact"
+    name: str = SettingsField("", title="Maya name")
+    usd_name: str = SettingsField("", title="USD name")
 
 
-class ExtractModelModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    optional: bool = SettingsField(title="Optional")
-    active: bool = SettingsField(title="Active")
+def maya_usd_default_mesh_scheme_enum():
+    return [
+        {"label": "Catmull Clark", "value": "catmullClark"},
+        {"label": "Loop", "value": "loop"},
+        {"label": "Bilinear", "value": "bilinear"},
+        {"label": "None", "value": "none"},
+    ]
 
 
-class ExtractMayaUsdModelModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    optional: bool = SettingsField(title="Optional")
-    active: bool = SettingsField(title="Active")
+def maya_usd_export_skin_enum():
+    return [
+        {"label": "None", "value": "none"},
+        {"label": "Auto", "value": "auto"},
+        {"label": "Explicit", "value": "explicit"},
+    ]
 
 
-class ExtractMayaUsdPointcacheModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    optional: bool = SettingsField(title="Optional")
-    active: bool = SettingsField(title="Active")
+def maya_usd_unit_enum():
+    return [
+        {"label": "Maya Preferences", "value": "mayaPrefs"},
+        {"label": "None", "value": "none"},
+        {"label": "Millimeters", "value": "mm"},
+        {"label": "Centimeters", "value": "cm"},
+        {"label": "Meters", "value": "m"},
+        {"label": "Inches", "value": "in"},
+        {"label": "Feet", "value": "ft"},
+    ]
 
 
-class ExtractMayaUsdAnimModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    optional: bool = SettingsField(title="Optional")
-    active: bool = SettingsField(title="Active")
+def maya_usd_up_axis_enum():
+    """Get Up Axis enumerator."""
+    return [
+        {"value": "mayaPrefs", "label": "Maya Preferences"},
+        {"value": "none", "label": "None"},
+        {"value": "y", "label": "y"},
+        {"value": "z", "label": "z"},
+    ]
 
 
-class ExtractMayaSceneRawModel(BaseSettingsModel):
+class ExtractMayaUsdGeneralModel(BasicExtractorModel):
+    overrides: list[str] = SettingsField(
+        enum_resolver=extract_maya_usd_overrides_enum,
+        title="Exposed Overrides",
+        description=(
+            "Expose the attribute in this list to the user when publishing."
+        ),
+    )
+    # Maya USD export options exposed to settings so defaults can be set
+    stripNamespaces: bool = SettingsField(
+        title="Strip Namespaces",
+        default=True,
+        description="Strip namespaces from Maya node names when writing USD.",
+        section="Export defaults",
+    )
+    worldspace: bool = SettingsField(
+        title="World-Space",
+        default=True,
+        description=(
+            "Export root prims using their full world-space transforms "
+            "instead of local transforms."
+        ),
+    )
+    exportComponentTags: bool = SettingsField(
+        title="Export Component Tags",
+        default=False,
+        description=(
+            "When enabled, export geometry component tags as UsdGeomSubset "
+            "data."
+        ),
+    )
+    exportVisibility: bool = SettingsField(
+        title="Export Visibility",
+        default=True,
+        description=(
+            "Export visibility state and animation from Maya visibility"
+            " attributes."
+        ),
+    )
+    mergeTransformAndShape: bool = SettingsField(
+        title="Merge Transform and Shape",
+        default=True,
+        description=(
+            "Combine Maya transform and shape into a single USD prim that has "
+            "transform and geometry. Results in smaller and faster scenes; "
+            "gprims are unpacked back into transform+shape when imported into "
+            "Maya."
+        ),
+    )
+    defaultMeshScheme: str = SettingsField(
+        enum_resolver=maya_usd_default_mesh_scheme_enum,
+        default="catmullClark",
+        title="Default Subdivision Method",
+        description=(
+            "Default subdivision method for meshes. Options: catmullClark, "
+            "loop, bilinear, none. Per-mesh scheme can be authored with a "
+            "USD_ATTR_subdivisionScheme attribute."
+        ),
+    )
+    exportBlendShapes: bool = SettingsField(
+        title="Export BlendShapes",
+        default=True,
+        description="Enable or disable export of blend shape (morph) data.",
+    )
+    exportSkin: str = SettingsField(
+        enum_resolver=maya_usd_export_skin_enum,
+        default="none",
+        title="Export Skin",
+        description=(
+            "How to export skin cluster data:\n"
+            "- **none** do not export\n"
+            "- **auto** export if present\n"
+            "- **explicit** - export only explicitly tagged skin clusters."
+        ),
+    )
+    exportSkels: str = SettingsField(
+        enum_resolver=maya_usd_export_skin_enum,
+        default="none",
+        title="Export Skeletons",
+        description=(
+            "How to export skeletons:\n"
+            "- **none** do not export\n"
+            "- **auto** export all skeletons (may create SkelRoots)\n"
+            "- **explicit** only those under SkelRoots."
+        ),
+    )
+    exportCollectionBasedBindings: bool = SettingsField(
+        title="Export Collection Based Bindings",
+        default=False,
+        description=(
+            "When enabled, export material bindings as collection-based"
+            " assignments. This authors materialCollections (`-mcs`) and binds"
+            " materials to collections instead of per-gprim direct bindings."
+        ),
+    )
+    exportColorSets: bool = SettingsField(
+        title="Export Color Sets",
+        default=True,
+        description="Enable or disable exporting of color sets.",
+    )
+    exportDisplayColor: bool = SettingsField(
+        title="Export Display Color",
+        default=False,
+        description=(
+            "Enable or disable exporting of display color information."
+        ),
+    )
+    exportMaterials: bool = SettingsField(
+        title="Export Materials",
+        default=True,
+        description="Enable or disable export of materials.",
+    )
+    exportAssignedMaterials: bool = SettingsField(
+        title="Export Assigned Materials",
+        default=False,
+        description="Only export materials that are assigned to meshes.",
+    )
+    exportInstances: bool = SettingsField(
+        title="Export Instances",
+        default=True,
+        description="Enable or disable export of instanced geometry.",
+    )
+    exportUVs: bool = SettingsField(
+        title="Export UVs",
+        default=True,
+        description="Enable or disable export of UV sets.",
+    )
+    upAxis: str = SettingsField(
+        enum_resolver=maya_usd_up_axis_enum,
+        title="Up Axis",
+        default="mayaPrefs",
+        description=(
+            "Control the up-axis authored in USD:\n"
+            "- **mayaPrefs** follows Maya preferences\n"
+            "- **none** authors no up-axis\n"
+            "- or explicitly choose **y** or **z** to author that axis and "
+            "convert data if needed."
+        ),
+    )
+    unit: str = SettingsField(
+        enum_resolver=maya_usd_unit_enum,
+        title="Export Unit",
+        default="mayaPrefs",
+        description=(
+            "Control units authored in USD:\n"
+            "- **mayaPrefs** follows Maya preferences\n"
+            "- **none** authors no units\n"
+            "- or choose explicit units (mm, cm, m, in, ft) to author and"
+            " convert data accordingly."
+        ),
+    )
+
+    """
+    Custom attributes overrides allow user defined attributes to be exported
+    using custom naming overrides, e.g. by prefixing them all with a default
+    namespace or specifying explict Maya name to USD name mapping.
+
+    You can also customize it with the mapping JSON which expects a key
+    for each Maya attribute name to customize output values for, using the
+    [custom attribute `USD_UserExportedAttributesJson` syntax](https://github.com/Autodesk/maya-usd/blob/dev/lib/mayaUsd/commands/Readme.md#specifying-arbitrary-attributes-for-export).
+
+    Any existing `USD_UserExportedAttributesJson` attribute on nodes in the
+    scene will still be the strongest opinion - hence these mappings only
+    apply defaults if not explicitly specified in the scene.
+    """  # noqa
+    custom_attr_namespace: str = SettingsField(
+        title="Custom Attribute Default Namespace",
+        default="userProperties:",
+        section="Custom Attributes",
+        description=(
+            "Default namespace prefix used when exporting custom Maya"
+            " attributes to USD when no explicit usdAttrName is provided."
+        ),
+    )
+    custom_attr_name_mapping: list[
+        ExtractMayaUsdCustomAttrNameMappingModel
+    ] = SettingsField(
+        title="Custom Attribute Name Mapping",
+        default_factory=list,
+        description=(
+            "Direct mappings from Maya attribute names to USD attribute"
+            " names. Specify as a list of mappings."
+        ),
+    )
+    custom_attr_mapping: str = SettingsField(
+        title="Advanced Custom Attribute Mapping",
+        default="{}",
+        description=(
+            "Advanced JSON mapping for Maya->USD attribute conversions."
+            " Matches the USD_UserExportedAttributesJson structure used by"
+            " mayaUSDExport."
+        ),
+        widget="textarea",
+        syntax="json",
+    )
+
+    @validator("custom_attr_mapping")
+    def validate_json(cls, value):
+        if not value.strip():
+            return "{}"
+        try:
+            converted_value = json.loads(value)
+            success = isinstance(converted_value, dict)
+        except json.JSONDecodeError:
+            success = False
+
+        if not success:
+            raise BadRequestException(
+                "The attributes can't be parsed as json object"
+            )
+        return value
+
+
+class ExtractMayaSceneRawModel(BasicExtractorModel):
     """Add loaded instances to those published families:"""
-    enabled: bool = SettingsField(title="ExtractMayaSceneRaw")
     add_for_families: list[str] = SettingsField(
         default_factory=list, title="Families"
     )
@@ -591,9 +842,7 @@ class ExtractCameraAlembicModel(BaseSettingsModel):
         return value
 
 
-class ExtractGLBModel(BaseSettingsModel):
-    enabled: bool = True
-    active: bool = SettingsField(title="Active")
+class ExtractGLBModel(BasicExtractorModel):
     ogsfx_path: str = SettingsField(title="GLSL Shader Directory")
 
 
@@ -604,17 +853,14 @@ class ExtractLookArgsModel(BaseSettingsModel):
     )
 
 
-class ExtractLookModel(BaseSettingsModel):
+class ExtractLookModel(BasicExtractorModel):
     maketx_arguments: list[ExtractLookArgsModel] = SettingsField(
         default_factory=list,
         title="Extra arguments for maketx command line"
     )
 
 
-class ExtractGPUCacheModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    optional: bool = SettingsField(title="Optional")
-    active: bool = SettingsField(title="Active")
+class ExtractGPUCacheModel(BasicExtractorModel):
     families: list[str] = SettingsField(default_factory=list, title="Families")
     step: float = SettingsField(1.0, ge=1.0, title="Step")
     stepSave: int = SettingsField(1, ge=1, title="Step Save")
@@ -639,8 +885,8 @@ class PublishersModel(BaseSettingsModel):
         default_factory=CollectFbxAnimationModel,
         title="Collect FBX Animation",
     )
-    CollectFbxCamera: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
+    CollectFbxCamera: CollectFbxCameraModel = SettingsField(
+        default_factory=CollectFbxCameraModel,
         title="Collect Camera for FBX export",
     )
     CollectFbxModel: BasicValidateModel = SettingsField(
@@ -880,6 +1126,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Node No Ghosting",
     )
+    ValidateSceneUnknownNodes: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Scene Unknown Nodes"
+    )
     ValidateShapeDefaultNames: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Shape Default Names",
@@ -925,8 +1175,8 @@ class PublishersModel(BaseSettingsModel):
         title="Extract Proxy Alembic",
         section="Model Extractors",
     )
-    ExtractObj: ExtractObjModel = SettingsField(
-        default_factory=ExtractObjModel,
+    ExtractObj: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
         title="Extract OBJ"
     )
     # Model - END
@@ -953,7 +1203,7 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Animation Out Set Related Node Ids",
     )
-    ValidateAnimationProductTypePublish: BasicValidateModel = SettingsField(
+    ValidateAnimationProductBaseTypePublish: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Animation Product Type Publish",
     )
@@ -1010,18 +1260,6 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Camera Attributes"
     )
-    ValidateAssemblyName: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Assembly Name"
-    )
-    ValidateAssemblyNamespaces: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Assembly Namespaces"
-    )
-    ValidateAssemblyModelTransforms: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Assembly Model Transforms"
-    )
     ValidateAssRelativePaths: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Ass Relative Paths"
@@ -1043,6 +1281,27 @@ class PublishersModel(BaseSettingsModel):
         title="Extract Playblast Settings",
         section="Extractors"
     )
+    ExtractActiveViewThumbnail: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Active View Thumbnail",
+        section="Extractors"
+    )
+    ExtractArnoldSceneSource: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Arnold Scene Source"
+    )
+    ExtractCameraMayaScene: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Camera Maya Scene"
+    )
+    ExtractFBXAnimation: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Animation FBX"
+    )
+    ExtractFBX: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract FBX"
+    )
     ExtractMayaSceneRaw: ExtractMayaSceneRawModel = SettingsField(
         default_factory=ExtractMayaSceneRawModel,
         title="Maya Scene(Raw)"
@@ -1063,34 +1322,126 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ExtractGPUCacheModel,
         title="Extract GPU Cache",
     )
-    ExtractModel: ExtractModelModel = SettingsField(
-        default_factory=ExtractModelModel,
+    ExtractLayout: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Layout"
+    )
+    ExtractMayaUsdLayer: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Maya USD Layer"
+    )
+    ExtractModel: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
         title="Extract Model (Maya Scene)"
     )
     ExtractAlembic: ExtractAlembicModel = SettingsField(
         default_factory=ExtractAlembicModel,
         title="Extract Alembic"
     )
-    ExtractAnimation: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
+    ExtractAnimation: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
         title="Extract Animation (Alembic)",
         description="Alembic extractor for loaded rigs"
     )
-    ExtractMayaUsdModel: ExtractMayaUsdModelModel = SettingsField(
-        default_factory=ExtractMayaUsdModelModel,
+    ExtractMayaUsd: ExtractMayaUsdGeneralModel = SettingsField(
+        default_factory=ExtractMayaUsdGeneralModel,
+        title="Extract Maya USD"
+    )
+    ExtractMayaUsdModel: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
         title="Extract Maya USD with Model"
     )
-    ExtractMayaUsdPointcache: ExtractMayaUsdPointcacheModel = SettingsField(
-        default_factory=ExtractMayaUsdPointcacheModel,
+    ExtractMayaUsdPointcache: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
         title="Extract Maya USD with Pointcache"
     )
-    ExtractMayaUsdAnim: ExtractMayaUsdAnimModel = SettingsField(
-        default_factory=ExtractMayaUsdAnimModel,
+    ExtractMayaUsdAnim: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
         title="Extract Maya USD with Animation"
+    )
+    ExtractMultiverseLook: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Multiverse Look"
+    )
+    ExtractMultiverseUsdComposition: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Multiverse USD Composition"
+    )
+    ExtractMultiverseUsdOverride: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Multiverse USD Override"
+    )
+    ExtractMultiverseUsd: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Multiverse USD"
+    )
+    ExtractOxCache: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Ornatrix Cache"
+    )
+    ExtractOxRig: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Ornatrix Rig"
+    )
+    ExtractRedshiftProxy: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Redshift Proxy"
+    )
+    ExtractRenderSetup: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Render Setup"
+    )
+    ExtractRig: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Rig"
     )
     ExtractSkeletonMesh: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Extract Skeleton Mesh"
+    )
+    ExtractThumbnail: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Thumbnail"
+    )
+    ExtractUnrealSkeletalMeshAbc: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Extract Unreal Skeletal Mesh - Alembic"
+    )
+    ExtractUnrealSkeletalMeshFbx: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Unreal Skeletal Mesh - FBX"
+    )
+    ExtractUnrealStaticMesh: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Unreal Static Mesh"
+    )
+    ExtractUnrealYetiCache: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Unreal Yeti Cache"
+    )
+    ExtractVRayProxy: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract VRay Proxy"
+    )
+    ExtractVrayscene: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract VRay Scene"
+    )
+    ExtractWorkfileXgen: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Workfile Xgen"
+    )
+    ExtractXgen: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Xgen"
+    )
+    ExtractYetiCache: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Yeti Cache"
+    )
+    ExtractYetiRig: BasicExtractorModel = SettingsField(
+        default_factory=BasicExtractorModel,
+        title="Extract Yeti Rig"
     )
 
 
@@ -1115,8 +1466,10 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "CollectFbxCamera": {
         "enabled": False,
-        "optional": True,
-        "active": True
+        "optional": False,
+        "active": True,
+        "input_connections": True,
+        "up_axis": "y"
     },
     "CollectFbxModel": {
         "enabled": False,
@@ -1139,7 +1492,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "active": True,
-        "exclude_product_types": [
+        "exclude_product_base_types": [
             "model",
             "rig",
             "staticMesh"
@@ -1175,9 +1528,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": False,
         "validate_linear_units": True,
-        "linear_units": "cm",
         "validate_angular_units": True,
-        "angular_units": "deg",
         "validate_fps": True
     },
     "ValidateUnrealStaticMeshName": {
@@ -1489,6 +1840,8 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "ExtractProxyAlembic": {
         "enabled": False,
+        "optional": False,
+        "active": True,
         "families": [
             "proxyAbc"
         ]
@@ -1523,7 +1876,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": False,
         "active": True
     },
-    "ValidateAnimationProductTypePublish": {
+    "ValidateAnimationProductBaseTypePublish": {
         "enabled": True,
         "optional": False,
         "active": True
@@ -1531,6 +1884,11 @@ DEFAULT_PUBLISH_SETTINGS = {
     "ValidateRigControllersArnoldAttributes": {
         "enabled": True,
         "optional": False,
+        "active": True
+    },
+    "ValidateSceneUnknownNodes": {
+        "enabled": True,
+        "optional": True,
         "active": True
     },
     "ValidateSingleAssembly": {
@@ -1588,21 +1946,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": True,
         "active": True
     },
-    "ValidateAssemblyName": {
-        "enabled": True,
-        "optional": True,
-        "active": True
-    },
-    "ValidateAssemblyNamespaces": {
-        "enabled": True,
-        "optional": False,
-        "active": True
-    },
-    "ValidateAssemblyModelTransforms": {
-        "enabled": True,
-        "optional": False,
-        "active": True
-    },
     "ValidateAssRelativePaths": {
         "enabled": True,
         "optional": False,
@@ -1634,8 +1977,35 @@ DEFAULT_PUBLISH_SETTINGS = {
         "active": True
     },
     "ExtractPlayblast": DEFAULT_PLAYBLAST_SETTING,
+    "ExtractActiveViewThumbnail": {
+        "enabled": True,
+        "optional": False,
+        "active": True
+    },
+    "ExtractArnoldSceneSource": {
+        "enabled": True,
+        "optional": False,
+        "active": True
+    },
+    "ExtractCameraMayaScene": {
+        "enabled": True,
+        "optional": False,
+        "active": True
+    },
+    "ExtractFBXAnimation": {
+        "enabled": True,
+        "optional": False,
+        "active": True
+    },
+    "ExtractFBX": {
+        "enabled": True,
+        "optional": False,
+        "active": True
+    },
     "ExtractMayaSceneRaw": {
         "enabled": True,
+        "optional": False,
+        "active": True,
         "add_for_families": [
             "layout"
         ]
@@ -1648,10 +2018,14 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "ExtractGLB": {
         "enabled": False,
+        "optional": False,
         "active": True,
         "ogsfx_path": "/maya2glTF/PBR/shaders/glTF_PBR.ogsfx"
     },
     "ExtractLook": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
         "maketx_arguments": []
     },
     "ExtractGPUCache": {
@@ -1671,6 +2045,16 @@ DEFAULT_PUBLISH_SETTINGS = {
         "writeMaterials": True,
         "useBaseTessellation": True
     },
+    "ExtractLayout": {
+        "enabled": True,
+        "optional": False,
+        "active": True
+    },
+    "ExtractMayaUsdLayer": {
+        "enabled": True,
+        "optional": False,
+        "active": True
+    },
     "ExtractModel": {
         "enabled": True,
         "optional": True,
@@ -1678,6 +2062,8 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "ExtractAlembic": {
         "enabled": True,
+        "optional": False,
+        "active": True,
         "families": [
             "pointcache",
             "model",
@@ -1718,6 +2104,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "writeColorSets": False,
         "writeCreases": False,
         "writeFaceSets": False,
+        "writeFaceSetsForceFaceAssignment": False,
         "writeNormals": True,
         "writeUVSets": False,
         "writeVisibility": False
@@ -1726,6 +2113,40 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": False,
         "active": True,
+    },
+    "ExtractMayaUsd": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+        "overrides": [
+            "stripNamespaces",
+            "worldspace",
+            "exportComponentTags",
+            "exportVisibility",
+            "mergeTransformAndShape",
+            "defaultMeshScheme"
+        ],
+        "stripNamespaces": True,
+        "worldspace": True,
+        "exportComponentTags": False,
+        "exportVisibility": True,
+        "mergeTransformAndShape": True,
+        "defaultMeshScheme": "catmullClark",
+        "exportBlendShapes": True,
+        "exportSkin": "none",
+        "exportSkels": "none",
+        "exportCollectionBasedBindings": False,
+        "exportColorSets": True,
+        "exportDisplayColor": False,
+        "exportMaterials": True,
+        "exportAssignedMaterials": False,
+        "exportInstances": True,
+        "exportUVs": True,
+        "upAxis": "mayaPrefs",
+        "unit": "mayaPrefs",
+        "custom_attr_namespace": "userProperties:",
+        "custom_attr_name_mapping": [],
+        "custom_attr_mapping": "{}",
     },
     "ExtractMayaUsdModel": {
         "enabled": True,
@@ -1742,9 +2163,109 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": True,
         "active": False,
     },
+    "ExtractMultiverseLook": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
+    "ExtractMultiverseUsdComposition": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
+    "ExtractMultiverseUsdOverride": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
+    "ExtractMultiverseUsd": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
+    "ExtractOxCache": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
+    "ExtractOxRig": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
+    "ExtractRedshiftProxy": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
+    "ExtractRenderSetup": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
+    "ExtractRig": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
     "ExtractSkeletonMesh": {
         "enabled": True,
         "optional": True,
+        "active": True,
+    },
+    "ExtractThumbnail": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
+    "ExtractUnrealSkeletalMeshAbc": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractUnrealSkeletalMeshFbx": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
+    },
+    "ExtractUnrealStaticMesh": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
+    "ExtractUnrealYetiCache": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
+    "ExtractVRayProxy": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
+    "ExtractVrayscene": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
+    "ExtractWorkfileXgen": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
+    "ExtractXgen": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
+    "ExtractYetiCache": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+    },
+    "ExtractYetiRig": {
+        "enabled": True,
+        "optional": False,
         "active": True,
     }
 }

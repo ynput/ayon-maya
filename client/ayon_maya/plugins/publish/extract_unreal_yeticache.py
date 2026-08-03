@@ -1,10 +1,12 @@
 import os
 
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractUnrealYetiCache(plugin.MayaExtractorPlugin):
+class ExtractUnrealYetiCache(plugin.MayaExtractorPlugin,
+                             OptionalPyblishPluginMixin):
     """Producing Yeti cache files using scene time range.
 
     This will extract Yeti cache file sequence and fur settings.
@@ -14,6 +16,8 @@ class ExtractUnrealYetiCache(plugin.MayaExtractorPlugin):
     families = ["yeticacheUE"]
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
 
         yeti_nodes = cmds.ls(instance, type="pgYetiMaya")
         if not yeti_nodes:

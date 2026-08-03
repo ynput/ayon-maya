@@ -1,15 +1,25 @@
 import contextlib
 import difflib
 
-import qargparse
 from ayon_core.settings import get_project_settings
+from ayon_core.lib import BoolDef, TextDef
+from ayon_core.pipeline import get_current_project_name
+from ayon_core.pipeline.load import get_representation_context
 from ayon_maya.api import plugin
 from ayon_maya.api.lib import (
     RigSetsNotExistError,
+    CameraInstanceCreationError,
     create_rig_animation_instance,
+    create_camera_instance,
     get_container_members,
+    get_creator_identifier,
     maintained_selection,
     parent_nodes,
+    get_reference_node,
+    get_custom_namespace,
+    set_attribute,
+    unlocked,
+    update_animation_instance,
 )
 from maya import cmds
 
@@ -109,7 +119,7 @@ def preserve_modelpanel_cameras(container, log=None):
 class ReferenceLoader(plugin.ReferenceLoader):
     """Reference file"""
 
-    product_types = {
+    product_base_types = {
         "model",
         "pointcache",
         "proxyAbc",
@@ -126,8 +136,10 @@ class ReferenceLoader(plugin.ReferenceLoader):
         "mvLook",
         "matchmove",
     }
+    product_types = product_base_types
 
-    representations = {"ma", "abc", "fbx", "mb"}
+    representations = {"*"}
+    extensions = {"ma", "abc", "fbx", "mb"}
 
     label = "Reference"
     order = -10
@@ -136,9 +148,13 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
     def process_reference(self, context, name, namespace, options):
         import maya.cmds as cmds
-
-        product_type = context["product"]["productType"]
         project_name = context["project"]["name"]
+
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
+
         # True by default to keep legacy behaviours
         attach_to_root = options.get("attach_to_root", True)
         group_name = options["group_name"]
@@ -181,22 +197,22 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
             self[:] = new_nodes
 
+            settings = get_project_settings(project_name)
             if attach_to_root:
                 group_name = "|" + group_name
                 roots = cmds.listRelatives(group_name,
                                            children=True,
                                            fullPath=True) or []
 
-                if product_type not in {
+                if product_base_type not in {
                     "layout", "setdress", "mayaAscii", "mayaScene"
                 }:
                     # QUESTION Why do we need to exclude these families?
                     with parent_nodes(roots, parent=None):
                         cmds.xform(group_name, zeroTransformPivots=True)
 
-                settings = get_project_settings(project_name)
-                color = plugin.get_load_color_for_product_type(
-                    product_type, settings
+                color = plugin.get_load_color_for_product_base_type(
+                    product_base_type, settings
                 )
                 if color is not None:
                     red, green, blue = color
@@ -214,7 +230,18 @@ class ReferenceLoader(plugin.ReferenceLoader):
                 if display_handle:
                     self._set_display_handle(group_name)
 
-            if product_type == "rig":
+            create_camera_instance_on_load = settings['maya']['load'].get(
+                'reference_loader', {}
+            ).get('create_camera_instance_on_load', False)
+
+            if product_base_type == "rig":
+                options["lock_instance"] = (
+                    settings
+                    ["maya"]
+                    ["load"]
+                    ["reference_loader"]
+                    ["lock_animation_instance_on_load"]
+                )
                 self._post_process_rig(namespace, context, options)
             else:
                 if "translate" in options:
@@ -225,10 +252,20 @@ class ReferenceLoader(plugin.ReferenceLoader):
                         group_name = root_nodes[0]
                     cmds.setAttr("{}.translate".format(group_name),
                                  *options["translate"])
+
+            if create_camera_instance_on_load and (
+                product_base_type == "camerarig"
+            ):
+                self._post_process_camera(namespace, context, options)
+
             return new_nodes
 
     def switch(self, container, context):
         self.update(container, context)
+        reference_loader_settings = self.load_settings.get("reference_loader", {})
+        update_namespace = reference_loader_settings.get("update_namespace_on_switch", False)
+        if update_namespace:
+            self._update_namespace(container, context, reference_loader_settings)
 
     def update(self, container, context):
         with preserve_modelpanel_cameras(container, log=self.log):
@@ -239,16 +276,85 @@ class ReferenceLoader(plugin.ReferenceLoader):
         members = get_container_members(container)
         self._lock_camera_transforms(members)
 
+    def remove(self, container):
+        representation_id: str = container["representation"]
+        project_name: str = container.get(
+            "project_name", get_current_project_name()
+        )
+        product_base_type = None
+        if representation_id:
+            context: dict = get_representation_context(
+                project_name, representation_id
+            )
+            product_entity = context["product"]
+            product_base_type = product_entity.get("productBaseType")
+            if not product_base_type:
+                product_base_type = product_entity["productType"]
+
+        if product_base_type == "rig":
+            # Special handling needed for rig containers
+            self._remove_rig(container)
+            return
+
+        super().remove(container)
+
+    def _remove_rig(self, container):
+        """Remove linked animation instance no matter if it
+        is locked or not.
+
+        Args:
+            container (dict): The container to remove.
+        """
+        members = get_container_members(container)
+        object_sets = set()
+        for member in members:
+            object_sets.update(
+                cmds.listSets(object=member, extendToShape=False) or []
+            )
+
+        super().remove(container)
+        # After the deletion, we check which object sets are still existing
+        # because maya may auto-delete empty object sets if they are not locked
+        # This way we can clean up remaining animation instances that were
+        # locked
+        object_sets = cmds.ls(object_sets, type="objectSet")
+        for object_set in object_sets:
+            # Only consider locked object sets
+            locked = cmds.lockNode(object_set, query=True)
+            if not locked:
+                continue
+
+            # Ignore referenced object sets
+            if cmds.referenceQuery(isNodeReferenced=object_set):
+                continue
+
+            # Then only here confirm whether this is an animation instance, if so
+            # then we will want to auto-remove the instance
+            if get_creator_identifier(object_set) == "io.openpype.creators.maya.animation":
+                cmds.lockNode(object_set, lock=False)
+                cmds.delete(object_set)
+
     def _post_process_rig(self, namespace, context, options):
 
         nodes = self[:]
         try:
             create_rig_animation_instance(
-                nodes, context, namespace, options=options, log=self.log
+                nodes, context, namespace, options=options, log=self.log,
             )
         except RigSetsNotExistError as exc:
             self.log.warning(
                 "Missing rig sets for animation instance creation: %s", exc)
+
+    def _post_process_camera(self, namespace, context, options):
+        nodes = self[:]
+        try:
+            create_camera_instance(
+                nodes, context, namespace, options=options, log=self.log
+            )
+        except CameraInstanceCreationError as exc:
+            self.log.warning(
+                "Failed to create camera instance: %s", exc
+            )
 
     def _lock_camera_transforms(self, nodes):
         cameras = cmds.ls(nodes, type="camera")
@@ -291,27 +397,81 @@ class ReferenceLoader(plugin.ReferenceLoader):
         cmds.setAttr(f"{group_name}.selectHandleY", cy)
         cmds.setAttr(f"{group_name}.selectHandleZ", cz)
 
+    def _update_namespace(
+            self,
+            container: dict,
+            context: dict,
+            reference_loader_settings: dict,
+        ) -> None:
+        """Update the namespace of the reference node.
+
+        Args:
+            container (dict): The container dictionary.
+            context (dict): The context dictionary.
+            reference_loader_settings (dict): The reference loader settings dictionary.
+        """
+        # Update namespace on reference node
+        container_node = container["objectName"]
+        members = get_container_members(container)
+        reference_node = get_reference_node(members, self.log)
+        namespace_template = reference_loader_settings.get("namespace")
+        if not namespace_template:
+            self.log.warning(
+                "No namespace template found in reference_loader settings; "
+                "skipping namespace update."
+            )
+            return
+        custom_namespace = namespace_template.format_map(
+            self.get_namespace_template_data(context)
+        )
+        new_namespace = get_custom_namespace(custom_namespace)
+        old_namespace = cmds.referenceQuery(
+            reference_node,
+            namespace=True
+        ).strip(":")
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
+        if product_base_type == "rig":
+            update_animation_instance(
+                container,
+                context,
+                new_namespace
+            )
+        set_attribute(
+            node=container_node,
+            attribute="namespace",
+            value=new_namespace
+        )
+
+        cmds.namespace(rename=(old_namespace, new_namespace))
+
+        with unlocked(reference_node):
+            cmds.rename(reference_node, f"{new_namespace}RN")
+
 
 class MayaUSDReferenceLoader(ReferenceLoader):
     """Reference USD file to native Maya nodes using MayaUSDImport reference"""
 
     label = "Reference Maya USD"
-    product_types = {"usd"}
-    representations = {"usd"}
+    product_base_types = {"usd"}
+    product_types = product_base_types
+    representations = {"*"}
     extensions = {"usd", "usda", "usdc"}
 
     options = ReferenceLoader.options + [
-        qargparse.Boolean(
+        BoolDef(
             "readAnimData",
             label="Load anim data",
             default=True,
-            help="Load animation data from USD file"
+            tooltip="Load animation data from USD file"
         ),
-        qargparse.Boolean(
+        BoolDef(
             "useAsAnimationCache",
             label="Use as animation cache",
             default=True,
-            help=(
+            tooltip=(
                 "Imports geometry prims with time-sampled point data using a "
                 "point-based deformer that references the imported "
                 "USD file.\n"
@@ -320,20 +480,20 @@ class MayaUSDReferenceLoader(ReferenceLoader):
                 "reduce the weight of the resulting Maya scene."
             )
         ),
-        qargparse.Boolean(
+        BoolDef(
             "importInstances",
             label="Import instances",
             default=True,
-            help=(
+            tooltip=(
                 "Import USD instanced geometries as Maya instanced shapes. "
                 "Will flatten the scene otherwise."
             )
         ),
-        qargparse.String(
+        TextDef(
             "primPath",
             label="Prim Path",
             default="/",
-            help=(
+            tooltip=(
                 "Name of the USD scope where traversing will begin.\n"
                 "The prim at the specified primPath (including the prim) will "
                 "be imported.\n"

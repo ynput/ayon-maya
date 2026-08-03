@@ -1,14 +1,14 @@
+"""Plugin for Ayon Maya API."""
+from __future__ import annotations
 import json
 import os
+from urllib.parse import urlparse
 
 import ayon_api
-import qargparse
 
-from ayon_core.lib import BoolDef, Logger
+from ayon_core.lib import BoolDef, Logger, NumberDef
 from ayon_core.pipeline import (
-    AVALON_CONTAINER_ID,
     AVALON_INSTANCE_ID,
-    AYON_CONTAINER_ID,
     AYON_INSTANCE_ID,
     Anatomy,
     AutoCreator,
@@ -18,18 +18,18 @@ from ayon_core.pipeline import (
     HiddenCreator,
     LoaderPlugin,
     get_current_project_name,
-    get_representation_path,
     publish,
 )
-from ayon_core.pipeline.create import get_product_name
+from ayon_core.pipeline.entity_uri import parse_ayon_entity_uri
 from ayon_core.pipeline.load import LoadError
 from ayon_core.settings import get_project_settings
+
 from maya import cmds
-from maya.app.renderSetup.model import renderSetup
+from maya.app.renderSetup.model import renderSetup, renderLayer
 from pyblish.api import ContextPlugin, InstancePlugin
 
 from . import lib
-from .lib import imprint, read
+from .lib import imprint, read, unlocked
 from .pipeline import containerise
 
 log = Logger.get_logger()
@@ -105,7 +105,37 @@ def get_ayon_entity_uri_from_representation_context(context: dict) -> str:
             f"representation id '{representation_id}' to single URI. "
             f"Received data: {response.data}"
         )
-    return uris[0]["uri"]
+    return _convert_uri(uris[0]["uri"])
+
+
+def _convert_uri(uri: str) -> str:
+    """Convert an AYON entity URI to its hero version.
+
+    Args:
+        uri (str): The AYON entity URI to convert.
+
+    Returns:
+        str: The converted hero AYON entity URI.
+
+    """
+    results = parse_ayon_entity_uri(uri)
+    version = results["version"]
+    # strip the "v" from version and convert to int
+    version_number = int(version[1:])
+    if version_number > 0:
+        return uri
+
+    scheme = urlparse(uri).scheme
+    return (
+        "{scheme}://{project}{folder_path}?product={product}&version=hero"
+        "&representation={representation}".format(
+            scheme=scheme,
+            project=results["project"],
+            folder_path=results["folderPath"],
+            product=results["product"],
+            representation=results["representation"]
+        )
+    )
 
 
 class MayaCreatorBase:
@@ -161,7 +191,7 @@ class MayaCreatorBase:
         specify `usd` but apply different extractors like `usdMultiverse`.
 
         There is no need to override this method if you only have the
-        'product_type' required for publish filtering.
+        'product_base_type' required for publish filtering.
 
         Returns:
             list: families for instances of this creator
@@ -216,11 +246,12 @@ class MayaCreatorBase:
         data["__creator_attributes_keys"] = ",".join(creator_attributes.keys())
 
         # Kill any existing attributes just so we can imprint cleanly again
-        for attr in data.keys():
-            if cmds.attributeQuery(attr, node=node, exists=True):
-                cmds.deleteAttr("{}.{}".format(node, attr))
+        with lib.undo_chunk():
+            for attr in data.keys():
+                if cmds.attributeQuery(attr, node=node, exists=True):
+                    cmds.deleteAttr("{}.{}".format(node, attr))
 
-        return imprint(node, data)
+            return imprint(node, data)
 
     def read_instance_node(self, node):
         node_data = read(node)
@@ -271,12 +302,19 @@ class MayaCreatorBase:
             created_instance = CreatedInstance.from_existing(node_data, self)
             self._add_instance_to_context(created_instance)
 
+    @lib.undo_chunk()
     def _default_update_instances(self, update_list):
+
         for created_inst, _changes in update_list:
             data = created_inst.data_to_store()
             node = data.get("instance_node")
-
-            self.imprint_instance_node(node, data)
+            if not node or not cmds.objExists(node):
+                self.log.warning(
+                    f"Skipping update for missing instance node: '{node}'"
+                )
+                continue
+            with unlocked(node):
+                self.imprint_instance_node(node, data)
 
     @lib.undo_chunk()
     def _default_remove_instances(self, instances):
@@ -289,6 +327,7 @@ class MayaCreatorBase:
         for instance in instances:
             node = instance.data.get("instance_node")
             if node:
+                cmds.lockNode(node, lock=False)
                 cmds.delete(node)
 
             self._remove_instance_from_context(instance)
@@ -315,15 +354,26 @@ class MayaCreator(Creator, MayaCreatorBase):
         with lib.undo_chunk():
             instance_node = cmds.sets(members, name=product_name)
             instance_data["instance_node"] = instance_node
+
+            product_type = instance_data.get("productType")
+            if not product_type:
+                product_type = self.product_base_type
+
             instance = CreatedInstance(
-                self.product_type,
-                product_name,
-                instance_data,
-                self)
+                product_base_type=self.product_base_type,
+                product_type=product_type,
+                product_name=product_name,
+                data=instance_data,
+                creator=self,
+            )
             self._add_instance_to_context(instance)
 
             self.imprint_instance_node(instance_node,
                                        data=instance.data_to_store())
+
+            if pre_create_data.get("lock_instance", False):
+                cmds.lockNode(instance_node, lock=True)
+
             return instance
 
     def collect_instances(self):
@@ -416,27 +466,30 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
     # These are required to be overridden in subclass
     singleton_node_name = ""
 
-    # These are optional to be overridden in subclass
-    layer_instance_prefix = None
-
     def _get_singleton_node(self, return_all=False):
         nodes = lib.lsattr("pre_creator_identifier", self.identifier)
         if nodes:
             return nodes if return_all else nodes[0]
 
     def create(self, product_name, instance_data, pre_create_data):
-        # A Renderlayer is never explicitly created using the create method.
-        # Instead, renderlayers from the scene are collected. Thus "create"
-        # would only ever be called to say, 'hey, please refresh collect'
-        self.create_singleton_node()
+        if not self._get_singleton_node():
+            self.create_singleton_node()
 
-        # if no render layers are present, create default one with
-        # asterisk selector
+        variant_name: str = instance_data.get("variant", "Main")
+
+        # Create a new renderlayer to represent the new instance
         rs = renderSetup.instance()
-        if not rs.getRenderLayers():
-            render_layer = rs.createRenderLayer("Main")
-            collection = render_layer.createCollection("defaultCollection")
-            collection.getSelector().setPattern('*')
+        render_layer = rs.createRenderLayer(variant_name)
+        collection = render_layer.createCollection("defaultCollection")
+        collection.getSelector().setPattern('*')
+
+        # Ensure a node exists to persist the data to
+        instance_node = self._create_layer_instance_node(render_layer)
+        instance_data["instance_node"] = instance_node
+        instance_data["creator_identifier"] = self.identifier
+        instance_data["productName"] = product_name
+        self.imprint_instance_node(instance_node,
+                                   data=instance_data)
 
         # By RenderLayerCreator.create we make it so that the renderlayer
         # instances directly appear even though it just collects scene
@@ -457,7 +510,6 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         return node
 
     def collect_instances(self):
-
         # We only collect if the global render instance exists
         if not self._get_singleton_node():
             return
@@ -465,6 +517,11 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         host_name = self.create_context.host_name
         rs = renderSetup.instance()
         layers = rs.getRenderLayers()
+        fallback_product_type = None
+        product_type_items = self.get_product_type_items()
+        if product_type_items:
+            fallback_product_type = product_type_items[0].product_type
+
         for layer in layers:
             layer_instance_node = self.find_layer_instance_node(layer)
             if layer_instance_node:
@@ -490,10 +547,11 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
                     task_entity,
                     layer.name(),
                     host_name,
+                    product_type=fallback_product_type,
                 )
-
                 instance = CreatedInstance(
-                    product_type=self.product_type,
+                    product_base_type=self.product_base_type,
+                    product_type=fallback_product_type,
                     product_name=product_name,
                     data=instance_data,
                     creator=self
@@ -571,8 +629,7 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         data.pop("renderlayer", None)
         data.get("creator_attributes", {}).pop("renderlayer", None)
 
-        return super(RenderlayerCreator, self).imprint_instance_node(node,
-                                                                     data=data)
+        return super().imprint_instance_node(node, data=data)
 
     def remove_instances(self, instances):
         """Remove specified instances from the scene.
@@ -581,64 +638,37 @@ class RenderlayerCreator(Creator, MayaCreatorBase):
         instance, because it might contain valuable data for artist.
 
         """
-        # Instead of removing the single instance or renderlayers we instead
-        # remove the CreateRender node this creator relies on to decide whether
-        # it should collect anything at all.
-        nodes = self._get_singleton_node(return_all=True)
-        if nodes:
-            cmds.delete(nodes)
+        for instance in instances:
+            self._remove_instance_from_context(instance)
 
-        # Remove ALL the instances even if only one gets deleted
-        for instance in list(self.create_context.instances):
-            if instance.get("creator_identifier") == self.identifier:
-                self._remove_instance_from_context(instance)
+            # Remove the stored settings per renderlayer too
+            node = instance.data.get("instance_node")
+            if node and cmds.objExists(node):
+                cmds.delete(node)
 
-                # Remove the stored settings per renderlayer too
-                node = instance.data.get("instance_node")
-                if node and cmds.objExists(node):
-                    cmds.delete(node)
+            # Also delete the renderlayer, because with the singleton still
+            # existing it'll just mean it'll get recreated on collect
+            layer = instance.transient_data.get("layer")
+            if layer:
+                renderLayer.delete(layer)
 
-    def get_product_name(
-        self,
-        project_name,
-        folder_entity,
-        task_entity,
-        variant,
-        host_name=None,
-        instance=None
-    ):
-        if host_name is None:
-            host_name = self.create_context.host_name
-        dynamic_data = self.get_dynamic_data(
-            project_name,
-            folder_entity,
-            task_entity,
-            variant,
-            host_name,
-            instance
+        # If no render instances are remaining, then remove the singleton node
+        # as well.
+        has_render_instances = any(
+            instance.get("creator_identifier") == self.identifier
+            for instance in self.create_context.instances
         )
-        task_name = task_type = None
-        if task_entity:
-            task_name = task_entity["name"]
-            task_type = task_entity["taskType"]
-        # creator.product_type != 'render' as expected
-        return get_product_name(
-            project_name,
-            task_name,
-            task_type,
-            host_name,
-            self.layer_instance_prefix or self.product_type,
-            variant,
-            dynamic_data=dynamic_data,
-            project_settings=self.project_settings
-        )
+        if not has_render_instances:
+            nodes = self._get_singleton_node(return_all=True)
+            if nodes:
+                cmds.delete(nodes)
 
 
-def get_load_color_for_product_type(product_type, settings=None):
+def get_load_color_for_product_base_type(product_base_type, settings=None):
     """Get color for product type from settings.
 
     Args:
-        product_type (str): Family name.
+        product_base_type (str): Product base type.
         settings (Optional[dict]): Settings dictionary.
 
     Returns:
@@ -649,7 +679,7 @@ def get_load_color_for_product_type(product_type, settings=None):
         settings = get_project_settings(get_current_project_name())
 
     colors = settings["maya"]["load"]["colors"]
-    color = colors.get(product_type)
+    color = colors.get(product_base_type)
     if not color:
         return None
 
@@ -685,7 +715,7 @@ class Loader(LoaderPlugin):
 
     @classmethod
     def apply_settings(cls, project_settings):
-        super(Loader, cls).apply_settings(project_settings)
+        super().apply_settings(project_settings)
         cls.load_settings = project_settings['maya']['load']
 
     def get_custom_namespace_and_group(self, context, options, loader_key):
@@ -711,33 +741,70 @@ class Loader(LoaderPlugin):
             self.log.debug("No custom group_name, no group will be created.")
             options["attach_to_root"] = False
 
+        formatting_data = self.get_namespace_template_data(context)
+        namespace_template = custom_naming["namespace"]
+        group_name_template = custom_naming["group_name"]
+
+        # Backwards compatibilty: log out old formatting options
+        for old_key, new_key in (
+            ("{family}", "{product[basetype]}"),
+            ("{asset_name}", "{folder[name]}"),
+            ("{asset_type}", "asset"),
+            ("{subset}", "asset"),
+        ):
+            if old_key in namespace_template:
+                log.warning(
+                    f"Using deprecated template key '{old_key}'"
+                    f" in ayon+settings://maya/load/{loader_key}/namespace"
+                )
+                namespace_template = namespace_template.replace(
+                    old_key, new_key
+                )
+
+            if old_key in group_name_template:
+                log.warning(
+                    f"Using deprecated template key '{old_key}'"
+                    f" in ayon+settings://maya/load/{loader_key}/group_name"
+                )
+                group_name_template = group_name_template.replace(
+                    old_key, new_key
+                )
+
+        custom_namespace = namespace_template.format(**formatting_data)
+
+        # Keep namespace dynamic, because we want to use the actual resolved
+        # unique namespace to format with instead
+        formatting_data["namespace"] = "{namespace}"
+        custom_group_name = group_name_template.format(**formatting_data)
+
+        return custom_group_name, custom_namespace, options
+
+    def get_namespace_template_data(self, context: dict) -> dict:
+        """Get namespace template data
+
+        Args:
+            context (dict): Context data
+
+        Returns:
+            dict: template data for getting namespace
+        """
         folder_entity = context["folder"]
         product_entity = context["product"]
-        product_name = product_entity["name"]
         product_type = product_entity["productType"]
-        formatting_data = {
-            "asset_name": folder_entity["name"],
-            "asset_type": "asset",
+        product_base_type = (
+            product_entity.get("productBaseType") or product_type
+        )
+
+        return {
             "folder": {
                 "name": folder_entity["name"],
             },
-            "subset": product_name,
             "product": {
-                "name": product_name,
+                "name": product_entity["name"],
                 "type": product_type,
+                "baseType": product_base_type,
             },
-            "family": product_type
         }
-
-        custom_namespace = custom_naming["namespace"].format(
-            **formatting_data
-        )
-
-        custom_group_name = custom_naming["group_name"].format(
-            **formatting_data
-        )
-
-        return custom_group_name, custom_namespace, options
 
 
 class ReferenceLoader(Loader):
@@ -750,24 +817,40 @@ class ReferenceLoader(Loader):
     """
 
     options = [
-        qargparse.Integer(
+        NumberDef(
             "count",
             label="Count",
             default=1,
-            min=1,
-            help="How many times to load?"
+            minimum=1,
+            decimals=0,
+            tooltip="How many times to load?"
         ),
-        qargparse.Double3(
-            "offset",
-            label="Position Offset",
-            help="Offset loaded models for easier selection."
+        NumberDef(
+            "offsetX",
+            label="Position Offset X",
+            decimals=4,
+            tooltip="Offset loaded models for easier selection."
         ),
-        qargparse.Boolean(
+        NumberDef(
+            "offsetY",
+            label="Position Offset Y",
+            decimals=4,
+            tooltip="Offset loaded models for easier selection."
+        ),
+        NumberDef(
+            "offsetZ",
+            label="Position Offset Z",
+            decimals=4,
+            tooltip="Offset loaded models for easier selection."
+        ),
+        BoolDef(
             "attach_to_root",
             label="Group imported asset",
             default=True,
-            help="Should a group be created to encapsulate"
-                 " imported representation ?"
+            tooltip=(
+                "Should a group be created to encapsulate"
+                " imported representation?"
+            )
         )
     ]
 
@@ -792,14 +875,19 @@ class ReferenceLoader(Loader):
             namespace = lib.get_custom_namespace(custom_namespace)
             group_name = "{}:{}".format(
                 namespace,
-                custom_group_name
+                custom_group_name.format(namespace=namespace)
             )
 
             options['group_name'] = group_name
 
             # Offset loaded product
-            if "offset" in options:
-                offset = [i * c for i in options["offset"]]
+            offset_step = [
+                options.get("offsetX") or 0,
+                options.get("offsetY") or 0,
+                options.get("offsetZ") or 0,
+            ]
+            if any(offset_step):
+                offset = [i * c for i in offset_step]
                 options["translate"] = offset
 
             self.log.info(options)
@@ -814,7 +902,7 @@ class ReferenceLoader(Loader):
             # Only containerize if any nodes were loaded by the Loader
             nodes = self[:]
             if not nodes:
-                return
+                continue
 
             ref_node = lib.get_reference_node(nodes, self.log)
             container = containerise(
@@ -825,7 +913,6 @@ class ReferenceLoader(Loader):
                 loader=self.__class__.__name__
             )
             loaded_containers.append(container)
-            self._organize_containers(nodes, container)
             c += 1
 
         return loaded_containers
@@ -843,8 +930,7 @@ class ReferenceLoader(Loader):
         project_name = context["project"]["name"]
         repre_entity = context["representation"]
 
-        path = get_representation_path(repre_entity)
-
+        path = self.filepath_from_context(context)
         # Get reference node from container members
         members = get_container_members(node)
         reference_node = lib.get_reference_node(members, self.log)
@@ -907,7 +993,6 @@ class ReferenceLoader(Loader):
 
             self.log.warning("Ignoring file read error:\n%s", exc)
 
-        self._organize_containers(content, container["objectName"])
 
         # Reapply alembic settings.
         if repre_entity["name"] == "abc" and alembic_data:
@@ -948,7 +1033,6 @@ class ReferenceLoader(Loader):
             ("project_name", context["project"]["name"]),
         ]:
             lib.set_attribute(node=node, attribute=attr_name, value=value)
-
         # When an animation or pointcache gets connected to an Xgen container,
         # the compound attribute "xgenContainers" gets created. When animation
         # containers gets updated we also need to update the cacheFileName on
@@ -999,7 +1083,6 @@ class ReferenceLoader(Loader):
         # Assume asset has been referenced
         members = cmds.sets(node, query=True)
         reference_node = lib.get_reference_node(members, self.log)
-
         assert reference_node, ("Imported container not supported; "
                                 "container must be referenced.")
 
@@ -1011,6 +1094,7 @@ class ReferenceLoader(Loader):
 
         try:
             cmds.delete(node)
+
         except ValueError:
             # Already implicitly deleted by Maya upon removing reference
             pass
@@ -1019,6 +1103,7 @@ class ReferenceLoader(Loader):
             # If container is not automatically cleaned up by May (issue #118)
             cmds.namespace(removeNamespace=namespace,
                            deleteNamespaceContent=True)
+
         except RuntimeError:
             pass
 
@@ -1042,19 +1127,6 @@ class ReferenceLoader(Loader):
             file_url = anatomy.replace_root_with_env_key(file_url, '${{{}}}')
 
         return file_url
-
-    @staticmethod
-    def _organize_containers(nodes, container):
-        # type: (list, str) -> None
-        """Put containers in loaded data to correct hierarchy."""
-        for node in nodes:
-            id_attr = "{}.id".format(node)
-            if not cmds.attributeQuery("id", node=node, exists=True):
-                continue
-            if cmds.getAttr(id_attr) not in {
-                AYON_CONTAINER_ID, AVALON_CONTAINER_ID
-            }:
-                cmds.sets(node, forceElement=container)
 
     @classmethod
     def get_representation_name_aliases(cls, representation_name):

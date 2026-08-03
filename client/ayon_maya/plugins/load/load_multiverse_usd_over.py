@@ -2,9 +2,8 @@
 import os
 
 import maya.cmds as cmds
-import qargparse
+from ayon_core.lib import TextDef
 from ayon_api import get_representation_by_id
-from ayon_core.pipeline import get_representation_path
 from ayon_maya.api import plugin
 from ayon_maya.api.lib import maintained_selection
 from ayon_maya.api.pipeline import containerise
@@ -14,8 +13,10 @@ from maya import mel
 class MultiverseUsdOverLoader(plugin.Loader):
     """Reference file"""
 
-    product_types = {"mvUsdOverride"}
-    representations = {"usda", "usd", "udsz"}
+    product_base_types = {"mvUsdOverride"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"usda", "usd", "udsz"}
 
     label = "Load Usd Override into Compound"
     order = -10
@@ -23,10 +24,10 @@ class MultiverseUsdOverLoader(plugin.Loader):
     color = "orange"
 
     options = [
-        qargparse.String(
+        TextDef(
             "Which Compound",
             label="Compound",
-            help="Select which compound to add this as a layer to."
+            tooltip="Select which compound to add this as a layer to."
         )
     ]
 
@@ -90,7 +91,7 @@ class MultiverseUsdOverLoader(plugin.Loader):
                                                        prev_representation_id)
         prev_path = os.path.normpath(prev_representation["attrib"]["path"])
 
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
 
         for shape in shapes:
             asset_paths = multiverse.GetUsdCompoundAssetPaths(shape)

@@ -4,12 +4,11 @@ import re
 from collections import defaultdict
 
 import clique
-from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
 from ayon_maya.api import lib
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
-from ayon_maya.api.plugin import get_load_color_for_product_type
+from ayon_maya.api.plugin import get_load_color_for_product_base_type
 from ayon_maya.api.yeti import create_yeti_variable
 from maya import cmds
 
@@ -44,8 +43,10 @@ def set_attribute(node, attr, value):
 class YetiCacheLoader(plugin.Loader):
     """Load Yeti Cache with one or more Yeti nodes"""
 
-    product_types = {"yeticache", "yetiRig"}
-    representations = {"fur"}
+    product_base_types = {"yeticache", "yetiRig"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"fur"}
 
     label = "Load Yeti Cache"
     order = -9
@@ -63,9 +64,6 @@ class YetiCacheLoader(plugin.Loader):
         and allow published looks to also work for Yeti rigs and its caches.
 
         """
-
-        product_type = context["product"]["productType"]
-
         # Build namespace
         folder_name = context["folder"]["name"]
         if namespace is None:
@@ -86,8 +84,15 @@ class YetiCacheLoader(plugin.Loader):
         group_node = cmds.group(nodes, name=group_name)
         project_name = context["project"]["name"]
 
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
+
         settings = get_project_settings(project_name)
-        color = get_load_color_for_product_type(product_type, settings)
+        color = get_load_color_for_product_base_type(
+            product_base_type, settings
+        )
         if color is not None:
             red, green, blue = color
             cmds.setAttr(group_node + ".useOutlinerColor", 1)
@@ -132,7 +137,7 @@ class YetiCacheLoader(plugin.Loader):
         namespace = container["namespace"]
         container_node = container["objectName"]
 
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         settings = self.read_settings(path)
 
         # Collect scene information of asset

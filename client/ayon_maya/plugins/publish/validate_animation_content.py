@@ -9,7 +9,7 @@ from ayon_maya.api import plugin
 
 class ValidateAnimationContent(plugin.MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
-    """Adheres to the content of 'animation' product type
+    """Adheres to the content of 'animation' product base type
 
     - Must have collected `out_hierarchy` data.
     - All nodes in `out_hierarchy` must be in the instance.

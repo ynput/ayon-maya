@@ -10,14 +10,16 @@ from maya import cmds
 class ValidateLookDefaultShadersConnections(plugin.MayaContextPlugin):
     """Validate default shaders in the scene have their default connections.
 
-    For example the standardSurface1 or lambert1 (maya 2023 and before) could
-    potentially be disconnected from the initialShadingGroup. As such it's not
-    lambert1 that will be identified as the default shader which can have
-    unpredictable results.
+    Any of the following should be connected to initialShadingGroup:
+    - openPBR_shader1 (maya 2026+),
+    - standardSurface1 (maya 2024-2025),
+    - or lambert1 (maya 2023 and before)
 
-    To fix the default connections need to be made again. See the logs for
+    When disconnected then another material than e.g. the lambert1 will be
+    identified as the default shader which can have unpredictable results.
+
+    To fix, the default connections need to be made again. See the logs for
     more details on which connections are missing.
-
     """
 
     order = pyblish.api.ValidatorOrder - 0.4999
@@ -27,11 +29,17 @@ class ValidateLookDefaultShadersConnections(plugin.MayaContextPlugin):
 
     # The default connections to check
     DEFAULTS = {
-        "initialShadingGroup.surfaceShader": ["standardSurface1.outColor",
-                                              "lambert1.outColor"],
-        "initialParticleSE.surfaceShader": ["standardSurface1.outColor",
-                                            "lambert1.outColor"],
-        "initialParticleSE.volumeShader": ["particleCloud1.outColor"]
+        "initialShadingGroup.surfaceShader": [
+            "openPBR_shader1.outColor",
+            "standardSurface1.outColor",
+            "lambert1.outColor",
+        ],
+        "initialParticleSE.surfaceShader": [
+            "openPBR_shader1.outColor",
+            "standardSurface1.outColor",
+            "lambert1.outColor",
+        ],
+        "initialParticleSE.volumeShader": ["particleCloud1.outColor"],
     }
 
     def process(self, context):

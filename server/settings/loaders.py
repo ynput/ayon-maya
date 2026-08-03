@@ -105,17 +105,64 @@ class ColorsSetting(BaseSettingsModel):
 
 
 class ReferenceLoaderModel(BaseSettingsModel):
-    namespace: str = SettingsField(title="Namespace")
-    group_name: str = SettingsField(title="Group name")
+    namespace: str = SettingsField(
+        title="Namespace",
+        description=(
+            "Supports formatting tokens `{folder[name]}`, `{product[name]}`"
+            " and `{product[type]}`."
+        )
+    )
+    group_name: str = SettingsField(
+        title="Group name",
+        description=(
+            "Supports formatting token `{namespace}` to use the namespace "
+            "also for the group name to ensure uniqueness. Also supports same "
+            "formatting tokens like `namespace` attribute."
+        )
+    )
     display_handle: bool = SettingsField(
         title="Display Handle On Load References"
+    )
+    lock_animation_instance_on_load: bool = SettingsField(
+        title="Lock Animation Instance on Rig Load"
+    )
+    create_camera_instance_on_load: bool = SettingsField(
+        default=False,
+        title="Create Camera instance on load",
+        description=(
+            "When enabled, upon loading a Camera product a new Camera instance "
+            "is automatically created as preparation to publishing the output "
+            "directly."
+        )
+    )
+    update_namespace_on_switch: bool = SettingsField(
+        title="Update Namespace on Switch",
+        description = (
+            "When enabled, the namespace of the reference node will be updated "
+            "accordingly to what folder path and task type the updated assets belong "
+            "to. This is useful when the reference is loaded with a different  "
+            "folder path or task type than the original one."
+        )
     )
 
 
 class ImportLoaderModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
-    namespace: str = SettingsField(title="Namespace")
-    group_name: str = SettingsField(title="Group name")
+    namespace: str = SettingsField(
+        title="Namespace",
+        description=(
+            "Supports formatting tokens `{folder[name]}`, `{product[name]}`"
+            " and `{product[type]}`."
+        )
+    )
+    group_name: str = SettingsField(
+        title="Group name",
+        description=(
+            "Supports formatting token `{namespace}` to use the namespace "
+            "also for the group name to ensure uniqueness. Also supports same "
+            "formatting tokens like `namespace` attribute."
+        )
+    )
 
 
 class YetiRigLoaderModel(LoaderEnabledModel):
@@ -159,10 +206,6 @@ class LoadersModel(BaseSettingsModel):
     ArnoldStandinLoader: LoaderEnabledModel = SettingsField(
         default_factory=LoaderEnabledModel,
         title="Arnold Standin Loader"
-    )
-    AssemblyLoader: LoaderEnabledModel = SettingsField(
-        default_factory=LoaderEnabledModel,
-        title="Assembly Loader"
     )
     AudioLoader: LoaderEnabledModel = SettingsField(
         default_factory=LoaderEnabledModel,
@@ -286,7 +329,10 @@ DEFAULT_LOADERS_SETTING = {
     "reference_loader": {
         "namespace": "{folder[name]}_{product[name]}_##_",
         "group_name": "_GRP",
-        "display_handle": True
+        "display_handle": True,
+        "lock_animation_instance_on_load": False,
+        "create_camera_instance_on_load": False,
+        "update_namespace_on_switch": False,
     },
     "import_loader": {
         "enabled": True,
@@ -295,7 +341,6 @@ DEFAULT_LOADERS_SETTING = {
         "display_handle": True
     },
     "ArnoldStandinLoader": {"enabled": True},
-    "AssemblyLoader": {"enabled": True},
     "AudioLoader": {"enabled": True},
     "FileNodeLoader": {"enabled": True},
     "GpuCacheLoader": {"enabled": True},

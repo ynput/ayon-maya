@@ -220,7 +220,7 @@ class CameraOptionsSetting(BaseSettingsModel):
     displaySafeTitle: bool = SettingsField(False, title="Display Safe Title")
     displayFilmPivot: bool = SettingsField(False, title="Display Film Pivot")
     displayFilmOrigin: bool = SettingsField(False, title="Display Film Origin")
-    overscan: int = SettingsField(1.0, title="Overscan")
+    overscan: float = SettingsField(1.0, title="Overscan")
 
 
 class CapturePresetSetting(BaseSettingsModel):
@@ -272,6 +272,9 @@ class PlayblastProfilesModel(BaseSettingsModel):
 
 
 class ExtractPlayblastSetting(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
     capture_preset: CapturePresetSetting = SettingsField(
         default_factory=CapturePresetSetting,
         title="DEPRECATED! Please use \"Profiles\" below. Capture Preset"
@@ -283,6 +286,9 @@ class ExtractPlayblastSetting(BaseSettingsModel):
 
 
 DEFAULT_PLAYBLAST_SETTING = {
+    "enabled": True,
+    "optional": False,
+    "active": True,
     "capture_preset": {
         "Codec": {
             "compression": "png",

@@ -2,13 +2,15 @@
 import os
 
 import pyblish.api
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import fbx
 from ayon_maya.api.lib import get_namespace, namespaced, strip_namespace
 from ayon_maya.api import plugin
 from maya import cmds  # noqa
 
 
-class ExtractFBXAnimation(plugin.MayaExtractorPlugin):
+class ExtractFBXAnimation(plugin.MayaExtractorPlugin,
+                          OptionalPyblishPluginMixin):
     """Extract Rig in FBX format from Maya.
 
     This extracts the rig in fbx with the constraints
@@ -20,8 +22,11 @@ class ExtractFBXAnimation(plugin.MayaExtractorPlugin):
     order = pyblish.api.ExtractorOrder
     label = "Extract Animation (FBX)"
     families = ["animation.fbx"]
+    targets = ["local", "remote"]
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         # Define output path
         staging_dir = self.staging_dir(instance)
         filename = "{0}.fbx".format(instance.name)

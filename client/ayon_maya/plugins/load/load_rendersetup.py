@@ -13,7 +13,6 @@ import maya.app.renderSetup.model.renderSetup as renderSetup
 from maya import cmds
 
 from ayon_core.lib import BoolDef, EnumDef
-from ayon_core.pipeline import get_representation_path
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from ayon_maya.api.pipeline import containerise
@@ -47,9 +46,11 @@ def mark_all_imported(enabled):
 class RenderSetupLoader(plugin.Loader):
     """Load json preset for RenderSetup overwriting current one."""
 
-    product_types = {"rendersetup"}
-    representations = {"json"}
-    defaults = ['Main']
+    product_base_types = {"rendersetup"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"json"}
+    defaults = ["Main"]
 
     label = "Load RenderSetup template"
     icon = "tablet"
@@ -146,7 +147,7 @@ class RenderSetupLoader(plugin.Loader):
             "setting specified by user not included in loaded version "
             "will be lost.")
         repre_entity = context["representation"]
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         with open(path, "r") as file:
             try:
                 renderSetup.instance().decode(

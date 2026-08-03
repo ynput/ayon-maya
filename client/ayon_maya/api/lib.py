@@ -1,5 +1,5 @@
 """Standalone helper functions"""
-
+from __future__ import annotations
 import os
 import copy
 import sys
@@ -10,6 +10,7 @@ import logging
 import contextlib
 from collections import OrderedDict, defaultdict
 from math import ceil
+from typing import Optional
 
 import capture
 import clique
@@ -23,17 +24,17 @@ from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     get_current_project_name,
     get_current_folder_path,
-    get_current_task_name,
     discover_loader_plugins,
     loaders_from_representation,
-    get_representation_path,
     load_container,
     registered_host,
     AVALON_CONTAINER_ID,
     AVALON_INSTANCE_ID,
     AYON_INSTANCE_ID,
     AYON_CONTAINER_ID,
+    Anatomy,
 )
+from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.lib import NumberDef
 from ayon_core.pipeline.context_tools import get_current_task_entity
 from ayon_core.pipeline.create import CreateContext
@@ -91,6 +92,15 @@ class RigSetsNotExistError(RuntimeError):
     pass
 
 
+class CameraInstanceCreationError(RuntimeError):
+    """Raised when camera instance creation fails.
+
+    This is raised from `create_camera_instance` when the required
+    camera nodes are missing or invalid.
+    """
+    pass
+
+
 def get_main_window():
     """Acquire Maya's main window"""
     from qtpy import QtWidgets
@@ -101,6 +111,29 @@ def get_main_window():
             for widget in QtWidgets.QApplication.topLevelWidgets()
         }["MayaWindow"]
     return self._parent
+
+
+@contextlib.contextmanager
+def unlocked(node):
+    """Unlock a node for the duration of the context.
+
+    Args:
+        node (str): The name of the node to unlock.
+    """
+    has_locked = cmds.lockNode(node, query=True, lock=True)[0]
+    node_uuid = cmds.ls(node, uuid=True)[0]
+    cmds.lockNode(node, lock=False)
+    try:
+        yield
+
+    finally:
+        if not cmds.objExists(node):
+            # Node might have been renamed or deleted; try and find it by uuid.
+            nodes_from_id = cmds.ls(node_uuid, long=True) or []
+            if not nodes_from_id:
+                return
+            node = nodes_from_id[0]
+        cmds.lockNode(node, lock=has_locked)
 
 
 @contextlib.contextmanager
@@ -138,7 +171,7 @@ def maintained_selection():
 
     """
 
-    previous_selection = cmds.ls(selection=True)
+    previous_selection = cmds.ls(selection=True, long=True)
     try:
         yield
     finally:
@@ -1453,13 +1486,32 @@ def get_id_required_nodes(referenced_nodes=False,
     def _add_to_result_if_valid(obj):
         """Add to `result` if the object should be included"""
         fn_dep.setObject(obj)
-        if (
-                not existing_ids
-                and fn_dep.hasAttribute("cbId")
-                # May not be an empty value
-                and fn_dep.findPlug("cbId", True).asString()
-        ):
-            return
+        if not existing_ids and fn_dep.hasAttribute("cbId"):
+            # If not including existing ids, skip nodes with `cbId` attribute
+            plug = fn_dep.findPlug("cbId", True)
+            try:
+                value = plug.asString()
+                if value:
+                    return
+            except RuntimeError:
+                # Likely not a string attribute which we will consider as
+                # not having a `cbId` attribute - however we do log a warning
+                if obj.hasFn(OpenMaya.MFn.kDagNode):
+                    fn_dag.setObject(obj)
+                    name = fn_dag.fullPathName()
+                else:
+                    name = fn_dep.name()
+
+                type_name = cmds.getAttr(f"{name}.cbId", type=True)
+                if type_name == "string":
+                    # Type is correct so the issue must be something else,
+                    # so we re-raise the exception
+                    raise
+                # If the attribute is not a string, we log a warning
+                log.warning(
+                    f"\"{name}.cbId\" is not a string attribute. "
+                    f"Attribute type: '{type_name}'."
+                )
 
         if not referenced_nodes and fn_dep.isFromReferencedFile:
             return
@@ -1803,9 +1855,21 @@ def is_valid_reference_node(reference_node):
     return OpenMaya.MFnReference(depend_node).isValidReference()
 
 
-def get_container_members(container):
+def get_container_members(container, include_reference_associated_nodes=False):
     """Returns the members of a container.
     This includes the nodes from any loaded references in the container.
+
+    Arguments:
+        container (str | dict): The container name or a container dictionary
+            with the "objectName" key.
+        include_reference_associated_nodes (bool): whether to include the
+            associated nodes of references, like those produced from
+            referencing with `groupReference`. This is disabled by default,
+            for backwards compatibility to existing calls.
+
+    Returns:
+        list[str]: The nodes belonging to the container.
+
     """
     if isinstance(container, dict):
         # Assume it's a container dictionary
@@ -1843,7 +1907,44 @@ def get_container_members(container):
                                     objectsOnly=True)
         all_members.update(reference_members)
 
+        if include_reference_associated_nodes:
+            if cmds.about(apiVersion=True) >= 20240000:
+                associated_nodes: list[str] = cmds.listConnections(
+                    f"{ref}.associatedNode",
+                    source=True,
+                    destination=False,
+                    fullNodeName=True
+                ) or []
+            else:
+                # fullNodeName argument is Maya 2023.1+
+                associated_nodes = cmds.listConnections(
+                    f"{ref}.associatedNode",
+                    source=True,
+                    destination=False
+                ) or []
+                associated_nodes = cmds.ls(
+                    associated_nodes, long=True
+                ) or []
+            all_members.update(associated_nodes)
+
     return list(all_members)
+
+
+def get_representation_path_by_project(project_name, repre_entity):
+    """Get the representation path for a given representation entity.
+    This function would be used temporarily until the version from
+    the core addon is available.
+    Args:
+        project_name (str): The project name.
+        repre_entity (dict): The representation entity.
+        project_name (str, optional): The project name. Defaults to None.
+    Returns:
+        str: The representation path.
+    """
+    if project_name is None:
+        project_name = get_current_project_name()
+    anatomy = Anatomy(project_name)
+    return get_representation_path_with_anatomy(repre_entity, anatomy)
 
 
 # region LOOKDEV
@@ -1856,6 +1957,8 @@ def list_looks(project_name, folder_id):
         list[dict[str, Any]]: List of look products.
 
     """
+    # TODO this should filter by 'product_base_types'
+    # - can be used only with server version >= 1.14.0
     return list(ayon_api.get_products(
         project_name, folder_ids=[folder_id], product_types={"look"}
     ))
@@ -1914,7 +2017,9 @@ def assign_look_by_version(nodes, version_id):
     shader_nodes = get_container_members(container_node)
 
     # Load relationships
-    shader_relation = get_representation_path(json_representation)
+    shader_relation = get_representation_path_by_project(
+        project_name, json_representation
+    )
     with open(shader_relation, "r") as f:
         relationships = json.load(f)
 
@@ -2014,6 +2119,7 @@ def apply_shaders(relationships, shadernodes, nodes):
     shading_engines = cmds.ls(shadernodes, type="objectSet", long=True)
     assert shading_engines, "Error in retrieving objectSets from reference"
 
+    shader_mesh_nodes = cmds.ls(shadernodes, type="mesh", long=True)
     # region compute lookup
     nodes_by_id = defaultdict(list)
     for node in nodes:
@@ -2022,6 +2128,11 @@ def apply_shaders(relationships, shadernodes, nodes):
     shading_engines_by_id = defaultdict(list)
     for shad in shading_engines:
         shading_engines_by_id[get_id(shad)].append(shad)
+
+    texture_nodes_by_id = defaultdict(list)
+    for mesh_node in shader_mesh_nodes:
+        texture_nodes_by_id[get_id(mesh_node)].append(mesh_node)
+
     # endregion
 
     # region assign shading engines and other sets
@@ -2054,6 +2165,13 @@ def apply_shaders(relationships, shadernodes, nodes):
             cmds.sets(filtered_nodes, forceElement=id_shading_engines[0])
         except RuntimeError as rte:
             log.error("Error during shader assignment: {}".format(rte))
+
+    # check if there is texture references input and connect the texture
+    # reference back to the nodes
+    texture_references_input = relationships.get("connections", [])
+    apply_connections(
+        texture_references_input, nodes_by_id, texture_nodes_by_id
+    )
 
     # endregion
 
@@ -2158,12 +2276,13 @@ def get_container_transforms(container, members=None, root=False):
     transform is stored in the container information
 
     Args:
-        container (dict): the container
+        container (dict | str): the container
         members (list): optional and convenience argument
         root (bool): return highest node in hierarchy if True
 
     Returns:
-        root (list / str):
+        list[str] | str: List of highest nodes, or first entry if
+            root argument is True
     """
 
     if not members:
@@ -2182,17 +2301,18 @@ def get_highest_in_hierarchy(nodes):
     """Return highest nodes in the hierarchy that are in the `nodes` list.
 
     The "highest in hierarchy" are the nodes closest to world: top-most level.
+    The result only contains DAG nodes.
 
     Args:
-        nodes (list): The nodes in which find the highest in hierarchies.
+        nodes (list[str]): The nodes in which find the highest in hierarchies.
 
     Returns:
-        list: The highest nodes from the input nodes.
+        list[str]: The highest DAG nodes from the input nodes.
 
     """
 
     # Ensure we use long names
-    nodes = cmds.ls(nodes, long=True)
+    nodes = cmds.ls(nodes, long=True, type="dagNode")
     lookup = set(nodes)
 
     highest = []
@@ -2282,7 +2402,15 @@ def remove_other_uv_sets(mesh):
 
 
 def get_node_parent(node):
-    """Return full path name for parent of node"""
+    """Return full path name for parent of node
+
+    Arguments:
+        node (str): The node path of the node to get the parent for.
+
+    Returns:
+        str | None: The full path name of the parent node or None.
+
+    """
     parents = cmds.listRelatives(node, parent=True, fullPath=True)
     return parents[0] if parents else None
 
@@ -2436,12 +2564,13 @@ def set_scene_fps(fps, update=True):
     cmds.file(modified=True)
 
 
-def set_scene_resolution(width, height, pixelAspect):
+def set_scene_resolution(width: int, height: int, pixel_aspect: float):
     """Set the render resolution
 
     Args:
-        width(int): value of the width
-        height(int): value of the height
+        width (int): resolution width
+        height (int): resolution height
+        pixel_aspect (float): pixel aspect ratio
 
     Returns:
         None
@@ -2463,82 +2592,76 @@ def set_scene_resolution(width, height, pixelAspect):
                       "named: `%s`" % vray_node)
 
     log.info("Setting scene resolution to: %s x %s" % (width, height))
-    cmds.setAttr("%s.width" % control_node, width)
-    cmds.setAttr("%s.height" % control_node, height)
+    cmds.setAttr(f"{control_node}.width", width)
+    cmds.setAttr(f"{control_node}.height", height)
 
-    deviceAspectRatio = ((float(width) / float(height)) * float(pixelAspect))
-    cmds.setAttr(
-        "{}.{}".format(control_node, aspect_ratio_attr), deviceAspectRatio)
-    cmds.setAttr("%s.pixelAspect" % control_node, pixelAspect)
+    device_aspect_ratio: float = (
+            (float(width) / float(height)) * float(pixel_aspect)
+    )
+    cmds.setAttr(f"{control_node}.{aspect_ratio_attr}", device_aspect_ratio)
+    cmds.setAttr(f"{control_node}.pixelAspect", pixel_aspect)
 
 
-def get_fps_for_current_context():
+def get_fps_for_current_context(task_entity=None):
     """Get fps that should be set for current context.
 
-    Todos:
-        - Skip project value.
-        - Merge logic with 'get_frame_range' and 'reset_scene_resolution' ->
-            all the values in the functions can be collected at one place as
-            they have same requirements.
+    Arguments:
+        task_entity (dict, optional): Task entity to use.
+            If not provided, the current task entity is used.
+            This is mostly used for optimization purposes.
 
     Returns:
         Union[int, float]: FPS value.
     """
-    task_entity = get_current_task_entity(fields={"attrib"})
-    fps = task_entity.get("attrib", {}).get("fps")
-    if not fps:
-        project_name = get_current_project_name()
-        folder_path = get_current_folder_path()
-        folder_entity = ayon_api.get_folder_by_path(
-            project_name, folder_path, fields={"attrib.fps"}
-        ) or {}
-
-        fps = folder_entity.get("attrib", {}).get("fps")
-        if not fps:
-            project_entity = ayon_api.get_project(
-                project_name, fields=["attrib.fps"]
-            ) or {}
-            fps = project_entity.get("attrib", {}).get("fps")
-
-            if not fps:
-                fps = 25
-
+    if task_entity is None:
+        task_entity = get_current_task_entity(fields={"attrib.fps"})
+    fps = task_entity.get("attrib", {}).get("fps", 25)
     return convert_to_maya_fps(fps)
 
 
-def get_frame_range(include_animation_range=False):
+def get_frame_range(
+        include_animation_range=False,
+        task_entity=None,
+        project_settings=None
+):
     """Get the current task frame range and handles.
+
+    Note: This does *not* return the Maya time slider range.
 
     Args:
         include_animation_range (bool, optional): Whether to include
             `animationStart` and `animationEnd` keys to define the outer
             range of the timeline. It is excluded by default.
+        task_entity (dict, optional): Task entity to use.
+            If not provided, the current task entity is used.
+            This is mostly used for optimization purposes.
+        project_settings (dict, optional): Project settings to use.
+            If not provided, the current project settings are used.
+            This is mostly used for optimization purposes.
 
     Returns:
         dict: Task's expected frame range values.
 
     """
-
-    # Set frame start/end
-    project_name = get_current_project_name()
-    folder_path = get_current_folder_path()
-    task_name = get_current_task_name()
-
-    folder_entity = ayon_api.get_folder_by_path(
-        project_name,
-        folder_path,
-        fields={"id"})
-    task_entity = ayon_api.get_task_by_name(
-            project_name, folder_entity["id"], task_name
+    if task_entity is None:
+        task_entity = get_current_task_entity(
+            fields={
+                "taskType",
+                "attrib.frameStart",
+                "attrib.frameEnd",
+                "attrib.handleStart",
+                "attrib.handleEnd",
+            }
         )
-
     task_attributes = task_entity["attrib"]
 
     frame_start = task_attributes.get("frameStart")
     frame_end = task_attributes.get("frameEnd")
-
     if frame_start is None or frame_end is None:
-        cmds.warning("No edit information found for '{}'".format(folder_path))
+        # This should never happen because attributes always exist on tasks
+        cmds.warning(
+            "No frame start and frame end information found for current task."
+        )
         return
 
     handle_start = task_attributes.get("handleStart") or 0
@@ -2556,12 +2679,13 @@ def get_frame_range(include_animation_range=False):
         # Some usages of this function use the full dictionary to define
         # instance attributes for which we want to exclude the animation
         # keys. That is why these are excluded by default.
-
-        settings = get_project_settings(project_name)
+        if not project_settings:
+            project_name = get_current_project_name()
+            project_settings = get_project_settings(project_name)
 
         task_type = task_entity["taskType"]
 
-        include_handles_settings = settings["maya"]["include_handles"]
+        include_handles_settings = project_settings["maya"]["include_handles"]
 
         animation_start = frame_start
         animation_end = frame_end
@@ -2581,7 +2705,13 @@ def get_frame_range(include_animation_range=False):
     return frame_range
 
 
-def reset_frame_range(playback=True, render=True, fps=True):
+def reset_frame_range(
+    playback=True,
+    render=True,
+    fps=True,
+    task_entity=None,
+    project_settings=None
+):
     """Set frame range to current folder.
 
     Args:
@@ -2590,11 +2720,24 @@ def reset_frame_range(playback=True, render=True, fps=True):
         render (bool, Optional): Whether to set the maya render frame range.
             Defaults to True.
         fps (bool, Optional): Whether to set scene FPS. Defaults to True.
+        task_entity (dict, optional): Task entity to use.
+            If not provided, the current task entity is used.
+            This is mostly used for optimization purposes.
+        project_settings (dict, optional): Project settings to use.
+            If not provided, the current project settings are used.
+            This is mostly used for optimization purposes.
     """
     if fps:
-        set_scene_fps(get_fps_for_current_context())
+        set_scene_fps(get_fps_for_current_context(task_entity))
 
-    frame_range = get_frame_range(include_animation_range=True)
+    if not playback and not render:
+        return
+
+    frame_range = get_frame_range(
+        include_animation_range=True,
+        project_settings=project_settings,
+        task_entity=task_entity
+    )
     if not frame_range:
         # No frame range data found for folder
         return
@@ -2618,17 +2761,29 @@ def reset_frame_range(playback=True, render=True, fps=True):
         cmds.setAttr("defaultRenderGlobals.endFrame", animation_end)
 
 
-def reset_scene_resolution():
+def reset_scene_resolution(task_entity=None):
     """Apply the scene resolution  from the project definition
 
-    The scene resolution will be retrieved from the current task entity's
-    attributes.
+    The scene resolution will be retrieved from the task entity.
+
+    Arguments:
+        task_entity (dict, optional): Task entity to use.
+            If not provided, the current task entity is used.
+            This is mostly used for optimization purposes.
 
     Returns:
         None
     """
+    if task_entity is None:
+        task_entity = get_current_task_entity(
+            fields={
+                "attrib.resolutionWidth",
+                "attrib.resolutionHeight",
+                "attrib.pixelAspect",
+            }
+        )
 
-    task_attributes = get_current_task_entity(fields={"attrib"})["attrib"]
+    task_attributes = task_entity["attrib"]
 
     # Set resolution
     width = task_attributes.get("resolutionWidth", 1920)
@@ -2642,7 +2797,8 @@ def set_context_settings(
         fps=True,
         resolution=True,
         frame_range=True,
-        colorspace=True
+        colorspace=True,
+        scene_units=True
 ):
     """Apply the project settings from the project definition
 
@@ -2654,25 +2810,28 @@ def set_context_settings(
         resolution (bool): Whether to set the render resolution.
         frame_range (bool): Whether to reset the time slide frame ranges.
         colorspace (bool): Whether to reset the colorspace.
+        scene_units (bool): Whether to reset the scene units.
 
     Returns:
         None
 
     """
-    if fps:
-        # Set project fps
-        set_scene_fps(get_fps_for_current_context())
-
+    project_name = get_current_project_name()
+    project_settings = get_project_settings(project_name)
+    task_entity = get_current_task_entity()
+    reset_frame_range(
+        fps=fps,
+        playback=frame_range,
+        render=frame_range,
+        project_settings=project_settings,
+        task_entity=task_entity
+    )
     if resolution:
-        reset_scene_resolution()
-
-    # Set frame range.
-    if frame_range:
-        reset_frame_range(fps=False)
-
-    # Set colorspace
+        reset_scene_resolution(task_entity=task_entity)
     if colorspace:
-        set_colorspace()
+        set_colorspace(project_settings=project_settings)
+    if scene_units:
+        set_scene_units(project_settings=project_settings)
 
 
 def prompt_reset_context():
@@ -2720,6 +2879,12 @@ def prompt_reset_context():
             default=True
         ),
         BoolDef(
+            "scene_units",
+            label="Scene Units",
+            tooltip="Reset Workfile Linear and Angular Scale Unit",
+            default=True
+        ),
+        BoolDef(
             "instances",
             label="Publish instances",
             tooltip="Update all publish instance's folder and task to match "
@@ -2740,7 +2905,8 @@ def prompt_reset_context():
             fps=options["fps"],
             resolution=options["resolution"],
             frame_range=options["frame_range"],
-            colorspace=options["colorspace"]
+            colorspace=options["colorspace"],
+            scene_units=options["scene_units"]
         )
         if options["instances"]:
             update_content_on_context_change()
@@ -3240,12 +3406,12 @@ def update_content_on_context_change():
     """
 
     host = registered_host()
-    create_context = CreateContext(host)
-    task_entity = get_current_task_entity(fields={"attrib"})
+    create_context = CreateContext(host, discover_publish_plugins=False)
+    task_entity = create_context.get_current_task_entity()
 
     instance_values = {
         "folderPath": create_context.get_current_folder_path(),
-        "task": create_context.get_current_task_name(),
+        "task": task_entity["name"],
     }
     creator_attribute_values = {
         "frameStart": float(task_entity["attrib"]["frameStart"]),
@@ -3361,11 +3527,18 @@ def iter_shader_edits(relationships, shader_nodes, nodes_by_id, label=None):
                "attributes": attr_value}
 
 
-def set_colorspace():
-    """Set Colorspace from project configuration"""
+def set_colorspace(project_settings=None):
+    """Set Colorspace from project settings.
 
-    project_name = get_current_project_name()
-    imageio = get_project_settings(project_name)["maya"]["imageio"]
+    Arguments:
+        project_settings (dict, optional): Project settings to use.
+            If not provided, the current project settings are used.
+            This is mostly used for optimization purposes.
+    """
+    if project_settings is None:
+        project_name = get_current_project_name()
+        project_settings = get_project_settings(project_name)
+    imageio: dict = project_settings["maya"]["imageio"]
 
     if not imageio["workfile"]["enabled"]:
         log.info(
@@ -3973,7 +4146,7 @@ def get_all_children(nodes, ignore_intermediate_objects=False):
     focus on a fast query.
 
     Args:
-        nodes (iterable): List of nodes to get children for.
+        nodes (iterable[str]): List of nodes to get children for.
         ignore_intermediate_objects (bool): Ignore any children that
             are intermediate objects.
 
@@ -3981,7 +4154,6 @@ def get_all_children(nodes, ignore_intermediate_objects=False):
         set: Children of input nodes.
 
     """
-
     sel = OpenMaya.MSelectionList()
     traversed = set()
     iterator = OpenMaya.MItDag(OpenMaya.MItDag.kDepthFirst)
@@ -3995,6 +4167,11 @@ def get_all_children(nodes, ignore_intermediate_objects=False):
 
         sel.clear()
         sel.add(node)
+        obj = sel.getDependNode(0)
+        if not obj.hasFn(OpenMaya.MFn.kDagNode):
+            # Not a dag node, skip
+            continue
+
         dag = sel.getDagPath(0)
 
         iterator.reset(dag)
@@ -4151,6 +4328,103 @@ def get_reference_node_parents(ref):
     return parents
 
 
+def get_creator_identifier(node: str) -> str | None:
+    """Get the creator identifier of an instance node.
+
+    Arguments:
+        node (str): The name of the instance node.
+
+    Returns:
+        str | None: The creator identifier of the instance or None if not found.
+    """
+    if get_attribute(f"{node}.id") not in {
+        AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+    }:
+        return None
+    return get_attribute(f"{node}.creator_identifier")
+
+
+def update_animation_instance(
+    container: dict,
+    context: dict,
+    namespace: str
+) -> None:
+    """Update the name of animation instance
+
+    Args:
+        container (dict): container
+        context (dict): context
+        namespace (str): namespace
+    """
+    members = get_container_members(container)
+    object_sets = set()
+    for member in members:
+        object_sets.update(
+            cmds.listSets(object=member, extendToShape=False) or []
+        )
+    object_sets = cmds.ls(object_sets, type="objectSet")
+    create_context = CreateContext(registered_host(), discover_publish_plugins=False)
+    animation_creator_identifier = "io.openpype.creators.maya.animation"
+    animation_creator = create_context.creators.get(animation_creator_identifier)
+    variant = get_rig_animation_instance_variant(context, namespace)
+    target_name = animation_creator.get_product_name(
+        project_name=create_context.get_current_project_name(),
+        folder_entity=create_context.get_current_folder_entity(),
+        task_entity=create_context.get_current_task_entity(),
+        variant=variant,
+        instance=None
+    )
+
+    for object_set in object_sets:
+        # Ignore referenced object sets
+        if cmds.referenceQuery(object_set, isNodeReferenced=True):
+            continue
+        # Then only here confirm whether this is an animation instance, if so
+        # then we will want to auto-remove the instance
+        if get_creator_identifier(object_set) == animation_creator_identifier:
+            new_objectset = cmds.rename(object_set, target_name)
+            set_attribute(node=new_objectset, attribute="productName", value=new_objectset)
+
+
+def get_rig_animation_instance_variant(context, namespace, options=None)-> str:
+    folder_entity = context["folder"]
+    product_entity = context["product"]
+    product_type = product_entity["productType"]
+    product_base_type = product_entity.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
+    product_name = product_entity["name"]
+
+    custom_product_name = options.get("animationProductName")
+    if custom_product_name:
+        for old_key, new_key in (
+            ("{family}", "{product[basetype]}"),
+            ("{asset}", "{folder[name]}"),
+            ("{subset}", "asset"),
+        ):
+            if old_key in custom_product_name:
+                log.warning(f"Using deprecated template key '{old_key}'")
+                custom_product_name = custom_product_name.replace(
+                    old_key, new_key
+                )
+
+        formatting_data = {
+            "folder": {
+                "name": folder_entity["name"]
+            },
+            "product": {
+                "name": product_name,
+                "type": product_type,
+                "basetype": product_base_type,
+            },
+        }
+        return get_custom_namespace(
+            custom_product_name.format(**formatting_data)
+        )
+
+    return namespace
+
+
 def create_rig_animation_instance(
     nodes, context, namespace, options=None, log=None
 ):
@@ -4199,31 +4473,10 @@ def create_rig_animation_instance(
     )
     assert roots, "No root nodes in rig, this is a bug."
 
-    folder_entity = context["folder"]
-    product_entity = context["product"]
-    product_type = product_entity["productType"]
-    product_name = product_entity["name"]
-
-    custom_product_name = options.get("animationProductName")
-    if custom_product_name:
-        formatting_data = {
-            "folder": {
-                "name": folder_entity["name"]
-            },
-            "product": {
-                "type": product_type,
-                "name": product_name,
-            },
-            "asset": folder_entity["name"],
-            "subset": product_name,
-            "family": product_type
-        }
-        namespace = get_custom_namespace(
-            custom_product_name.format(**formatting_data)
-        )
+    variant = get_rig_animation_instance_variant(context, namespace, options=options)
 
     if log:
-        log.info("Creating product: {}".format(namespace))
+        log.info("Creating product: {}".format(variant))
 
     # Fill creator identifier
     creator_identifier = "io.openpype.creators.maya.animation"
@@ -4238,7 +4491,84 @@ def create_rig_animation_instance(
         cmds.select(rig_sets + roots, noExpand=True)
         create_context.create(
             creator_identifier=creator_identifier,
-            variant=namespace,
+            variant=variant,
+            pre_create_data={
+                "use_selection": True,
+                "lock_instance": options.get("lock_instance", False)
+            }
+        )
+
+
+def create_camera_instance(
+        nodes, context, namespace, options=None, log=None
+):
+    """Create a camera instance from the loaded camera nodes.
+
+    Args:
+        nodes (list): The loaded camera nodes.
+        context (dict): Representation context of the camera container.
+        namespace (str): The namespace for the new camera instance.
+        options (dict, optional): Additional options for the camera instance.
+        log (logging.Logger, optional): Logger to log to if provided.
+    """
+    if options is None:
+        options = {}
+
+    referenced_nodes: list[str] = [
+        node for node in nodes 
+        if cmds.referenceQuery(node, isNodeReferenced=True)
+    ]
+    camera_nodes: list[str] = cmds.listRelatives(
+        referenced_nodes, children=True, type="camera", fullPath=True
+    ) or []
+
+    folder_entity: dict = context["folder"]
+    product_entity: dict = context["product"]
+    product_type: str = product_entity["productType"]
+    product_base_type: Optional[str] = product_entity.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
+    product_name: str = product_entity["name"]
+
+    custom_product_name = options.get("cameraProductName")
+    if custom_product_name:
+        for old_key, new_key in (
+            ("{family}", "{product[basetype]}"),
+            ("{asset}", "{folder[name]}"),
+            ("{subset}", "asset"),
+        ):
+            if old_key in custom_product_name:
+                log.warning(f"Using deprecated template key '{old_key}'")
+                custom_product_name = custom_product_name.replace(
+                    old_key, new_key
+                )
+
+        formatting_data = {
+            "folder": {
+                "name": folder_entity["name"],
+            },
+            "product": {
+                "name": product_name,
+                "type": product_type,
+                "basetype": product_base_type,
+            },
+        }
+        namespace = get_custom_namespace(
+            custom_product_name.format(**formatting_data)
+        )
+    if log:
+        log.info(f"Creating product: {namespace}")
+
+    # Fill creator identifier
+    creator_identifier = "io.openpype.creators.maya.camera"
+
+    host = registered_host()
+    create_context = CreateContext(host)
+    with maintained_selection():
+        cmds.select(camera_nodes, noExpand=True)
+        create_context.create(
+            creator_identifier=creator_identifier,
+            variant=custom_product_name if custom_product_name else f"_{product_name}",
             pre_create_data={"use_selection": True}
         )
 
@@ -4443,3 +4773,181 @@ def force_shader_assignments_to_faces(shapes):
         for shading_engine, original_members in original_assignments.items():
             cmds.sets(clear=shading_engine)
             cmds.sets(original_members, forceElement=shading_engine)
+
+
+def nodetype_exists(nodetype: str) -> bool:
+    """Return whether node type exists in the current Maya session.
+
+    This returns whether it's registered as a node type to maya, it does not
+    check whether it exists in the current scene.
+
+    Args:
+        nodetype (str): The node type name to check for existence.
+
+    Returns:
+        bool: True if the node type exists, False otherwise.
+    """
+    # If the node type does not exist, Maya will raise a RuntimeError.
+    try:
+        cmds.nodeType(nodetype, isTypeName=True)
+        return True
+    except RuntimeError:
+        return False
+
+
+def set_scene_units(project_settings=None):
+    """Set the Maya scene units"""
+    linear_unit, angular_unit = get_scene_units_settings(
+        project_settings=project_settings
+    )
+    cmds.currentUnit(linear=linear_unit, angle=angular_unit)
+
+
+def validate_scene_units() -> bool:
+    """Validate whether scene units match AYON settings
+
+    If not headless and it does not match, a pop-up dialog is
+    shown to the user with a choice to fix it automatically.
+
+    Returns:
+        bool: Whether Maya scene units matches preferences from AYON settings
+    """
+    linear_unit, angular_unit = get_scene_units_settings()
+    current_linear_unit = cmds.currentUnit(query=True, linear=True)
+    current_angular_unit = cmds.currentUnit(query=True, angle=True)
+    unit_match = (
+        current_linear_unit == linear_unit and
+        current_angular_unit == angular_unit
+    )
+    if not unit_match and not IS_HEADLESS:
+        from ayon_core.tools.utils import PopupUpdateKeys
+
+        parent = get_main_window()
+
+        dialog = PopupUpdateKeys(parent=parent)
+        dialog.setModal(True)
+        dialog.setWindowTitle("Maya scene does not match project scene units")
+        message = (
+            f"Scene units ({current_linear_unit},"
+            f"{current_angular_unit}) does not match "
+            f"project scene units ({linear_unit}, {angular_unit})"
+        )
+        dialog.set_message(message)
+        dialog.set_button_text("Fix")
+
+        # Set new text for button (add optional argument for the popup?)
+        def on_click():
+            set_scene_units()
+
+        dialog.on_clicked_state.connect(on_click)
+        dialog.show()
+
+        return False
+    return unit_match
+
+
+def get_scene_units_settings(project_settings=None)-> tuple[str, str]:
+    """Function to return preferred linear unit and angular scale from settings
+
+    Args:
+        project_settings (dict, optional): Project Name. Defaults to None.
+
+    Returns:
+        tuple[str, str]: linear scene unit, angular scene unit
+    """
+    if project_settings is None:
+        project_name = get_current_project_name()
+        project_settings = get_project_settings(project_name)
+
+    scene_units = project_settings["maya"]["scene_units"]
+    linear_unit = scene_units.get("linear_units", "cm")
+    angular_unit = scene_units.get("angular_units", "deg")
+    return linear_unit, angular_unit
+
+
+def apply_connections(connections, target_nodes_by_id, source_nodes_by_id):
+    """Connect texture reference object nodes to the target object
+    nodes if there is one.
+
+    Args:
+        connections (list[dict[str, Any]]): list of texture reference
+        objects connection data
+        target_nodes_by_id (dict[str, list[str]]): The dict with target shape node ids
+        source_nodes_by_id (dict[str, list[str]]): The dict with texture reference node ids.
+    """
+    # Compare loaded connections to scene.
+    for connection in connections:
+        source_node = next(
+            iter(source_nodes_by_id.get(
+            connection["sourceID"], [])
+            ), None
+        )
+
+        target_nodes = target_nodes_by_id.get(connection["destinationID"], [])
+
+        if not source_node or not target_nodes:
+            self.log.debug(
+                "Could not find nodes for reference input:\n" +
+                json.dumps(connection, indent=4, sort_keys=True)
+            )
+            continue
+
+        source_attr, target_attr = connection["connections"]
+
+        if not cmds.attributeQuery(
+            source_attr, node=source_node, exists=True
+        ):
+            self.log.debug(
+                "Could not find attribute {} on node {} for "
+                "reference input:\n{}".format(
+                    source_attr,
+                    source_node,
+                    json.dumps(
+                        connection, indent=4, sort_keys=True
+                    )
+                )
+            )
+            continue
+
+        for target_node in target_nodes:
+            if target_node == source_node:
+                self.log.debug(
+                    f"Skipping connection to itself for {source_node} "
+                    f"connection {source_attr}->{target_attr}."
+                )
+                continue
+
+            if not cmds.attributeQuery(
+                target_attr, node=target_node, exists=True
+            ):
+                self.log.debug(
+                    "Could not find attribute {} on node {} for "
+                    "reference input:\n{}".format(
+                        target_attr,
+                        target_node,
+                        json.dumps(
+                            connection, indent=4, sort_keys=True
+                        )
+                    )
+                )
+                continue
+
+            source_plug = f"{source_node}.{source_attr}"
+            target_plug = f"{target_node}.{target_attr}"
+
+            if cmds.isConnected(
+                source_plug, target_plug, ignoreUnitConversion=True
+            ):
+                self.log.debug(
+                    "Connection already exists: {} -> {}".format(
+                        source_plug, target_plug
+                    )
+                )
+                continue
+
+            cmds.connectAttr(source_plug, target_plug, force=True)
+            self.log.debug(
+                "Connected attributes: {} -> {}".format(
+                    source_plug, target_plug
+                )
+            )

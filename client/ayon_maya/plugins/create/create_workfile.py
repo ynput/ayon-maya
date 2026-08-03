@@ -9,10 +9,14 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
     """Workfile auto-creator."""
     identifier = "io.openpype.creators.maya.workfile"
     label = "Workfile"
-    product_type = "workfile"
+    product_base_type = "workfile"
+    product_type = product_base_type
     icon = "fa5.file"
 
     default_variant = "Main"
+
+    settings_category = "maya"
+    is_mandatory = False
 
     def create(self):
 
@@ -33,29 +37,24 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
 
         if current_instance is None:
             product_name = self.get_product_name(
-                project_name,
-                folder_entity,
-                task_entity,
-                variant,
-                host_name,
+                project_name=project_name,
+                folder_entity=folder_entity,
+                task_entity=task_entity,
+                variant=variant,
+                host_name=host_name,
             )
             data = {
                 "folderPath": folder_path,
                 "task": task_name,
                 "variant": variant
             }
-            data.update(
-                self.get_dynamic_data(
-                    project_name,
-                    folder_entity,
-                    task_entity,
-                    variant,
-                    host_name,
-                    current_instance)
-            )
             self.log.info("Auto-creating workfile instance...")
             current_instance = CreatedInstance(
-                self.product_type, product_name, data, self
+                product_base_type=self.product_base_type,
+                product_type=self.product_base_type,
+                product_name=product_name,
+                data=data,
+                creator=self,
             )
             self._add_instance_to_context(current_instance)
         elif (
@@ -64,16 +63,21 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
         ):
             # Update instance context if is not the same
             product_name = self.get_product_name(
-                project_name,
-                folder_entity,
-                task_entity,
-                variant,
-                host_name,
+                project_name=project_name,
+                folder_entity=folder_entity,
+                task_entity=task_entity,
+                variant=variant,
+                host_name=host_name,
             )
 
             current_instance["folderPath"] = folder_path
             current_instance["task"] = task_name
             current_instance["productName"] = product_name
+
+        # The 'mandatory' functionality is available since ayon-core 1.4.1
+        #   or later.
+        if hasattr(current_instance, "set_mandatory"):
+            current_instance.set_mandatory(self.is_mandatory)
 
     def collect_instances(self):
         self.cache_instance_data(self.collection_shared_data)

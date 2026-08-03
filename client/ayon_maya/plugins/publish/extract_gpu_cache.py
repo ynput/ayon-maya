@@ -11,6 +11,7 @@ class ExtractGPUCache(plugin.MayaExtractorPlugin,
 
     label = "GPU Cache"
     families = ["model", "animation", "pointcache"]
+    targets = ["local", "remote"]
     step = 1.0
     stepSave = 1
     optimize = True
@@ -21,6 +22,10 @@ class ExtractGPUCache(plugin.MayaExtractorPlugin,
 
     def process(self, instance):
         if not self.is_active(instance.data):
+            return
+
+        if instance.data.get("farm"):
+            self.log.debug("Should be processed on farm, skipping.")
             return
 
         cmds.loadPlugin("gpuCache", quiet=True)

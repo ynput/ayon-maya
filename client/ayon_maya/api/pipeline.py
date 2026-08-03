@@ -80,6 +80,16 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         super(MayaHost, self).__init__()
         self._op_events = {}
 
+    def get_app_information(self):
+        from ayon_core.host import ApplicationInformation
+
+        version = cmds.about(version=True)
+
+        return ApplicationInformation(
+            app_name="Maya",
+            app_version=version,
+        )
+
     def install(self):
         project_name = get_current_project_name()
         project_settings = get_project_settings(project_name)
@@ -163,12 +173,20 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             return {}
 
         data = data[0]  # Maya seems to return a list
+        # Maya 2027+ does not return bytes, so we convert it
+        if int(cmds.about(version=True)) >= 2027 and isinstance(data, str):
+            data = data.encode("utf-8")
         decoded = base64.b64decode(data).decode("utf-8")
         return json.loads(decoded)
 
     def update_context_data(self, data, changes):
         json_str = json.dumps(data)
+        # Always base64 encode
         encoded = base64.b64encode(json_str.encode("utf-8"))
+        # Convert bytes to str for fileInfo storage
+        # fileInfo expects a string value, not bytes
+        if int(cmds.about(version=True)) >= 2027 and isinstance(encoded, bytes):
+            encoded = encoded.decode("utf-8")
         return cmds.fileInfo("OpenPypeContext", encoded)
 
     def _register_callbacks(self):
@@ -279,7 +297,15 @@ def _set_project():
         else:
             raise
 
-    cmds.workspace(workdir, openWorkspace=True)
+    try:
+        cmds.workspace(workdir, openWorkspace=True)
+    except RuntimeError:
+        # Allow to pass through with an error log in case `workspace.mel`
+        # may have been invalid or setting workspace fails for some other
+        # reason.
+        log.error(
+            "Failed to set Maya workspace to '%s': %s", workdir, exc_info=True
+        )
 
 
 def _on_maya_initialized(*args):
@@ -553,7 +579,7 @@ def on_init():
 
 def on_before_save():
     """Run validation for scene's FPS prior to saving"""
-    return lib.validate_fps()
+    return lib.validate_fps() and lib.validate_scene_units()
 
 
 def on_after_save():
@@ -628,6 +654,7 @@ def on_open():
     # Validate FPS after update_task_from_path to
     # ensure it is using correct FPS for the folder
     lib.validate_fps()
+    lib.validate_scene_units()
     lib.fix_incompatible_containers()
 
     if any_outdated_containers():
@@ -656,10 +683,24 @@ def on_open():
 
 
 def on_new():
-    """Set project resolution and fps when create a new file"""
+    """Set project resolution and fps when create a new file.
+    If the project has a workfile template, create it.
+    """
+    from .workfile_template_builder import create_first_workfile_template
+
+    project_name = get_current_project_name()
+    project_settings = get_project_settings(project_name)
+    maya_settings = project_settings["maya"]
+    should_create_template = (
+        not os.getenv("AYON_MAYA_WORKFILE_PATH")
+        or maya_settings["open_workfile_post_initialization"]
+    )
+
     log.info("Running callback on new..")
     with lib.suspended_refresh():
         lib.set_context_settings()
+        if should_create_template:
+            create_first_workfile_template()
 
     _remove_workfile_lock()
 

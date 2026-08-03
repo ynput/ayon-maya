@@ -13,7 +13,7 @@ class CollectReview(plugin.MayaInstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.3
     label = 'Collect Review Data'
-    families = ["review"]
+    families = ["review.playblast"]
 
     def process(self, instance):
 
@@ -41,8 +41,8 @@ class CollectReview(plugin.MayaInstancePlugin):
         if camera is not None:
             attr = camera + ".focalLength"
             if lib.get_attribute_input(attr):
-                start = instance.data["frameStart"]
-                end = instance.data["frameEnd"] + 1
+                start = instance.data["frameStartHandle"]
+                end = instance.data["frameEndHandle"] + 1
                 time_range = range(int(start), int(end))
                 focal_length = [cmds.getAttr(attr, time=t) for t in time_range]
             else:
@@ -70,12 +70,13 @@ class CollectReview(plugin.MayaInstancePlugin):
             data = reviewable_inst.data
 
             self.log.debug(
-                'Adding review family to {}'.format(reviewable_product)
+                'Adding review families to {}'.format(reviewable_product)
             )
+            review_families = ["review", "review.playblast"]
             if data.get('families'):
-                data['families'].append('review')
+                data['families'].extend(review_families)
             else:
-                data['families'] = ['review']
+                data['families'] = review_families
 
             data["cameras"] = cameras
             data['review_camera'] = camera

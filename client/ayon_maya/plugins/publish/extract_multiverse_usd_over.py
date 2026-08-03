@@ -1,11 +1,13 @@
 import os
 
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api.lib import maintained_selection
 from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractMultiverseUsdOverride(plugin.MayaExtractorPlugin):
+class ExtractMultiverseUsdOverride(plugin.MayaExtractorPlugin,
+                                   OptionalPyblishPluginMixin):
     """Extractor for Multiverse USD Override data.
 
     This will extract settings for a Multiverse Write Override operation:
@@ -71,6 +73,8 @@ class ExtractMultiverseUsdOverride(plugin.MayaExtractorPlugin):
         }
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         # Load plugin first
         cmds.loadPlugin("MultiverseForMaya", quiet=True)
 

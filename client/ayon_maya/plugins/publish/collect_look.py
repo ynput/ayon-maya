@@ -344,7 +344,12 @@ class CollectLook(plugin.MayaInstancePlugin):
             "attributes": attributes,
             "relationships": sets
         }
-
+        if instance.data.get("includeTextureReferenceObjects", False):
+            collections, texture_object_nodes = (
+                self.collect_texture_reference_object_inputs(instance)
+            )
+            instance.data["lookData"]["connections"] = collections
+            instance.data["textureReferenceObjects"] = texture_object_nodes
         # Collect file nodes used by shading engines (if we have any)
         files = []
         look_sets = list(sets.keys())
@@ -654,6 +659,54 @@ class CollectLook(plugin.MayaInstancePlugin):
                 "files": files,
                 "color_space": color_space
             }
+
+    def collect_texture_reference_object_inputs(self, instance):
+        """Collect the inputs for all nodes in the input_SET"""
+
+        # Get the input meshes information
+        input_content = instance.data["setMembers"]
+
+        # Include children
+        input_content += cmds.listRelatives(input_content,
+                                            allDescendents=True,
+                                            fullPath=True) or []
+
+        # Ignore intermediate objects
+        input_content = cmds.ls(
+            input_content, 
+            long=True, 
+            noIntermediate=True,
+            type="mesh"
+        )
+        if not input_content:
+            return []
+
+        attrs = [f"{mesh}.referenceObject" for mesh in set(input_content)]
+        # Store all connections
+        connections = cmds.listConnections(attrs,
+                                           source=True,
+                                           destination=False,
+                                           connections=True,
+                                           # Only allow inputs from dagNodes
+                                           # (avoid display layers, etc.)
+                                           type="mesh",
+                                           plugs=True) or []
+        connections = cmds.ls(connections, long=True)      # Ensure long names
+
+        inputs = []
+        texture_object_nodes = []
+        for dest, src in lib.pairwise(connections):
+            source_node, source_attr = src.split(".", 1)
+            dest_node, dest_attr = dest.split(".", 1)
+
+            inputs.append({
+                "connections": [source_attr, dest_attr],
+                "sourceID": lib.get_id(source_node),
+                "destinationID": lib.get_id(dest_node)
+            })
+            texture_object_nodes.append(source_node)
+
+        return inputs, texture_object_nodes
 
 
 class CollectModelRenderSets(CollectLook):

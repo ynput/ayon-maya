@@ -7,10 +7,13 @@ from typing import List, Dict, Any, Optional
 from ayon_core.pipeline import (
     InventoryAction,
     get_repres_contexts,
-    get_representation_path,
     get_current_project_name
 )
-from ayon_maya.api.lib import get_container_members, get_node_name
+from ayon_maya.api.lib import (
+    get_container_members,
+    get_node_name,
+    get_representation_path_by_project,
+)
 from ayon_api import (
     get_representation_by_id,
     get_representation_by_name
@@ -56,7 +59,7 @@ class ConnectOrnatrixRig(InventoryAction):
 
     def process(self, containers):
         # Categorize containers by product type.
-        containers_by_product_type = defaultdict(list)
+        containers_by_product_base_type = defaultdict(list)
         repre_ids = {
             container["representation"]
             for container in containers
@@ -66,12 +69,17 @@ class ConnectOrnatrixRig(InventoryAction):
             repre_id = container["representation"]
             repre_context = repre_contexts_by_id[repre_id]
 
-            product_type = repre_context["product"]["productType"]
-            containers_by_product_type[product_type].append(container)
+            product_entity = repre_context["product"]
+            product_base_type = product_entity.get("productBaseType")
+            if not product_base_type:
+                product_base_type = product_entity["productType"]
+            containers_by_product_base_type[product_base_type].append(
+                container
+            )
 
         # Validate to only 1 source container.
-        source_containers = containers_by_product_type.get("animation", [])
-        source_containers += containers_by_product_type.get("pointcache", [])
+        source_containers = containers_by_product_base_type["animation"]
+        source_containers += containers_by_product_base_type["pointcache"]
         source_container_namespaces = [
             x["namespace"] for x in source_containers
         ]
@@ -85,12 +93,23 @@ class ConnectOrnatrixRig(InventoryAction):
             self.display_warning(message)
             return
 
+        ox_rig_containers = containers_by_product_base_type["oxrig"]
+        if not ox_rig_containers:
+            self.display_warning(
+                "Select at least one oxrig container"
+            )
+            return
+
         source_container = source_containers[0]
         source_repre_id = source_container["representation"]
         source_namespace = source_container["namespace"]
+        source_project = source_container.get(
+            "project_name", get_current_project_name()
+        )
 
         # Validate source representation is an alembic.
-        source_path = get_representation_path(
+        source_path = get_representation_path_by_project(
+            source_project,
             repre_contexts_by_id[source_repre_id]["representation"]
         ).replace("\\", "/")
         message = "Animation container \"{}\" is not an alembic:\n{}".format(
@@ -98,13 +117,6 @@ class ConnectOrnatrixRig(InventoryAction):
         )
         if not source_path.endswith(".abc"):
             self.display_warning(message)
-            return
-
-        ox_rig_containers = containers_by_product_type.get("oxrig")
-        if not ox_rig_containers:
-            self.display_warning(
-                "Select at least one oxrig container"
-            )
             return
 
         # Define a mapping to quickly search among the members
@@ -124,7 +136,9 @@ class ConnectOrnatrixRig(InventoryAction):
                 representation_name="rigsettings")
             if not settings_repre:
                 continue
-            settings_file = get_representation_path(settings_repre)
+            settings_file = get_representation_path_by_project(
+                project_name, settings_repre
+            )
             if not os.path.exists(settings_file):
                 continue
 

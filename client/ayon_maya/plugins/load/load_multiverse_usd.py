@@ -3,7 +3,6 @@ import os
 
 import maya.cmds as cmds
 from ayon_api import get_representation_by_id
-from ayon_core.pipeline import get_representation_path
 from ayon_maya.api import plugin
 from ayon_maya.api.lib import maintained_selection, namespaced, unique_namespace
 from ayon_maya.api.pipeline import containerise
@@ -13,7 +12,7 @@ from maya import mel
 class MultiverseUsdLoader(plugin.Loader):
     """Read USD data in a Multiverse Compound"""
 
-    product_types = {
+    product_base_types = {
         "model",
         "usd",
         "mvUsdComposition",
@@ -21,7 +20,9 @@ class MultiverseUsdLoader(plugin.Loader):
         "pointcache",
         "animation",
     }
-    representations = {"usd", "usda", "usdc", "usdz", "abc"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"usd", "usda", "usdc", "usdz", "abc"}
 
     label = "Load USD to Multiverse"
     order = -10
@@ -72,7 +73,7 @@ class MultiverseUsdLoader(plugin.Loader):
 
         project_name = context["project"]["name"]
         repre_entity = context["representation"]
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         prev_representation_id = cmds.getAttr("{}.representation".format(node))
         prev_representation = get_representation_by_id(project_name,
                                                        prev_representation_id)
