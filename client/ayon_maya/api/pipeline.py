@@ -687,14 +687,13 @@ def on_new():
     If the project has a workfile template, create it.
     """
     from .workfile_template_builder import trigger_on_new_file
-
-    # Skip creating template when a startup workfile is explicitly provided.
-    should_create_template = not os.getenv("AYON_MAYA_WORKFILE_PATH")
-
+    project_name = get_current_project_name()
+    project_settings = get_project_settings(project_name)
+    maya_settings = project_settings["maya"]
     log.info("Running callback on new..")
     with lib.suspended_refresh():
         lib.set_context_settings()
-        if should_create_template:
+        if maya_settings["open_workfile_post_initialization"]:
             trigger_on_new_file()
 
     _remove_workfile_lock()
