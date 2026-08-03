@@ -1,4 +1,5 @@
 import json
+import logging
 
 from maya import cmds
 
@@ -10,6 +11,7 @@ from ayon_core.pipeline import (
 )
 from ayon_core.pipeline.workfile.workfile_template_builder import (
     TemplateAlreadyImported,
+    TemplateProfileNotFound,
     AbstractTemplateBuilder,
     PlaceholderPlugin,
     PlaceholderItem,
@@ -19,6 +21,8 @@ from ayon_core.tools.workfile_template_build import (
 )
 
 from .lib import read, imprint, get_main_window
+
+log = logging.getLogger(__name__)
 
 PLACEHOLDER_SET = "PLACEHOLDERS_SET"
 
@@ -242,6 +246,17 @@ class MayaPlaceholderPlugin(PlaceholderPlugin):
                 data[key] = json.loads(value)
 
         return data
+
+
+def create_first_workfile_template(*args):
+    builder = MayaTemplateBuilder(registered_host())
+    try:
+        builder.build_template(workfile_creation_enabled=True)
+
+    except TemplateProfileNotFound:
+        log.warning(
+            "Template profile not found. Skipping..."
+        )
 
 
 def build_workfile_template(*args):

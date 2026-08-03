@@ -10,6 +10,7 @@ import logging
 import contextlib
 from collections import OrderedDict, defaultdict
 from math import ceil
+from typing import Optional
 
 import capture
 import clique
@@ -120,12 +121,18 @@ def unlocked(node):
         node (str): The name of the node to unlock.
     """
     has_locked = cmds.lockNode(node, query=True, lock=True)[0]
+    node_uuid = cmds.ls(node, uuid=True)[0]
     cmds.lockNode(node, lock=False)
-
     try:
         yield
 
     finally:
+        if not cmds.objExists(node):
+            # Node might have been renamed or deleted; try and find it by uuid.
+            nodes_from_id = cmds.ls(node_uuid, long=True) or []
+            if not nodes_from_id:
+                return
+            node = nodes_from_id[0]
         cmds.lockNode(node, lock=has_locked)
 
 
@@ -1902,12 +1909,23 @@ def get_container_members(container, include_reference_associated_nodes=False):
         all_members.update(reference_members)
 
         if include_reference_associated_nodes:
-            associated_nodes: list[str] = cmds.listConnections(
-                f"{ref}.associatedNode",
-                source=True,
-                destination=False,
-                fullNodeName=True
-            ) or []
+            if cmds.about(apiVersion=True) >= 20240000:
+                associated_nodes: list[str] = cmds.listConnections(
+                    f"{ref}.associatedNode",
+                    source=True,
+                    destination=False,
+                    fullNodeName=True
+                ) or []
+            else:
+                # fullNodeName argument is Maya 2023.1+
+                associated_nodes = cmds.listConnections(
+                    f"{ref}.associatedNode",
+                    source=True,
+                    destination=False
+                ) or []
+                associated_nodes = cmds.ls(
+                    associated_nodes, long=True
+                ) or []
             all_members.update(associated_nodes)
 
     return list(all_members)
@@ -1940,6 +1958,8 @@ def list_looks(project_name, folder_id):
         list[dict[str, Any]]: List of look products.
 
     """
+    # TODO this should filter by 'product_base_types'
+    # - can be used only with server version >= 1.14.0
     return list(ayon_api.get_products(
         project_name, folder_ids=[folder_id], product_types={"look"}
     ))
@@ -4325,6 +4345,87 @@ def get_creator_identifier(node: str) -> str | None:
     return get_attribute(f"{node}.creator_identifier")
 
 
+def update_animation_instance(
+    container: dict,
+    context: dict,
+    namespace: str
+) -> None:
+    """Update the name of animation instance
+
+    Args:
+        container (dict): container
+        context (dict): context
+        namespace (str): namespace
+    """
+    members = get_container_members(container)
+    object_sets = set()
+    for member in members:
+        object_sets.update(
+            cmds.listSets(object=member, extendToShape=False) or []
+        )
+    object_sets = cmds.ls(object_sets, type="objectSet")
+    create_context = CreateContext(registered_host(), discover_publish_plugins=False)
+    animation_creator_identifier = "io.openpype.creators.maya.animation"
+    animation_creator = create_context.creators.get(animation_creator_identifier)
+    variant = get_rig_animation_instance_variant(context, namespace)
+    target_name = animation_creator.get_product_name(
+        project_name=create_context.get_current_project_name(),
+        folder_entity=create_context.get_current_folder_entity(),
+        task_entity=create_context.get_current_task_entity(),
+        variant=variant,
+        instance=None
+    )
+
+    for object_set in object_sets:
+        # Ignore referenced object sets
+        if cmds.referenceQuery(object_set, isNodeReferenced=True):
+            continue
+        # Then only here confirm whether this is an animation instance, if so
+        # then we will want to auto-remove the instance
+        if get_creator_identifier(object_set) == animation_creator_identifier:
+            new_objectset = cmds.rename(object_set, target_name)
+            set_attribute(node=new_objectset, attribute="productName", value=new_objectset)
+
+
+def get_rig_animation_instance_variant(context, namespace, options=None)-> str:
+    folder_entity = context["folder"]
+    product_entity = context["product"]
+    product_type = product_entity["productType"]
+    product_base_type = product_entity.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
+    product_name = product_entity["name"]
+
+    custom_product_name = options.get("animationProductName")
+    if custom_product_name:
+        for old_key, new_key in (
+            ("{family}", "{product[basetype]}"),
+            ("{asset}", "{folder[name]}"),
+            ("{subset}", "asset"),
+        ):
+            if old_key in custom_product_name:
+                log.warning(f"Using deprecated template key '{old_key}'")
+                custom_product_name = custom_product_name.replace(
+                    old_key, new_key
+                )
+
+        formatting_data = {
+            "folder": {
+                "name": folder_entity["name"]
+            },
+            "product": {
+                "name": product_name,
+                "type": product_type,
+                "basetype": product_base_type,
+            },
+        }
+        return get_custom_namespace(
+            custom_product_name.format(**formatting_data)
+        )
+
+    return namespace
+
+
 def create_rig_animation_instance(
     nodes, context, namespace, options=None, log=None
 ):
@@ -4373,31 +4474,10 @@ def create_rig_animation_instance(
     )
     assert roots, "No root nodes in rig, this is a bug."
 
-    folder_entity = context["folder"]
-    product_entity = context["product"]
-    product_type = product_entity["productType"]
-    product_name = product_entity["name"]
-
-    custom_product_name = options.get("animationProductName")
-    if custom_product_name:
-        formatting_data = {
-            "folder": {
-                "name": folder_entity["name"]
-            },
-            "product": {
-                "type": product_type,
-                "name": product_name,
-            },
-            "asset": folder_entity["name"],
-            "subset": product_name,
-            "family": product_type
-        }
-        namespace = get_custom_namespace(
-            custom_product_name.format(**formatting_data)
-        )
+    variant = get_rig_animation_instance_variant(context, namespace, options=options)
 
     if log:
-        log.info("Creating product: {}".format(namespace))
+        log.info("Creating product: {}".format(variant))
 
     # Fill creator identifier
     creator_identifier = "io.openpype.creators.maya.animation"
@@ -4412,7 +4492,7 @@ def create_rig_animation_instance(
         cmds.select(rig_sets + roots, noExpand=True)
         create_context.create(
             creator_identifier=creator_identifier,
-            variant=namespace,
+            variant=variant,
             pre_create_data={
                 "use_selection": True,
                 "lock_instance": options.get("lock_instance", False)
@@ -4446,21 +4526,33 @@ def create_camera_instance(
     folder_entity: dict = context["folder"]
     product_entity: dict = context["product"]
     product_type: str = product_entity["productType"]
+    product_base_type: Optional[str] = product_entity.get("productBaseType")
+    if not product_base_type:
+        product_base_type = product_type
     product_name: str = product_entity["name"]
 
     custom_product_name = options.get("cameraProductName")
     if custom_product_name:
+        for old_key, new_key in (
+            ("{family}", "{product[basetype]}"),
+            ("{asset}", "{folder[name]}"),
+            ("{subset}", "asset"),
+        ):
+            if old_key in custom_product_name:
+                log.warning(f"Using deprecated template key '{old_key}'")
+                custom_product_name = custom_product_name.replace(
+                    old_key, new_key
+                )
+
         formatting_data = {
             "folder": {
-                "name": folder_entity["name"]
+                "name": folder_entity["name"],
             },
             "product": {
-                "type": product_type,
                 "name": product_name,
+                "type": product_type,
+                "basetype": product_base_type,
             },
-            "asset": folder_entity["name"],
-            "subset": product_name,
-            "family": product_type
         }
         namespace = get_custom_namespace(
             custom_product_name.format(**formatting_data)

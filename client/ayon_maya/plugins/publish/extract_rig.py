@@ -2,12 +2,14 @@
 """Extract rig as Maya Scene."""
 import os
 
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api.lib import maintained_selection
 from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractRig(plugin.MayaExtractorPlugin):
+class ExtractRig(plugin.MayaExtractorPlugin,
+                 OptionalPyblishPluginMixin):
     """Extract rig as Maya Scene."""
 
     label = "Extract Rig (Maya Scene)"
@@ -16,6 +18,9 @@ class ExtractRig(plugin.MayaExtractorPlugin):
 
     def process(self, instance):
         """Plugin entry point."""
+        if not self.is_active(instance.data):
+            return
+
         maya_settings = instance.context.data["project_settings"]["maya"]
         ext_mapping = {
             item["name"]: item["value"]

@@ -1,12 +1,14 @@
 import os
 
 import clique
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractPlayblast(plugin.MayaExtractorPlugin):
+class ExtractPlayblast(plugin.MayaExtractorPlugin,
+                       OptionalPyblishPluginMixin):
     """Extract viewport playblast.
 
     Takes review camera and creates review Quicktime video based on viewport
@@ -21,6 +23,8 @@ class ExtractPlayblast(plugin.MayaExtractorPlugin):
     profiles = None
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         self.log.debug("Extracting playblast..")
 
         # get scene fps

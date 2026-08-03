@@ -19,7 +19,10 @@ from ayon_core.lib import (
     run_subprocess,
     source_hash,
 )
-from ayon_core.pipeline import KnownPublishError
+from ayon_core.pipeline import (
+    KnownPublishError,
+    OptionalPyblishPluginMixin,
+)
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from maya import cmds  # noqa
@@ -403,7 +406,8 @@ class MakeTX(TextureProcessor):
             return False
 
 
-class ExtractLook(plugin.MayaExtractorPlugin):
+class ExtractLook(plugin.MayaExtractorPlugin,
+                  OptionalPyblishPluginMixin):
     """Extract Look (Maya Scene + JSON)
 
     Only extracts the sets (shadingEngines and alike) alongside a .json file
@@ -454,6 +458,8 @@ class ExtractLook(plugin.MayaExtractorPlugin):
             instance: Instance to process.
 
         """
+        if not self.is_active(instance.data):
+            return
         _scene_type = self.get_maya_scene_type(instance)
 
         # Define extract output file path

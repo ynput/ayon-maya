@@ -44,7 +44,7 @@ class ValidateVRayDistributedRendering(plugin.MayaInstancePlugin,
                 "Please ensure a VRay Settings Node is present"
             )
 
-        renderlayer = instance.data['renderlayer']
+        renderlayer = instance.data["renderlayer"]
 
         if not lib.get_attr_in_layer(self.enabled_attr, layer=renderlayer):
             # If not distributed rendering enabled, ignore..

@@ -21,7 +21,7 @@ class ValidateRigContents(plugin.MayaInstancePlugin,
     order = ValidateContentsOrder
     label = "Rig Contents"
     families = ["rig"]
-    action = [ayon_maya.api.action.SelectInvalidAction]
+    actions = [ayon_maya.api.action.SelectInvalidAction]
     optional = True
 
     accepted_output = ["mesh", "transform"]
@@ -230,7 +230,7 @@ class ValidateSkeletonRigContents(ValidateRigContents):
             list[AbstractAttrDef]: Attribute definitions for plugin.
 
         """
-        if instance.product_type != "rig":
+        if instance.product_base_type != "rig":
             return []
 
         return cls.get_attribute_defs()

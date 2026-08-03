@@ -11,8 +11,8 @@ class CreateYetiRig(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.yetirig"
     label = "Yeti Rig"
-    product_type = "yetiRig"
     product_base_type = "yetiRig"
+    product_type = product_base_type
     icon = "usb"
 
     def create(self, product_name, instance_data, pre_create_data):

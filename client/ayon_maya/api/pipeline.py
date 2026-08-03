@@ -173,12 +173,20 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             return {}
 
         data = data[0]  # Maya seems to return a list
+        # Maya 2027+ does not return bytes, so we convert it
+        if int(cmds.about(version=True)) >= 2027 and isinstance(data, str):
+            data = data.encode("utf-8")
         decoded = base64.b64decode(data).decode("utf-8")
         return json.loads(decoded)
 
     def update_context_data(self, data, changes):
         json_str = json.dumps(data)
+        # Always base64 encode
         encoded = base64.b64encode(json_str.encode("utf-8"))
+        # Convert bytes to str for fileInfo storage
+        # fileInfo expects a string value, not bytes
+        if int(cmds.about(version=True)) >= 2027 and isinstance(encoded, bytes):
+            encoded = encoded.decode("utf-8")
         return cmds.fileInfo("OpenPypeContext", encoded)
 
     def _register_callbacks(self):
@@ -727,10 +735,24 @@ def on_open():
 
 
 def on_new():
-    """Set project resolution and fps when create a new file"""
+    """Set project resolution and fps when create a new file.
+    If the project has a workfile template, create it.
+    """
+    from .workfile_template_builder import create_first_workfile_template
+
+    project_name = get_current_project_name()
+    project_settings = get_project_settings(project_name)
+    maya_settings = project_settings["maya"]
+    should_create_template = (
+        not os.getenv("AYON_MAYA_WORKFILE_PATH")
+        or maya_settings["open_workfile_post_initialization"]
+    )
+
     log.info("Running callback on new..")
     with lib.suspended_refresh():
         lib.set_context_settings()
+        if should_create_template:
+            create_first_workfile_template()
 
     _remove_workfile_lock()
 

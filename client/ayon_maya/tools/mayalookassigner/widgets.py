@@ -3,7 +3,6 @@ from collections import defaultdict
 
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.tools.utils.models import TreeModel
 from ayon_core.tools.utils.lib import (
     preserve_expanded_rows,
     preserve_selection,
@@ -11,7 +10,8 @@ from ayon_core.tools.utils.lib import (
 
 from .models import (
     AssetModel,
-    LookModel
+    LookModel,
+    TreeModel,
 )
 from . import commands
 from .views import View
