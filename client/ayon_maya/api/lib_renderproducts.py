@@ -522,7 +522,7 @@ class RenderProductsArnold(ARenderProducts):
         "png": "png",
         "tiff": "tif",
         "mtoa_shaders": "ass",  # TODO: research what those last two should be
-        "maya": "",
+        "maya": "maya",
     }
 
     def get_renderer_prefix(self):
@@ -715,8 +715,10 @@ class RenderProductsArnold(ARenderProducts):
 
         default_ext = self._get_attr("defaultRenderGlobals.imfPluginKey")
         # Normalize imfPluginKey to expected file extension (deepexr -> exr)
-        if default_ext == "deepexr":
-            default_ext = self.aiDriverExtension["deepexr"]
+        # Use already existing mapping for Arnold AOV driver extensions as it already
+        # contains the same mapping for deepexr -> exr and jpeg -> jpg
+        if default_ext in {"deepexr", "jpeg"}:
+            default_ext = self.aiDriverExtension[default_ext]
         colorspace = self._get_colorspace(
             "defaultArnoldDriver.colorManagement"
         )
