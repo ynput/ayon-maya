@@ -576,7 +576,7 @@ def on_init():
         safe_deferred(override_component_mask_commands)
         safe_deferred(override_toolbox_ui)
         from .workfile_template_builder import trigger_on_app_launch
-        trigger_on_app_launch()
+        safe_deferred(trigger_on_app_launch)
 
 
 def on_before_save():
