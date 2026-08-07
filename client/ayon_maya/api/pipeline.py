@@ -575,9 +575,8 @@ def on_init():
         )
         safe_deferred(override_component_mask_commands)
         safe_deferred(override_toolbox_ui)
-        if not os.environ.get("AYON_WORKFILE_PATH"):
-            from .workfile_template_builder import trigger_on_app_launch
-            safe_deferred(trigger_on_app_launch)
+        from .workfile_template_builder import trigger_on_app_launch
+        trigger_on_app_launch()
 
 
 def on_before_save():
@@ -692,9 +691,8 @@ def on_new():
     log.info("Running callback on new..")
     with lib.suspended_refresh():
         lib.set_context_settings()
-        if not os.environ.get("AYON_WORKFILE_PATH"):
-            from .workfile_template_builder import trigger_on_new_file
-            cmds.evalDeferred(trigger_on_new_file, lowestPriority=True)
+        from .workfile_template_builder import trigger_on_new_file
+        trigger_on_new_file()
 
     _remove_workfile_lock()
 

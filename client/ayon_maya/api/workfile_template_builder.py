@@ -251,8 +251,12 @@ def trigger_on_app_launch() -> None:
     """Build the workfile template during application
     launch if the setting is enabled.
     """
-    builder = MayaTemplateBuilder(registered_host())
+    host = registered_host()
+    builder = MayaTemplateBuilder(host)
     preset = builder.get_template_preset()
+    if host.get_current_workfile():
+        return
+
     if preset.execute_on_new_file:
         log.warning(
             f"Preset path {preset.path} already built. "
@@ -266,7 +270,10 @@ def trigger_on_new_file() -> None:
     """Build the workfile template during new file creation
     if the setting is enabled.
     """
-    builder = MayaTemplateBuilder(registered_host())
+    host = registered_host()
+    builder = MayaTemplateBuilder(host)
+    if host.get_current_workfile():
+        return
     builder.trigger_on_new_file()
 
 
