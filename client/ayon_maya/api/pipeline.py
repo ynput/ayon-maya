@@ -575,6 +575,9 @@ def on_init():
         )
         safe_deferred(override_component_mask_commands)
         safe_deferred(override_toolbox_ui)
+        if not os.environ.get("AYON_LAST_WORKFILE"):
+            from .workfile_template_builder import trigger_on_new_file
+            safe_deferred(trigger_on_new_file)
 
 
 def on_before_save():
@@ -686,15 +689,9 @@ def on_new():
     """Set project resolution and fps when create a new file.
     If the project has a workfile template, create it.
     """
-    from .workfile_template_builder import trigger_on_new_file
-    project_name = get_current_project_name()
-    project_settings = get_project_settings(project_name)
-    maya_settings = project_settings["maya"]
     log.info("Running callback on new..")
     with lib.suspended_refresh():
         lib.set_context_settings()
-        if maya_settings["open_workfile_post_initialization"]:
-            trigger_on_new_file()
 
     _remove_workfile_lock()
 
