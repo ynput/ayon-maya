@@ -274,9 +274,6 @@ def build_workfile_template(*args):
     builder = MayaTemplateBuilder(registered_host())
     preset = builder.get_template_preset()
     if not preset.has_valid_path():
-        log.warning(
-            f"Preset path {preset.path} not found. Skipping building template."
-        )
         return
     builder.build_template(preset=preset)
 
