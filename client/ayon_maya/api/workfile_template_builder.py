@@ -253,16 +253,6 @@ def trigger_on_app_launch() -> None:
     """
     host = registered_host()
     builder = MayaTemplateBuilder(host)
-    preset = builder.get_template_preset()
-    if host.get_current_workfile():
-        return
-
-    if preset.execute_on_new_file:
-        log.warning(
-            f"Preset path {preset.path} already built. "
-            "Skipping template build on app launch."
-        )
-        return
     builder.trigger_on_app_launch()
 
 
@@ -272,8 +262,6 @@ def trigger_on_new_file() -> None:
     """
     host = registered_host()
     builder = MayaTemplateBuilder(host)
-    if host.get_current_workfile():
-        return
     builder.trigger_on_new_file()
 
 

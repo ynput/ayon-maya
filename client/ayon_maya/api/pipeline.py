@@ -36,7 +36,7 @@ from ayon_core.pipeline import (
     deregister_creator_plugin_path,
     deregister_workfile_build_plugin_path,
     AYON_CONTAINER_ID,
-    AVALON_CONTAINER_ID,
+    AVALON_CONTAINER_ID, registered_host,
 )
 from ayon_core.pipeline.load import any_outdated_containers
 from ayon_core.pipeline.workfile.lock_workfile import (
@@ -79,6 +79,7 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     def __init__(self):
         super(MayaHost, self).__init__()
         self._op_events = {}
+        self.app_launch_completed = False
 
     def get_app_information(self):
         from ayon_core.host import ApplicationInformation
@@ -277,6 +278,15 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         ]:
             mayaUsd.lib.ExportChaser.Register(export_chaser,
                                               export_chaser.name)
+
+    def on_init_end(self):
+        self.initialized = True
+
+        # If we haven't opened a file on launch, then allow to trigger
+        # app launch template builder
+        if not self.get_current_workfile():
+            from .workfile_template_builder import trigger_on_app_launch
+            trigger_on_app_launch()
 
 
 def _set_project():
@@ -575,8 +585,6 @@ def on_init():
         )
         safe_deferred(override_component_mask_commands)
         safe_deferred(override_toolbox_ui)
-        from .workfile_template_builder import trigger_on_app_launch
-        safe_deferred(trigger_on_app_launch)
 
 
 def on_before_save():
@@ -691,6 +699,10 @@ def on_new():
     log.info("Running callback on new..")
     with lib.suspended_refresh():
         lib.set_context_settings()
+
+    # Do not trigger new file template build trigger on Maya startup
+    host: MayaHost = registered_host()
+    if host.app_launch_completed:
         from .workfile_template_builder import trigger_on_new_file
         trigger_on_new_file()
 
