@@ -36,7 +36,8 @@ from ayon_core.pipeline import (
     deregister_creator_plugin_path,
     deregister_workfile_build_plugin_path,
     AYON_CONTAINER_ID,
-    AVALON_CONTAINER_ID, registered_host,
+    AVALON_CONTAINER_ID,
+    registered_host,
 )
 from ayon_core.pipeline.load import any_outdated_containers
 from ayon_core.pipeline.workfile.lock_workfile import (
