@@ -280,7 +280,7 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
                                               export_chaser.name)
 
     def on_init_end(self):
-        self.initialized = True
+        self.app_launch_completed = True
 
         # If we haven't opened a file on launch, then allow to trigger
         # app launch template builder
