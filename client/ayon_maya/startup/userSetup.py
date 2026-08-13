@@ -45,5 +45,12 @@ if path:
         lowestPriority=True
     )
 
+# Mark host init has completed, register after open workfile post
+# initialization, so we consider that initial file open to be part of the
+# Maya startup process
+cmds.evalDeferred(
+    host.on_init_end,
+    lowestPriority=True
+)
 
 print("Finished AYON usersetup.")
