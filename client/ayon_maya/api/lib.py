@@ -1171,8 +1171,7 @@ def displaySmoothness(nodes,
             yield
         finally:
             # Revert state
-            _iteritems = getattr(originals, "iteritems", originals.items)
-            for node, state in _iteritems():
+            for node, state in originals.items():
                 if state:
                     cmds.displaySmoothness(node, **state)
 
