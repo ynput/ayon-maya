@@ -146,8 +146,11 @@ class CollectReview(plugin.MayaInstancePlugin):
             )
 
             def get_audio_node_data(node):
+                audio_frame_offset = cmds.getAttr("{}.offset".format(node))
+                timeline_frame = instance.data["frameStartHandle"]
+                offset_seconds = (audio_frame_offset - timeline_frame) / instance.data["fps"]
                 return {
-                    "offset": cmds.getAttr("{}.offset".format(node)),
+                    "offset": offset_seconds,
                     "filename": cmds.getAttr("{}.filename".format(node))
                 }
 
