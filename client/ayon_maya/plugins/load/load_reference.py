@@ -320,7 +320,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
                 continue
 
             # Ignore referenced object sets
-            if cmds.referenceQuery(isNodeReferenced=object_set):
+            if cmds.referenceQuery(object_set, isNodeReferenced=True):
                 continue
 
             # Then only here confirm whether this is an animation instance, if so
