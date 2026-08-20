@@ -150,7 +150,7 @@ class CollectReview(plugin.MayaInstancePlugin):
                 timeline_frame = instance.data["frameStartHandle"]
                 offset_seconds = (audio_frame_offset - timeline_frame) / float(instance.data["fps"])
                 return {
-                    "offset": offset_seconds,
+                    "offset_in_seconds": offset_seconds,
                     "filename": cmds.getAttr("{}.filename".format(node))
                 }
 
