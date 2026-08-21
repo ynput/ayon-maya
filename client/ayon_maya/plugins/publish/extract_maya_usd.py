@@ -517,6 +517,35 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
         create_context.add_value_changed_callback(cls.on_values_changed)
 
     @classmethod
+    def on_values_changed(cls, event):
+        """Update instance attribute definitions on attribute changes."""
+        for instance_change in event["changes"]:
+            # First check if there's a change we want to respond to
+            instance = instance_change["instance"]
+            if instance is None:
+                # Change is on context
+                continue
+
+            # Check if active state is toggled
+            value_changes = instance_change["changes"]
+            if "publish_attributes" not in value_changes:
+                continue
+
+            publish_attributes = value_changes["publish_attributes"]
+            class_name = cls.__name__
+            if class_name not in publish_attributes:
+                continue
+
+            if "active" not in publish_attributes[class_name]:
+                continue
+
+            # Update the attribute definitions
+            new_attrs = cls.get_attr_defs_for_instance(
+                event["create_context"], instance
+            )
+            instance.set_publish_plugin_attr_defs(class_name, new_attrs)
+
+    @classmethod
     def get_attr_defs_for_instance(cls, create_context, instance):
         is_enabled = cls.enabled
         if not is_enabled:
@@ -837,6 +866,13 @@ class ExtractMayaUsdModel(ExtractMayaUsd):
 
     def process(self, instance):
         # TODO: Fix this without changing instance data
+        families = set(instance.data.get("families") or [])
+        if "mayaUsd" in families:
+            self.log.debug(
+                "Skipping ExtractMayaUsdModel because instance already "
+                "matches dedicated mayaUsd extractor."
+            )
+            return
         instance.data["exportAnimationData"] = False
         super().process(instance)
 
