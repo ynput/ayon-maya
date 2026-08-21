@@ -351,7 +351,9 @@ ViewportOptions = {
     "handles": False,
     "pivots": False,
     "textures": False,
-    "strokes": False
+    "strokes": False,
+    "greasePencils": False,
+    "bluePencil": False,
 }
 
 Viewport2Options = {
