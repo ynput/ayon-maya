@@ -532,7 +532,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
                 continue
 
             publish_attributes = value_changes["publish_attributes"]
-            class_name = cls.__name__
+            class_name = cls.__class__.__name__
             if class_name not in publish_attributes:
                 continue
 
@@ -558,7 +558,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             plugin_attr_values = (
                 instance.data
                 .get("publish_attributes", {})
-                .get(cls.__name__, {})
+                .get(cls.__class__.__name__, {})
             )
             is_enabled = plugin_attr_values.get("active", cls.active)
         defs = super().get_attr_defs_for_instance(create_context, instance)
@@ -866,6 +866,13 @@ class ExtractMayaUsdModel(ExtractMayaUsd):
 
     def process(self, instance):
         # TODO: Fix this without changing instance data
+        families = set(instance.data.get("families") or [])
+        if "mayaUsd" in families:
+            self.log.debug(
+                "Skipping ExtractMayaUsdModel because instance already "
+                "matches dedicated mayaUsd extractor."
+            )
+            return
         instance.data["exportAnimationData"] = False
         super().process(instance)
 
