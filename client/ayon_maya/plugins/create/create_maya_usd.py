@@ -257,3 +257,6 @@ class CreateMayaUsdModel(CreateMayaUsd):
                 attr_def.default = True
 
         return attr_defs
+
+    def get_publish_families(self):
+        return ["model"]

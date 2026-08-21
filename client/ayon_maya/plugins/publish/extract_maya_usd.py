@@ -837,13 +837,6 @@ class ExtractMayaUsdModel(ExtractMayaUsd):
 
     def process(self, instance):
         # TODO: Fix this without changing instance data
-        families = set(instance.data.get("families") or [])
-        if "mayaUsd" in families:
-            self.log.debug(
-                "Skipping ExtractMayaUsdModel because instance already "
-                "matches dedicated mayaUsd extractor."
-            )
-            return
         instance.data["exportAnimationData"] = False
         super().process(instance)
 
