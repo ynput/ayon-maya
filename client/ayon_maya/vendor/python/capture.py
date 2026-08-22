@@ -731,10 +731,11 @@ def _applied_viewport_options(options, panel):
 
     options = dict(ViewportOptions, **(options or {}))
     plugin_options = options.pop("pluginObjects", {})
-    if "bluePencil" in options:
-        logger.warning("Heads Up Display is required for Blue Pencil to be "
-                       "visible. Enabling it automatically.")
-        options["headsUpDisplay"] = True
+    if options.get("bluePencil") and not options.get("headsUpDisplay"):
+        logger.warning(
+            "Blue Pencil is not visible when Heads Up Display is disabled. "
+            "Enable Heads Up Display to see Blue Pencil."
+        )
     # BUGFIX Maya 2020 some keys in viewport options dict may not be unicode
     #        This is a local OpenPype edit to capture.py for issue #4730
     # TODO: Remove when dropping Maya 2020 compatibility
