@@ -24,13 +24,12 @@ def auto_updater(
     nodes = cmds.file(
         filepath, sharedReferenceFile=False, returnNewNodes=True
     )
-    shapes = cmds.ls(nodes, transforms=True, long=True)
-    new_nodes = (list(set(nodes) - set(shapes)))
+    nodes = cmds.ls(nodes, type="transform", long=True)
 
     host = registered_host()
     create_context = CreateContext(host)
     creator_identifier = f"io.openpype.creators.maya.{product_base_type}"
-    cmds.select(new_nodes, noExpand=True)
+    cmds.select(nodes, noExpand=True)
     create_context.create(
         creator_identifier=creator_identifier,
         variant=variant,
