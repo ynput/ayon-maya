@@ -1,5 +1,4 @@
 """Script for automatically creating and publishing assets after importing in Maya."""
-import json
 import os
 import argparse
 
@@ -42,13 +41,11 @@ def auto_updater(
     if logic.has_finished():
         print("Publish finished successfully.")
     elif logic.has_failed():
-        report = logic.get_publish_report()
-        print(json.dumps(report, indent=2))
-        report_dir = os.path.join(tempdir(), "publish_report.json")
-        with open(report_dir, "w") as f:
-            json.dump(report, f, indent=2)
-
-        print(f"Publish failed. Report saved to: {report_dir}")
+        staging_dir = tempdir()
+        os.makedirs(staging_dir, exist_ok=True)
+        report_path = os.path.join(staging_dir, "publish_report.json")
+        logic.store_publish_report(report_path)
+        print(f"Publish failed. Report saved to: {report_path}")
 
 if __name__ == "__main__":
     # Parse command-line arguments
