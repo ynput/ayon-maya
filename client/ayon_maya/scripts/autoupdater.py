@@ -6,54 +6,36 @@ import argparse
 from ayon_core.pipeline import registered_host, tempdir
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.pipeline.publish import PublishLogic
-from ayon_core.pipeline.context_tools import change_current_context
-from ayon_api import get_folder_by_name, get_task_by_name
 from maya import cmds
 
 
 def auto_updater(
     filepath: str,
     product_base_type: str,
-    folder_name: str,
-    task_name: str,
     variant: str
 ) -> None:
     """Automatically create and publish the assets after importing.
 
     Args:
         filepath (str): File path of the imported asset.
-        folder_name (str): folder name where the asset will be published.
-        task_name (str): Task name where the asset will be published.
-        productBaseType (str): Product base type for the asset to be published.
+        product_base_type (str): Product base type for the asset to be published.
         variant (str): Variant of the asset.
     """
     nodes = cmds.file(
         filepath, sharedReferenceFile=False, returnNewNodes=True
     )
-    shapes = cmds.ls(nodes, shapes=True, long=True)
+    shapes = cmds.ls(nodes, transforms=True, long=True)
     new_nodes = (list(set(nodes) - set(shapes)))
 
     host = registered_host()
     create_context = CreateContext(host)
-    creator_identifier = f"io.openpype.creators.maya.{productBaseType}"
+    creator_identifier = f"io.openpype.creators.maya.{product_base_type}"
     cmds.select(new_nodes, noExpand=True)
     create_context.create(
         creator_identifier=creator_identifier,
         variant=variant,
         pre_create_data={"use_selection": True}
     )
-    project_name = create_context.get_current_project_name()
-    folder_entity = get_folder_by_name(project_name, folder_name)
-    task_entity = get_task_by_name(project_name, folder_entity["id"], task_name)
-
-    if (
-        folder_entity != create_context.get_current_folder_entity() or
-        task_entity != create_context.get_current_task_entity()
-    ):
-        change_current_context(
-            folder_entity=folder_entity,
-            task_entity=task_entity
-        )
 
     logic = PublishLogic()
     logic.publish()
@@ -81,16 +63,6 @@ if __name__ == "__main__":
         help="Path to the asset file to import (e.g., .abc, .mb, .ma)."
     )
     parser.add_argument(
-        "--folderPath",
-        required=True,
-        help="Folder path where the product will be published."
-    )
-    parser.add_argument(
-        "--task",
-        required=True,
-        help="Task name under which the product will be published (default: Modeling)."
-    )
-    parser.add_argument(
         "--variant",
         required=True,
         help="Variant name for the product (e.g., 'v001', 'main')."
@@ -106,8 +78,6 @@ if __name__ == "__main__":
 
     auto_updater(
         filepath=args.filepath,
-        folder_name=args.folderPath,
-        task_name=args.task,
-        productBaseType=args.product_base_type,
+        product_base_type=args.product_base_type,
         variant=args.variant,
     )
