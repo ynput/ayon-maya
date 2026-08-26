@@ -13,7 +13,7 @@ from maya import cmds
 
 def auto_updater(
     filepath: str,
-    productBaseType: str,
+    product_base_type: str,
     folder_name: str,
     task_name: str,
     variant: str
