@@ -53,6 +53,9 @@ class ExtractThumbnail(plugin.MayaExtractorPlugin,
             instance, camera, path,
             start=1, end=1,
             capture_preset=capture_preset)
+        if preset["viewport_options"].get("bluePencil"):
+            self.log.debug("Blue pencil is enabled, setting compression to jpg")
+            preset["compression"] = "jpg"
 
         preset["camera_options"].update({
             "displayGateMask": False,
