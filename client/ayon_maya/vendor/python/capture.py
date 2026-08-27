@@ -12,7 +12,7 @@ import logging
 from maya import cmds
 from maya import mel
 
-from qtpy import QtGui, QtWidgets
+from qtpy import QtGui, QtWidgets, QtCore
 
 version_info = (2, 3, 0)
 
@@ -219,7 +219,7 @@ def capture(camera=None,
                 )
                 stack.enter_context(_isolated_nodes(isolate, panel))
                 stack.enter_context(_maintained_time())
-
+                stack.enter_context(_enforce_blue_pencil_state(viewport_options))
                 output = cmds.playblast(**all_playblast_kwargs)
 
         return output
@@ -685,6 +685,37 @@ def _applied_camera_options(options, panel):
                     continue
                 else:
                     _safe_setAttr(camera + "." + opt, value)
+
+
+@contextlib.contextmanager
+def _enforce_blue_pencil_state(viewport_options):
+    """Due to a bug in Maya it does not directly update the blue pencil
+    visibility state in new independent panels. This context manager enforces
+    the state of blue pencil in all modelPanels. That works around the bug
+    and ensures that the blue pencil state is consistent.
+
+    Issue confirmed on Windows on Maya 2026 and Maya 2027.
+    """
+    if not viewport_options.get("headsUpDisplay"):
+        # Only relevant if HUD is enabled
+        yield
+        return
+
+    if "bluePencil" not in viewport_options:
+        yield
+        return
+    state = bool(viewport_options["bluePencil"])
+    original = {}
+    try:
+        for panel in cmds.getPanel(type="modelPanel"):
+            original[panel] = cmds.modelEditor(
+                panel, query=True, bluePencil=True
+            )
+            cmds.modelEditor(panel, edit=True, bluePencil=state)
+        yield
+    finally:
+        for panel, original_state in original.items():
+            cmds.modelEditor(panel, edit=True, bluePencil=original_state)
 
 
 @contextlib.contextmanager
