@@ -54,7 +54,11 @@ class ExtractThumbnail(plugin.MayaExtractorPlugin,
             start=1, end=1,
             capture_preset=capture_preset)
         if preset["viewport_options"].get("bluePencil"):
-            self.log.debug("Blue pencil is enabled, setting compression to jpg")
+            self.log.debug(
+                "Blue Pencil is enabled; forcing thumbnail capture to JPG "
+                "so annotations are composited over the thumbnail image "
+                "instead of exported as a transparent annotation layer."
+            )
             preset["compression"] = "jpg"
 
         preset["camera_options"].update({
