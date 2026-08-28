@@ -239,7 +239,7 @@ class CreateMayaUsd(plugin.MayaCreator):
 
 
 class CreateMayaUsdModel(CreateMayaUsd):
-    identifier = "io.ayon.creators.maya.mayamayaUsd.model"
+    identifier = "io.ayon.creators.maya.mayaUsd.model"
     label = "Maya USD: Model"
     product_base_type = "model"
     product_type = product_base_type
