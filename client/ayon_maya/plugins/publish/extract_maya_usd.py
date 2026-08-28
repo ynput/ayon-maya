@@ -862,7 +862,7 @@ class ExtractMayaUsdModel(ExtractMayaUsd):
 
     # Exposed in settings
     optional = True
-    active = False
+    active = True
 
     def process(self, instance):
         # TODO: Fix this without changing instance data

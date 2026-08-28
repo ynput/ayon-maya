@@ -2151,7 +2151,7 @@ DEFAULT_PUBLISH_SETTINGS = {
     "ExtractMayaUsdModel": {
         "enabled": True,
         "optional": True,
-        "active": False,
+        "active": True,
     },
     "ExtractMayaUsdPointcache": {
         "enabled": True,
