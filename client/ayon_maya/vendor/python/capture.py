@@ -198,7 +198,8 @@ def capture(camera=None,
                 _applied_display_options(display_options),
                 _applied_viewport2_options(viewport2_options),
                 _isolated_nodes(isolate, panel),
-                _maintained_time()
+                _maintained_time(),
+                _enforce_blue_pencil_state(viewport_options)
             ):
                 output = cmds.playblast(**all_playblast_kwargs)
         else:
