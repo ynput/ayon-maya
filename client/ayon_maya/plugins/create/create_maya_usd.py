@@ -239,7 +239,7 @@ class CreateMayaUsd(plugin.MayaCreator):
 
 
 class CreateMayaUsdModel(CreateMayaUsd):
-    identifier = "io.ayon.creators.maya.mayausd.model"
+    identifier = "io.ayon.creators.maya.mayamayaUsd.model"
     label = "Maya USD: Model"
     product_base_type = "model"
     product_type = product_base_type
@@ -259,4 +259,4 @@ class CreateMayaUsdModel(CreateMayaUsd):
         return attr_defs
 
     def get_publish_families(self):
-        return ["usd.model", "usd", "mayaUsd.filterProperties"]
+        return ["usd", "mayaUsd.model", "mayaUsd.filterProperties"]
