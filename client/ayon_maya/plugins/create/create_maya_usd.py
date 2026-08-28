@@ -259,4 +259,4 @@ class CreateMayaUsdModel(CreateMayaUsd):
         return attr_defs
 
     def get_publish_families(self):
-        return ["model", "usd", "mayaUsd.filterProperties"]
+        return ["usd.model", "usd", "mayaUsd.filterProperties"]

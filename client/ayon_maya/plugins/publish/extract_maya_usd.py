@@ -858,7 +858,7 @@ class ExtractMayaUsdModel(ExtractMayaUsd):
     """
 
     label = "Extract USD"
-    families = ["model"]
+    families = ["model", "usd.model"]
 
     # Exposed in settings
     optional = True
