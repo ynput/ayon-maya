@@ -12,7 +12,7 @@ import logging
 from maya import cmds
 from maya import mel
 
-from qtpy import QtGui, QtWidgets, QtCore
+from qtpy import QtGui, QtWidgets
 
 version_info = (2, 3, 0)
 
