@@ -858,7 +858,7 @@ class ExtractMayaUsdModel(ExtractMayaUsd):
     """
 
     label = "Extract USD"
-    families = ["model", "mayaUsd.model"]
+    families = ["mayaUsd.model"]
 
     # Exposed in settings
     optional = True
@@ -868,6 +868,14 @@ class ExtractMayaUsdModel(ExtractMayaUsd):
         # TODO: Fix this without changing instance data
         instance.data["exportAnimationData"] = False
         super().process(instance)
+
+
+class ExtractModelMayaUsd(ExtractMayaUsdModel):
+    """Extract USD for regular Model instances."""
+
+    families = ["model.extract"]
+    optional = False
+    active = True
 
 
 class ExtractMayaUsdPointcache(ExtractMayaUsd):
