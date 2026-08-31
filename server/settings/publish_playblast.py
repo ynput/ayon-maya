@@ -172,6 +172,7 @@ class ViewportOptionsSetting(BaseSettingsModel):
     fluids: bool = SettingsField(False, title="Fluids")
     follicles: bool = SettingsField(False, title="Follicles")
     greasePencils: bool = SettingsField(False, title="Grease Pencils")
+    bluePencil: bool = SettingsField(False, title="Blue Pencil")
     grid: bool = SettingsField(False, title="Grid")
     hairSystems: bool = SettingsField(True, title="Hair Systems")
     handles: bool = SettingsField(False, title="Handles")
@@ -359,6 +360,7 @@ DEFAULT_PLAYBLAST_SETTING = {
             "fluids": False,
             "follicles": False,
             "greasePencils": False,
+            "bluePencil": False,
             "grid": False,
             "hairSystems": True,
             "handles": False,
