@@ -18,6 +18,9 @@ class CreateModel(plugin.MayaCreator):
     write_face_sets = True
     include_shaders = False
 
+    def get_publish_families(self):
+        return ["model", "model.extract"]
+
     def get_instance_attr_defs(self):
 
         return [
