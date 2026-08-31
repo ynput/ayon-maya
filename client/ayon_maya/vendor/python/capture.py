@@ -198,7 +198,8 @@ def capture(camera=None,
                 _applied_display_options(display_options),
                 _applied_viewport2_options(viewport2_options),
                 _isolated_nodes(isolate, panel),
-                _maintained_time()
+                _maintained_time(),
+                _enforce_blue_pencil_state(viewport_options)
             ):
                 output = cmds.playblast(**all_playblast_kwargs)
         else:
@@ -219,7 +220,7 @@ def capture(camera=None,
                 )
                 stack.enter_context(_isolated_nodes(isolate, panel))
                 stack.enter_context(_maintained_time())
-
+                stack.enter_context(_enforce_blue_pencil_state(viewport_options))
                 output = cmds.playblast(**all_playblast_kwargs)
 
         return output
@@ -351,7 +352,9 @@ ViewportOptions = {
     "handles": False,
     "pivots": False,
     "textures": False,
-    "strokes": False
+    "strokes": False,
+    "greasePencils": False,
+    "bluePencil": False,
 }
 
 Viewport2Options = {
@@ -686,6 +689,37 @@ def _applied_camera_options(options, panel):
 
 
 @contextlib.contextmanager
+def _enforce_blue_pencil_state(viewport_options):
+    """Due to a bug in Maya it does not directly update the blue pencil
+    visibility state in new independent panels. This context manager enforces
+    the state of blue pencil in all modelPanels. That works around the bug
+    and ensures that the blue pencil state is consistent.
+
+    Issue confirmed on Windows on Maya 2026 and Maya 2027.
+    """
+    if not viewport_options.get("headsUpDisplay"):
+        # Only relevant if HUD is enabled
+        yield
+        return
+
+    if "bluePencil" not in viewport_options:
+        yield
+        return
+    state = bool(viewport_options["bluePencil"])
+    original = {}
+    try:
+        for panel in cmds.getPanel(type="modelPanel"):
+            original[panel] = cmds.modelEditor(
+                panel, query=True, bluePencil=True
+            )
+            cmds.modelEditor(panel, edit=True, bluePencil=state)
+        yield
+    finally:
+        for panel, original_state in original.items():
+            cmds.modelEditor(panel, edit=True, bluePencil=original_state)
+
+
+@contextlib.contextmanager
 def _applied_display_options(options):
     """Context manager for setting background color display options."""
 
@@ -729,7 +763,11 @@ def _applied_viewport_options(options, panel):
 
     options = dict(ViewportOptions, **(options or {}))
     plugin_options = options.pop("pluginObjects", {})
-
+    if options.get("bluePencil") and not options.get("headsUpDisplay"):
+        logger.warning(
+            "Blue Pencil is not visible when Heads Up Display is disabled. "
+            "Enable Heads Up Display to see Blue Pencil."
+        )
     # BUGFIX Maya 2020 some keys in viewport options dict may not be unicode
     #        This is a local OpenPype edit to capture.py for issue #4730
     # TODO: Remove when dropping Maya 2020 compatibility
