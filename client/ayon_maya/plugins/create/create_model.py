@@ -19,7 +19,7 @@ class CreateModel(plugin.MayaCreator):
     include_shaders = False
 
     def get_publish_families(self):
-        return ["model", "model.extract"]
+        return ["model.extract"]
 
     def get_instance_attr_defs(self):
 
