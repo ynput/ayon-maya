@@ -864,11 +864,6 @@ class ExtractMayaUsdModel(ExtractMayaUsd):
     optional = True
     active = True
 
-    def process(self, instance):
-        # TODO: Fix this without changing instance data
-        instance.data["exportAnimationData"] = False
-        super().process(instance)
-
 
 class ExtractMayaUsdPointcache(ExtractMayaUsd):
     """Extractor for Maya USD for 'pointcache' family"""
