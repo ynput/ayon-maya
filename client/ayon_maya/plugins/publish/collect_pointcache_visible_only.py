@@ -6,7 +6,12 @@ class CollectPointcacheVisibleOnly(plugin.MayaInstancePlugin):
     """Collect pointcache visible only data for instance."""
 
     order = pyblish.api.CollectorOrder + 0.4
-    families = ["pointcache", "animation", "model", "vrayproxy.alembic"]
+    families = [
+        "pointcache",
+        "animation",
+        "model.extract",
+        "vrayproxy.alembic"
+    ]
     label = "Collect Pointcache Visible Only"
 
     def process(self, instance):

@@ -858,11 +858,11 @@ class ExtractMayaUsdModel(ExtractMayaUsd):
     """
 
     label = "Extract USD"
-    families = ["model"]
+    families = ["mayaUsd.model", "model.extract"]
 
     # Exposed in settings
     optional = True
-    active = False
+    active = True
 
     def process(self, instance):
         # TODO: Fix this without changing instance data

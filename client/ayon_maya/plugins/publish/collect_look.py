@@ -718,7 +718,7 @@ class CollectModelRenderSets(CollectLook):
     """
 
     order = pyblish.api.CollectorOrder + 0.21
-    families = ["model"]
+    families = ["model.extract"]
     label = "Collect Model Render Sets"
 
     def collect_sets(self, instance):

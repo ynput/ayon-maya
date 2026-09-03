@@ -38,7 +38,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
 
     label = "Extract Pointcache (Alembic)"
     hosts = ["maya"]
-    families = ["pointcache", "model", "vrayproxy.alembic"]
+    families = ["pointcache", "model.extract", "vrayproxy.alembic"]
     targets = ["local", "remote"]
     optional = False
     # From settings

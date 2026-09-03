@@ -10,7 +10,7 @@ class CollectMayaUsdFilterProperties(plugin.MayaInstancePlugin,
 
     order = pyblish.api.CollectorOrder
     label = "Maya USD Export Chaser: Filter Properties"
-    families = ["mayaUsd"]
+    families = ["mayaUsd", "mayaUsd.filterProperties"]
 
     default_filter = ""
 
