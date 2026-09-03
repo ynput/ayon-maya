@@ -1,8 +1,11 @@
 import pyblish.api
+from pathlib import Path
 from ayon_core.pipeline.workfile.lock_workfile import (
     is_workfile_lock_enabled,
     remove_workfile_lock,
 )
+from ayon_core.pipeline import registered_host
+from ayon_core.pipeline.publish import PublishError
 from ayon_maya.api import plugin
 
 
@@ -15,13 +18,19 @@ class SaveCurrentScene(plugin.MayaContextPlugin):
     targets = ["local"]
 
     def process(self, context):
-        import maya.cmds as cmds
-
-        current = cmds.file(query=True, sceneName=True)
-        assert context.data['currentFile'] == current
-
+        host = registered_host()
+        context_file = context.data["currentFile"]
+        current_file = host.get_current_workfile()
+        if Path(context_file) != Path(current_file):
+            self.log.error(
+                f"Current file in context: {context_file} "
+                f"does not match the actual current file: {current_file}"
+            )
+            raise PublishError(
+                "Current file in context does not match the actual current file."
+            )
         # If file has no modifications, skip forcing a file save
-        if not cmds.file(query=True, modified=True):
+        if not host.workfile_has_unsaved_changes():
             self.log.debug("Skipping file save as there "
                            "are no modifications..")
             return
@@ -29,6 +38,7 @@ class SaveCurrentScene(plugin.MayaContextPlugin):
         project_settings = context.data["project_settings"]
         # remove lockfile before saving
         if is_workfile_lock_enabled("maya", project_name, project_settings):
-            remove_workfile_lock(current)
-        self.log.info("Saving current file: {}".format(current))
-        cmds.file(save=True, force=True)
+            remove_workfile_lock(current_file)
+
+        self.log.info(f"Saving current file: {current_file}")
+        host.save_workfile(current_file)
