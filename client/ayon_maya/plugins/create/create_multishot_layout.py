@@ -182,6 +182,7 @@ class CreateMultishotLayout(plugin.MayaCreator):
                     layout_creator.get_default_variant(),
                 ),
                 instance_data=instance_data,
+                pre_create_data=pre_create_data
             )
 
     def get_related_shots(self, folder_path: str):
