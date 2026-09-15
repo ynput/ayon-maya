@@ -302,8 +302,25 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
         return instance[:], instance.data.get("setMembers")
 
     @classmethod
-    def get_attribute_defs(cls):
-        defs = super(ExtractAlembic, cls).get_attribute_defs()
+    def get_attr_defs_for_instance(cls, create_context, instance):
+        is_enabled = cls.enabled
+        if not is_enabled:
+            return []
+
+        if not cls.instance_matches_plugin_families(instance):
+            return []
+
+        if "mayaUsd.model" in instance.data["families"]:
+            return []
+
+        if cls.optional:
+            plugin_attr_values = (
+                instance.data
+                .get("publish_attributes", {})
+                .get(cls.__name__, {})
+            )
+            is_enabled = plugin_attr_values.get("active", cls.active)
+        defs = super().get_attr_defs_for_instance(create_context, instance)
         if not cls.overrides:
             return defs
 
