@@ -310,9 +310,6 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
         if not cls.instance_matches_plugin_families(instance):
             return []
 
-        if "mayaUsd.model" in instance.data["families"]:
-            return []
-
         if cls.optional:
             plugin_attr_values = (
                 instance.data
