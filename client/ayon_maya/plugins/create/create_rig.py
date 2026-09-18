@@ -12,6 +12,10 @@ class CreateRig(plugin.MayaCreator):
     product_type = product_base_type
     icon = "wheelchair"
 
+    def get_publish_families(self):
+        # TODO: Make usd enabled feature optional
+        return ["rig", "usd"]
+
     def create(self, product_name, instance_data, pre_create_data):
 
         instance = super(CreateRig, self).create(product_name,
