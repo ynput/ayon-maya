@@ -679,7 +679,7 @@ class CollectLook(plugin.MayaInstancePlugin):
             type="mesh"
         )
         if not input_content:
-            return []
+            return [], []
 
         attrs = [f"{mesh}.referenceObject" for mesh in set(input_content)]
         # Store all connections
