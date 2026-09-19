@@ -108,7 +108,7 @@ def load_package(filepath, name, namespace=None):
     if namespace is None:
         # Define a unique namespace for the package
         namespace = os.path.basename(filepath).split(".")[0]
-        unique_namespace(namespace)
+        namespace = unique_namespace(namespace)
     assert isinstance(namespace, str)
 
     # Load the setdress package data
