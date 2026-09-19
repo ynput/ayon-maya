@@ -92,7 +92,7 @@ class ValidateVRayTranslatorEnabled(plugin.MayaContextPlugin,
         cmds.setAttr("{}.vrscene_render_on".format(node), False)
         cmds.setAttr("{}.vrscene_on".format(node), True)
         for instance in context:
-            if "vrayscene" not in instance.data.get("families"):
+            if "vrayscene_layer" not in instance.data.get("families"):
                 continue
 
             if instance.data.get("vraySceneMultipleFiles"):
