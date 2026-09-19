@@ -130,10 +130,9 @@ def unlocked(node):
         if not cmds.objExists(node):
             # Node might have been renamed or deleted; try and find it by uuid.
             nodes_from_id = cmds.ls(node_uuid, long=True) or []
-            if not nodes_from_id:
-                return
-            node = nodes_from_id[0]
-        cmds.lockNode(node, lock=has_locked)
+            node = nodes_from_id[0] if nodes_from_id else None
+        if node:
+            cmds.lockNode(node, lock=has_locked)
 
 
 @contextlib.contextmanager
