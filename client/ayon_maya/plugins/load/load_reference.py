@@ -87,10 +87,11 @@ def preserve_modelpanel_cameras(container, log=None):
     finally:
         new_members = get_container_members(container)
         new_cameras = set(cmds.ls(new_members, type="camera", long=True))
-        if not new_cameras:
-            return
 
         for panel, cam_name in panel_cameras.items():
+            if not new_cameras:
+                break
+
             new_camera = None
             if cam_name in new_cameras:
                 new_camera = cam_name
