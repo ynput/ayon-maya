@@ -4397,6 +4397,7 @@ def get_rig_animation_instance_variant(context, namespace, options=None)-> str:
         product_base_type = product_type
     product_name = product_entity["name"]
 
+    options = options or {}
     custom_product_name = options.get("animationProductName")
     if custom_product_name:
         for old_key, new_key in (
