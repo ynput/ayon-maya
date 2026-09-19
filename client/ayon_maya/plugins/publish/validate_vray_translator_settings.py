@@ -51,7 +51,7 @@ class ValidateVRayTranslatorEnabled(plugin.MayaContextPlugin,
 
         node = vray_settings[0]
 
-        if cmds.setAttr("{}.vrscene_render_on".format(node)):
+        if cmds.getAttr("{}.vrscene_render_on".format(node)):
             cls.log.error(
                 "Render is enabled, for export it should be disabled")
             invalid = True
