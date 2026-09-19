@@ -176,7 +176,7 @@ def seq_to_glob(path):
         "<uvtile>": "<uvtile>",
         "#": "#",
         "u<u>_v<v>": "<u>|<v>",
-        "<frame0": "<frame0\d+>",
+        "<frame0": r"<frame0\d+>",
         "<f>": "<f>"
     }
 
