@@ -3333,7 +3333,7 @@ def get_attr_in_layer(attr, layer, as_string=True):
                                        source=False,
                                        destination=True,
                                        type="renderLayer") or []
-    connections = filter(lambda x: x.endswith(".plug"), connections)
+    connections = [x for x in connections if x.endswith(".plug")]
     if not connections:
         return cmds.getAttr(attr)
 
