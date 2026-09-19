@@ -31,7 +31,8 @@ class CollectPointcache(plugin.MayaInstancePlugin):
                         cmds.ls(member, long=True)
                     )
                     instance.data["proxy"].extend(
-                        cmds.listRelatives(member, shapes=True, fullPath=True)
+                        cmds.listRelatives(
+                            member, shapes=True, fullPath=True) or []
                     )
                 self.log.debug(
                     "Found proxy members: {}".format(instance.data["proxy"])
