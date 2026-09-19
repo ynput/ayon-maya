@@ -89,8 +89,8 @@ def unlocked(nodes):
             if nodes_from_id:
                 node = nodes_from_id[0]
             else:
-                log.debug("Falling back to node name: %s", node)
                 node = originals[uuid]
+                log.debug("Falling back to node name: %s", node)
                 if not cmds.objExists(node):
                     log.warning("Unable to find: %s", node)
                     continue
