@@ -4516,6 +4516,8 @@ def create_camera_instance(
     """
     if options is None:
         options = {}
+    if log is None:
+        log = logging.getLogger(__name__)
 
     referenced_nodes: list[str] = [
         node for node in nodes 
