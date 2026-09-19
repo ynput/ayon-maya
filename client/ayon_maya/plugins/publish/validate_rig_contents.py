@@ -133,8 +133,10 @@ class ValidateRigContents(plugin.MayaInstancePlugin,
             )
         # Validate members are inside the hierarchy from root node
         root_nodes = cmds.ls(set_members, assemblies=True, long=True)
-        hierarchy = cmds.listRelatives(root_nodes, allDescendents=True,
-                                       fullPath=True) + root_nodes
+        hierarchy = (
+            cmds.listRelatives(root_nodes, allDescendents=True, fullPath=True)
+            or []
+        ) + root_nodes
         hierarchy = set(hierarchy)
         invalid_hierarchy = []
         for node in content:
