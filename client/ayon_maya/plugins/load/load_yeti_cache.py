@@ -33,11 +33,11 @@ SKIP_ATTR_MESSAGE = (
 )
 
 
-def set_attribute(node, attr, value):
+def set_attribute(attr, value, node):
     """Wrapper of set attribute which ignores None values"""
     if value is None:
         return
-    lib.set_attribute(node, attr, value)
+    lib.set_attribute(attr, value, node)
 
 
 class YetiCacheLoader(plugin.Loader):
