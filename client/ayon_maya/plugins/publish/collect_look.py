@@ -664,7 +664,7 @@ class CollectLook(plugin.MayaInstancePlugin):
         """Collect the inputs for all nodes in the input_SET"""
 
         # Get the input meshes information
-        input_content = instance.data["setMembers"]
+        input_content = list(instance.data["setMembers"])
 
         # Include children
         input_content += cmds.listRelatives(input_content,
