@@ -65,18 +65,20 @@ class ValidateUnrealStaticMeshName(plugin.MayaInstancePlugin,
 
         invalid = []
 
-        collision_prefixes = (
+        # Note: These settings only exist on the creator settings
+        create_settings = (
             instance.context.data["project_settings"]
             ["maya"]
             ["create"]
             ["CreateUnrealStaticMesh"]
-            ["collision_prefixes"]
         )
+        collision_prefixes = create_settings["collision_prefixes"]
+        static_mesh_prefix = create_settings["static_mesh_prefix"]
 
         if cls.validate_mesh:
             # compile regex for testing names
             regex_mesh = "{}{}".format(
-                ("_" + cls.static_mesh_prefix) or "", cls.regex_mesh
+                ("_" + static_mesh_prefix) or "", cls.regex_mesh
             )
             sm_r = re.compile(regex_mesh)
             if not sm_r.match(instance.data.get("productName")):
