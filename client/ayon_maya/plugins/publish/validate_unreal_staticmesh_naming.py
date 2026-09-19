@@ -57,7 +57,7 @@ class ValidateUnrealStaticMeshName(plugin.MayaInstancePlugin,
     families = ["staticMesh"]
     label = "Unreal Static Mesh Name"
     actions = [ayon_maya.api.action.SelectInvalidAction]
-    regex_mesh = r"(?P<renderName>.*))"
+    regex_mesh = r"(?P<renderName>.*)"
     regex_collision = r"(?P<renderName>.*)"
 
     @classmethod
