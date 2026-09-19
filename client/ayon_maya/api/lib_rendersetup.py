@@ -392,7 +392,7 @@ def get_shader_in_layer(node, layer):
                                        source=False,
                                        destination=True,
                                        type="renderLayer") or []
-    connections = filter(lambda x: x.endswith(".outPlug"), connections)
+    connections = [x for x in connections if x.endswith(".outPlug")]
     if not connections:
         # If no overrides anywhere on the shader, just get the current shader
         return _get_connected_shader(plug)
