@@ -158,12 +158,11 @@ class RenderSetupLoader(plugin.Loader):
 
         # Update metadata
         node = container["objectName"]
-        cmds.setAttr("{}.representation".format(node),
-                     repre_entity["id"],
-                     type="string")
-        cmds.setAttr("{}.project_name".format(node),
-                     context["project"]["name"],
-                     type="string")
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            lib.set_attribute(key, value, node)
         self.log.info("... updated")
 
     def switch(self, container, context):

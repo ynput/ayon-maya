@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 import maya.cmds as cmds  # noqa
 from ayon_core.settings import get_project_settings
-from ayon_maya.api.lib import maintained_selection, namespaced, unique_namespace
+from ayon_maya.api.lib import (
+    maintained_selection, namespaced, unique_namespace,
+    set_attribute
+)
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
 from ayon_maya.api.plugin import get_load_color_for_product_base_type
@@ -85,12 +88,11 @@ class VRaySceneLoader(plugin.Loader):
                          type="string")
 
         # Update metadata
-        cmds.setAttr("{}.representation".format(node),
-                     repre_entity["id"],
-                     type="string")
-        cmds.setAttr("{}.project_name".format(node),
-                     context["project"]["name"],
-                     type="string")
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, node)
 
     def remove(self, container):
 

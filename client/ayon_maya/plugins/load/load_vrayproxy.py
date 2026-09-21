@@ -14,7 +14,8 @@ from ayon_maya.api.lib import (
     maintained_selection,
     namespaced,
     unique_namespace,
-    get_representation_path_by_project
+    get_representation_path_by_project,
+    set_attribute
 )
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
@@ -126,12 +127,11 @@ class VRayProxyLoader(plugin.Loader):
                          type="string")
 
         # Update metadata
-        cmds.setAttr("{}.representation".format(node),
-                     repre_entity["id"],
-                     type="string")
-        cmds.setAttr("{}.project_name".format(node),
-                     context["project"]["name"],
-                     type="string")
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, node)
 
     def remove(self, container):
         # type: (dict) -> None
