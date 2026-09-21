@@ -156,7 +156,7 @@ def get_attr_in_layer(node_attr, layer, as_string=True):
         if isinstance(layer_override, AbsOverride):
             # Absolute override
             override_value = get_attribute(
-                layer_override.name() + ".attrValue"
+                f"{layer_override.name()}.attrValue"
             )
             if match == EXACT_MATCH:
                 value = override_value
