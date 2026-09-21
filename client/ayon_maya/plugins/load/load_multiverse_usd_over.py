@@ -3,6 +3,7 @@ import os
 
 import maya.cmds as cmds
 from ayon_core.lib import TextDef
+from ayon_core.pipeline import get_current_project_name
 from ayon_api import get_representation_by_id
 from ayon_maya.api import plugin
 from ayon_maya.api.lib import maintained_selection, set_attribute
@@ -84,11 +85,14 @@ class MultiverseUsdOverLoader(plugin.Loader):
         mvShape = container['mvUsdCompoundShape']
         assert mvShape, "Missing mv source"
 
-        project_name = context["project"]["name"]
+        previous_project_name = container.get(
+            "project_name", get_current_project_name()
+        )
         repre_entity = context["representation"]
         prev_representation_id = cmds.getAttr("{}.representation".format(node))
-        prev_representation = get_representation_by_id(project_name,
-                                                       prev_representation_id)
+        prev_representation = get_representation_by_id(
+            previous_project_name, prev_representation_id
+        )
         prev_path = os.path.normpath(prev_representation["attrib"]["path"])
 
         path = self.filepath_from_context(context)
