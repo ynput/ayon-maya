@@ -79,7 +79,7 @@ class ValidateUnrealStaticMeshName(plugin.MayaInstancePlugin,
             # compile regex for testing names
             prefix = ""
             if static_mesh_prefix:
-                prefix = f"_{static_mesh_prefix}"
+                prefix = f"{static_mesh_prefix}_"
             regex_mesh = f"{prefix}{cls.regex_mesh}"
             sm_r = re.compile(regex_mesh)
             if not sm_r.match(instance.data.get("productName")):
