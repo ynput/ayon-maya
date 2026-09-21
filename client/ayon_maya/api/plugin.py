@@ -802,9 +802,9 @@ class Loader(LoaderPlugin):
             "product": {
                 "name": product_entity["name"],
                 "type": product_type,
-                "baseType": product_base_type,
-                # Also required for the replaced deprecated `{family}` key
                 "basetype": product_base_type,
+                # Backwards compatibility
+                "baseType": product_base_type,
             },
         }
 
