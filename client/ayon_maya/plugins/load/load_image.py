@@ -151,7 +151,7 @@ class FileNodeLoader(plugin.Loader):
 
         # Update representation
         for key, value in [
-            ("representation", context["representation"]["id"]),
+            ("representation", repre_entity["id"]),
             ("project_name", context["project"]["name"]),
         ]:
             set_attribute(key, value, container["objectName"])
