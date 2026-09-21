@@ -5,7 +5,7 @@ import maya.cmds as cmds
 from ayon_core.lib import TextDef
 from ayon_api import get_representation_by_id
 from ayon_maya.api import plugin
-from ayon_maya.api.lib import maintained_selection
+from ayon_maya.api.lib import maintained_selection, set_attribute
 from ayon_maya.api.pipeline import containerise
 from maya import mel
 
@@ -103,12 +103,11 @@ class MultiverseUsdOverLoader(plugin.Loader):
             asset_paths[prev_path_idx] = path
             multiverse.SetUsdCompoundAssetPaths(shape, asset_paths)
 
-        cmds.setAttr("{}.representation".format(node),
-                     repre_entity["id"],
-                     type="string")
-        cmds.setAttr("{}.project_name".format(node),
-                     context["project"]["name"],
-                     type="string")
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, node)
         mel.eval('refreshEditorTemplates;')
 
     def switch(self, container, context):

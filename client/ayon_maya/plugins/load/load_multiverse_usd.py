@@ -4,7 +4,12 @@ import os
 import maya.cmds as cmds
 from ayon_api import get_representation_by_id
 from ayon_maya.api import plugin
-from ayon_maya.api.lib import maintained_selection, namespaced, unique_namespace
+from ayon_maya.api.lib import (
+    maintained_selection,
+    namespaced,
+    set_attribute,
+    unique_namespace
+)
 from ayon_maya.api.pipeline import containerise
 from maya import mel
 
@@ -96,12 +101,11 @@ class MultiverseUsdLoader(plugin.Loader):
 
             multiverse.SetUsdCompoundAssetPaths(shape, asset_paths)
 
-        cmds.setAttr("{}.representation".format(node),
-                     repre_entity["id"],
-                     type="string")
-        cmds.setAttr("{}.project_name".format(node),
-                     context["project"]["name"],
-                     type="string")
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, node)
         mel.eval('refreshEditorTemplates;')
 
     def switch(self, container, context):

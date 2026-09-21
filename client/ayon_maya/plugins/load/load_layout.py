@@ -9,7 +9,8 @@ from ayon_maya.api import plugin
 from ayon_maya.api.lib import (
     unique_namespace,
     get_container_members,
-    get_highest_in_hierarchy
+    get_highest_in_hierarchy,
+    set_attribute,
 )
 from ayon_maya.api.pipeline import containerise
 from ayon_core.pipeline.load import (
@@ -395,12 +396,11 @@ class LayoutLoader(plugin.Loader):
                 cmds.sets(loaded_containers, add=container_node)
 
         # Update metadata
-        cmds.setAttr("{}.representation".format(container_node),
-                     repre_entity["id"],
-                     type="string")
-        cmds.setAttr("{}.project_name".format(container_node),
-                     context["project"]["name"],
-                     type="string")
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, container_node)
 
     def switch(self, container, context):
         self.update(container, context)

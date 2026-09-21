@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 import maya.cmds as cmds
-from ayon_maya.api.lib import namespaced, unique_namespace
+from ayon_maya.api.lib import (
+    namespaced,
+    set_attribute,
+    unique_namespace
+)
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
 
@@ -76,12 +80,11 @@ class MayaUsdLoader(plugin.Loader):
         for shape in shapes:
             cmds.setAttr("{}.filePath".format(shape), path, type="string")
 
-        cmds.setAttr("{}.representation".format(node),
-                     context["representation"]["id"],
-                     type="string")
-        cmds.setAttr("{}.project_name".format(node),
-                     context["project"]["name"],
-                     type="string")
+        for key, value in [
+            ("representation", context["representation"]["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, node)
 
     def switch(self, container, context):
         self.update(container, context)

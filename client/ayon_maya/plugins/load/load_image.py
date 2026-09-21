@@ -8,7 +8,11 @@ from ayon_core.pipeline.colorspace import (
     get_imageio_file_rules_colorspace_from_filepath,
 )
 from ayon_core.settings import get_project_settings
-from ayon_maya.api.lib import namespaced, unique_namespace
+from ayon_maya.api.lib import (
+    namespaced,
+    set_attribute,
+    unique_namespace
+)
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
 from maya import cmds
@@ -146,16 +150,11 @@ class FileNodeLoader(plugin.Loader):
         self._apply_representation_context(context, file_node)
 
         # Update representation
-        cmds.setAttr(
-            container["objectName"] + ".representation",
-            repre_entity["id"],
-            type="string"
-        )
-        cmds.setAttr(
-            container["objectName"] + ".project_name",
-            context["project"]["name"],
-            type="string"
-        )
+        for key, value in [
+            ("representation", context["representation"]["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, container["objectName"])
 
     def switch(self, container, context):
         self.update(container, context)
