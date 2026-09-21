@@ -350,7 +350,7 @@ DEFAULT_CREATORS_SETTINGS = {
         "include_shaders": False,
         "write_face_sets": True,
     },
-    "CreateMultishotLayout": {"default_variants": ["Main"], "enabled": False},
+    "CreateMultishotLayout": {"default_variants": ["Main"], "enabled": True},
     "CreateMultiverseLook": {"enabled": False, "publish_mip_map": True},
     "CreateMultiverseUsd": {"default_variants": ["Main"], "enabled": False},
     "CreateMultiverseUsdComp": {"default_variants": ["Main"], "enabled": False},
