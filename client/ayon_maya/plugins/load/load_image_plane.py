@@ -238,12 +238,12 @@ class ImagePlaneLoader(plugin.Loader):
         start_frame = folder_entity["attrib"]["frameStart"]
         end_frame = folder_entity["attrib"]["frameEnd"]
 
-        for attr, value in {
-            "frameOffset": 0,
-            "frameIn": start_frame,
-            "frameOut": end_frame,
-            "frameCache": end_frame
-        }.items():
+        for attr, value in (
+            ("frameOffset", 0),
+            ("frameIn", start_frame),
+            ("frameOut", end_frame),
+            ("frameCache", end_frame),
+        ):
             plug = "{}.{}".format(image_plane_shape, attr)
             cmds.setAttr(plug, value)
 
