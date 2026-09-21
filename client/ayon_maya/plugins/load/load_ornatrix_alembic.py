@@ -95,6 +95,13 @@ class OxAlembicLoader(plugin.Loader):
         for node in ox_nodes:
             cmds.setAttr(f"{node}.sourceFilePath1", path, type="string")
 
+        cmds.setAttr("{}.representation".format(container["objectName"]),
+                     context["representation"]["id"],
+                     type="string")
+        cmds.setAttr("{}.project_name".format(container["objectName"]),
+                     context["project"]["name"],
+                     type="string")
+
     def switch(self, container, context):
         self.update(container, context)
 

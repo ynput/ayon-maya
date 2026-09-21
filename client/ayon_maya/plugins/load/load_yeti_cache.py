@@ -250,6 +250,9 @@ class YetiCacheLoader(plugin.Loader):
         cmds.setAttr("{}.representation".format(container_node),
                      repre_entity["id"],
                      typ="string")
+        cmds.setAttr("{}.project_name".format(container_node),
+                     context["project"]["name"],
+                     type="string")
 
     def switch(self, container, context):
         self.update(container, context)

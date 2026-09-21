@@ -129,6 +129,9 @@ class VRayProxyLoader(plugin.Loader):
         cmds.setAttr("{}.representation".format(node),
                      repre_entity["id"],
                      type="string")
+        cmds.setAttr("{}.project_name".format(node),
+                     context["project"]["name"],
+                     type="string")
 
     def remove(self, container):
         # type: (dict) -> None

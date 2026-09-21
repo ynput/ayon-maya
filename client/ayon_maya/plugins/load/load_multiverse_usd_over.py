@@ -106,6 +106,9 @@ class MultiverseUsdOverLoader(plugin.Loader):
         cmds.setAttr("{}.representation".format(node),
                      repre_entity["id"],
                      type="string")
+        cmds.setAttr("{}.project_name".format(node),
+                     context["project"]["name"],
+                     type="string")
         mel.eval('refreshEditorTemplates;')
 
     def switch(self, container, context):

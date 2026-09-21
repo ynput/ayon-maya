@@ -79,6 +79,9 @@ class MayaUsdLoader(plugin.Loader):
         cmds.setAttr("{}.representation".format(node),
                      context["representation"]["id"],
                      type="string")
+        cmds.setAttr("{}.project_name".format(node),
+                     context["project"]["name"],
+                     type="string")
 
     def switch(self, container, context):
         self.update(container, context)

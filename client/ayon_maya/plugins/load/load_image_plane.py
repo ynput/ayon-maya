@@ -225,6 +225,9 @@ class ImagePlaneLoader(plugin.Loader):
                      repre_entity["id"],
                      type="string")
 
+        cmds.setAttr("{}.project_name".format(container["objectName"]),
+                     context["project"]["name"],
+                     type="string")
         colorspace = self.get_colorspace(repre_entity)
         if colorspace:
             cmds.setAttr(

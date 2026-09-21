@@ -271,6 +271,9 @@ class LoadVDBtoVRay(plugin.Loader):
         cmds.setAttr(container["objectName"] + ".representation",
                      repre_entity["id"],
                      type="string")
+        cmds.setAttr(container["objectName"] + ".project_name",
+                     context["project"]["name"],
+                     type="string")
 
     def switch(self, container, context):
         self.update(container, context)
