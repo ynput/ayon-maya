@@ -1,6 +1,6 @@
 import maya.cmds as cmds
 from ayon_core.settings import get_project_settings
-from ayon_maya.api.lib import unique_namespace
+from ayon_maya.api.lib import set_attribute, unique_namespace
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
 from ayon_maya.api.plugin import get_load_color_for_product_base_type
@@ -86,9 +86,11 @@ class GpuCacheLoader(plugin.Loader):
         for cache in caches:
             cmds.setAttr(cache + ".cacheFileName", path, type="string")
 
-        cmds.setAttr(container["objectName"] + ".representation",
-                     repre_entity["id"],
-                     type="string")
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, container['objectName'])
 
     def switch(self, container, context):
         self.update(container, context)

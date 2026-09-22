@@ -2,6 +2,7 @@ from ayon_maya.api.lib import (
     get_container_members,
     namespaced,
     pairwise,
+    set_attribute,
     unique_namespace,
 )
 from ayon_maya.api.pipeline import containerise
@@ -221,9 +222,11 @@ class ImagePlaneLoader(plugin.Loader):
         cmds.setAttr("{}.imageName".format(image_plane_shape),
                      path,
                      type="string")
-        cmds.setAttr("{}.representation".format(container["objectName"]),
-                     repre_entity["id"],
-                     type="string")
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, container['objectName'])
 
         colorspace = self.get_colorspace(repre_entity)
         if colorspace:

@@ -1,4 +1,8 @@
-from ayon_maya.api.lib import get_container_members, unique_namespace
+from ayon_maya.api.lib import (
+    get_container_members,
+    set_attribute,
+    unique_namespace
+)
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
 from maya import cmds, mel
@@ -90,11 +94,11 @@ class AudioLoader(plugin.Loader):
                 displaySound=True
             )
 
-        cmds.setAttr(
-            container["objectName"] + ".representation",
-            repre_entity["id"],
-            type="string"
-        )
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, container["objectName"])
 
     def switch(self, container, context):
         self.update(container, context)
