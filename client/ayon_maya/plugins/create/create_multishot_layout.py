@@ -115,13 +115,6 @@ class CreateMultishotLayout(plugin.MayaCreator):
             )
 
         for shot in shots:
-            # we are setting shot name to be displayed in the sequencer to
-            # `shot name (shot label)` if the label is set, otherwise just
-            # `shot name`. So far, labels are used only when the name is set
-            # with characters that are not allowed in the shot name.
-            if not shot["active"]:
-                continue
-
             # get task for shot
             folder_path = shot["path"]
             folder_entity = folder_entities_by_path[folder_path]
@@ -131,6 +124,10 @@ class CreateMultishotLayout(plugin.MayaCreator):
             if layout_task_entity:
                 layout_task_name = layout_task_entity["name"]
 
+            # we are setting shot name to be displayed in the sequencer to
+            # `shot name (shot label)` if the label is set, otherwise just
+            # `shot name`. So far, labels are used only when the name is set
+            # with characters that are not allowed in the shot name.
             shot_name = shot['name']
             if shot["label"] and shot["label"] != shot_name:
                 shot_name += f" ({shot['label']})"
@@ -185,9 +182,10 @@ class CreateMultishotLayout(plugin.MayaCreator):
         return list(ayon_api.get_folders(
             project_name=self.project_name,
             parent_ids=[parent_id],
+            active=True,
             fields={
                 "attrib.clipIn", "attrib.clipOut",
                 "attrib.frameStart", "attrib.frameEnd",
-                "name", "label", "path", "folderType", "id", "active"
+                "name", "label", "path", "folderType", "id"
             }
         ))
