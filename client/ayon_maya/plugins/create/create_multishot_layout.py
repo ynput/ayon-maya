@@ -1,20 +1,9 @@
-import collections
-
-from ayon_api import (
-    get_folder_by_name,
-    get_folder_by_path,
-    get_folders,
-    get_tasks,
-)
+import ayon_api
 from maya import cmds  # noqa: F401
 
 from ayon_maya.api import plugin
 from ayon_core.lib import EnumDef, TextDef
-from ayon_core.pipeline import (
-    Creator,
-    get_current_folder_path,
-    get_current_project_name,
-)
+from ayon_core.pipeline import Creator
 from ayon_core.pipeline.create import CreatorError
 
 
@@ -37,26 +26,12 @@ class CreateMultishotLayout(plugin.MayaCreator):
         # Present artist with a list of parents of the current context
         # to choose from. This will be used to get the shots under the
         # selected folder to create the Camera Sequencer.
-
-        """
-        Todo: `get_folder_by_name` should be switched to `get_folder_by_path`
-              once the fork to pure AYON is done.
-
-        Warning: this will not work for projects where the folder name
-                 is not unique across the project until the switch mentioned
-                 above is done.
-        """
-
-        project_name = get_current_project_name()
-        folder_path = get_current_folder_path()
-        if "/" in folder_path:
-            current_folder = get_folder_by_path(project_name, folder_path)
-        else:
-            current_folder = get_folder_by_name(
-                project_name, folder_name=folder_path
-            )
-
-        current_path_parts = current_folder["path"].split("/")
+        current_folder = self.create_context.get_current_folder_entity()
+        current_folder_path = ""
+        current_path_parts = []
+        if current_folder:
+            current_folder_path = current_folder["path"]
+            current_path_parts = current_folder_path.strip("/").split("/")
 
         # populate the list with parents of the current folder
         # this will create menu items like:
@@ -65,9 +40,9 @@ class CreateMultishotLayout(plugin.MayaCreator):
         #       "value": "",
         #       "label": "project (shots directly under the project)"
         #   }, {
-        #       "value": "shots/shot_01", "label": "shot_01 (current)"
+        #       "value": "/shots", "label": "shots"
         #   }, {
-        #       "value": "shots", "label": "shots"
+        #       "value": "/shots/shot_01", "label": "shot_01 (current)"
         #   }
         # ]
 
@@ -83,17 +58,16 @@ class CreateMultishotLayout(plugin.MayaCreator):
         # go through the current folder path and add each part to the list,
         # but mark the current folder.
         for part_idx, part in enumerate(current_path_parts):
+            value = "/" + "/".join(current_path_parts[:part_idx + 1])
             label = part
-            if label == current_folder["name"]:
+            if value == current_folder_path:
                 label = f"{label} (current)"
-
-            value = "/".join(current_path_parts[:part_idx + 1])
 
             items_with_label.append({"label": label, "value": value})
 
         return [
             EnumDef("shotParent",
-                    default=current_folder["name"],
+                    default=current_folder_path,
                     label="Shot Parent Folder",
                     items=items_with_label,
                     ),
@@ -105,8 +79,8 @@ class CreateMultishotLayout(plugin.MayaCreator):
         ]
 
     def create(self, product_name, instance_data, pre_create_data):
-        shots = list(
-            self.get_related_shots(folder_path=pre_create_data["shotParent"])
+        shots = self.get_related_shots(
+            folder_path=pre_create_data["shotParent"]
         )
         if not shots:
             # There are no shot folders under the specified folder.
@@ -126,18 +100,20 @@ class CreateMultishotLayout(plugin.MayaCreator):
             raise CreatorError(
                 f"Creator {layout_creator_id} not found.")
 
-        folder_ids = {s["id"] for s in shots}
-        folder_entities = get_folders(self.project_name, folder_ids)
-        task_entities = get_tasks(
-            self.project_name, folder_ids=folder_ids
+        # Query through the create context so the entities are cached for
+        # the created layout instances as well.
+        task_name = pre_create_data["taskName"]
+        folder_entities_by_path = self.create_context.get_folder_entities(
+            shot["path"] for shot in shots
         )
-        task_entities_by_folder_id = collections.defaultdict(dict)
-        for task_entity in task_entities:
-            folder_id = task_entity["folderId"]
-            task_name = task_entity["name"]
-            task_entities_by_folder_id[folder_id][task_name] = task_entity
+        task_entities_by_folder_path = {}
+        if task_name:
+            task_entities_by_folder_path = (
+                self.create_context.get_task_entities(
+                    {shot["path"]: {task_name} for shot in shots}
+                )
+            )
 
-        folder_entities_by_id = {fe["id"]: fe for fe in folder_entities}
         for shot in shots:
             # we are setting shot name to be displayed in the sequencer to
             # `shot name (shot label)` if the label is set, otherwise just
@@ -147,15 +123,13 @@ class CreateMultishotLayout(plugin.MayaCreator):
                 continue
 
             # get task for shot
-            folder_id = shot["id"]
-            folder_entity = folder_entities_by_id[folder_id]
-            task_entities = task_entities_by_folder_id[folder_id]
-
+            folder_path = shot["path"]
+            folder_entity = folder_entities_by_path[folder_path]
+            layout_task_entity = task_entities_by_folder_path.get(
+                folder_path, {}).get(task_name)
             layout_task_name = None
-            layout_task_entity = None
-            if pre_create_data["taskName"] in task_entities:
-                layout_task_name = pre_create_data["taskName"]
-                layout_task_entity = task_entities[layout_task_name]
+            if layout_task_entity:
+                layout_task_name = layout_task_entity["name"]
 
             shot_name = shot['name']
             if shot["label"] and shot["label"] != shot_name:
@@ -197,23 +171,23 @@ class CreateMultishotLayout(plugin.MayaCreator):
             list: List of dicts with folder data.
 
         """
-        # if folder_path is None, project is selected as a root
+        # if folder_path is empty, project is selected as a root
         # and its name is used as a parent id
         parent_id = self.project_name
         if folder_path:
-            current_folder = get_folder_by_path(
-                project_name=self.project_name,
-                folder_path=folder_path,
-            )
-            parent_id = current_folder["id"]
+            # The folder entity is cached on the create context
+            parent_folder = self.create_context.get_folder_entity(folder_path)
+            if not parent_folder:
+                raise CreatorError(f"Folder not found: {folder_path}")
+            parent_id = parent_folder["id"]
 
         # get all child folders of the current one
-        return get_folders(
+        return list(ayon_api.get_folders(
             project_name=self.project_name,
             parent_ids=[parent_id],
-            fields=[
+            fields={
                 "attrib.clipIn", "attrib.clipOut",
                 "attrib.frameStart", "attrib.frameEnd",
-                "name", "label", "path", "folderType", "id"
-            ]
-        )
+                "name", "label", "path", "folderType", "id", "active"
+            }
+        ))
