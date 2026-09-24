@@ -4,6 +4,7 @@ from ayon_core.settings import get_project_settings
 from ayon_maya.api import plugin
 from ayon_maya.api.plugin import get_load_color_for_product_base_type
 from maya import cmds
+from ayon_maya.api import lib
 
 # List of 3rd Party Channels Mapping names for VRayVolumeGrid
 # See: https://docs.chaosgroup.com/display/VRAY4MAYA/Input
@@ -268,9 +269,11 @@ class LoadVDBtoVRay(plugin.Loader):
             self._set_path(grid_node, path=path, show_preset_popup=False)
 
         # Update container representation
-        cmds.setAttr(container["objectName"] + ".representation",
-                     repre_entity["id"],
-                     type="string")
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            lib.set_attribute(key, value, container['objectName'])
 
     def switch(self, container, context):
         self.update(container, context)

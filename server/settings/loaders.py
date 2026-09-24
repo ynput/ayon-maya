@@ -351,8 +351,8 @@ DEFAULT_LOADERS_SETTING = {
         "enabled": True,
         "use_ayon_entity_uri": False
     },
-    "MultiverseUsdLoader": {"enabled": True},
-    "MultiverseUsdOverLoader": {"enabled": True},
+    "MultiverseUsdLoader": {"enabled": False},
+    "MultiverseUsdOverLoader": {"enabled": False},
     "RedshiftProxyLoader": {"enabled": True},
     "RenderSetupLoader": {"enabled": True},
     "LoadVDBtoArnold": {"enabled": True},
