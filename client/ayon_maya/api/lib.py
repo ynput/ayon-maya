@@ -731,7 +731,9 @@ def imprint(node, data):
             set_type = {"keyable": False, "channelBox": True}
             value = 0  # enum default
         else:
-            raise TypeError("Unsupported type: %r" % type(value))
+            raise TypeError(
+                f"Unsupported type for '{node}.{key}': {type(value)}"
+            )
 
         cmds.addAttr(node, longName=key, **add_type)
         cmds.setAttr(node + "." + key, value, **set_type)
