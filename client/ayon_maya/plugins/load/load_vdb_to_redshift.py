@@ -121,9 +121,11 @@ class LoadVDBtoRedShift(plugin.Loader):
         self._set_path(grid_nodes[0], path=path, representation=repre_entity)
 
         # Update container representation
-        cmds.setAttr(container["objectName"] + ".representation",
-                     repre_entity["id"],
-                     type="string")
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            lib.set_attribute(key, value, container['objectName'])
 
     def remove(self, container):
 

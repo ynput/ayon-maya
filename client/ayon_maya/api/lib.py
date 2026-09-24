@@ -1153,21 +1153,27 @@ def displaySmoothness(nodes,
 
     originals = dict((node, parse(node)) for node in nodes)
 
-    try:
-        # Apply current state
-        cmds.displaySmoothness(nodes,
-                               divisionsU=divisionsU,
-                               divisionsV=divisionsV,
-                               pointsWire=pointsWire,
-                               pointsShaded=pointsShaded,
-                               polygonObject=polygonObject)
-        yield
-    finally:
-        # Revert state
-        _iteritems = getattr(originals, "iteritems", originals.items)
-        for node, state in _iteritems():
-            if state:
-                cmds.displaySmoothness(node, **state)
+    # Temporarily disable the smooth warning dialog for meshes
+    meshes = cmds.ls(nodes, type="mesh") or []
+    disable_smooth_warn = {f"{mesh}.smoothWarn": False for mesh in meshes}
+
+    with attribute_values(disable_smooth_warn):
+        try:
+            # Apply current state
+            cmds.displaySmoothness(
+                nodes,
+                divisionsU=divisionsU,
+                divisionsV=divisionsV,
+                pointsWire=pointsWire,
+                pointsShaded=pointsShaded,
+                polygonObject=polygonObject,
+            )
+            yield
+        finally:
+            # Revert state
+            for node, state in originals.items():
+                if state:
+                    cmds.displaySmoothness(node, **state)
 
 
 @contextlib.contextmanager

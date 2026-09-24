@@ -37,6 +37,7 @@ from ayon_core.pipeline import (
     deregister_workfile_build_plugin_path,
     AYON_CONTAINER_ID,
     AVALON_CONTAINER_ID,
+    registered_host,
 )
 from ayon_core.pipeline.load import any_outdated_containers
 from ayon_core.pipeline.workfile.lock_workfile import (
@@ -79,6 +80,7 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     def __init__(self):
         super(MayaHost, self).__init__()
         self._op_events = {}
+        self.app_launch_completed = False
 
     def get_app_information(self):
         from ayon_core.host import ApplicationInformation
@@ -277,6 +279,15 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         ]:
             mayaUsd.lib.ExportChaser.Register(export_chaser,
                                               export_chaser.name)
+
+    def on_init_end(self):
+        self.app_launch_completed = True
+
+        # If we haven't opened a file on launch, then allow to trigger
+        # app launch template builder
+        if not self.get_current_workfile():
+            from .workfile_template_builder import trigger_on_app_launch
+            trigger_on_app_launch()
 
 
 def _set_project():
@@ -686,21 +697,15 @@ def on_new():
     """Set project resolution and fps when create a new file.
     If the project has a workfile template, create it.
     """
-    from .workfile_template_builder import create_first_workfile_template
-
-    project_name = get_current_project_name()
-    project_settings = get_project_settings(project_name)
-    maya_settings = project_settings["maya"]
-    should_create_template = (
-        not os.getenv("AYON_MAYA_WORKFILE_PATH")
-        or maya_settings["open_workfile_post_initialization"]
-    )
-
     log.info("Running callback on new..")
     with lib.suspended_refresh():
         lib.set_context_settings()
-        if should_create_template:
-            create_first_workfile_template()
+
+    # Do not trigger new file template build trigger on Maya startup
+    host: MayaHost = registered_host()
+    if host.app_launch_completed:
+        from .workfile_template_builder import trigger_on_new_file
+        trigger_on_new_file()
 
     _remove_workfile_lock()
 
