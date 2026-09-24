@@ -247,9 +247,11 @@ class YetiCacheLoader(plugin.Loader):
                                 SKIP_ATTR_MESSAGE, yeti_node, attr, value
                             )
 
-        cmds.setAttr("{}.representation".format(container_node),
-                     repre_entity["id"],
-                     typ="string")
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            lib.set_attribute(key, value, container_node)
 
     def switch(self, container, context):
         self.update(container, context)
