@@ -62,7 +62,6 @@ def extract_gltf(parent_dir,
             log.warning("extract_gltf() does not support option '%s'. "
                         "Flag will be ignored..", key)
             options.pop(key)
-            options.pop(value)
             continue
 
     job_args = list()

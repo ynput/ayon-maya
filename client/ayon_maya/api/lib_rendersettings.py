@@ -314,7 +314,7 @@ class RenderSettings(object):
             for light_aovs in lightSelect_aovs:
                 light_enabled = cmds.getAttr("{}.enabled".format(light_aovs))
                 if light_enabled:
-                    cmds.delete(lightSelect_aovs)
+                    cmds.delete(light_aovs)
 
         vray_aovs = vray_render_presets["aov_list"]
         for renderlayer in vray_aovs:

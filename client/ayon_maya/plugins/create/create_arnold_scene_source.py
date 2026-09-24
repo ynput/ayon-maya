@@ -62,7 +62,7 @@ class CreateArnoldSceneSource(plugin.MayaCreator):
                       label="Motion Blur Length",
                       decimals=3,
                       default=self.motionBlurLength),
-            BoolDef("expandProcedural",
+            BoolDef("expandProcedurals",
                     label="Expand Procedurals",
                     default=self.expandProcedurals),
             BoolDef("compressed",

@@ -155,14 +155,17 @@ def get_attr_in_layer(node_attr, layer, as_string=True):
     for match, layer_override, index in overrides:
         if isinstance(layer_override, AbsOverride):
             # Absolute override
-            value = get_attribute(layer_override.name() + ".attrValue")
+            override_value = get_attribute(
+                f"{layer_override.name()}.attrValue"
+            )
             if match == EXACT_MATCH:
-                # value = value
-                pass
+                value = override_value
             elif match == PARENT_MATCH:
-                value = value[index]
+                value = override_value[index]
             elif match == CLIENT_MATCH:
-                value[index] = value
+                # The override is on a child plug of the queried plug, so
+                # only that child's value changes
+                value[index] = override_value
 
         elif isinstance(layer_override, RelOverride):
             # Relative override
@@ -389,7 +392,7 @@ def get_shader_in_layer(node, layer):
                                        source=False,
                                        destination=True,
                                        type="renderLayer") or []
-    connections = filter(lambda x: x.endswith(".outPlug"), connections)
+    connections = [x for x in connections if x.endswith(".outPlug")]
     if not connections:
         # If no overrides anywhere on the shader, just get the current shader
         return _get_connected_shader(plug)

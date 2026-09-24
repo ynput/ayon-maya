@@ -130,10 +130,9 @@ def unlocked(node):
         if not cmds.objExists(node):
             # Node might have been renamed or deleted; try and find it by uuid.
             nodes_from_id = cmds.ls(node_uuid, long=True) or []
-            if not nodes_from_id:
-                return
-            node = nodes_from_id[0]
-        cmds.lockNode(node, lock=has_locked)
+            node = nodes_from_id[0] if nodes_from_id else None
+        if node:
+            cmds.lockNode(node, lock=has_locked)
 
 
 @contextlib.contextmanager
@@ -3336,7 +3335,7 @@ def get_attr_in_layer(attr, layer, as_string=True):
                                        source=False,
                                        destination=True,
                                        type="renderLayer") or []
-    connections = filter(lambda x: x.endswith(".plug"), connections)
+    connections = [x for x in connections if x.endswith(".plug")]
     if not connections:
         return cmds.getAttr(attr)
 
@@ -4400,6 +4399,7 @@ def get_rig_animation_instance_variant(context, namespace, options=None)-> str:
         product_base_type = product_type
     product_name = product_entity["name"]
 
+    options = options or {}
     custom_product_name = options.get("animationProductName")
     if custom_product_name:
         for old_key, new_key in (
@@ -4518,6 +4518,8 @@ def create_camera_instance(
     """
     if options is None:
         options = {}
+    if log is None:
+        log = logging.getLogger(__name__)
 
     referenced_nodes: list[str] = [
         node for node in nodes 
