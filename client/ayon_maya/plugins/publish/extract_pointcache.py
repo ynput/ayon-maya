@@ -194,7 +194,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
                 "melPostJobCallback", self.melPostJobCallback
             ),
             "pythonPerFrameCallback": attribute_values.get(
-                "pythonPerFrameCallback", self.pythonPostJobCallback
+                "pythonPerFrameCallback", self.pythonPerFrameCallback
             ),
             "pythonPostJobCallback": attribute_values.get(
                 "pythonPostJobCallback", self.pythonPostJobCallback

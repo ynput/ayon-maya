@@ -56,7 +56,7 @@ class ValidateSkinclusterDeformerSet(plugin.MayaInstancePlugin,
                 # Ensure the mesh is also in the skinCluster set
                 # otherwise the skin will not be exported correctly
                 # by the FBX Exporter.
-                deformer_sets = cmds.listSets(object=mesh, type=2)
+                deformer_sets = cmds.listSets(object=mesh, type=2) or []
                 for deformer_set in deformer_sets:
                     used_by = cmds.listConnections(deformer_set + ".usedBy",
                                                    source=True,

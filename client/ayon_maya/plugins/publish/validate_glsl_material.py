@@ -35,12 +35,15 @@ class ValidateGLSLMaterial(plugin.MayaInstancePlugin,
 
     def get_material_from_shapes(self, instance):
         shapes = cmds.ls(instance, type="mesh", long=True)
-        for shape in shapes:
-            shading_grp = cmds.listConnections(shape,
-                                               destination=True,
-                                               type="shadingEngine")
-
-            return shading_grp or []
+        shading_groups = cmds.listConnections(
+            shapes,
+            destination=True,
+            source=False,
+            type="shadingEngine",
+        ) or []
+        # Note: listConnections will return duplicates if multiple shapes share
+        #  the same shading group so we remove them here
+        return list(set(shading_groups))
 
     def get_texture_shader_invalid(self, instance):
 
