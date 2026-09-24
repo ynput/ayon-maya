@@ -809,6 +809,8 @@ class Loader(LoaderPlugin):
             "product": {
                 "name": product_entity["name"],
                 "type": product_type,
+                "basetype": product_base_type,
+                # Backwards compatibility
                 "baseType": product_base_type,
             },
         }

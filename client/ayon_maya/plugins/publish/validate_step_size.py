@@ -36,7 +36,7 @@ class ValidateStepSize(plugin.MayaInstancePlugin,
                             "(valid: {1} to {2})".format(step,
                                                          cls.MIN,
                                                          cls.MAX))
-            return objset
+            return [objset]
 
         return []
 
