@@ -26,7 +26,7 @@ class ExtractModel(plugin.MayaExtractorPlugin,
     """
 
     label = "Model (Maya Scene)"
-    families = ["model"]
+    families = ["model.extract"]
     scene_type = "ma"
     optional = True
 

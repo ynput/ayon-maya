@@ -20,7 +20,7 @@ class CollectModelData(plugin.MayaInstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.2
     label = 'Collect Model Data'
-    families = ["model"]
+    families = ["model", "mayaUsd.model"]
 
     def process(self, instance):
         # Extract only current frame (override)

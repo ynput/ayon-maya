@@ -2033,7 +2033,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": False,
         "active": True,
         "families": [
-            "model",
+            "model.extract",
             "animation",
             "pointcache"
         ],
@@ -2066,7 +2066,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "active": True,
         "families": [
             "pointcache",
-            "model",
+            "model.extract",
             "vrayproxy.alembic"
         ],
         "attr": "",
@@ -2151,7 +2151,7 @@ DEFAULT_PUBLISH_SETTINGS = {
     "ExtractMayaUsdModel": {
         "enabled": True,
         "optional": True,
-        "active": False,
+        "active": True,
     },
     "ExtractMayaUsdPointcache": {
         "enabled": True,
