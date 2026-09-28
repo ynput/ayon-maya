@@ -369,7 +369,7 @@ class CollectLook(plugin.MayaInstancePlugin):
         # Log warning when no relevant sets were retrieved for the look.
         if (
             not instance.data["lookData"]["relationships"]
-            and "model" not in self.families
+            and "model.extract" not in self.families
         ):
             self.log.warning("No sets found for the nodes in the "
                              "instance: %s" % instance[:])
