@@ -12,10 +12,6 @@ def _convert_model_extractor_families(overrides):
 
         converted = []
         for family in families:
-            # An older Alembic override may explicitly include Maya USD Model.
-            if plugin_name == "ExtractAlembic" and family == "mayaUsd.model":
-                continue
-
             if family == "model":
                 family = "model.extract"
             if family not in converted:
