@@ -310,13 +310,6 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
         if not cls.instance_matches_plugin_families(instance):
             return []
 
-        if cls.optional:
-            plugin_attr_values = (
-                instance.data
-                .get("publish_attributes", {})
-                .get(cls.__name__, {})
-            )
-            is_enabled = plugin_attr_values.get("active", cls.active)
         defs = super().get_attr_defs_for_instance(create_context, instance)
         if not cls.overrides:
             return defs
