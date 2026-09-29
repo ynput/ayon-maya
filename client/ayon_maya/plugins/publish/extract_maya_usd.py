@@ -299,14 +299,26 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             value = overrides[key]
             if isinstance(value, str):
                 value = str(value)
-            if not isinstance(value, self.options[key]):
+
+            # Options may define multiple valid types, where `None` is
+            # used to denote an optional value.
+            valid_types = self.options[key]
+            if not isinstance(valid_types, tuple):
+                valid_types = (valid_types,)
+            valid_types = tuple(
+                type(None) if valid_type is None else valid_type
+                for valid_type in valid_types
+            )
+            if not isinstance(value, valid_types):
                 self.log.warning(
                     "Overridden attribute {key} was of "
                     "the wrong type: {invalid_type} "
                     "- should have been {valid_type}".format(
                         key=key,
                         invalid_type=type(value).__name__,
-                        valid_type=self.options[key].__name__))
+                        valid_type=" or ".join(
+                            valid_type.__name__ for valid_type in valid_types
+                        )))
                 continue
 
             options[key] = value

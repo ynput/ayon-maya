@@ -87,33 +87,36 @@ def preserve_modelpanel_cameras(container, log=None):
     finally:
         new_members = get_container_members(container)
         new_cameras = set(cmds.ls(new_members, type="camera", long=True))
-        if not new_cameras:
-            return
+        if new_cameras:
+            for panel, cam_name in panel_cameras.items():
 
-        for panel, cam_name in panel_cameras.items():
-            new_camera = None
-            if cam_name in new_cameras:
-                new_camera = cam_name
-            elif len(new_cameras) == 1:
-                new_camera = next(iter(new_cameras))
-            else:
-                # Multiple cameras in the updated container but not an exact
-                # match detected by name. Find the closest match
-                matches = difflib.get_close_matches(word=cam_name,
-                                                    possibilities=new_cameras,
-                                                    n=1)
-                if matches:
-                    new_camera = matches[0]  # best match
-                    if log:
-                        log.info("Camera in '{}' restored with "
-                                 "closest match camera: {} (before: {})"
-                                 .format(panel, new_camera, cam_name))
+                new_camera = None
+                if cam_name in new_cameras:
+                    new_camera = cam_name
+                elif len(new_cameras) == 1:
+                    new_camera = next(iter(new_cameras))
+                else:
+                    # Multiple cameras in the updated container but not an
+                    # exact match detected by name. Find the closest match
+                    matches = difflib.get_close_matches(
+                        word=cam_name,
+                        possibilities=new_cameras,
+                        n=1
+                    )
+                    if matches:
+                        new_camera = matches[0]  # best match
+                        if log:
+                            log.info(
+                                f"Camera in '{panel}' restored with closest "
+                                f"match camera: {new_camera} "
+                                f"(before: {cam_name})"
+                            )
 
-            if not new_camera:
-                # Unable to find the camera to re-apply in the modelpanel
-                continue
+                if not new_camera:
+                    # Unable to find the camera to re-apply in the modelpanel
+                    continue
 
-            cmds.modelPanel(panel, edit=True, camera=new_camera)
+                cmds.modelPanel(panel, edit=True, camera=new_camera)
 
 
 class ReferenceLoader(plugin.ReferenceLoader):
