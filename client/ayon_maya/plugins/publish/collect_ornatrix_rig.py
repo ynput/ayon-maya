@@ -61,8 +61,6 @@ class CollectOxRig(plugin.MayaInstancePlugin):
                 root = cmds.workspace(query=True, rootDirectory=True)
                 filepath = os.path.join(root, texture)
                 files = lib.search_textures(filepath)
-                if files:
-                    continue
 
             if not files:
                 self.log.warning(f"No texture found for: {texture}")

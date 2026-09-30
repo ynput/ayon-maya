@@ -291,7 +291,7 @@ class ValidateRenderSettings(plugin.MayaInstancePlugin,
                     render_value = cmds.getAttr(
                         "{}.{}".format(node, data["attribute"])
                     )
-                except PublishValidationError:
+                except (ValueError, RuntimeError):
                     invalid = True
                     cls.log.error(
                         "Cannot get value of {}.{}".format(

@@ -251,6 +251,13 @@ class MayaCreatorBase:
                 if cmds.attributeQuery(attr, node=node, exists=True):
                     cmds.deleteAttr("{}.{}".format(node, attr))
 
+            for key, value in data.copy().items():
+                if value is None:
+                    self.log.debug(
+                        f"Skipping attribute '{node}.{key}' due to None value"
+                    )
+                    data.pop(key)
+
             return imprint(node, data)
 
     def read_instance_node(self, node):
@@ -802,6 +809,8 @@ class Loader(LoaderPlugin):
             "product": {
                 "name": product_entity["name"],
                 "type": product_type,
+                "basetype": product_base_type,
+                # Backwards compatibility
                 "baseType": product_base_type,
             },
         }
