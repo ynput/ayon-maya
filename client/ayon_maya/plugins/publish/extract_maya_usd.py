@@ -870,11 +870,26 @@ class ExtractMayaUsdModel(ExtractMayaUsd):
     """
 
     label = "Extract USD"
-    families = ["model"]
+    families = ["model.extract"]
 
     # Exposed in settings
     optional = True
-    active = False
+    active = True
+
+    def process(self, instance):
+        # TODO: Fix this without changing instance data
+        instance.data["exportAnimationData"] = False
+        super().process(instance)
+
+
+class ExtractMayaUsdContribution(ExtractMayaUsd):
+    """Extractor for Maya USD for 'contribution'"""
+
+    label = "Extract USD for contribution"
+    families = ["mayaUsd.model"]
+
+    optional = False
+    active = True
 
     def process(self, instance):
         # TODO: Fix this without changing instance data
