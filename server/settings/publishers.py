@@ -2164,22 +2164,22 @@ DEFAULT_PUBLISH_SETTINGS = {
         "active": False,
     },
     "ExtractMultiverseLook": {
-        "enabled": True,
+        "enabled": False,
         "optional": False,
         "active": True,
     },
     "ExtractMultiverseUsdComposition": {
-        "enabled": True,
+        "enabled": False,
         "optional": False,
         "active": True,
     },
     "ExtractMultiverseUsdOverride": {
-        "enabled": True,
+        "enabled": False,
         "optional": False,
         "active": True,
     },
     "ExtractMultiverseUsd": {
-        "enabled": True,
+        "enabled": False,
         "optional": False,
         "active": True,
     },

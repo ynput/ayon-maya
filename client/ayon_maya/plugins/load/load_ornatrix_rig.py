@@ -47,7 +47,7 @@ class OxRigLoader(plugin.ReferenceLoader):
             )
 
         color = plugin.get_load_color_for_product_base_type("oxrig")
-        if color is not None:
+        if color is not None and attach_to_root:
             red, green, blue = color
             cmds.setAttr(group_name + ".useOutlinerColor", 1)
             cmds.setAttr(

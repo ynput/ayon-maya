@@ -151,7 +151,7 @@ def create_items_from_nodes(nodes):
             log.warning(
                 "Id found on {num} nodes for which no folder is found database,"
                 " skipping '{folder_id}'".format(
-                    num=len(nodes),
+                    num=len(id_nodes),
                     folder_id=folder_id
                 )
             )

@@ -6,6 +6,7 @@ from ayon_maya.api.lib import (
     enable_usd_maya_references,
     maintained_usd_maya_references,
     namespaced,
+    set_attribute,
     unique_namespace,
 )
 from ayon_maya.api.pipeline import containerise
@@ -104,9 +105,11 @@ class MayaUsdLoader(plugin.Loader):
             with maintained_usd_maya_references(shape):
                 cmds.setAttr("{}.filePath".format(shape), path, type="string")
 
-        cmds.setAttr("{}.representation".format(node),
-                     context["representation"]["id"],
-                     type="string")
+        for key, value in [
+            ("representation", context["representation"]["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, node)
 
     def switch(self, container, context):
         self.update(container, context)

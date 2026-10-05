@@ -71,6 +71,7 @@ class ValidateShadingEngine(plugin.MayaInstancePlugin,
                     cls.log.warning(
                         "Ignoring referenced shading engine "
                         f"with invalid name: {shading_engine}")
+                    continue
 
                 if shading_engine in ignored_default_nodes:
                     cls.log.warning(

@@ -28,9 +28,9 @@ def _convert_workfile_builder_0_6_0(overrides):
         if "linked_assets" in profile:
             profile["linked_folders"] = profile.pop("linked_assets")
         if "linked_folders" in profile:
-            opts.append(profile["linked_folders"])
+            opts.extend(profile["linked_folders"])
         if "current_context" in profile:
-            opts.append(profile["current_context"])
+            opts.extend(profile["current_context"])
 
     for opt in opts:
         if "product_base_types" not in opt and "product_types" in opt:
