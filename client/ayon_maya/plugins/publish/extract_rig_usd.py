@@ -3,7 +3,6 @@
 import os
 
 import pyblish.api
-from ayon_core.pipeline import publish
 from ayon_core.pipeline.publish.lib import get_instance_expected_output_path
 from ayon_maya.api import plugin
 

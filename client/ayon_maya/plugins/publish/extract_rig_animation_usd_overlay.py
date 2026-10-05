@@ -3,10 +3,13 @@
 import os
 
 import pyblish.api
-from ayon_core.pipeline import publish
+from ayon_core.pipeline import KnownPublishError
 from ayon_core.pipeline.publish.lib import get_instance_expected_output_path
 from ayon_maya.api import plugin
-from ayon_maya.api.lib import get_usd_maya_reference_for_nodes
+from ayon_maya.api.lib import (
+    USD_RIG_ANIMATION_CREATOR_ID,
+    get_usd_maya_reference_for_nodes,
+)
 
 try:
     from pxr import Sdf
@@ -56,45 +59,62 @@ class ExtractRigAnimationUsdOverlay(plugin.MayaExtractorPlugin):
             self.log.warning("USD is not available; skipping.")
             return
 
+        reference = get_usd_maya_reference_for_nodes(instance[:])
+        if reference is None and (
+            instance.data.get("creator_identifier")
+            != USD_RIG_ANIMATION_CREATOR_ID
+        ):
+            self.log.debug(
+                "Rig was not loaded through a USD MayaReference prim; "
+                "skipping USD overlay.")
+            return
+
         representations = instance.data.setdefault("representations", [])
         cache_repre = next(
             (r for r in representations
              if r["name"] == "usd" and r["ext"] == "usd"),
             None
         )
-        if cache_repre is None:
-            self.log.warning(
-                "No USD animation cache found. Enable 'Extract USD "
-                "Animation' to publish the rig animation as USD overlay.")
-            return
 
-        reference = get_usd_maya_reference_for_nodes(instance[:])
+        error = None
         if reference is None:
-            self.log.warning(
-                "Rig of instance '%s' was not loaded through a USD "
-                "MayaReference prim; skipping USD overlay.", instance.name)
+            error = (
+                "The rig is not related to a USD MayaReference prim anymore "
+                "so its animation can not be overlaid onto the USD asset. "
+                "Load the rig from the USD again using the 'Load USD rigs' "
+                "inventory action."
+            )
+        elif cache_repre is None:
+            error = (
+                "No USD animation cache was extracted to overlay onto the "
+                "USD asset. Enable 'Extract USD Animation' for the instance."
+            )
+        if error:
+            # Without the overlay the USD contribution would add an invalid
+            # layer, so only allow that if the instance does not contribute.
+            if self.is_usd_contribution_enabled(instance):
+                raise KnownPublishError(error)
+            self.log.warning("%s Skipping USD overlay.", error)
             return
 
         # Rename the cache representation so `usd` becomes the overlay.
         cache_repre["name"] = CACHE_REPRESENTATION
         cache_repre["outputName"] = CACHE_OUTPUT_NAME
-        cache_file = cache_repre["files"]
-        cache_source = os.path.join(cache_repre["stagingDir"], cache_file)
-
-        overlay_path = get_instance_expected_output_path(
-            instance, representation_name="usd", ext="usd")
-        base, ext = os.path.splitext(overlay_path)
-        cache_path = f"{base}_{CACHE_OUTPUT_NAME}{ext}"
-        cache_path = cache_path.replace("\\", "/")
-
+        cache_source = os.path.join(
+            cache_repre["stagingDir"], cache_repre["files"])
         cache_layer = Sdf.Layer.FindOrOpen(cache_source)
         if cache_layer is None:
-            self.log.error("Unable to open animation cache: %s", cache_source)
-            return
-        root_names = [prim.name for prim in cache_layer.rootPrims]
+            raise KnownPublishError(
+                f"Unable to open USD animation cache: {cache_source}")
 
         variant_name = instance.data["productName"]
         layer = Sdf.Layer.CreateAnonymous()
+        # Match the time scaling of the cache
+        for key in ("timeCodesPerSecond", "framesPerSecond"):
+            if cache_layer.pseudoRoot.HasInfo(key):
+                layer.pseudoRoot.SetInfo(
+                    key, cache_layer.pseudoRoot.GetInfo(key))
+
         asset_spec = Sdf.CreatePrimInLayer(
             layer, Sdf.Path(reference.asset_prim_path))
         asset_spec.specifier = Sdf.SpecifierOver
@@ -102,11 +122,12 @@ class ExtractRigAnimationUsdOverlay(plugin.MayaExtractorPlugin):
         variant_set = Sdf.VariantSetSpec(asset_spec, VARIANT_SET_NAME)
         variant = Sdf.VariantSpec(variant_set, variant_name)
         asset_spec.variantSelections[VARIANT_SET_NAME] = variant_name
-        for root_name in root_names:
+        cache_path = self.get_expected_cache_path(instance)
+        for root_spec in cache_layer.rootPrims:
             child = Sdf.PrimSpec(
-                variant.primSpec, root_name, Sdf.SpecifierOver)
+                variant.primSpec, root_spec.name, Sdf.SpecifierOver)
             child.referenceList.Prepend(
-                Sdf.Reference(cache_path, Sdf.Path(f"/{root_name}"))
+                Sdf.Reference(cache_path, root_spec.path)
             )
 
         staging_dir = self.staging_dir(instance)
@@ -122,3 +143,31 @@ class ExtractRigAnimationUsdOverlay(plugin.MayaExtractorPlugin):
         self.log.debug(
             "Extracted USD animation overlay for '%s' onto '%s'",
             variant_name, reference.asset_prim_path)
+
+    @staticmethod
+    def is_usd_contribution_enabled(instance):
+        """Return whether the instance contributes to a USD layer."""
+        attr_values = instance.data.get("publish_attributes", {}).get(
+            "CollectUSDLayerContributions", {})
+        return bool(attr_values.get("contribution_enabled"))
+
+    @staticmethod
+    def get_expected_cache_path(instance):
+        """Return the expected publish path of the animation cache."""
+        # The `outputName` of the representation is formatted in the publish
+        # template as `output`, for which there is no argument.
+        anatomy_data = instance.data["anatomyData"]
+        output = anatomy_data.get("output")
+        anatomy_data["output"] = CACHE_OUTPUT_NAME
+        try:
+            path = get_instance_expected_output_path(
+                instance,
+                representation_name=CACHE_REPRESENTATION,
+                ext="usd"
+            )
+        finally:
+            if output is None:
+                del anatomy_data["output"]
+            else:
+                anatomy_data["output"] = output
+        return str(path).replace("\\", "/")

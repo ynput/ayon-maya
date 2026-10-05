@@ -14,7 +14,7 @@ class CreateRig(plugin.MayaCreator):
 
     def get_publish_families(self):
         # TODO: Make usd enabled feature optional
-        return ["rig", "usd"]
+        return ["usd"]
 
     def create(self, product_name, instance_data, pre_create_data):
 
