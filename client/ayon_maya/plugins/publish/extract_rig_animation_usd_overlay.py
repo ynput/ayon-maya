@@ -12,7 +12,7 @@ from ayon_maya.api.lib import (
 )
 
 try:
-    from pxr import Sdf
+    from pxr import Sdf, Vt
 except ImportError:
     Sdf = None
 
@@ -20,6 +20,7 @@ VARIANT_SET_NAME = "Animation"
 # Representation name of the extracted animation cache
 CACHE_REPRESENTATION = "usd_anim"
 CACHE_OUTPUT_NAME = "anim"
+RESET_XFORM_STACK = "!resetXformStack!"
 
 
 class ExtractRigAnimationUsdOverlay(plugin.MayaExtractorPlugin):
@@ -40,6 +41,10 @@ class ExtractRigAnimationUsdOverlay(plugin.MayaExtractorPlugin):
     contributions can add it into e.g. the shot's animation layer. The
     animation cache itself is published as the `usd_anim` representation
     and is referenced by the overlay.
+
+    A cache that is exported in world space resets the transform stack on
+    its roots so that the transforms of the asset prim and its parents,
+    e.g. from layout, are not applied again.
     """
 
     label = "Extract Rig Animation (USD Overlay)"
@@ -79,10 +84,8 @@ class ExtractRigAnimationUsdOverlay(plugin.MayaExtractorPlugin):
         error = None
         if reference is None:
             error = (
-                "The rig is not related to a USD MayaReference prim anymore "
-                "so its animation can not be overlaid onto the USD asset. "
-                "Load the rig from the USD again using the 'Load USD rigs' "
-                "inventory action."
+                "The rig is not related to a MayaReference prim of a loaded "
+                "USD so its animation can not be overlaid onto a USD asset."
             )
         elif cache_repre is None:
             error = (
@@ -123,12 +126,28 @@ class ExtractRigAnimationUsdOverlay(plugin.MayaExtractorPlugin):
         variant = Sdf.VariantSpec(variant_set, variant_name)
         asset_spec.variantSelections[VARIANT_SET_NAME] = variant_name
         cache_path = self.get_expected_cache_path(instance)
+        worldspace = self.is_cache_in_worldspace(instance)
         for root_spec in cache_layer.rootPrims:
             child = Sdf.PrimSpec(
                 variant.primSpec, root_spec.name, Sdf.SpecifierOver)
             child.referenceList.Prepend(
                 Sdf.Reference(cache_path, root_spec.path)
             )
+            if not worldspace:
+                continue
+
+            # The transform of the root is in world space, so it must not
+            # inherit the transforms of the prims it is overlaid under.
+            order_spec = root_spec.attributes.get("xformOpOrder")
+            order = list(order_spec.default or []) if order_spec else []
+            if RESET_XFORM_STACK not in order:
+                order.insert(0, RESET_XFORM_STACK)
+            Sdf.AttributeSpec(
+                child,
+                "xformOpOrder",
+                Sdf.ValueTypeNames.TokenArray,
+                Sdf.VariabilityUniform
+            ).default = Vt.TokenArray(order)
 
         staging_dir = self.staging_dir(instance)
         filename = f"{instance.name}_overlay.usd"
@@ -150,6 +169,13 @@ class ExtractRigAnimationUsdOverlay(plugin.MayaExtractorPlugin):
         attr_values = instance.data.get("publish_attributes", {}).get(
             "CollectUSDLayerContributions", {})
         return bool(attr_values.get("contribution_enabled"))
+
+    @staticmethod
+    def is_cache_in_worldspace(instance):
+        """Return whether the USD animation cache is exported in worldspace"""
+        attr_values = instance.data.get("publish_attributes", {}).get(
+            "ExtractMayaUsdAnim", {})
+        return bool(attr_values.get("worldspace", True))
 
     @staticmethod
     def get_expected_cache_path(instance):
