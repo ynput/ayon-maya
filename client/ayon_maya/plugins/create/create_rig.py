@@ -12,9 +12,14 @@ class CreateRig(plugin.MayaCreator):
     product_type = product_base_type
     icon = "wheelchair"
 
+    # Publish a USD layer that embeds the rig as Maya reference, to
+    # contribute the rig to the USD asset.
+    usd_contribution = False
+
     def get_publish_families(self):
-        # TODO: Make usd enabled feature optional
-        return ["usd"]
+        if self.usd_contribution:
+            return ["usd"]
+        return []
 
     def create(self, product_name, instance_data, pre_create_data):
 
