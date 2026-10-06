@@ -4,8 +4,8 @@ from ayon_core.lib import BoolDef
 from ayon_maya.api.lib import (
     discard_usd_maya_references,
     enable_usd_maya_references,
-    maintained_usd_maya_references,
     namespaced,
+    refresh_usd_maya_references,
     set_attribute,
     unique_namespace,
 )
@@ -101,9 +101,11 @@ class MayaUsdLoader(plugin.Loader):
 
         path = self.filepath_from_context(context)
         for shape in shapes:
-            # Keep rigs enabled from the USD related to their prims
-            with maintained_usd_maya_references(shape):
-                cmds.setAttr("{}.filePath".format(shape), path, type="string")
+            cmds.setAttr("{}.filePath".format(shape), path, type="string")
+
+        # Keep rigs enabled from the USD related to their prims and update
+        # them to the rig version of the loaded USD
+        refresh_usd_maya_references(shapes, log=self.log)
 
         for key, value in [
             ("representation", context["representation"]["id"]),

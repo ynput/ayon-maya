@@ -4520,6 +4520,8 @@ class UsdMayaReference:
     prim_path: str
     asset_prim_path: str
     namespace: str
+    # The Maya scene the prim references
+    filepath: str | None = None
     # Whether the prim is currently edited as Maya data (loaded in Maya)
     edited: bool = False
     # The Maya node the prim is edited as
@@ -4536,6 +4538,16 @@ class UsdMayaReference:
 def _is_in_namespace(node: str, namespace: str) -> bool:
     """Return whether node is in the namespace or any child namespace."""
     return node.rsplit("|", 1)[-1].startswith(f"{namespace}:")
+
+
+def _get_usd_pulled_maya_nodes() -> dict[str, str]:
+    """Return the Maya nodes that are USD prims edited as Maya data.
+
+    Returns:
+        The Maya node by the UFE path of the prim it is edited from.
+    """
+    nodes = cmds.ls("*.Pull_UfePath", objectsOnly=True, long=True) or []
+    return {cmds.getAttr(f"{node}.Pull_UfePath"): node for node in nodes}
 
 
 def get_usd_maya_references(
@@ -4561,6 +4573,7 @@ def get_usd_maya_references(
     elif proxies:
         proxies = cmds.ls(proxies, type="mayaUsdProxyShape", long=True)
 
+    pulled_nodes = _get_usd_pulled_maya_nodes()
     references = []
     for proxy in proxies:
         stage = mayaUsd.ufe.getStage(proxy)
@@ -4574,26 +4587,45 @@ def get_usd_maya_references(
 
             attr = prim.GetAttribute("mayaNamespace")
             namespace = attr.Get() if attr and attr.HasValue() else None
+            attr = prim.GetAttribute("mayaReference")
+            filepath = attr.Get() if attr and attr.HasValue() else None
             reference = UsdMayaReference(
                 proxy=proxy,
                 prim_path=str(prim.GetPath()),
                 asset_prim_path=str(prim.GetPath().GetParentPath()),
                 namespace=namespace or prim.GetName(),
+                filepath=(
+                    (filepath.resolvedPath or filepath.path) if filepath
+                    else None
+                ),
             )
             references.append(reference)
 
-            # Maya USD stores the Maya node the prim is edited as, if any
+            # Maya USD relates a prim that is edited as Maya data and its
+            # Maya node on both of them. The relation on the prim is in the
+            # session layer, which gets lost when the stage is reloaded, so
+            # fall back to the relation on the Maya node.
             maya_node = mayaUsd.lib.PrimUpdaterManager.readPullInformation(
                 prim)
             if not maya_node or not cmds.objExists(maya_node):
+                maya_node = pulled_nodes.get(reference.ufe_path)
+            if not maya_node:
                 continue
             reference.edited = True
             reference.maya_node = maya_node
 
-            # Maya USD stores the reference node it created for the prim
-            attr = prim.GetAttribute("MayaReferenceNodeName")
-            ref_node = attr.Get() if attr and attr.HasValue() else None
-            if ref_node and cmds.objExists(ref_node):
+            # The rig is referenced under the Maya node
+            ref_node = next(
+                (
+                    cmds.referenceQuery(
+                        child, referenceNode=True, topReference=True)
+                    for child in cmds.listRelatives(
+                        maya_node, children=True, fullPath=True) or []
+                    if cmds.referenceQuery(child, isNodeReferenced=True)
+                ),
+                None
+            )
+            if ref_node:
                 reference.reference_node = ref_node
                 # Maya makes the namespace unique when loading the reference
                 reference.loaded_namespace = cmds.referenceQuery(
@@ -4777,6 +4809,10 @@ def discard_usd_maya_references(
 
     import mayaUsd.lib
 
+    # Discarding requires the edit state on the prims
+    restore_usd_maya_reference_edits(
+        list({reference.proxy for reference in references}))
+
     for reference in references:
         # Remove the animation instances of the rig
         namespace = reference.loaded_namespace
@@ -4805,52 +4841,95 @@ def discard_usd_maya_references(
                            deleteNamespaceContent=True)
 
 
-@contextlib.contextmanager
-def maintained_usd_maya_references(proxy: str):
-    """Keep the rigs loaded from `MayaReference` prims on a stage reload.
+def restore_usd_maya_reference_edits(
+    proxies: list[str] | None = None
+) -> None:
+    """Restore the edit state on prims of which the rig is loaded in Maya.
 
-    Maya USD stores which prims are edited as Maya data in the session layer
-    of the stage. That layer is lost when the proxy loads another file, which
-    would leave the loaded rigs in the scene unrelated to their USD prim.
-    The session layer opinions on those prims are restored after the context.
+    Maya USD stores on a prim that it is edited as Maya data in the session
+    layer of the stage. That layer is lost when the proxy loads another file
+    and Maya USD does not save it for each proxy if multiple proxies load the
+    same file. The rig then remains in the scene, but Maya USD would not
+    consider the prim as edited.
 
     Arguments:
-        proxy: The `mayaUsdProxyShape` node of which the stage gets reloaded.
+        proxies: `mayaUsdProxyShape` nodes to restore the prims for. By
+            default the prims of all proxies in the scene are restored.
     """
     references = [
-        reference for reference in get_usd_maya_references([proxy])
+        reference for reference in get_usd_maya_references(proxies)
         if reference.edited
     ]
     if not references:
-        yield
         return
 
+    import mayaUsd.lib
     import mayaUsd.ufe
-    from pxr import Sdf
+    from pxr import Sdf, Usd
 
-    # The stage can only be retrieved by the full path of the proxy
-    proxy = references[0].proxy
-    session_layer = Sdf.Layer.CreateAnonymous()
-    session_layer.TransferContent(
-        mayaUsd.ufe.getStage(proxy).GetSessionLayer())
-    try:
-        yield
-    finally:
-        stage = mayaUsd.ufe.getStage(proxy)
-        for reference in references:
-            path = Sdf.Path(reference.prim_path)
-            if (
-                not stage.GetPrimAtPath(path)
-                or not session_layer.GetPrimAtPath(path)
-            ):
+    for reference in references:
+        stage = mayaUsd.ufe.getStage(reference.proxy)
+        prim = stage.GetPrimAtPath(reference.prim_path)
+        if (
+            mayaUsd.lib.PrimUpdaterManager.readPullInformation(prim)
+            == reference.maya_node
+        ):
+            continue
+
+        # Author what Maya USD authors when editing the prim as Maya data
+        with Usd.EditContext(stage, stage.GetSessionLayer()):
+            prim.SetCustomDataByKey("Maya:Pull:DagPath", reference.maya_node)
+            if reference.reference_node:
+                prim.CreateAttribute(
+                    "MayaReferenceNodeName",
+                    Sdf.ValueTypeNames.String,
+                    custom=True
+                ).Set(reference.reference_node)
+            prim.SetActive(False)
+
+
+def refresh_usd_maya_references(
+    proxies: list[str],
+    log: logging.Logger | None = None,
+) -> None:
+    """Refresh the rigs loaded from `MayaReference` prims on a stage reload.
+
+    This keeps the loaded rigs related to their prims when the proxy loaded
+    another file and updates the rigs for which the prim now references
+    another Maya scene, e.g. another version of the rig.
+
+    Arguments:
+        proxies: The `mayaUsdProxyShape` nodes of which the stage reloaded.
+        log: Logger to log to if provided.
+    """
+    if not proxies:
+        return
+
+    restore_usd_maya_reference_edits(proxies)
+    for reference in get_usd_maya_references(proxies):
+        if not reference.reference_node or not reference.filepath:
+            continue
+
+        current = cmds.referenceQuery(
+            reference.reference_node, filename=True, withoutCopyNumber=True)
+        if (
+            os.path.normcase(os.path.normpath(current))
+            == os.path.normcase(os.path.normpath(reference.filepath))
+        ):
+            continue
+
+        if not os.path.isfile(reference.filepath):
+            if log:
                 log.warning(
-                    "Rig '%s' is not related to USD prim '%s' anymore.",
-                    reference.loaded_namespace, reference.ufe_path)
-                continue
-            Sdf.CreatePrimInLayer(
-                stage.GetSessionLayer(), path.GetParentPath())
-            Sdf.CopySpec(
-                session_layer, path, stage.GetSessionLayer(), path)
+                    "Unable to update rig '%s' to missing file: %s",
+                    reference.loaded_namespace, reference.filepath)
+            continue
+
+        if log:
+            log.info(
+                "Updating rig '%s' to: %s",
+                reference.loaded_namespace, reference.filepath)
+        cmds.file(reference.filepath, loadReference=reference.reference_node)
 
 
 def create_usd_rig_animation_instance(
