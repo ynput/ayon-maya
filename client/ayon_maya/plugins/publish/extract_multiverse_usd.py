@@ -255,7 +255,9 @@ class ExtractMultiverseUsdAnim(ExtractMultiverseUsd):
     Upon publish a .usd sparse cache will be written.
     """
     label = "Extract Multiverse USD Animation Sparse Cache"
-    families = ["animation", "usd"]
+    # Require the Multiverse family so this does not match animation
+    # instances that have the `usd` family for the USD contribution workflow
+    families = ["animation", "mvUsd"]
     match = pyblish.api.Subset
 
     def get_default_options(self):

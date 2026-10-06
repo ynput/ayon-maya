@@ -104,6 +104,47 @@ class CreateAnimation(plugin.MayaHiddenCreator):
                                         self.include_parent_hierarchy)
 
 
+class CreateUsdRigAnimation(CreateAnimation):
+    """Animation output for rigs loaded through a USD MayaReference prim
+
+    The animation is published as USD overlay onto the USD asset the rig was
+    loaded from, which by default is contributed to the USD animation layer
+    of the shot. See the `ExtractRigAnimationUsdOverlay` plug-in.
+
+    Like the regular animation creator it is hidden from the UI. It is created
+    when a rig is loaded from a `MayaReference` prim by the Maya USD loader or
+    the "Load USD rigs" inventory action.
+    """
+
+    identifier = "io.ayon.creators.maya.animation_usd_rig"
+    name = "animationUsdRig"
+    label = "Animation (USD Rig)"
+    # Use the same settings as the regular animation creator
+    settings_name = "CreateAnimation"
+
+    def get_publish_families(self):
+        return ["usd"]
+
+    def create(self, product_name, instance_data, pre_create_data):
+        publish_attributes = instance_data.setdefault("publish_attributes", {})
+
+        # The USD overlay requires the animation to be extracted as USD cache
+        publish_attributes.setdefault("ExtractMayaUsdAnim", {})["active"] = True
+
+        # Contribute the animation into the shot's animation layer by
+        # default, instead of the asset. The overlay it publishes targets the
+        # prim path of the loaded asset within the USD data.
+        publish_attributes.setdefault(
+            "CollectUSDLayerContributions", {}
+        ).update({
+            "contribution_target_product": "usdShot",
+            "contribution_target_product_init": "shot",
+            "contribution_layer": "animation",
+            "contribution_apply_as_variant": False,
+        })
+        return super().create(product_name, instance_data, pre_create_data)
+
+
 class CreatePointCache(plugin.MayaCreator):
     """Alembic pointcache for animated data"""
 

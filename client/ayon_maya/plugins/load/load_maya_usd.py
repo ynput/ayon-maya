@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 import maya.cmds as cmds
+from ayon_core.lib import BoolDef
 from ayon_maya.api.lib import (
+    discard_usd_maya_references,
+    enable_usd_maya_references,
     namespaced,
+    refresh_usd_maya_references,
     set_attribute,
-    unique_namespace
+    unique_namespace,
 )
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
@@ -21,6 +25,20 @@ class MayaUsdLoader(plugin.Loader):
     order = -1
     icon = "code-fork"
     color = "orange"
+
+    options = [
+        BoolDef(
+            "enable_rigs",
+            label="Enable embedded rigs",
+            default=True,
+            tooltip=(
+                "When the USD contains `MayaReference` prims (e.g. a rig "
+                "contributed to the USD asset) enable them so the rig is "
+                "loaded as native Maya data and create the animation "
+                "instance for it."
+            )
+        )
+    ]
 
     def load(self, context, name=None, namespace=None, options=None):
         folder_name = context["folder"]["name"]
@@ -60,12 +78,17 @@ class MayaUsdLoader(plugin.Loader):
         nodes = [transform, proxy]
         self[:] = nodes
 
-        return containerise(
+        container = containerise(
             name=name,
             namespace=namespace,
             nodes=nodes,
             context=context,
             loader=self.__class__.__name__)
+
+        if (options or {}).get("enable_rigs", True):
+            enable_usd_maya_references(proxies=[proxy], log=self.log)
+
+        return container
 
     def update(self, container, context):
         # type: (dict, dict) -> None
@@ -79,6 +102,10 @@ class MayaUsdLoader(plugin.Loader):
         path = self.filepath_from_context(context)
         for shape in shapes:
             cmds.setAttr("{}.filePath".format(shape), path, type="string")
+
+        # Keep rigs enabled from the USD related to their prims and update
+        # them to the rig version of the loaded USD
+        refresh_usd_maya_references(shapes, log=self.log)
 
         for key, value in [
             ("representation", context["representation"]["id"]),
@@ -95,6 +122,10 @@ class MayaUsdLoader(plugin.Loader):
         # Delete container and its contents
         if cmds.objExists(container['objectName']):
             members = cmds.sets(container['objectName'], query=True) or []
+            if members:
+                # Remove rigs enabled from the USD, if any
+                discard_usd_maya_references(proxies=cmds.ls(
+                    members, type="mayaUsdProxyShape", long=True))
             cmds.delete([container['objectName']] + members)
 
         # Remove the namespace, if empty
