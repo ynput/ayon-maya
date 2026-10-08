@@ -68,7 +68,23 @@ CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
 WORKFILE_BUILD_PATH = os.path.join(PLUGINS_DIR, "workfile_build")
 
+AYON_CONTAINERS = ":AYON_CONTAINERS"
+# Legacy Avalon containers set. Kept so scenes saved before the AYON rename
+# are still found and can be converted.
 AVALON_CONTAINERS = ":AVALON_CONTAINERS"
+
+# Container schema imprinted by `containerise`
+AYON_CONTAINER_SCHEMA = "ayon:container-3.0"
+# Prefix of the schema Maya wrote before the AYON rename. Versioned
+# (`openpype:container-2.0`, and `-1.0` before that) hence only the prefix
+# is matched.
+LEGACY_CONTAINER_SCHEMA_PREFIX = "openpype:container"
+
+# Scene fileInfo key used to store the AYON context data
+AYON_CONTEXT_KEY = "AYONContext"
+# Legacy context data key, kept for backwards compatibility so scenes saved
+# before the OpenPype -> AYON rename keep working
+LEGACY_CONTEXT_KEY = "OpenPypeContext"
 
 # Track whether the workfile tool is about to save
 _about_to_save = False
@@ -169,8 +185,31 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         with lib.maintained_selection():
             yield
 
+    @staticmethod
+    def get_context_key():
+        """Return the scene fileInfo key holding the AYON context data.
+
+        New scenes use the AYON key. Scenes saved before the OpenPype ->
+        AYON rename keep using their existing key so they are not broken.
+        This mirrors how other AYON hosts handle the same transition, see
+        `AYON_CONTEXT_KEY`/`LEGACY_CONTEXT_KEY`.
+
+        Returns:
+            str: The fileInfo key to read and write the context data with.
+
+        """
+        if cmds.fileInfo(AYON_CONTEXT_KEY, query=True):
+            return AYON_CONTEXT_KEY
+        if cmds.fileInfo(LEGACY_CONTEXT_KEY, query=True):
+            return LEGACY_CONTEXT_KEY
+        return AYON_CONTEXT_KEY
+
     def get_context_data(self):
-        data = cmds.fileInfo("OpenPypeContext", query=True)
+        data = cmds.fileInfo(AYON_CONTEXT_KEY, query=True)
+        if not data:
+            # Backwards compatibility: scenes saved before the OpenPype ->
+            # AYON rename store the context data under the legacy key
+            data = cmds.fileInfo(LEGACY_CONTEXT_KEY, query=True)
         if not data:
             return {}
 
@@ -189,7 +228,7 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         # fileInfo expects a string value, not bytes
         if int(cmds.about(version=True)) >= 2027 and isinstance(encoded, bytes):
             encoded = encoded.decode("utf-8")
-        return cmds.fileInfo("OpenPypeContext", encoded)
+        return cmds.fileInfo(self.get_context_key(), encoded)
 
     def _register_callbacks(self):
         for handler, event in self._op_events.copy().items():
@@ -398,6 +437,93 @@ def uninstall():
     menu.uninstall()
 
 
+def convert_legacy_container(container, data=None):
+    """Convert legacy Avalon container metadata to AYON.
+
+    Containers imprinted before the Avalon -> AYON rename store the
+    `pyblish.avalon.container` id and an `openpype:container-*` schema.
+    The scene node is updated in place so that opening an older scene
+    migrates it as soon as the container is read, keeping old scenes
+    working without any manual step.
+
+    Args:
+        container (str): Name of the container node.
+        data (Optional[dict[str, Any]]): Already read container data. When
+            provided it is updated to match the converted node.
+
+    Returns:
+        bool: Whether the container was converted.
+
+    """
+    container_id = lib.get_optional_attribute(container, "id")
+    schema = lib.get_optional_attribute(container, "schema") or ""
+    is_legacy = (
+        container_id == AVALON_CONTAINER_ID
+        or schema.startswith(LEGACY_CONTAINER_SCHEMA_PREFIX)
+    )
+    if not is_legacy:
+        return False
+
+    log.debug(
+        "Converting legacy Avalon container '%s' to AYON container.",
+        container,
+    )
+    lib.set_attribute("id", AYON_CONTAINER_ID, container)
+    lib.set_attribute("schema", AYON_CONTAINER_SCHEMA, container)
+
+    if data is not None:
+        data["id"] = AYON_CONTAINER_ID
+        data["schema"] = AYON_CONTAINER_SCHEMA
+    return True
+
+
+def get_container_set():
+    """Return the AYON containers set, converting a legacy one if present.
+
+    Returns:
+        Optional[str]: Name of the containers set or None when the scene
+            does not contain one yet.
+
+    """
+    main_container = cmds.ls(AYON_CONTAINERS, type="objectSet")
+    if main_container:
+        return main_container[0]
+
+    # Backwards compatibility: reuse the legacy Avalon containers set
+    # instead of creating a second one next to it.
+    legacy_container = cmds.ls(AVALON_CONTAINERS, type="objectSet")
+    if legacy_container:
+        log.debug("Converting legacy Avalon containers set to AYON.")
+        cmds.rename(legacy_container[0], AYON_CONTAINERS.lstrip(":"))
+        main_container = cmds.ls(AYON_CONTAINERS, type="objectSet")
+        if main_container:
+            return main_container[0]
+
+    return None
+
+
+def ensure_container_set():
+    """Return the AYON containers set, creating it when missing.
+
+    Returns:
+        str: Name of the containers set.
+
+    """
+    main_container = get_container_set()
+    if main_container:
+        return main_container
+
+    main_container = cmds.sets(empty=True, name=AYON_CONTAINERS)
+
+    # Implement #399: Maya 2019+ hide the containers set on creation
+    if cmds.attributeQuery("hiddenInOutliner",
+                           node=main_container,
+                           exists=True):
+        cmds.setAttr(main_container + ".hiddenInOutliner", True)
+
+    return main_container
+
+
 def parse_container(container):
     """Return the container node's full container data.
 
@@ -418,8 +544,12 @@ def parse_container(container):
                     container, missing)
         return
 
+    # Backwards compatibility: convert containers imprinted before the
+    # Avalon -> AYON rename so that old scenes keep working
+    convert_legacy_container(container, data=data)
+
     # Backwards compatibility pre-schemas for containers
-    data["schema"] = data.get("schema", "openpype:container-1.0")
+    data["schema"] = data.get("schema", AYON_CONTAINER_SCHEMA)
 
     # Append transient data
     data["objectName"] = container
@@ -514,8 +644,8 @@ def containerise(name,
     container = cmds.sets(nodes, name="%s_%s_%s" % (namespace, name, suffix))
 
     data = [
-        ("schema", "openpype:container-2.0"),
-        ("id", AVALON_CONTAINER_ID),
+        ("schema", AYON_CONTAINER_SCHEMA),
+        ("id", AYON_CONTAINER_ID),
         ("name", name),
         ("namespace", namespace),
         ("loader", loader),
@@ -526,17 +656,7 @@ def containerise(name,
         cmds.addAttr(container, longName=key, dataType="string")
         cmds.setAttr(container + "." + key, str(value), type="string")
 
-    main_container = cmds.ls(AVALON_CONTAINERS, type="objectSet")
-    if not main_container:
-        main_container = cmds.sets(empty=True, name=AVALON_CONTAINERS)
-
-        # Implement #399: Maya 2019+ hide AVALON_CONTAINERS on creation..
-        if cmds.attributeQuery("hiddenInOutliner",
-                               node=main_container,
-                               exists=True):
-            cmds.setAttr(main_container + ".hiddenInOutliner", True)
-    else:
-        main_container = main_container[0]
+    main_container = ensure_container_set()
 
     cmds.sets(container, addElement=main_container)
 

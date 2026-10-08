@@ -4332,6 +4332,65 @@ def get_reference_node_parents(ref):
     return parents
 
 
+def get_optional_attribute(node: str, attribute: str):
+    """Get an attribute value, or None when the attribute does not exist.
+
+    `get_attribute` raises `ValueError` for a missing attribute, which makes
+    it awkward for optional metadata such as the legacy Avalon keys.
+
+    Arguments:
+        node (str): The name of the node.
+        attribute (str): The name of the attribute.
+
+    Returns:
+        Any: The attribute value, or None when it does not exist.
+
+    """
+    if not cmds.attributeQuery(attribute, node=node, exists=True):
+        return None
+    return get_attribute(f"{node}.{attribute}")
+
+
+def convert_legacy_instance_data(node: str) -> bool:
+    """Convert legacy Avalon instance metadata on `node` to AYON.
+
+    Instances created before the Avalon -> AYON rename store
+    `AVALON_INSTANCE_ID` in their `id` attribute and use OpenPype era key
+    names. The node is updated in place so that opening an older scene
+    migrates it on collect.
+
+    Only AYON keys are added; legacy keys are intentionally left in place
+    because the legacy instance convertor still reads them
+    (`MayaLegacyConvertor`) and removing them would be destructive.
+    The `family`/`subset` -> AYON key mapping is handled by
+    `CreatedInstance` in ayon-core, so it is not duplicated here.
+
+    Arguments:
+        node (str): The name of the instance node (an objectSet).
+
+    Returns:
+        bool: Whether anything was converted.
+
+    """
+    converted = False
+
+    if get_optional_attribute(node, "id") == AVALON_INSTANCE_ID:
+        log.debug(
+            "Converting legacy Avalon instance '%s' to AYON instance.", node
+        )
+        set_attribute("id", AYON_INSTANCE_ID, node)
+        converted = True
+
+    # OpenPype stored the folder path as `asset`. Mirrors the conversion
+    # `CreatedInstance` does in ayon-core so node data is AYON ready.
+    asset_name = get_optional_attribute(node, "asset")
+    if asset_name and get_optional_attribute(node, "folderPath") is None:
+        set_attribute("folderPath", asset_name, node)
+        converted = True
+
+    return converted
+
+
 def get_creator_identifier(node: str) -> str | None:
     """Get the creator identifier of an instance node.
 

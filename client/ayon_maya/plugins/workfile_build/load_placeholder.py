@@ -5,6 +5,7 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
     PlaceholderLoadMixin,
     LoadPlaceholderItem
 )
+from ayon_maya.api import pipeline
 from ayon_maya.api.lib import (
     get_container_transforms,
     get_highest_in_hierarchy,
@@ -55,10 +56,18 @@ class MayaPlaceholderLoadPlugin(MayaPlaceholderPlugin, PlaceholderLoadMixin):
             "loaded_representation_ids"
         )
         if loaded_representation_ids is None:
-            try:
-                containers = cmds.sets("AVALON_CONTAINERS", q=True)
-            except ValueError:
-                containers = []
+            containers = []
+            for container_set in (
+                # AYON containers set
+                pipeline.AYON_CONTAINERS,
+                # Backwards compatibility with scenes saved before the
+                # Avalon -> AYON rename
+                pipeline.AVALON_CONTAINERS,
+            ):
+                try:
+                    containers.extend(cmds.sets(container_set, q=True) or [])
+                except ValueError:
+                    continue
 
             loaded_representation_ids = {
                 cmds.getAttr(container + ".representation")
