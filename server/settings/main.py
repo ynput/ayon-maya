@@ -15,6 +15,9 @@ from .render_settings import RenderSettingsModel, DEFAULT_RENDER_SETTINGS
 from .creators import CreatorsModel, DEFAULT_CREATORS_SETTINGS
 from .publishers import PublishersModel, DEFAULT_PUBLISH_SETTINGS
 from .loaders import LoadersModel, DEFAULT_LOADERS_SETTING
+from .workfile_actions import (
+    WorkfileActionsModel, DEFAULT_WORKFILE_ACTIONS_SETTINGS
+)
 from .workfile_build_settings import ProfilesModel, DEFAULT_WORKFILE_SETTING
 from .templated_workfile_settings import (
     TemplatedProfilesModel, DEFAULT_TEMPLATED_WORKFILE_SETTINGS
@@ -114,6 +117,8 @@ class MayaSettings(BaseSettingsModel):
         default_factory=PublishersModel, title="Publishers")
     load: LoadersModel = SettingsField(
         default_factory=LoadersModel, title="Loaders")
+    workfile_actions: WorkfileActionsModel = SettingsField(
+        default_factory=WorkfileActionsModel, title="Workfile Actions")
     workfile_build: ProfilesModel = SettingsField(
         default_factory=ProfilesModel, title="Workfile Build Settings")
     templated_workfile_build: TemplatedProfilesModel = SettingsField(
@@ -170,6 +175,7 @@ DEFAULT_MAYA_SETTING = {
     "create": DEFAULT_CREATORS_SETTINGS,
     "publish": DEFAULT_PUBLISH_SETTINGS,
     "load": DEFAULT_LOADERS_SETTING,
+    "workfile_actions": DEFAULT_WORKFILE_ACTIONS_SETTINGS,
     "workfile_build": DEFAULT_WORKFILE_SETTING,
     "templated_workfile_build": DEFAULT_TEMPLATED_WORKFILE_SETTINGS
 }
