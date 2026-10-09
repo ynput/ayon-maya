@@ -315,7 +315,7 @@ def _set_project():
         # may have been invalid or setting workspace fails for some other
         # reason.
         log.error(
-            "Failed to set Maya workspace to '%s': %s", workdir, exc_info=True
+            "Failed to set Maya workspace to '%s'", workdir, exc_info=True
         )
 
 
