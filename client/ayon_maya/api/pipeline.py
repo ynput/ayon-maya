@@ -512,7 +512,9 @@ def get_container_set():
     legacy_container = cmds.ls(AVALON_CONTAINERS, type="objectSet")
     if legacy_container:
         log.debug("Converting legacy Avalon containers set to AYON.")
-        cmds.rename(legacy_container[0], AYON_CONTAINERS.lstrip(":"))
+        # Rename to the absolute name, because a relative name is created
+        # in the current namespace, which is not necessarily the root.
+        cmds.rename(legacy_container[0], AYON_CONTAINERS)
         main_container = cmds.ls(AYON_CONTAINERS, type="objectSet")
         if main_container:
             return main_container[0]
