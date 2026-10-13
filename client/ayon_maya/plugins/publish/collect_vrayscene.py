@@ -92,10 +92,10 @@ class CollectVrayScene(plugin.MayaInstancePlugin):
             # which was submitted originally
             "source": context.data["currentFile"].replace("\\", "/"),
             "resolutionWidth": lib.get_attr_in_layer(
-                "defaultResolution.height", layer=layer_name
+                "defaultResolution.width", layer=layer_name
             ),
             "resolutionHeight": lib.get_attr_in_layer(
-                "defaultResolution.width", layer=layer_name
+                "defaultResolution.height", layer=layer_name
             ),
             "pixelAspect": lib.get_attr_in_layer(
                 "defaultResolution.pixelAspect", layer=layer_name

@@ -35,7 +35,7 @@ class ExtractRig(plugin.MayaExtractorPlugin,
                     self.log.debug(
                         "Using '.{}' as scene type".format(self.scene_type))
                     break
-                except AttributeError:
+                except KeyError:
                     # no preset found
                     pass
         # Define extract output file path

@@ -112,7 +112,7 @@ cmds.file(save=True, force=True)
 print("*** Done")
         """).format(current_name=current_name, ref_scene_name=tmp_path)
         mayapy_exe = os.path.join(os.getenv("MAYA_LOCATION"), "bin", "mayapy")
-        if sys.platform == "windows":
+        if sys.platform == "win32":
             mayapy_exe += ".exe"
             mayapy_exe = os.path.normpath(mayapy_exe)
         # can't use TemporaryNamedFile as that can't be opened in another

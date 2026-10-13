@@ -176,7 +176,7 @@ def seq_to_glob(path):
         "<uvtile>": "<uvtile>",
         "#": "#",
         "u<u>_v<v>": "<u>|<v>",
-        "<frame0": "<frame0\d+>",
+        "<frame0": r"<frame0\d+>",
         "<f>": "<f>"
     }
 
@@ -664,7 +664,7 @@ class CollectLook(plugin.MayaInstancePlugin):
         """Collect the inputs for all nodes in the input_SET"""
 
         # Get the input meshes information
-        input_content = instance.data["setMembers"]
+        input_content = list(instance.data["setMembers"])
 
         # Include children
         input_content += cmds.listRelatives(input_content,
@@ -679,7 +679,7 @@ class CollectLook(plugin.MayaInstancePlugin):
             type="mesh"
         )
         if not input_content:
-            return []
+            return [], []
 
         attrs = [f"{mesh}.referenceObject" for mesh in set(input_content)]
         # Store all connections

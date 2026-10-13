@@ -63,7 +63,7 @@ def disconnect(node_a, node_b):
                                    plugs=True,
                                    connections=True,
                                    source=False,
-                                   destination=True)
+                                   destination=True) or []
     for output, destination in pairs(outputs):
         if destination.split(".", 1)[0] == node_b:
             cmds.disconnectAttr(output, destination)
@@ -73,7 +73,7 @@ def disconnect(node_a, node_b):
                                   plugs=True,
                                   connections=True,
                                   source=True,
-                                  destination=False)
+                                  destination=False) or []
     for input, source in pairs(inputs):
         if source.split(".", 1)[0] == node_b:
             cmds.disconnectAttr(source, input)
@@ -114,7 +114,7 @@ class ValidateMeshShaderConnections(plugin.MayaInstancePlugin,
 
         nodes = instance[:]
         shapes = cmds.ls(nodes, noIntermediate=True, long=True, type="mesh")
-        invalid = get_invalid_sets(shapes).keys()
+        invalid = list(get_invalid_sets(shapes))
 
         return invalid
 

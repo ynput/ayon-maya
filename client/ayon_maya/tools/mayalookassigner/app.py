@@ -276,6 +276,7 @@ class MayaLookAssignerWindow(QtWidgets.QWidget):
                 if renderer != "arnold":
                     types.discard("gpuCache")
 
+                arnold_standins = []
                 if types:
                     arnold_standins = cmds.ls(
                         nodes, type=list(types), long=True

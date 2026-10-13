@@ -132,14 +132,15 @@ class LookLoader(ayon_maya.api.plugin.ReferenceLoader):
         """
         from maya import cmds
 
+        meshes = set()
         for shader in shader_nodes:
             future = cmds.listHistory(shader, future=True)
-            connections = cmds.listConnections(future,
-                                               type='mesh')
-            if connections:
-                # Ensure unique entries only to optimize query and results
-                connections = list(set(connections))
-                return cmds.listRelatives(connections,
-                                          shapes=True,
-                                          fullPath=True) or []
-        return []
+            meshes.update(cmds.listConnections(future, type='mesh') or [])
+
+        if not meshes:
+            return []
+
+        # Ensure unique entries only to optimize query and results
+        return cmds.listRelatives(list(meshes),
+                                  shapes=True,
+                                  fullPath=True) or []

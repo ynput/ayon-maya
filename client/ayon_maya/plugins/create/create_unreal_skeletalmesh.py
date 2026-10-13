@@ -73,10 +73,10 @@ class CreateUnrealSkeletalMesh(plugin.MayaCreator):
             TextDef("attr",
                     label="Custom Attributes",
                     default="",
-                    placeholder="attr1, attr2"),
+                    placeholder="attr1; attr2"),
             TextDef("attrPrefix",
                     label="Custom Attributes Prefix",
-                    placeholder="prefix1, prefix2")
+                    placeholder="prefix1; prefix2")
         ])
 
         return defs

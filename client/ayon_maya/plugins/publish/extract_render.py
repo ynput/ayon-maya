@@ -126,4 +126,4 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
                 self.log.debug(
                     f"Moving rendered file: {tmp_filepath} -> {filepath}"
                 )
-                os.rename(tmp_filepath, filepath)
+                os.replace(tmp_filepath, filepath)

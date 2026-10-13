@@ -9,6 +9,7 @@ import os
 from ayon_core.settings import get_project_settings
 from ayon_maya.api import plugin
 from ayon_maya.api.plugin import get_load_color_for_product_base_type
+from ayon_maya.api.lib import set_attribute
 
 
 class LoadVDBtoArnold(plugin.Loader):
@@ -104,9 +105,11 @@ class LoadVDBtoArnold(plugin.Loader):
         self._set_path(grid_nodes[0], path=path, repre_entity=repre_entity)
 
         # Update container representation
-        cmds.setAttr(container["objectName"] + ".representation",
-                     repre_entity["id"],
-                     type="string")
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, container["objectName"])
 
     def switch(self, container, context):
         self.update(container, context)

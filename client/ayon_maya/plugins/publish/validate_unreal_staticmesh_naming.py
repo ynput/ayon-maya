@@ -57,7 +57,7 @@ class ValidateUnrealStaticMeshName(plugin.MayaInstancePlugin,
     families = ["staticMesh"]
     label = "Unreal Static Mesh Name"
     actions = [ayon_maya.api.action.SelectInvalidAction]
-    regex_mesh = r"(?P<renderName>.*))"
+    regex_mesh = r"(?P<renderName>.*)"
     regex_collision = r"(?P<renderName>.*)"
 
     @classmethod
@@ -65,19 +65,20 @@ class ValidateUnrealStaticMeshName(plugin.MayaInstancePlugin,
 
         invalid = []
 
-        collision_prefixes = (
+        # Note: These settings only exist on the creator settings
+        create_settings = (
             instance.context.data["project_settings"]
             ["maya"]
             ["create"]
             ["CreateUnrealStaticMesh"]
-            ["collision_prefixes"]
         )
+        collision_prefixes = create_settings["collision_prefixes"]
+        static_mesh_prefix = create_settings["static_mesh_prefix"]
 
         if cls.validate_mesh:
             # compile regex for testing names
-            regex_mesh = "{}{}".format(
-                ("_" + cls.static_mesh_prefix) or "", cls.regex_mesh
-            )
+            prefix = f"{static_mesh_prefix}_" if static_mesh_prefix else ""
+            regex_mesh = f"{prefix}{cls.regex_mesh}"
             sm_r = re.compile(regex_mesh)
             if not sm_r.match(instance.data.get("productName")):
                 cls.log.error("Mesh doesn't comply with name validation.")

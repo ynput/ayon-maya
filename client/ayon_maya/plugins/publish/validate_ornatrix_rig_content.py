@@ -39,6 +39,7 @@ class ValidateOrnatrixRigContent(plugin.MayaInstancePlugin,
             node_shapes = cmds.listRelatives(node, shapes=True, fullPath=True)
             if not node_shapes:
                 invalid.append(node)
+                continue
 
             # Shapes must have a connection to ornatrix nodes
             ox_nodes = cmds.ls(cmds.listConnections(
