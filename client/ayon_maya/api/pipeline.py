@@ -511,10 +511,24 @@ def get_container_set():
     # instead of creating a second one next to it.
     legacy_container = cmds.ls(AVALON_CONTAINERS, type="objectSet")
     if legacy_container:
+        legacy_container = legacy_container[0]
         log.debug("Converting legacy Avalon containers set to AYON.")
-        # Rename to the absolute name, because a relative name is created
-        # in the current namespace, which is not necessarily the root.
-        cmds.rename(legacy_container[0], AYON_CONTAINERS)
+        try:
+            # A locked node can not be renamed
+            with lib.unlocked(legacy_container):
+                # Rename to the absolute name, because a relative name is
+                # created in the current namespace, which is not
+                # necessarily the root.
+                cmds.rename(legacy_container, AYON_CONTAINERS)
+        except RuntimeError as exc:
+            # Keep using the legacy set if it can not be renamed, like
+            # when it is a referenced node.
+            log.warning(
+                "Unable to convert legacy Avalon containers set to AYON: %s",
+                exc
+            )
+            return legacy_container
+
         main_container = cmds.ls(AYON_CONTAINERS, type="objectSet")
         if main_container:
             return main_container[0]
