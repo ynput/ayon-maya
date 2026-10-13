@@ -8,7 +8,7 @@ class CollectGLTF(plugin.MayaInstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.2
     label = "Collect Asset for GLTF/GLB export"
-    families = ["model", "animation", "pointcache"]
+    families = ["model.extract", "animation", "pointcache"]
 
     def process(self, instance):
         if not instance.data.get("families"):

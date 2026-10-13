@@ -1,6 +1,25 @@
 from typing import Any
 
 
+def _convert_model_extractor_families(overrides):
+    publish = overrides.get("publish", {})
+
+    for plugin_name in ("ExtractGPUCache", "ExtractAlembic"):
+        settings = publish.get(plugin_name, {})
+        families = settings.get("families")
+        if not isinstance(families, list):
+            continue
+
+        converted = []
+        for family in families:
+            if family == "model":
+                family = "model.extract"
+            if family not in converted:
+                converted.append(family)
+
+        settings["families"] = converted
+
+
 def _convert_product_base_types_0_6_0(overrides):
     publish_override = overrides.get("publish", {})
     if "ValidateAnimationProductTypePublish" in publish_override:
@@ -112,4 +131,5 @@ def convert_settings_overrides(
     _convert_scene_units(overrides)
     _convert_workfile_builder_0_6_0(overrides)
     _convert_product_base_types_0_6_0(overrides)
+    _convert_model_extractor_families(overrides)
     return overrides
