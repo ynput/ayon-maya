@@ -4688,34 +4688,6 @@ def get_sequence(filepath, pattern="%04d"):
     ]
 
 
-def _get_mobject(node_name: str) -> OpenMaya.MObject:
-    sel = OpenMaya.MSelectionList()
-    sel.add(node_name)
-    return sel.getDependNode(0)
-
-
-def _fast_clear_set(object_set: str):
-    """MFnSet.clear() can be very slow for shading engines that contain many
-    face assignment. By just breaking all connections to the "dagSetMembers"
-    we get the same result without the slow performance.
-
-    Arguments:
-        object_set (str): The name of the objectSet or shadingEngine to clear.
-    """
-    fn = OpenMaya.MFnDependencyNode(_get_mobject(object_set))
-    dag_set_members = fn.findPlug("dagSetMembers", False)
-    mod = OpenMaya.MDGModifier()
-    # Iterate the existing logical indices instead of `numElements()` because
-    # that may exclude connected elements that have not been evaluated yet,
-    # which would leave those members in the set. This is also faster than
-    # iterating with `connectionByPhysicalIndex()` on sets with many members.
-    for i in dag_set_members.getExistingArrayAttributeIndices():
-        elem = dag_set_members.elementByLogicalIndex(i)
-        for src in elem.connectedTo(True, False):
-            mod.disconnect(src, elem)
-    mod.doIt()
-
-
 @contextlib.contextmanager
 def force_shader_assignments_to_faces(shapes):
     """Replaces any non-face shader assignments with shader assignments
@@ -4731,78 +4703,83 @@ def force_shader_assignments_to_faces(shapes):
         yield
         return
 
-    all_render_sets = set()
+    sel = OpenMaya.MSelectionList()
     for shape in shapes:
-        render_sets = cmds.listSets(object=shape, t=1, extendToShape=False)
-        if render_sets:
-            all_render_sets.update(render_sets)
+        sel.add(shape)
 
-    shading_engines = cmds.ls(list(all_render_sets), type="shadingEngine")
-    if not shading_engines:
+    # Only the assignments to the shape as a whole need to be converted. Those
+    # are the connections from the shape's `instObjGroups[]` plug for the
+    # instance to a shading engine. Component assignments connect from its
+    # `objectGroups[]` children instead and are left untouched.
+    modifier = OpenMaya.MDGModifier()
+    override_assignments = defaultdict(list)
+    fn_node = OpenMaya.MFnDependencyNode()
+    faces_exist = OpenMaya.MSelectionList()
+    for i in range(sel.length()):
+        dag = sel.getDagPath(i)
+        shape = dag.fullPathName()
+        fn_node.setObject(dag.node())
+        plug = fn_node.findPlug("instObjGroups", False).elementByLogicalIndex(
+            dag.instanceNumber())
+        for destination in plug.connectedTo(False, True):
+            shading_engine = destination.node()
+            if not shading_engine.hasFn(OpenMaya.MFn.kShadingEngine):
+                continue
+
+            faces = f"{shape}.f[*]"
+            try:
+                faces_exist.add(faces)
+            except RuntimeError:
+                # It is possible for a mesh to have no faces at all
+                # for which we cannot convert to face assignments anyway.
+                # It is a `mesh` node type - it just would error on
+                # 'Object does not exist' when trying to add the faces.
+                # So we skip the conversion
+                log.debug(
+                    "Skipping face assignment conversion because "
+                    f"no mesh faces were found: {shape}")
+                continue
+
+            # Remove the shape from the shading engine because that allows
+            # maya to assign its faces instead
+            modifier.disconnect(plug, destination)
+            fn_node.setObject(shading_engine)
+            override_assignments[fn_node.name()].append(faces)
+
+    if not override_assignments:
         # Do nothing
         yield
         return
 
-    shapes_lookup = set(shapes)
-    original_assignments = {}
-    override_assignments = defaultdict(OpenMaya.MSelectionList)
-    
-    fn_set = OpenMaya.MFnSet()
-    for shading_engine in shading_engines:
-        fn_set.setObject(_get_mobject(shading_engine))
+    for shading_engine, faces in override_assignments.items():
+        modifier.commandToExecute(
+            'sets -edit -forceElement "{}" {};'.format(
+                shading_engine,
+                " ".join(f'"{member}"' for member in faces)
+            )
+        )
 
-        # Include ALL originals, even those not among our shapes
-        members = fn_set.getMembers(flatten=False)
-        original_assignments[shading_engine] = members
-
-        has_conversions = False
-        for i in range(members.length()):
-            dag, component = members.getComponent(i)
-            shape_path = dag.fullPathName()
-            if shape_path not in shapes_lookup:
-                continue
-
-            if component.isNull():
-                # Convert to face assignment
-                try:
-                    override_assignments[shading_engine].add(
-                        f'{shape_path}.f[*]'
-                    )
-                except RuntimeError:
-                    # It is possible for a mesh to have no faces at all
-                    # for which we cannot convert to face assignments anyway.
-                    # It is a `mesh` node type - it just would error on
-                    # 'Object does not exist' when trying to add the faces.
-                    # So we skip the conversion
-                    log.debug(
-                        "Skipping face assignment conversion because "
-                        f"no mesh faces were found: {shape_path}")
-                    continue
-                has_conversions = True
-            else:
-                # Preserve component assignment
-                override_assignments[shading_engine].add((dag, component))
-
-        if not has_conversions:
-            # We can skip this shading engine completely because
-            # we have nothing to override
-            original_assignments.pop(shading_engine, None)
-            override_assignments.pop(shading_engine, None)
-
+    # The face assignments are made with an undoable command through the
+    # modifier so that undoing the modifier reverts the scene to the exact
+    # state before. That is faster than removing the face assignments again,
+    # and does not leave any `groupId` or `groupParts` nodes behind. The
+    # command only tracks its undo if the undo queue is enabled, which by
+    # default it is not in a headless session.
+    undo_state = cmds.undoInfo(query=True, state=True)
     try:
-        # Apply overrides
-        for shading_engine, override_members in override_assignments.items():
-            _fast_clear_set(shading_engine)
-            fn_set.setObject(_get_mobject(shading_engine))
-            fn_set.addMembers(override_members)
+        if not undo_state:
+            cmds.undoInfo(stateWithoutFlush=True)
+        try:
+            # Apply overrides
+            modifier.doIt()
+        finally:
+            if not undo_state:
+                cmds.undoInfo(stateWithoutFlush=False)
         yield
 
     finally:
         # Revert to original assignments
-        for shading_engine, original_members in original_assignments.items():
-            _fast_clear_set(shading_engine)
-            fn_set.setObject(_get_mobject(shading_engine))
-            fn_set.addMembers(original_members)
+        modifier.undoIt()
 
 
 def nodetype_exists(nodetype: str) -> bool:
