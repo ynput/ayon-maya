@@ -4752,9 +4752,20 @@ def force_shader_assignments_to_faces(shapes):
 
             if component.isNull():
                 # Convert to face assignment
-                override_assignments[shading_engine].add(
-                    f'{shape_path}.f[*]'
-                )
+                try:
+                    override_assignments[shading_engine].add(
+                        f'{shape_path}.f[*]'
+                    )
+                except RuntimeError:
+                    # It is possible for a mesh to have no faces at all
+                    # for which we cannot convert to face assignments anyway.
+                    # It is a `mesh` node type - it just would error on
+                    # 'Object does not exist' when trying to add the faces.
+                    # So we skip the conversion
+                    log.debug(
+                        "Skipping face assignment conversion because "
+                        f"no mesh faces were found: {shape_path}")
+                    continue
                 has_conversions = True
             else:
                 # Preserve component assignment
