@@ -4695,12 +4695,13 @@ def _fast_clear_set(object_set: str):
     fn = OpenMaya.MFnDependencyNode(_get_mobject(object_set))
     dag_set_members = fn.findPlug("dagSetMembers", False)
     mod = OpenMaya.MDGModifier()
-    for i in range(dag_set_members.numElements()):
-        elem = dag_set_members.elementByPhysicalIndex(i)
-        if elem.isConnected:
-            src_plugs = elem.connectedTo(True, False)
-            for src in src_plugs:
-                mod.disconnect(src, elem)
+    # Iterate the connected elements instead of `numElements()` because that
+    # may exclude connected elements that have not been evaluated yet, which
+    # would leave those members in the set.
+    for i in range(dag_set_members.numConnectedElements()):
+        elem = dag_set_members.connectionByPhysicalIndex(i)
+        for src in elem.connectedTo(True, False):
+            mod.disconnect(src, elem)
     mod.doIt()
 
 
