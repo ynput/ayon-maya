@@ -30,7 +30,7 @@ class MayaUsdLoader(plugin.Loader):
         BoolDef(
             "enable_rigs",
             label="Enable embedded rigs",
-            default=True,
+            default=False,
             tooltip=(
                 "When the USD contains `MayaReference` prims (e.g. a rig "
                 "contributed to the USD asset) enable them so the rig is "
@@ -85,7 +85,7 @@ class MayaUsdLoader(plugin.Loader):
             context=context,
             loader=self.__class__.__name__)
 
-        if (options or {}).get("enable_rigs", True):
+        if (options or {}).get("enable_rigs", False):
             enable_usd_maya_references(proxies=[proxy], log=self.log)
 
         return container

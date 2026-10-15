@@ -108,8 +108,9 @@ class CreateUsdRigAnimation(CreateAnimation):
     """Animation output for rigs loaded through a USD MayaReference prim
 
     The animation is published as USD overlay onto the USD asset the rig was
-    loaded from, which by default is contributed to the USD animation layer
-    of the shot. See the `ExtractRigAnimationUsdOverlay` plug-in.
+    loaded from. The `animation` profile of the ayon-core settings of
+    `CollectUSDLayerContributions` contributes it to the USD animation layer
+    of the shot by default. See the `ExtractRigAnimationUsdOverlay` plug-in.
 
     Like the regular animation creator it is hidden from the UI. It is created
     when a rig is loaded from a `MayaReference` prim by the Maya USD loader or
@@ -130,18 +131,6 @@ class CreateUsdRigAnimation(CreateAnimation):
 
         # The USD overlay requires the animation to be extracted as USD cache
         publish_attributes.setdefault("ExtractMayaUsdAnim", {})["active"] = True
-
-        # Contribute the animation into the shot's animation layer by
-        # default, instead of the asset. The overlay it publishes targets the
-        # prim path of the loaded asset within the USD data.
-        publish_attributes.setdefault(
-            "CollectUSDLayerContributions", {}
-        ).update({
-            "contribution_target_product": "usdShot",
-            "contribution_target_product_init": "shot",
-            "contribution_layer": "animation",
-            "contribution_apply_as_variant": False,
-        })
         return super().create(product_name, instance_data, pre_create_data)
 
 
