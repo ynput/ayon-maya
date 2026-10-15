@@ -94,5 +94,4 @@ class OpenWithoutReferencesAction(WorkfileSimpleActionPlugin):
                 ),
             )
         # Workfile was opened, the tool is not needed anymore
-        self.request_close()
-        return None
+        return WorkfileActionResult(close_tool=True)
