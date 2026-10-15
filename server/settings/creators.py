@@ -49,6 +49,19 @@ class BasicCreatorModel(BaseSettingsModel):
     )
 
 
+class CreateRigModel(BasicCreatorModel):
+    usd_contribution: bool = SettingsField(
+        False,
+        title="USD contribution",
+        description=(
+            "Publish a USD representation for the rig that embeds the rig in "
+            "the USD asset as Maya reference, using the USD contribution "
+            "workflow. Loading the USD asset in Maya then allows to load the "
+            "rig and publish its animation onto the USD asset."
+        ),
+    )
+
+
 class CreateLookModel(BasicCreatorModel):
     make_tx: bool = SettingsField(title="Make tx files")
     rs_tex: bool = SettingsField(title="Make Redshift texture files")
@@ -255,8 +268,8 @@ class CreatorsModel(BaseSettingsModel):
         default_factory=CreateReviewModel,
         title="Create Review"
     )
-    CreateRig: BasicCreatorModel = SettingsField(
-        default_factory=BasicCreatorModel,
+    CreateRig: CreateRigModel = SettingsField(
+        default_factory=CreateRigModel,
         title="Create Rig"
     )
     CreateSetDress: CreateSetDressModel = SettingsField(
@@ -379,6 +392,7 @@ DEFAULT_CREATORS_SETTINGS = {
     "CreateRig": {
         "default_variants": ["Main", "Sim", "Cloth"],
         "enabled": True,
+        "usd_contribution": False,
     },
     "CreateSetDress": {
         "default_variants": ["Main", "Anim"],

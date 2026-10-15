@@ -8,6 +8,7 @@ import re
 import json
 import logging
 import contextlib
+import dataclasses
 from collections import OrderedDict, defaultdict
 from math import ceil
 from typing import Optional
@@ -4501,6 +4502,482 @@ def create_rig_animation_instance(
                 "use_selection": True,
                 "lock_instance": options.get("lock_instance", False)
             }
+        )
+
+
+USD_RIG_ANIMATION_CREATOR_ID = "io.ayon.creators.maya.animation_usd_rig"
+
+
+@dataclasses.dataclass
+class UsdMayaReference:
+    """A `MayaReference` prim in a Maya USD proxy stage.
+
+    `namespace` is the namespace authored on the prim. Maya makes namespaces
+    unique on load so the actual namespace of the loaded rig, if it is
+    loaded, is `loaded_namespace`, e.g. `rigMain` may become `rigMain1`.
+    """
+    proxy: str
+    prim_path: str
+    asset_prim_path: str
+    namespace: str
+    # The Maya scene the prim references
+    filepath: str | None = None
+    # Whether the prim is currently edited as Maya data (loaded in Maya)
+    edited: bool = False
+    # The Maya node the prim is edited as
+    maya_node: str | None = None
+    # The Maya reference node of the loaded rig and its namespace
+    reference_node: str | None = None
+    loaded_namespace: str | None = None
+
+    @property
+    def ufe_path(self) -> str:
+        return f"{self.proxy},{self.prim_path}"
+
+
+def _is_in_namespace(node: str, namespace: str) -> bool:
+    """Return whether node is in the namespace or any child namespace."""
+    return node.rsplit("|", 1)[-1].startswith(f"{namespace}:")
+
+
+def _get_usd_pulled_maya_nodes() -> dict[str, str]:
+    """Return the Maya nodes that are USD prims edited as Maya data.
+
+    Returns:
+        The Maya node by the UFE path of the prim it is edited from.
+    """
+    nodes = cmds.ls("*.Pull_UfePath", objectsOnly=True, long=True) or []
+    return {cmds.getAttr(f"{node}.Pull_UfePath"): node for node in nodes}
+
+
+def get_usd_maya_references(
+    proxies: list[str] | None = None
+) -> list[UsdMayaReference]:
+    """Return the `MayaReference` prims found in Maya USD proxy stages.
+
+    These are authored by the rig USD contribution as:
+        <asset prim>/<rig product> (MayaReference)
+
+    Arguments:
+        proxies: `mayaUsdProxyShape` nodes to search. By default all proxies
+            in the scene are searched.
+    """
+    if not cmds.pluginInfo("mayaUsdPlugin", query=True, loaded=True):
+        return []
+
+    import mayaUsd.lib
+    import mayaUsd.ufe
+
+    if proxies is None:
+        proxies = cmds.ls(type="mayaUsdProxyShape", long=True)
+    elif proxies:
+        proxies = cmds.ls(proxies, type="mayaUsdProxyShape", long=True)
+
+    pulled_nodes = _get_usd_pulled_maya_nodes()
+    references = []
+    for proxy in proxies:
+        stage = mayaUsd.ufe.getStage(proxy)
+        if not stage:
+            continue
+
+        # Prims edited as Maya are inactive, so also traverse those
+        for prim in stage.TraverseAll():
+            if prim.GetTypeName() != "MayaReference":
+                continue
+
+            attr = prim.GetAttribute("mayaNamespace")
+            namespace = attr.Get() if attr and attr.HasValue() else None
+            attr = prim.GetAttribute("mayaReference")
+            filepath = attr.Get() if attr and attr.HasValue() else None
+            reference = UsdMayaReference(
+                proxy=proxy,
+                prim_path=str(prim.GetPath()),
+                asset_prim_path=str(prim.GetPath().GetParentPath()),
+                namespace=namespace or prim.GetName(),
+                filepath=(
+                    (filepath.resolvedPath or filepath.path) if filepath
+                    else None
+                ),
+            )
+            references.append(reference)
+
+            # Maya USD relates a prim that is edited as Maya data and its
+            # Maya node on both of them. The relation on the prim is in the
+            # session layer, which gets lost when the stage is reloaded, so
+            # fall back to the relation on the Maya node.
+            maya_node = mayaUsd.lib.PrimUpdaterManager.readPullInformation(
+                prim)
+            if not maya_node or not cmds.objExists(maya_node):
+                maya_node = pulled_nodes.get(reference.ufe_path)
+            if not maya_node:
+                continue
+            reference.edited = True
+            reference.maya_node = maya_node
+
+            # The rig is referenced under the Maya node
+            ref_node = next(
+                (
+                    cmds.referenceQuery(
+                        child, referenceNode=True, topReference=True)
+                    for child in cmds.listRelatives(
+                        maya_node, children=True, fullPath=True) or []
+                    if cmds.referenceQuery(child, isNodeReferenced=True)
+                ),
+                None
+            )
+            if ref_node:
+                reference.reference_node = ref_node
+                # Maya makes the namespace unique when loading the reference
+                reference.loaded_namespace = cmds.referenceQuery(
+                    ref_node, namespace=True).lstrip(":")
+
+    return references
+
+
+def get_selected_usd_maya_references(
+    proxies: list[str] | None = None
+) -> list[UsdMayaReference]:
+    """Return the `MayaReference` prims related to the USD prim selection.
+
+    A reference is related if its prim is at or under a selected prim, or if
+    a selected prim is at or under the asset prim that holds the reference.
+    Selecting e.g. the asset prim or any of its geometry prims, or the
+    reference prim itself, will thus all pick the rig of that asset.
+
+    Arguments:
+        proxies: `mayaUsdProxyShape` nodes to consider. By default all
+            proxies in the scene are considered.
+    """
+    from pxr import Sdf
+
+    selected: list[tuple[str, Sdf.Path]] = []
+    for ufe_path in cmds.ls(selection=True, ufe=True, long=True) or []:
+        # USD prims are `<proxy path>,/<prim path>`, Maya nodes have no comma
+        if "," not in ufe_path:
+            continue
+        proxy, prim_path = ufe_path.split(",", 1)
+        proxy = cmds.ls(proxy, long=True)
+        if proxy:
+            selected.append((proxy[0], Sdf.Path(prim_path)))
+
+    references = []
+    for reference in get_usd_maya_references(proxies):
+        prim_path = Sdf.Path(reference.prim_path)
+        asset_path = Sdf.Path(reference.asset_prim_path)
+        for proxy, selected_path in selected:
+            if proxy != reference.proxy:
+                continue
+            if (
+                prim_path.HasPrefix(selected_path)
+                or selected_path.HasPrefix(asset_path)
+            ):
+                references.append(reference)
+                break
+    return references
+
+
+def get_usd_maya_reference_for_nodes(
+    nodes: list[str]
+) -> UsdMayaReference | None:
+    """Return the USD MayaReference that loaded the given nodes.
+
+    The nodes are matched by their namespace against the namespaces of the
+    rigs loaded from `MayaReference` prims in the Maya USD proxy stages.
+
+    Arguments:
+        nodes: Nodes of e.g. a rig or animation instance.
+
+    Returns:
+        The reference, or None if the nodes were not loaded through a USD
+        MayaReference prim.
+    """
+    for reference in get_usd_maya_references():
+        namespace = reference.loaded_namespace
+        if namespace and any(
+            _is_in_namespace(node, namespace) for node in nodes
+        ):
+            return reference
+    return None
+
+
+def enable_usd_maya_references(
+    references: list[UsdMayaReference] | None = None,
+    proxies: list[str] | None = None,
+    create_animation_instances: bool = True,
+    log: logging.Logger | None = None,
+) -> list[str]:
+    """Edit `MayaReference` prims as Maya data, to load the embedded rigs.
+
+    Arguments:
+        references: The references to load. Already loaded references are
+            ignored. By default all references in `proxies` are loaded.
+        proxies: `mayaUsdProxyShape` nodes to load all references from when
+            no explicit `references` are given.
+        create_animation_instances: Whether to create the animation instance
+            for each loaded rig.
+        log: Logger to log to if provided.
+
+    Returns:
+        The namespaces of the rigs that were loaded.
+    """
+    if references is None:
+        references = get_usd_maya_references(proxies)
+    references = [
+        reference for reference in references if not reference.edited
+    ]
+    if not references:
+        return []
+
+    import mayaUsd.lib
+
+    namespaces = []
+    for reference in references:
+        if not mayaUsd.lib.PrimUpdaterManager.editAsMaya(reference.ufe_path):
+            if log:
+                log.warning("Failed to edit as Maya: %s", reference.ufe_path)
+            continue
+
+        # Find the namespace the rig got loaded into
+        namespace = next(
+            (
+                loaded.loaded_namespace
+                for loaded in get_usd_maya_references([reference.proxy])
+                if loaded.prim_path == reference.prim_path
+            ),
+            None
+        )
+        if namespace is None:
+            if log:
+                log.warning(
+                    "Unable to find the rig loaded for: %s",
+                    reference.ufe_path)
+            continue
+        namespaces.append(namespace)
+
+        if create_animation_instances:
+            try:
+                create_usd_rig_animation_instance(namespace, log=log)
+            except RigSetsNotExistError as exc:
+                if log:
+                    log.warning(
+                        "Missing rig sets for animation instance creation: "
+                        "%s", exc)
+    return namespaces
+
+
+def load_usd_rigs_from_selection(
+    create_animation_instances: bool = True,
+    log: logging.Logger | None = None,
+) -> list[str]:
+    """Load the USD rigs related to the currently selected USD prims.
+
+    Select e.g. the asset prim in the Outliner or the USD Layer/Stage view
+    and run this to load just that asset's embedded rig.
+
+    Returns:
+        The namespaces of the rigs that were loaded.
+    """
+    references = get_selected_usd_maya_references()
+    if not references and log:
+        log.warning("No USD MayaReference rig found for the selection.")
+    return enable_usd_maya_references(
+        references,
+        create_animation_instances=create_animation_instances,
+        log=log,
+    )
+
+
+def discard_usd_maya_references(
+    proxies: list[str] | None = None,
+    references: list[UsdMayaReference] | None = None,
+) -> None:
+    """Discard the Maya edits of `MayaReference` prims.
+
+    Removes the rigs loaded by `enable_usd_maya_references` including their
+    animation instances.
+
+    Arguments:
+        proxies: `mayaUsdProxyShape` nodes to discard all loaded references
+            from when no explicit `references` are given.
+        references: The references to discard.
+    """
+    if references is None:
+        references = get_usd_maya_references(proxies)
+    references = [reference for reference in references if reference.edited]
+    if not references:
+        return
+
+    import mayaUsd.lib
+
+    # Discarding requires the edit state on the prims
+    restore_usd_maya_reference_edits(
+        list({reference.proxy for reference in references}))
+
+    for reference in references:
+        # Remove the animation instances of the rig
+        namespace = reference.loaded_namespace
+        for node in cmds.ls(type="objectSet") if namespace else []:
+            if not cmds.attributeQuery(
+                "creator_identifier", node=node, exists=True
+            ):
+                continue
+            if cmds.getAttr(f"{node}.creator_identifier") != (
+                USD_RIG_ANIMATION_CREATOR_ID
+            ):
+                continue
+            members = cmds.sets(node, query=True) or []
+            if any(_is_in_namespace(member, namespace) for member in members):
+                cmds.lockNode(node, lock=False)
+                cmds.delete(node)
+
+        mayaUsd.lib.PrimUpdaterManager.discardEdits(reference.maya_node)
+
+        # Make sure the reference itself is gone too
+        ref_node = reference.reference_node
+        if ref_node and cmds.objExists(ref_node):
+            cmds.file(referenceNode=ref_node, removeReference=True)
+        if namespace and cmds.namespace(exists=namespace):
+            cmds.namespace(removeNamespace=namespace,
+                           deleteNamespaceContent=True)
+
+
+def restore_usd_maya_reference_edits(
+    proxies: list[str] | None = None
+) -> None:
+    """Restore the edit state on prims of which the rig is loaded in Maya.
+
+    Maya USD stores on a prim that it is edited as Maya data in the session
+    layer of the stage. That layer is lost when the proxy loads another file
+    and Maya USD does not save it for each proxy if multiple proxies load the
+    same file. The rig then remains in the scene, but Maya USD would not
+    consider the prim as edited.
+
+    Arguments:
+        proxies: `mayaUsdProxyShape` nodes to restore the prims for. By
+            default the prims of all proxies in the scene are restored.
+    """
+    references = [
+        reference for reference in get_usd_maya_references(proxies)
+        if reference.edited
+    ]
+    if not references:
+        return
+
+    import mayaUsd.lib
+    import mayaUsd.ufe
+    from pxr import Sdf, Usd
+
+    for reference in references:
+        stage = mayaUsd.ufe.getStage(reference.proxy)
+        prim = stage.GetPrimAtPath(reference.prim_path)
+        if (
+            mayaUsd.lib.PrimUpdaterManager.readPullInformation(prim)
+            == reference.maya_node
+        ):
+            continue
+
+        # Author what Maya USD authors when editing the prim as Maya data
+        with Usd.EditContext(stage, stage.GetSessionLayer()):
+            prim.SetCustomDataByKey("Maya:Pull:DagPath", reference.maya_node)
+            if reference.reference_node:
+                prim.CreateAttribute(
+                    "MayaReferenceNodeName",
+                    Sdf.ValueTypeNames.String,
+                    custom=True
+                ).Set(reference.reference_node)
+            prim.SetActive(False)
+
+
+def refresh_usd_maya_references(
+    proxies: list[str],
+    log: logging.Logger | None = None,
+) -> None:
+    """Refresh the rigs loaded from `MayaReference` prims on a stage reload.
+
+    This keeps the loaded rigs related to their prims when the proxy loaded
+    another file and updates the rigs for which the prim now references
+    another Maya scene, e.g. another version of the rig.
+
+    Arguments:
+        proxies: The `mayaUsdProxyShape` nodes of which the stage reloaded.
+        log: Logger to log to if provided.
+    """
+    if not proxies:
+        return
+
+    restore_usd_maya_reference_edits(proxies)
+    for reference in get_usd_maya_references(proxies):
+        if not reference.reference_node or not reference.filepath:
+            continue
+
+        current = cmds.referenceQuery(
+            reference.reference_node, filename=True, withoutCopyNumber=True)
+        if (
+            os.path.normcase(os.path.normpath(current))
+            == os.path.normcase(os.path.normpath(reference.filepath))
+        ):
+            continue
+
+        if not os.path.isfile(reference.filepath):
+            if log:
+                log.warning(
+                    "Unable to update rig '%s' to missing file: %s",
+                    reference.loaded_namespace, reference.filepath)
+            continue
+
+        if log:
+            log.info(
+                "Updating rig '%s' to: %s",
+                reference.loaded_namespace, reference.filepath)
+        cmds.file(reference.filepath, loadReference=reference.reference_node)
+
+
+def create_usd_rig_animation_instance(
+    namespace: str,
+    log: logging.Logger | None = None,
+) -> None:
+    """Create an animation instance for a rig loaded by a USD MayaReference.
+
+    The instance is created with the USD Rig Animation creator so that the
+    animation can be contributed as an overlay onto the loaded USD asset.
+
+    Arguments:
+        namespace: Namespace of the loaded rig.
+        log: Logger to log to if provided.
+
+    Raises:
+        RigSetsNotExistError: When the rig lacks the required sets.
+    """
+    nodes = cmds.ls(f"{namespace}:*", long=True) or []
+    output = next((n for n in nodes if n.endswith("out_SET")), None)
+    controls = next((n for n in nodes if n.endswith("controls_SET")), None)
+    if not output or not controls:
+        raise RigSetsNotExistError(
+            f"Missing out_SET or controls_SET in namespace '{namespace}'.")
+
+    anim_skeleton = next(
+        (n for n in nodes if n.endswith("skeletonAnim_SET")), None)
+    skeleton_mesh = next(
+        (n for n in nodes if n.endswith("skeletonMesh_SET")), None)
+    rig_sets = [
+        s for s in (output, controls, anim_skeleton, skeleton_mesh) if s
+    ]
+    roots = (
+        cmds.ls(nodes, assemblies=True, long=True)
+        or get_highest_in_hierarchy(nodes)
+    )
+    assert roots, "No root nodes in rig, this is a bug."
+
+    if log:
+        log.info("Creating product: {}".format(namespace))
+
+    create_context = CreateContext(registered_host())
+    with maintained_selection():
+        cmds.select(rig_sets + roots, noExpand=True)
+        create_context.create(
+            creator_identifier=USD_RIG_ANIMATION_CREATOR_ID,
+            variant=namespace,
+            pre_create_data={"use_selection": True}
         )
 
 
