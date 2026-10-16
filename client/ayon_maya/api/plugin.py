@@ -172,6 +172,8 @@ class MayaCreatorBase:
 
                 creator_id = _get_attr(node, attr="creator_identifier")
                 if creator_id is not None:
+                    if "openpype" in creator_id:
+                        cache_legacy.setdefault(creator_id, []).append(node)
                     # creator instance
                     cache.setdefault(creator_id, []).append(node)
                 else:

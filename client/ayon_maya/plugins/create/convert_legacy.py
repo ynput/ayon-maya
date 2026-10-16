@@ -2,7 +2,7 @@ import ayon_api
 
 from ayon_core.pipeline.create.creator_plugins import ProductConvertorPlugin
 from ayon_maya.api import plugin
-from ayon_maya.api.lib import read
+from ayon_maya.api.lib import creator_identifier_mapping, read
 
 from maya import cmds
 from maya.app.renderSetup.model import renderSetup
@@ -75,18 +75,28 @@ class MayaLegacyConvertor(ProductConvertorPlugin,
         # logic was thus to be live to the current task to begin with.
         data = dict()
         data["task"] = self.create_context.get_current_task_name()
-        for product_base_type, instance_nodes in legacy.items():
-            if product_base_type not in product_base_type_to_id:
+        for legacy_key, instance_nodes in legacy.items():
+            # Instances created by older versions store the OpenPype creator
+            # identifier, so it is mapped to the current AYON one.
+            creator_id = product_base_type_to_id.get(legacy_key)
+            if creator_id is None:
+                creator_id = creator_identifier_mapping.get(legacy_key)
+            if creator_id is None:
                 self.log.warning((
                     "Unable to convert legacy instance with family '{}'"
                     " because there is no matching new creator"
-                ).format(product_base_type))
+                ).format(legacy_key))
                 continue
 
-            creator_id = product_base_type_to_id[product_base_type]
-            creator = self.create_context.creators[creator_id]
-            data["creator_identifier"] = creator_id
+            creator = self.create_context.creators.get(creator_id)
+            if creator is None:
+                self.log.warning((
+                    "Unable to convert legacy instance with family '{}'"
+                    " because creator '{}' is not available"
+                ).format(legacy_key, creator_id))
+                continue
 
+            data["creator_identifier"] = creator_id
             if isinstance(creator, plugin.RenderlayerCreator):
                 self._convert_per_renderlayer(instance_nodes, data, creator)
             else:

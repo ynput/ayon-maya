@@ -4391,6 +4391,76 @@ def convert_legacy_instance_data(node: str) -> bool:
     return converted
 
 
+# Creator identifiers were renamed from the OpenPype namespace to the AYON one
+# (see the creators in `ayon_maya.plugins.create`). Instances and renderlayer
+# instance nodes stored before the rename still carry the OpenPype identifier,
+# so it has to be mapped to the current one for them to be found.
+# Kept here, rather than on the legacy convertor, so that both the convertor
+# and `MayaCreatorBase` can use it without a circular import.
+creator_identifier_mapping = {
+    "io.openpype.creators.maya.animation": "io.ayon.creators.maya.animation",
+    "io.openpype.creators.maya.ass": "io.ayon.creators.maya.ass",
+    "io.openpype.creators.maya.assproxy": "io.ayon.creators.maya.assproxy",
+    "io.openpype.creators.maya.camera": "io.ayon.creators.maya.camera",
+    "io.openpype.creators.maya.camerarig": "io.ayon.creators.maya.camerarig",
+    "io.openpype.creators.maya.layout": "io.ayon.creators.maya.layout",
+    "io.openpype.creators.maya.look": "io.ayon.creators.maya.look",
+    "io.openpype.creators.maya.matchmove": "io.ayon.creators.maya.matchmove",
+    "io.openpype.creators.maya.mayascene": "io.ayon.creators.maya.mayascene",
+    "io.openpype.creators.maya.mayausd": "io.ayon.creators.maya.mayausd",
+    "io.openpype.creators.maya.mayausdlayer": (
+        "io.ayon.creators.maya.mayausdlayer"
+    ),
+    "io.openpype.creators.maya.model": "io.ayon.creators.maya.model",
+    "io.openpype.creators.maya.multishotlayout": (
+        "io.ayon.creators.maya.multishotlayout"
+    ),
+    "io.openpype.creators.maya.mvlook": "io.ayon.creators.maya.mvlook",
+    "io.openpype.creators.maya.mvusdasset": (
+        "io.ayon.creators.maya.mvusdasset"
+    ),
+    "io.openpype.creators.maya.mvusdcomposition": (
+        "io.ayon.creators.maya.mvusdcomposition"
+    ),
+    "io.openpype.creators.maya.mvusdoverride": (
+        "io.ayon.creators.maya.mvusdoverride"
+    ),
+    "io.openpype.creators.maya.oxcache": "io.ayon.creators.maya.oxcache",
+    "io.openpype.creators.maya.oxrig": "io.ayon.creators.maya.oxrig",
+    "io.openpype.creators.maya.pointcache": (
+        "io.ayon.creators.maya.pointcache"
+    ),
+    "io.openpype.creators.maya.proxyabc": "io.ayon.creators.maya.proxyabc",
+    "io.openpype.creators.maya.redshiftproxy": (
+        "io.ayon.creators.maya.redshiftproxy"
+    ),
+    "io.openpype.creators.maya.renderlayer": (
+        "io.ayon.creators.maya.renderlayer"
+    ),
+    "io.openpype.creators.maya.rendersetup": (
+        "io.ayon.creators.maya.rendersetup"
+    ),
+    "io.openpype.creators.maya.review": "io.ayon.creators.maya.review",
+    "io.openpype.creators.maya.rig": "io.ayon.creators.maya.rig",
+    "io.openpype.creators.maya.setdress": "io.ayon.creators.maya.setdress",
+    "io.openpype.creators.maya.unrealskeletalmesh": (
+        "io.ayon.creators.maya.unrealskeletalmesh"
+    ),
+    "io.openpype.creators.maya.unrealstaticmesh": (
+        "io.ayon.creators.maya.unrealstaticmesh"
+    ),
+    "io.openpype.creators.maya.unrealyeticache": (
+        "io.ayon.creators.maya.unrealyeticache"
+    ),
+    "io.openpype.creators.maya.vrayproxy": "io.ayon.creators.maya.vrayproxy",
+    "io.openpype.creators.maya.vrayscene": "io.ayon.creators.maya.vrayscene",
+    "io.openpype.creators.maya.workfile": "io.ayon.creators.maya.workfile",
+    "io.openpype.creators.maya.xgen": "io.ayon.creators.maya.xgen",
+    "io.openpype.creators.maya.yeticache": "io.ayon.creators.maya.yeticache",
+    "io.openpype.creators.maya.yetirig": "io.ayon.creators.maya.yetirig",
+}
+
+
 def get_creator_identifier(node: str) -> str | None:
     """Get the creator identifier of an instance node.
 
