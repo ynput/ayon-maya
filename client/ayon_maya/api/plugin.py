@@ -166,8 +166,14 @@ class MayaCreatorBase:
                 }:
                     continue
 
+                # Convert instances stored with the legacy Avalon id (and
+                # OpenPype era key names) so old scenes migrate on collect
+                lib.convert_legacy_instance_data(node)
+
                 creator_id = _get_attr(node, attr="creator_identifier")
                 if creator_id is not None:
+                    if "openpype" in creator_id:
+                        cache_legacy.setdefault(creator_id, []).append(node)
                     # creator instance
                     cache.setdefault(creator_id, []).append(node)
                 else:
