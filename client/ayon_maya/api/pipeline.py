@@ -763,6 +763,10 @@ def on_save():
     automatically on file save.
     """
     log.info("Running callback on save..")
+
+    # Make sure the scene carries AYON context metadata before it is written
+    _store_context_data()
+
     # remove lockfile if users jumps over from one scene to another
     _remove_workfile_lock()
 
@@ -775,6 +779,27 @@ def on_save():
     # We are now starting the actual save directly
     global _about_to_save
     _about_to_save = False
+
+
+def _store_context_data():
+    """Write the scene's AYON context data before the file is written.
+
+    The context data (the publish attributes) is otherwise only written by the
+    create context, i.e. once the Publisher was used, which leaves a freshly
+    saved workfile without any context metadata.
+
+    Data which the scene already has is kept as is, including a legacy
+    `OpenPypeContext` payload, which also stays the write target for that scene
+    (see `MayaHost.get_context_key`). A new scene gets an empty AYON context.
+    """
+    try:
+        host: MayaHost = registered_host()
+        data = host.get_context_data() or {}
+        data.setdefault("publish_attributes", {})
+        host.update_context_data(data, None)
+    except Exception as exc:  # noqa: BLE001
+        # Never block saving because the context could not be written
+        log.warning("Could not write the AYON context data: %s", exc)
 
 
 def on_open():
