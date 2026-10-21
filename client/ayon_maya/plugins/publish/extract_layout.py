@@ -15,7 +15,8 @@ from ayon_maya.api import plugin
 from ayon_maya.api.lib import (
     get_highest_in_hierarchy,
     get_container_members,
-    get_all_children
+    get_all_children,
+    maintained_time,
 )
 from maya import cmds
 from maya.api import OpenMaya as om
@@ -68,6 +69,9 @@ class LayoutElement:
         factory=list
     )
 
+    # Sample frame for layout extraction
+    sample_frame: int | None = None
+
 
 def is_valid_uuid(value) -> bool:
     """Return whether value is a valid UUID"""
@@ -114,7 +118,15 @@ class ExtractLayout(plugin.MayaExtractorPlugin,
             "allowObjectTransforms",
             False
         )
-
+        # Sample at the start frame of the folder by default so the published
+        # layout is deterministic. Sampling at the playhead is an explicit
+        # opt-out ("Sample at Playhead") for legacy behaviour.
+        sample_frame = None
+        if not instance.data.get("sampleAtPlayhead", False):
+            sample_frame = int(instance.context.data.get("frameStart", 1))
+            self.log.info(
+                "Sampling layout transforms at frame %s", sample_frame
+            )
         # Get all containers from the scene and their members so from the
         # layout instance members we can find what containers we have inside
         # the layout that we want to publish.
@@ -189,32 +201,36 @@ class ExtractLayout(plugin.MayaExtractorPlugin,
 
         # Process each container found in the layout instance
         elements: list[LayoutElement] = []
-        for container in included_containers:
-            representation_id: str = container.representation
-            representation = representations_by_id.get(representation_id)
-            if not representation:
-                self.log.warning(
-                    "Representation not found in current project"
-                    f" for container: {container}"
+        with maintained_time():
+            if sample_frame is not None:
+                cmds.currentTime(sample_frame, update=False)
+            for container in included_containers:
+                representation_id: str = container.representation
+                representation = representations_by_id.get(representation_id)
+                if not representation:
+                    self.log.warning(
+                        "Representation not found in current project"
+                        f" for container: {container}"
+                    )
+                    continue
+
+                version_id: str = representation["versionId"]
+                product_id = product_id_by_version_id[version_id]
+                product_entity = products_by_id[product_id]
+
+                element = self.get_container_element(
+                    container=container,
+                    representation=representation,
+                    product_entity=product_entity,
+                    allow_obj_transforms=allow_obj_transforms,
+                    sample_frame=sample_frame,
                 )
-                continue
-
-            version_id: str = representation["versionId"]
-            product_id = product_id_by_version_id[version_id]
-            product_entity = products_by_id[product_id]
-
-            element = self.get_container_element(
-                container=container,
-                representation=representation,
-                product_entity=product_entity,
-                allow_obj_transforms=allow_obj_transforms,
-            )
-            self.log.debug("Layout element collected: %s", element)
-            elements.append(element)
+                self.log.debug("Layout element collected: %s", element)
+                elements.append(element)
 
         # Sort by instance name
         elements = sorted(elements, key=lambda x: x.instance_name)
-        json_data: list[dict] = [attr.asdict(element) for element in elements]
+        json_data = self._convert_layout_data(elements)
 
         # Define extract output file path
         stagingdir = self.staging_dir(instance)
@@ -275,6 +291,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin,
         representation: dict[str, Any],
         product_entity: dict[str, Any],
         allow_obj_transforms: bool,
+        sample_frame: int | None = None,
     ) -> LayoutElement:
         """Get layout element data from the container root."""
 
@@ -310,6 +327,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin,
             transform_matrix=transform_matrix,
             basis=BASIS_MATRIX,
             rotation=rotation,
+            sample_frame=sample_frame,
         )
         if allow_obj_transforms:
             child_transforms = cmds.ls(
@@ -407,3 +425,20 @@ class ExtractLayout(plugin.MayaExtractorPlugin,
         return {
             child_transform_name: transform_matrix
         }
+
+    def _convert_layout_data(self, elements: list[LayoutElement])-> list[dict]:
+        """Convert layout elements to JSON serializable data.
+
+        Args:
+            elements (list[LayoutElement]): List of layout elements.
+
+        Returns:
+            list[dict]: List of JSON serializable layout element data.
+        """
+        json_data = []
+        for element in elements:
+            data = attr.asdict(element)
+            if data.get("sample_frame") is None:
+                data.pop("sample_frame", None)
+            json_data.append(data)
+        return json_data
