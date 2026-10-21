@@ -446,13 +446,20 @@ def convert_legacy_container(container, data=None):
     migrates it as soon as the container is read, keeping old scenes
     working without any manual step.
 
+    Updating the node is best effort. The returned `data` is always
+    converted, but the node itself is left untouched when it is referenced
+    (the edit would only end up as a reference edit in the current scene
+    instead of in the file that owns the container) or when it can not be
+    written to, e.g. due to a locked attribute. Reading a container must
+    never fail because it could not be migrated.
+
     Args:
         container (str): Name of the container node.
         data (Optional[dict[str, Any]]): Already read container data. When
-            provided it is updated to match the converted node.
+            provided it is updated to match the converted container.
 
     Returns:
-        bool: Whether the container was converted.
+        bool: Whether the container node was converted.
 
     """
     container_id = lib.get_optional_attribute(container, "id")
@@ -464,16 +471,27 @@ def convert_legacy_container(container, data=None):
     if not is_legacy:
         return False
 
+    if data is not None:
+        data["id"] = AYON_CONTAINER_ID
+        data["schema"] = AYON_CONTAINER_SCHEMA
+
+    if cmds.referenceQuery(container, isNodeReferenced=True):
+        return False
+
     log.debug(
         "Converting legacy Avalon container '%s' to AYON container.",
         container,
     )
-    lib.set_attribute("id", AYON_CONTAINER_ID, container)
-    lib.set_attribute("schema", AYON_CONTAINER_SCHEMA, container)
-
-    if data is not None:
-        data["id"] = AYON_CONTAINER_ID
-        data["schema"] = AYON_CONTAINER_SCHEMA
+    try:
+        lib.set_attribute("id", AYON_CONTAINER_ID, container)
+        lib.set_attribute("schema", AYON_CONTAINER_SCHEMA, container)
+    except RuntimeError as exc:
+        log.warning(
+            "Unable to convert legacy Avalon container '%s' to AYON "
+            "container: %s",
+            container, exc
+        )
+        return False
     return True
 
 
@@ -493,8 +511,24 @@ def get_container_set():
     # instead of creating a second one next to it.
     legacy_container = cmds.ls(AVALON_CONTAINERS, type="objectSet")
     if legacy_container:
+        legacy_container = legacy_container[0]
         log.debug("Converting legacy Avalon containers set to AYON.")
-        cmds.rename(legacy_container[0], AYON_CONTAINERS.lstrip(":"))
+        try:
+            # A locked node can not be renamed
+            with lib.unlocked(legacy_container):
+                # Rename to the absolute name, because a relative name is
+                # created in the current namespace, which is not
+                # necessarily the root.
+                cmds.rename(legacy_container, AYON_CONTAINERS)
+        except RuntimeError as exc:
+            # Keep using the legacy set if it can not be renamed, like
+            # when it is a referenced node.
+            log.warning(
+                "Unable to convert legacy Avalon containers set to AYON: %s",
+                exc
+            )
+            return legacy_container
+
         main_container = cmds.ls(AYON_CONTAINERS, type="objectSet")
         if main_container:
             return main_container[0]
