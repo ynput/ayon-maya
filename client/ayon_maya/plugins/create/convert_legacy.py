@@ -146,11 +146,9 @@ class MayaLegacyConvertor(ProductConvertorPlugin,
         data = dict()
         data["task"] = self.create_context.get_current_task_name()
         for legacy_key, instance_nodes in legacy.items():
-            # Legacy instances are cached either by their OpenPype creator
-            # identifier or, for even older instances, by their family. Both
-            # are resolved to the current AYON creator identifier.
-            creator_id = self._resolve_creator_identifier(
-                legacy_key, product_base_type_to_id
+            creator_id = (
+                self.creator_identifier_mapping.get(legacy_key)
+                or product_base_type_to_id.get(legacy_key)
             )
             if creator_id is None:
                 self.log.warning((
@@ -189,32 +187,6 @@ class MayaLegacyConvertor(ProductConvertorPlugin,
         if shared_data is not None:
             shared_data.pop("maya_cached_instance_data", None)
             shared_data.pop("maya_cached_legacy_instances", None)
-
-    def _resolve_creator_identifier(
-            self, legacy_key: str, product_base_type_to_id: dict[str, str]
-    ) -> str | None:
-        """Resolve a legacy instance cache key to the AYON creator identifier.
-
-        `MayaCreatorBase.cache_instance_data` caches legacy instances either by
-        their OpenPype creator identifier (`io.openpype.creators.maya.*`) or,
-        for even older instances without a `creator_identifier`, by their
-        `family`. The OpenPype identifiers are mapped to the AYON ones through
-        `creator_identifier_mapping`, the families through the product base
-        type of the current creators.
-
-        Args:
-            legacy_key (str): Cache key of the legacy instances.
-            product_base_type_to_id (dict[str, str]): Product base type to
-                creator identifier mapping of the current creators.
-
-        Returns:
-            str | None: Current creator identifier or None if it is unmapped.
-
-        """
-        return (
-            self.creator_identifier_mapping.get(legacy_key)
-            or product_base_type_to_id.get(legacy_key)
-        )
 
     def _convert_regular(self, instance_nodes, data):
         # We only imprint the creator identifier for it to identify
