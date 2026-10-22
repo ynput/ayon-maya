@@ -11,7 +11,7 @@ from ayon_core.lib import (
 class CreateLook(plugin.MayaCreator):
     """Shader connections defining shape look"""
 
-    identifier = "io.openpype.creators.maya.look"
+    identifier = "io.ayon.creators.maya.look"
     label = "Look"
     product_base_type = "look"
     product_type = product_base_type

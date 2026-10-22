@@ -7,7 +7,7 @@ from maya import cmds
 
 class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
     """Workfile auto-creator."""
-    identifier = "io.openpype.creators.maya.workfile"
+    identifier = "io.ayon.creators.maya.workfile"
     label = "Workfile"
     product_base_type = "workfile"
     product_type = product_base_type
