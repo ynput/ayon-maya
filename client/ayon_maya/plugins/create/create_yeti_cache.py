@@ -8,7 +8,7 @@ from ayon_core.lib import NumberDef, BoolDef
 class CreateYetiCache(plugin.MayaCreator):
     """Output for procedural plugin nodes of Yeti """
 
-    identifier = "io.openpype.creators.maya.yeticache"
+    identifier = "io.ayon.creators.maya.yeticache"
     label = "Yeti Cache"
     product_base_type = "yeticache"
     product_type = product_base_type

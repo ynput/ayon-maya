@@ -81,7 +81,7 @@ class CreateAnimation(plugin.MayaHiddenCreator):
     for loaded rigs if by chance someone deleted the animation instance.
     """
 
-    identifier = "io.openpype.creators.maya.animation"
+    identifier = "io.ayon.creators.maya.animation"
     name = "animationDefault"
     label = "Animation"
     product_base_type = "animation"
@@ -107,7 +107,7 @@ class CreateAnimation(plugin.MayaHiddenCreator):
 class CreatePointCache(plugin.MayaCreator):
     """Alembic pointcache for animated data"""
 
-    identifier = "io.openpype.creators.maya.pointcache"
+    identifier = "io.ayon.creators.maya.pointcache"
     label = "Pointcache"
     product_base_type = "pointcache"
     product_type = product_base_type

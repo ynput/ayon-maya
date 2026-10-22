@@ -35,6 +35,11 @@ from .pipeline import containerise
 log = Logger.get_logger()
 SETTINGS_CATEGORY = "maya"
 
+# Creator identifiers persisted before the OpenPype -> AYON rename. Instances
+# using them are cached as legacy instances so `MayaLegacyConvertor` can
+# migrate them, see `MayaLegacyConvertor.creator_identifier_mapping`.
+LEGACY_CREATOR_IDENTIFIER_PREFIX = "io.openpype.creators.maya."
+
 
 def _get_attr(node, attr, default=None):
     """Helper to get attribute which allows attribute to not exist."""
@@ -172,7 +177,11 @@ class MayaCreatorBase:
 
                 creator_id = _get_attr(node, attr="creator_identifier")
                 if creator_id is not None:
-                    if "openpype" in creator_id:
+                    # Instances created by OpenPype store the legacy creator
+                    # identifier. Cache them as legacy instances so
+                    # `MayaLegacyConvertor` can migrate them.
+                    if creator_id.startswith(
+                            LEGACY_CREATOR_IDENTIFIER_PREFIX):
                         cache_legacy.setdefault(creator_id, []).append(node)
                     # creator instance
                     cache.setdefault(creator_id, []).append(node)

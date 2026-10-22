@@ -5,7 +5,7 @@ from ayon_core.pipeline import CreatorError
 class CreateRenderSetup(plugin.MayaCreator):
     """Create rendersetup template json data"""
 
-    identifier = "io.openpype.creators.maya.rendersetup"
+    identifier = "io.ayon.creators.maya.rendersetup"
     label = "Render Setup Preset"
     product_base_type = "rendersetup"
     product_type = product_base_type

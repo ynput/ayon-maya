@@ -8,7 +8,7 @@ from ayon_core.lib import (
 class CreateMultiverseLook(plugin.MayaCreator):
     """Create Multiverse Look"""
 
-    identifier = "io.openpype.creators.maya.mvlook"
+    identifier = "io.ayon.creators.maya.mvlook"
     label = "Multiverse Look"
     product_base_type = "mvLook"
     product_type = product_base_type

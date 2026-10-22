@@ -77,7 +77,7 @@ class YetiRigLoader(plugin.ReferenceLoader):
 
         self.log.info("Creating variant: {}".format(variant))
 
-        creator_identifier = "io.openpype.creators.maya.yeticache"
+        creator_identifier = "io.ayon.creators.maya.yeticache"
 
         host = registered_host()
         create_context = CreateContext(host)

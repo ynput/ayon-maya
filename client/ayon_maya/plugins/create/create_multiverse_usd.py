@@ -10,7 +10,7 @@ from ayon_core.lib import (
 class CreateMultiverseUsd(plugin.MayaCreator):
     """Create Multiverse USD Asset"""
 
-    identifier = "io.openpype.creators.maya.mvusdasset"
+    identifier = "io.ayon.creators.maya.mvusdasset"
     label = "Multiverse USD Asset"
     product_base_type = "usd"
     product_type = product_base_type

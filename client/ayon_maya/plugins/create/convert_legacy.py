@@ -2,7 +2,7 @@ import ayon_api
 
 from ayon_core.pipeline.create.creator_plugins import ProductConvertorPlugin
 from ayon_maya.api import plugin
-from ayon_maya.api.lib import creator_identifier_mapping, read
+from ayon_maya.api.lib import read
 
 from maya import cmds
 from maya.app.renderSetup.model import renderSetup
@@ -22,13 +22,83 @@ class MayaLegacyConvertor(ProductConvertorPlugin,
     nevertheless cover all creators that came with AYON.
 
     """
-    identifier = "io.openpype.creators.maya.legacy"
+    identifier = "io.ayon.creators.maya.legacy"
 
     # Cases where the identifier or new product type doesn't correspond to the
     # original family on the legacy instances
     product_base_type_mapping = {
-        "rendering": "io.openpype.creators.maya.renderlayer",
+        "rendering": "io.ayon.creators.maya.renderlayer",
     }
+
+    # Creator identifiers were renamed from the OpenPype namespace to the AYON
+    # one (see the creators in `ayon_maya.plugins.create`). Instances stored
+    # before the rename still carry the OpenPype identifier, so it has to be
+    # mapped to the current one for them to be converted.
+    # `MayaCreatorBase.cache_instance_data` detects those instances with
+    # `LEGACY_CREATOR_IDENTIFIER_PREFIX` and caches them as legacy instances.
+    creator_identifier_mapping = {
+        "io.openpype.creators.maya.animation": "io.ayon.creators.maya.animation",
+        "io.openpype.creators.maya.ass": "io.ayon.creators.maya.ass",
+        "io.openpype.creators.maya.assproxy": "io.ayon.creators.maya.assproxy",
+        "io.openpype.creators.maya.camera": "io.ayon.creators.maya.camera",
+        "io.openpype.creators.maya.camerarig": "io.ayon.creators.maya.camerarig",
+        "io.openpype.creators.maya.layout": "io.ayon.creators.maya.layout",
+        "io.openpype.creators.maya.look": "io.ayon.creators.maya.look",
+        "io.openpype.creators.maya.matchmove": "io.ayon.creators.maya.matchmove",
+        "io.openpype.creators.maya.mayascene": "io.ayon.creators.maya.mayascene",
+        "io.openpype.creators.maya.mayausd": "io.ayon.creators.maya.mayausd",
+        "io.openpype.creators.maya.mayausdlayer": (
+            "io.ayon.creators.maya.mayausdlayer"
+        ),
+        "io.openpype.creators.maya.model": "io.ayon.creators.maya.model",
+        "io.openpype.creators.maya.multishotlayout": (
+            "io.ayon.creators.maya.multishotlayout"
+        ),
+        "io.openpype.creators.maya.mvlook": "io.ayon.creators.maya.mvlook",
+        "io.openpype.creators.maya.mvusdasset": (
+            "io.ayon.creators.maya.mvusdasset"
+        ),
+        "io.openpype.creators.maya.mvusdcomposition": (
+            "io.ayon.creators.maya.mvusdcomposition"
+        ),
+        "io.openpype.creators.maya.mvusdoverride": (
+            "io.ayon.creators.maya.mvusdoverride"
+        ),
+        "io.openpype.creators.maya.oxcache": "io.ayon.creators.maya.oxcache",
+        "io.openpype.creators.maya.oxrig": "io.ayon.creators.maya.oxrig",
+        "io.openpype.creators.maya.pointcache": (
+            "io.ayon.creators.maya.pointcache"
+        ),
+        "io.openpype.creators.maya.proxyabc": "io.ayon.creators.maya.proxyabc",
+        "io.openpype.creators.maya.redshiftproxy": (
+            "io.ayon.creators.maya.redshiftproxy"
+        ),
+        "io.openpype.creators.maya.renderlayer": (
+            "io.ayon.creators.maya.renderlayer"
+        ),
+        "io.openpype.creators.maya.rendersetup": (
+            "io.ayon.creators.maya.rendersetup"
+        ),
+        "io.openpype.creators.maya.review": "io.ayon.creators.maya.review",
+        "io.openpype.creators.maya.rig": "io.ayon.creators.maya.rig",
+        "io.openpype.creators.maya.setdress": "io.ayon.creators.maya.setdress",
+        "io.openpype.creators.maya.unrealskeletalmesh": (
+            "io.ayon.creators.maya.unrealskeletalmesh"
+        ),
+        "io.openpype.creators.maya.unrealstaticmesh": (
+            "io.ayon.creators.maya.unrealstaticmesh"
+        ),
+        "io.openpype.creators.maya.unrealyeticache": (
+            "io.ayon.creators.maya.unrealyeticache"
+        ),
+        "io.openpype.creators.maya.vrayproxy": "io.ayon.creators.maya.vrayproxy",
+        "io.openpype.creators.maya.vrayscene": "io.ayon.creators.maya.vrayscene",
+        "io.openpype.creators.maya.workfile": "io.ayon.creators.maya.workfile",
+        "io.openpype.creators.maya.xgen": "io.ayon.creators.maya.xgen",
+        "io.openpype.creators.maya.yeticache": "io.ayon.creators.maya.yeticache",
+        "io.openpype.creators.maya.yetirig": "io.ayon.creators.maya.yetirig",
+    }
+
 
     def find_instances(self):
 
@@ -76,11 +146,12 @@ class MayaLegacyConvertor(ProductConvertorPlugin,
         data = dict()
         data["task"] = self.create_context.get_current_task_name()
         for legacy_key, instance_nodes in legacy.items():
-            # Instances created by older versions store the OpenPype creator
-            # identifier, so it is mapped to the current AYON one.
-            creator_id = product_base_type_to_id.get(legacy_key)
-            if creator_id is None:
-                creator_id = creator_identifier_mapping.get(legacy_key)
+            # Legacy instances are cached either by their OpenPype creator
+            # identifier or, for even older instances, by their family. Both
+            # are resolved to the current AYON creator identifier.
+            creator_id = self._resolve_creator_identifier(
+                legacy_key, product_base_type_to_id
+            )
             if creator_id is None:
                 self.log.warning((
                     "Unable to convert legacy instance with family '{}'"
@@ -96,11 +167,54 @@ class MayaLegacyConvertor(ProductConvertorPlugin,
                 ).format(legacy_key, creator_id))
                 continue
 
+            self.log.info(
+                "Converting legacy instance '{}' to creator '{}'",
+                legacy_key, creator_id
+            )
             data["creator_identifier"] = creator_id
             if isinstance(creator, plugin.RenderlayerCreator):
                 self._convert_per_renderlayer(instance_nodes, data, creator)
             else:
                 self._convert_regular(instance_nodes, data)
+
+        # The scene changed while converting; drop the cached instance data so
+        # that the creators collect the converted instances during this
+        # publish instead of the legacy ones cached before the conversion.
+        try:
+            shared_data = self.collection_shared_data
+        except Exception:  # noqa: BLE001
+            # Not in a collection phase (e.g. driven by a script or a test):
+            # there is no cache to clear.
+            shared_data = None
+        if shared_data is not None:
+            shared_data.pop("maya_cached_instance_data", None)
+            shared_data.pop("maya_cached_legacy_instances", None)
+
+    def _resolve_creator_identifier(
+            self, legacy_key: str, product_base_type_to_id: dict[str, str]
+    ) -> str | None:
+        """Resolve a legacy instance cache key to the AYON creator identifier.
+
+        `MayaCreatorBase.cache_instance_data` caches legacy instances either by
+        their OpenPype creator identifier (`io.openpype.creators.maya.*`) or,
+        for even older instances without a `creator_identifier`, by their
+        `family`. The OpenPype identifiers are mapped to the AYON ones through
+        `creator_identifier_mapping`, the families through the product base
+        type of the current creators.
+
+        Args:
+            legacy_key (str): Cache key of the legacy instances.
+            product_base_type_to_id (dict[str, str]): Product base type to
+                creator identifier mapping of the current creators.
+
+        Returns:
+            str | None: Current creator identifier or None if it is unmapped.
+
+        """
+        return (
+            self.creator_identifier_mapping.get(legacy_key)
+            or product_base_type_to_id.get(legacy_key)
+        )
 
     def _convert_regular(self, instance_nodes, data):
         # We only imprint the creator identifier for it to identify

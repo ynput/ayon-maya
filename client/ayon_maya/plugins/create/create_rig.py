@@ -6,7 +6,7 @@ from ayon_maya.api import plugin
 class CreateRig(plugin.MayaCreator):
     """Artist-friendly rig with controls to direct motion"""
 
-    identifier = "io.openpype.creators.maya.rig"
+    identifier = "io.ayon.creators.maya.rig"
     label = "Rig"
     product_base_type = "rig"
     product_type = product_base_type
