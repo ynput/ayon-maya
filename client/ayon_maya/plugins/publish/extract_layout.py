@@ -203,7 +203,7 @@ class ExtractLayout(plugin.MayaExtractorPlugin,
         elements: list[LayoutElement] = []
         with maintained_time():
             if sample_frame is not None:
-                cmds.currentTime(sample_frame, update=False)
+                cmds.currentTime(sample_frame)
             for container in included_containers:
                 representation_id: str = container.representation
                 representation = representations_by_id.get(representation_id)
