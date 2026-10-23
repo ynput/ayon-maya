@@ -81,6 +81,16 @@ class MayaSettings(BaseSettingsModel):
 
     open_workfile_post_initialization: bool = SettingsField(
         True, title="Open Workfile Post Initialization")
+    safe_reference_loading: bool = SettingsField(
+        False,
+        title="Safe Reference Loading on Launch",
+        description=(
+            "When enabled, the workfile opened on Maya launch is opened"
+            " without loading references. The references are then loaded"
+            " one by one, dependencies first and lightest first. This forces"
+            " the workfile to open post initialization."
+        )
+    )
     explicit_plugins_loading: ExplicitPluginsLoadingModel = SettingsField(
         default_factory=ExplicitPluginsLoadingModel,
         title="Explicit Plugins Loading")
@@ -144,6 +154,7 @@ DEFAULT_MEL_WORKSPACE_SETTINGS = "\n".join((
 DEFAULT_MAYA_SETTING = {
     "use_cbid_workflow": True,
     "open_workfile_post_initialization": True,
+    "safe_reference_loading": False,
     "explicit_plugins_loading": DEFAULT_EXPLITCIT_PLUGINS_LOADING_SETTINGS,
     "imageio": DEFAULT_IMAGEIO_SETTINGS,
     "mel_workspace": DEFAULT_MEL_WORKSPACE_SETTINGS,
