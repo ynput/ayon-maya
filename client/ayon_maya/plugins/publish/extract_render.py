@@ -120,6 +120,8 @@ def render_sequence_optionvars(output_directory: str):
         for key, value in previous.items():
             if value is None:
                 cmds.optionVar(remove=key)
+            elif isinstance(value, float):
+                cmds.optionVar(floatValue=(key, value))
             else:
                 cmds.optionVar(intValue=(key, value))
 
