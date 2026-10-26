@@ -79,27 +79,22 @@ def render_sequence_optionvars(output_directory: str):
     override_key = "OverrideFileOutputDirectory"
 
     previous = {}
-    previous_alternate = None
-    previous_override_directory = None
+    previous_alternate = (
+        cmds.optionVar(query=alternate_key)
+        if cmds.optionVar(exists=alternate_key) else None
+    )
+    previous_override_directory = (
+        cmds.optionVar(query=override_key)
+        if cmds.optionVar(exists=override_key) else None
+    )
     try:
-        # The forcing happens inside the try block so a failing optionVar
-        # (for example a value of a conflicting type set by the user) does
-        # not leave a partially forced state behind.
+        # Keep mutations inside the try block so failed setup is restored.
         for key, value in RENDER_SEQUENCE_OPTION_VARS.items():
             existed = cmds.optionVar(exists=key)
             previous[key] = cmds.optionVar(query=key) if existed else None
             cmds.optionVar(intValue=(key, value))
 
-        alternate_existed = cmds.optionVar(exists=alternate_key)
-        previous_alternate = (
-            cmds.optionVar(query=alternate_key) if alternate_existed else None
-        )
         cmds.optionVar(stringValue=(alternate_key, output_directory))
-
-        override_existed = cmds.optionVar(exists=override_key)
-        previous_override_directory = (
-            cmds.optionVar(query=override_key) if override_existed else None
-        )
         yield
 
     finally:
