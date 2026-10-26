@@ -74,21 +74,43 @@ def render_sequence_optionvars(output_directory: str):
         output_directory (str): Directory to render into. This overrides the
             user's optional Render Sequence "Alternate Output File Location".
     """
-    previous = {}
-    for key, value in RENDER_SEQUENCE_OPTION_VARS.items():
-        existed = cmds.optionVar(exists=key)
-        previous[key] = cmds.optionVar(query=key) if existed else None
-        cmds.optionVar(intValue=(key, value))
-
     alternate_key = "RenderSequenceAlternateOutputFileLocation"
-    alternate_existed = cmds.optionVar(exists=alternate_key)
-    previous_alternate = (
-        cmds.optionVar(query=alternate_key) if alternate_existed else None
-    )
-    cmds.optionVar(stringValue=(alternate_key, output_directory))
+    # `renderSequence` takes over this optionVar during the render and always
+    # removes it afterwards, so an artist value must be restored by us.
+    override_key = "OverrideFileOutputDirectory"
+
+    previous = {}
+    previous_alternate = None
+    previous_override_directory = None
     try:
+        # The forcing happens inside the try block so a failing optionVar
+        # (for example a value of a conflicting type set by the user) does
+        # not leave a partially forced state behind.
+        for key, value in RENDER_SEQUENCE_OPTION_VARS.items():
+            existed = cmds.optionVar(exists=key)
+            previous[key] = cmds.optionVar(query=key) if existed else None
+            cmds.optionVar(intValue=(key, value))
+
+        alternate_existed = cmds.optionVar(exists=alternate_key)
+        previous_alternate = (
+            cmds.optionVar(query=alternate_key) if alternate_existed else None
+        )
+        cmds.optionVar(stringValue=(alternate_key, output_directory))
+
+        override_existed = cmds.optionVar(exists=override_key)
+        previous_override_directory = (
+            cmds.optionVar(query=override_key) if override_existed else None
+        )
         yield
+
     finally:
+        if previous_override_directory is None:
+            if cmds.optionVar(exists=override_key):
+                cmds.optionVar(remove=override_key)
+        else:
+            cmds.optionVar(stringValue=(
+                override_key, previous_override_directory))
+
         if previous_alternate is None:
             cmds.optionVar(remove=alternate_key)
         else:
@@ -104,7 +126,7 @@ def render_sequence_optionvars(output_directory: str):
 
 
 def render_sequence_supported() -> bool:
-    """Return whether Render Sequence can be used and why not.
+    """Return whether Render Sequence can be used for the current renderer.
 
     This must be called with the target render layer current, because the
     renderer can be overridden per render layer.
@@ -126,14 +148,12 @@ def render_sequence_supported() -> bool:
             renderer, query=True, renderSequenceProcedure=True
         )
     except (RuntimeError, ValueError):
-        # Renderer query unavailable. Let `renderSequence` try; the
-        # expected-file check catches an unsupported renderer.
-        return True
-
-    if not sequence_proc:
+        # The renderer does not expose a Render Sequence procedure (Maya
+        # raises for renderers without it, e.g. mayaSoftware). Fall back to
+        # Batch Render instead of risking a silent `renderSequence` no-op.
         return False
 
-    return True
+    return bool(sequence_proc)
 
 
 class ExtractLocalRender(plugin.MayaExtractorPlugin):
@@ -168,13 +188,8 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
             return
 
         local_render_method: str = creator_attributes.get(
-            "local_render_method"
-        ) or "batch_render"
-        if local_render_method not in {"batch_render", "render_sequence"}:
-            raise PublishError(
-                "Unsupported local render method: "
-                f"{local_render_method!r}"
-            )
+            "local_render_method", "batch_render"
+        )
 
         # Get the render layer from the instance data using the legacy layer
         # node name, switch to it and render a sequence locally.
@@ -190,16 +205,25 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
             stack.enter_context(only_renderable(layer))
             stack.enter_context(revert_to_layer(layer))
 
-            if local_render_method == "render_sequence" and render_sequence_supported():
+            if (
+                local_render_method == "render_sequence"
+                and render_sequence_supported()
+            ):
                 self.log.info(
-                    "Rendering '%s' using Render Sequence", layer
+                    f"Rendering '{layer}' using Render Sequence"
                 )
-                stack.enter_context(render_sequence_optionvars(image_directory))
+                stack.enter_context(
+                    render_sequence_optionvars(image_directory)
+                )
                 mel.eval('renderSequence')
             else:
+                if local_render_method == "render_sequence":
+                    self.log.info(
+                        "Render Sequence is not supported for this renderer, "
+                        "falling back to Batch Render."
+                    )
                 self.log.info(
-                    "Rendering '%s' usin" \
-                    "g Batch Render", layer
+                    f"Rendering '{layer}' using Batch Render"
                 )
                 # Render scene
                 mel.eval('mayaBatchRenderProcedure(0, "", "", "", "")')
