@@ -886,7 +886,7 @@ class ExtractModelRenderSets(ExtractLook):
 
     label = "Model Render Sets"
     hosts = ["maya"]
-    families = ["model"]
+    families = ["model.extract"]
     scene_type_prefix = "meta.render."
     look_data_type = "meta.render.json"
 
