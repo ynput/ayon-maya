@@ -11,7 +11,7 @@ from ayon_core.lib import (
 class CreateProxyAlembic(plugin.MayaCreator):
     """Proxy Alembic for animated data"""
 
-    identifier = "io.openpype.creators.maya.proxyabc"
+    identifier = "io.ayon.creators.maya.proxyabc"
     label = "Proxy Alembic"
     product_type = "proxyAbc"
     product_base_type = "proxyAbc"

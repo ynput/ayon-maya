@@ -5,7 +5,7 @@ from ayon_core.lib import BoolDef
 class CreateXgen(plugin.MayaCreator):
     """Xgen"""
 
-    identifier = "io.openpype.creators.maya.xgen"
+    identifier = "io.ayon.creators.maya.xgen"
     label = "Xgen"
     product_base_type = "xgen"
     product_type = product_base_type

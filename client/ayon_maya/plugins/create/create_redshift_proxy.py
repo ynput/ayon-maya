@@ -8,7 +8,7 @@ from ayon_core.lib import BoolDef
 class CreateRedshiftProxy(plugin.MayaCreator):
     """Create instance of Redshift Proxy product."""
 
-    identifier = "io.openpype.creators.maya.redshiftproxy"
+    identifier = "io.ayon.creators.maya.redshiftproxy"
     label = "Redshift Proxy"
     product_base_type = "redshiftproxy"
     product_type = product_base_type
