@@ -3,7 +3,6 @@ import contextlib
 import os
 from typing import Optional
 
-from ayon_core.pipeline.publish import PublishError
 from ayon_maya.api import lib, plugin
 from maya import cmds, mel
 
