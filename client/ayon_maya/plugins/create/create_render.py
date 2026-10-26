@@ -88,8 +88,34 @@ class CreateRender(plugin.RenderlayerCreator):
 
         super().create(product_name, instance_data, pre_create_data)
 
-    def get_instance_attr_defs(self):
-        """Create instance settings."""
+    def register_callbacks(self):
+        self.create_context.add_value_changed_callback(self.on_values_changed)
+
+    def on_values_changed(self, event):
+        """Update instance attribute definitions on render target changes."""
+        for instance_change in event["changes"]:
+            instance = instance_change["instance"]
+            if instance is None:
+                # Change is on context
+                continue
+            if instance["creator_identifier"] != self.identifier:
+                continue
+            value_changes = instance_change["changes"]
+            if "render_target" not in value_changes.get(
+                "creator_attributes", {}
+            ):
+                continue
+            instance.set_create_attr_defs(
+                self.get_attr_defs_for_instance(instance)
+            )
+
+    def get_attr_defs_for_instance(self, instance):
+        render_target = self.render_target
+        if instance is not None:
+            render_target = instance["creator_attributes"].get(
+                "render_target", self.render_target
+            )
+        show_local_render_method = render_target == "local"
 
         render_target_items: dict[str, str] = {
             "local": "Local machine rendering",
@@ -116,7 +142,8 @@ class CreateRender(plugin.RenderlayerCreator):
                         "inside the current Maya session and does not "
                         "require an additional Arnold batch render license."
                     ),
-                    default="batch_render"),
+                    default="batch_render",
+                    visible=show_local_render_method),
             BoolDef("review",
                     label="Review",
                     tooltip="Mark as reviewable",
