@@ -188,7 +188,7 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
         with contextlib.ExitStack() as stack:
             stack.enter_context(lib.maintained_time())
             stack.enter_context(only_renderable(layer))
-            stack.enter_context(revert_to_layer())
+            stack.enter_context(revert_to_layer(layer))
 
             if local_render_method == "render_sequence" and render_sequence_supported():
                 self.log.info(
