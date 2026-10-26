@@ -38,7 +38,6 @@ class CreateRender(plugin.RenderlayerCreator):
     singleton_node_name = "renderingMain"
 
     render_target = "farm"
-    local_render_method = "batch_render"
     render_settings = {}
 
     def apply_settings(self, project_settings):
@@ -117,7 +116,7 @@ class CreateRender(plugin.RenderlayerCreator):
                         "inside the current Maya session and does not "
                         "require an additional Arnold batch render license."
                     ),
-                    default=self.local_render_method),
+                    default="batch_render"),
             BoolDef("review",
                     label="Review",
                     tooltip="Mark as reviewable",

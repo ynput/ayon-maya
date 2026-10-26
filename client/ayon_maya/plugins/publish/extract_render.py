@@ -205,7 +205,7 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
                 local_render_method == "render_sequence"
                 and render_sequence_supported()
             ):
-                self.log.info(
+                self.log.debug(
                     f"Rendering '{layer}' using Render Sequence"
                 )
                 stack.enter_context(
@@ -214,11 +214,11 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
                 mel.eval('renderSequence')
             else:
                 if local_render_method == "render_sequence":
-                    self.log.info(
+                    self.log.debug(
                         "Render Sequence is not supported for this renderer, "
                         "falling back to Batch Render."
                     )
-                self.log.info(
+                self.log.debug(
                     f"Rendering '{layer}' using Batch Render"
                 )
                 # Render scene
