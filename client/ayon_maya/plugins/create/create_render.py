@@ -38,11 +38,15 @@ class CreateRender(plugin.RenderlayerCreator):
     singleton_node_name = "renderingMain"
 
     render_target = "farm"
+    local = "batch_render"
     render_settings = {}
 
     def apply_settings(self, project_settings):
         super().apply_settings(project_settings)
         self.render_settings = project_settings["maya"]["render_settings"]
+        self.render_target = self.render_settings.get(
+            "render_target", self.render_target)
+        self.local = self.render_settings.get("local", self.local)
 
     def get_product_type_items(self) -> list[ProductTypeItem]:
         if self.product_type_items:
@@ -106,15 +110,11 @@ class CreateRender(plugin.RenderlayerCreator):
             ):
                 continue
             instance.set_create_attr_defs(
-                self.get_attr_defs_for_instance(instance)
+                self.get_instance_attr_defs()
             )
 
-    def get_attr_defs_for_instance(self, instance):
+    def get_instance_attr_defs(self):
         render_target = self.render_target
-        if instance is not None:
-            render_target = instance["creator_attributes"].get(
-                "render_target", self.render_target
-            )
         show_local_render_method = render_target == "local"
 
         render_target_items: dict[str, str] = {
@@ -142,7 +142,7 @@ class CreateRender(plugin.RenderlayerCreator):
                         "inside the current Maya session and does not "
                         "require an additional Arnold batch render license."
                     ),
-                    default="batch_render",
+                    default=self.local,
                     visible=show_local_render_method),
             BoolDef("review",
                     label="Review",
