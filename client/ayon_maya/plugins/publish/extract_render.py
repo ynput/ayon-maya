@@ -3,9 +3,8 @@ import contextlib
 import os
 from typing import Optional
 
-from ayon_core.pipeline import KnownPublishError
-from ayon_maya.api import lib
-from ayon_maya.api import plugin
+from ayon_core.pipeline.publish import PublishError
+from ayon_maya.api import lib, plugin
 from maya import cmds, mel
 
 
@@ -104,35 +103,23 @@ def render_sequence_optionvars(output_directory: str):
                 cmds.optionVar(intValue=(key, value))
 
 
-def render_sequence_supported() -> tuple[bool, str]:
+def render_sequence_supported() -> bool:
     """Return whether Render Sequence can be used and why not.
 
     This must be called with the target render layer current, because the
     renderer can be overridden per render layer.
 
     Returns:
-        tuple[bool, str]: ``(supported, reason)``.
+        bool: True if Render Sequence is supported, False otherwise.
     """
     if cmds.about(batch=True):
-        return False, (
-            "Render Sequence requires an interactive Maya session, "
-            "not batch mode."
-        )
-
+        return False
     if not mel.eval("exists renderSequence"):
-        return False, (
-            "This Maya version does not provide the renderSequence "
-            "procedure. Choose 'Batch Render' as the local render method."
-        )
-
+        return False
     renderer = cmds.getAttr("defaultRenderGlobals.currentRenderer")
     mtoa_arv_sequence = os.environ.get("MTOA_ARV_SEQUENCE")
     if renderer.lower() == "arnold" and mtoa_arv_sequence not in (None, "0"):
-        return False, (
-            "MTOA_ARV_SEQUENCE is enabled, which makes Arnold's Render "
-            "Sequence asynchronous. Unset MTOA_ARV_SEQUENCE before "
-            "publishing or use Batch Render."
-        )
+        return False
 
     try:
         sequence_proc = cmds.renderer(
@@ -141,35 +128,12 @@ def render_sequence_supported() -> tuple[bool, str]:
     except (RuntimeError, ValueError):
         # Renderer query unavailable. Let `renderSequence` try; the
         # expected-file check catches an unsupported renderer.
-        return True, ""
+        return True
 
     if not sequence_proc:
-        return False, (
-            f"Renderer '{renderer}' does not support Render Sequence. "
-            "Choose 'Batch Render' as the local render method."
-        )
+        return False
 
-    return True, ""
-
-
-def render_sequence(layer: str, output_directory: str) -> None:
-    """Render the layer using Maya's interactive Render Sequence.
-
-    Unlike Batch Render, Render Sequence renders inside the current Maya
-    session. This avoids the renderer's batch render path and, for renderers
-    like Arnold, an additional batch render license.
-    """
-    with revert_to_layer(layer):
-        supported, reason = render_sequence_supported()
-        if not supported:
-            raise KnownPublishError(reason)
-
-        # `renderSequence` is a MEL procedure, not a Python command. It
-        # renders the *current* render layer, which `revert_to_layer` has
-        # just set. It reads the frame range before its layer loop, so the
-        # layer must be current before the call for layer overrides to apply.
-        with render_sequence_optionvars(output_directory):
-            mel.eval("renderSequence")
+    return True
 
 
 class ExtractLocalRender(plugin.MayaExtractorPlugin):
@@ -207,7 +171,7 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
             "local_render_method"
         ) or "batch_render"
         if local_render_method not in {"batch_render", "render_sequence"}:
-            raise KnownPublishError(
+            raise PublishError(
                 "Unsupported local render method: "
                 f"{local_render_method!r}"
             )
@@ -224,17 +188,19 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
         with contextlib.ExitStack() as stack:
             stack.enter_context(lib.maintained_time())
             stack.enter_context(only_renderable(layer))
+            stack.enter_context(revert_to_layer())
 
-            if local_render_method == "render_sequence":
+            if local_render_method == "render_sequence" and render_sequence_supported():
                 self.log.info(
                     "Rendering '%s' using Render Sequence", layer
                 )
-                render_sequence(layer, image_directory)
+                stack.enter_context(render_sequence_optionvars(image_directory))
+                mel.eval('renderSequence')
             else:
                 self.log.info(
-                    "Rendering '%s' using Batch Render", layer
+                    "Rendering '%s' usin" \
+                    "g Batch Render", layer
                 )
-                stack.enter_context(revert_to_layer())
                 # Render scene
                 mel.eval('mayaBatchRenderProcedure(0, "", "", "", "")')
 
