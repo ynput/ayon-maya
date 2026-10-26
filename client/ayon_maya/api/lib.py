@@ -4365,6 +4365,14 @@ def convert_legacy_instance_data(node: str) -> bool:
     The `family`/`subset` -> AYON key mapping is handled by
     `CreatedInstance` in ayon-core, so it is not duplicated here.
 
+    The conversion is best effort. Both instance ids are accepted when
+    collecting and `CreatedInstance` maps `asset` to `folderPath` itself,
+    so an instance that is not converted still collects fine. Hence the
+    node is left untouched when it is referenced (the edit would only end
+    up as a reference edit in the current scene) or when it can not be
+    written to. Collecting instances must never fail because one of them
+    could not be migrated.
+
     Arguments:
         node (str): The name of the instance node (an objectSet).
 
@@ -4372,23 +4380,39 @@ def convert_legacy_instance_data(node: str) -> bool:
         bool: Whether anything was converted.
 
     """
-    converted = False
-
-    if get_optional_attribute(node, "id") == AVALON_INSTANCE_ID:
-        log.debug(
-            "Converting legacy Avalon instance '%s' to AYON instance.", node
-        )
-        set_attribute("id", AYON_INSTANCE_ID, node)
-        converted = True
+    convert_id = get_optional_attribute(node, "id") == AVALON_INSTANCE_ID
 
     # OpenPype stored the folder path as `asset`. Mirrors the conversion
     # `CreatedInstance` does in ayon-core so node data is AYON ready.
     asset_name = get_optional_attribute(node, "asset")
-    if asset_name and get_optional_attribute(node, "folderPath") is None:
-        set_attribute("folderPath", asset_name, node)
-        converted = True
+    convert_asset = bool(
+        asset_name and get_optional_attribute(node, "folderPath") is None
+    )
+    if not convert_id and not convert_asset:
+        return False
 
-    return converted
+    if cmds.referenceQuery(node, isNodeReferenced=True):
+        return False
+
+    log.debug(
+        "Converting legacy Avalon instance '%s' to AYON instance.", node
+    )
+    try:
+        # Instance nodes may be locked, which disallows adding attributes
+        with unlocked(node):
+            if convert_id:
+                set_attribute("id", AYON_INSTANCE_ID, node)
+            if convert_asset:
+                set_attribute("folderPath", asset_name, node)
+    except RuntimeError as exc:
+        log.warning(
+            "Unable to convert legacy Avalon instance '%s' to AYON "
+            "instance: %s",
+            node, exc
+        )
+        return False
+
+    return True
 
 
 def get_creator_identifier(node: str) -> str | None:
