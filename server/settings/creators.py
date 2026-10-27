@@ -104,6 +104,33 @@ class CreatePointCacheModel(BasicCreatorModel):
     )
 
 
+class MayaUsdCreatorModel(BasicCreatorModel):
+    include_user_defined_attributes: bool = SettingsField(
+        False,
+        title="Include User Defined Attributes",
+        description=(
+            "Default value for whether to include all custom maya attributes "
+            "found on nodes as metadata (userProperties) in USD."
+        )
+    )
+    attr: str = SettingsField(
+        "",
+        title="Custom Attributes",
+        description=(
+            "Default custom attributes to export, separated by comma. "
+            "E.g. 'attr1, attr2'"
+        )
+    )
+    attr_prefix: str = SettingsField(
+        "",
+        title="Custom Attributes Prefix",
+        description=(
+            "Default custom attribute prefixes to export, separated by comma. "
+            "E.g. 'prefix1, prefix2'"
+        )
+    )
+
+
 class CreateProxyAlembicModel(BasicCreatorModel):
     write_color_sets: bool = SettingsField(title="Write Color Sets")
     write_face_sets: bool = SettingsField(title="Write Face Sets")
@@ -187,8 +214,8 @@ class CreatorsModel(BaseSettingsModel):
         default_factory=BasicCreatorModel,
         title="Create Maya Scene"
     )
-    CreateMayaUsd: BasicCreatorModel = SettingsField(
-        default_factory=BasicCreatorModel,
+    CreateMayaUsd: MayaUsdCreatorModel = SettingsField(
+        default_factory=MayaUsdCreatorModel,
         title="Create Maya USD"
     )
     CreateMayaUsdModel: BasicCreatorModel = SettingsField(
@@ -341,7 +368,13 @@ DEFAULT_CREATORS_SETTINGS = {
     },
     "CreateMatchmove": {"default_variants": ["Main"], "enabled": True},
     "CreateMayaScene": {"default_variants": ["Main"], "enabled": True},
-    "CreateMayaUsd": {"default_variants": ["Main"], "enabled": True},
+    "CreateMayaUsd": {
+        "default_variants": ["Main"],
+        "enabled": True,
+        "include_user_defined_attributes": False,
+        "attr": "",
+        "attr_prefix": "",
+    },
     "CreateMayaUsdModel": {"default_variants": ["Main"], "enabled": True},
     "CreateMayaUsdLayer": {"default_variants": ["Main"], "enabled": True},
     "CreateModel": {
