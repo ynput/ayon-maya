@@ -109,7 +109,7 @@ class CreateRender(plugin.RenderlayerCreator):
             if "render_target" not in changes:
                 continue
             instance.set_create_attr_defs(
-                self.get_instance_attr_defs(changes["render_target"]))
+                self.get_attr_defs_for_instance(instance))
 
     def get_attr_defs_for_instance(self, instance):
         """Return the attribute definitions for a render instance.
@@ -119,19 +119,6 @@ class CreateRender(plugin.RenderlayerCreator):
         """
         attributes = instance["creator_attributes"]
         render_target = attributes.get("render_target", self.render_target)
-        return self.get_instance_attr_defs(render_target)
-
-    def get_instance_attr_defs(self, render_target=None):
-        """Return the instance attribute definitions.
-
-        Args:
-            render_target (Optional[str]): Render target the definitions are
-                built for. It only affects whether the 'Local render method'
-                attribute is visible. Defaults to the render target from the
-                project settings.
-        """
-        if render_target is None:
-            render_target = self.render_target
 
         show_local_render_method = render_target == "local"
 
