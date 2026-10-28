@@ -36,10 +36,19 @@ if explicit_plugins_loading["enabled"]:
 
 # Open Workfile Post Initialization.
 path = os.environ.pop("AYON_MAYA_WORKFILE_PATH", None)
+safe_reference_loading = (
+    os.environ.pop("AYON_MAYA_SAFE_REFERENCE_LOADING", None) == "1"
+)
 if path:
     def _log_and_open():
         print("Opening \"{}\"".format(path))
-        cmds.file(path, open=True, force=True)
+        if safe_reference_loading:
+            from ayon_maya.api.reference_loading import (
+                open_file_with_safe_reference_loading
+            )
+            open_file_with_safe_reference_loading(path)
+        else:
+            cmds.file(path, open=True, force=True)
     cmds.evalDeferred(
         _log_and_open,
         lowestPriority=True

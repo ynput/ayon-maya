@@ -17,6 +17,10 @@ class MayaPreOpenWorkfilePostInitialization(PreLaunchHook):
 
         key = "AYON_MAYA_WORKFILE_PATH"
 
+        maya_settings = self.data["project_settings"]["maya"]
+        if maya_settings.get("safe_reference_loading"):
+            self.launch_context.env["AYON_MAYA_SAFE_REFERENCE_LOADING"] = "1"
+
         # Force disable the `AddLastWorkfileToLaunchArgs`.
         workfile_path = self.data.pop("workfile_path", None)
         start_last_workfile = self.data.pop("start_last_workfile", None)
@@ -50,6 +54,14 @@ class MayaPreOpenWorkfilePostInitialization(PreLaunchHook):
             self.log.debug(
                 "Opening workfile post initialization because Open Workfile"
                 " Post Initialization setting is enabled."
+            )
+            return True
+
+        # Safe reference loading needs to control how the workfile is opened.
+        if maya_settings.get("safe_reference_loading"):
+            self.log.debug(
+                "Opening workfile post initialization because Safe Reference"
+                " Loading on Launch setting is enabled."
             )
             return True
 
