@@ -38,11 +38,15 @@ class CreateRender(plugin.RenderlayerCreator):
     singleton_node_name = "renderingMain"
 
     render_target = "farm"
+    local = "batch_render"
     render_settings = {}
 
     def apply_settings(self, project_settings):
         super().apply_settings(project_settings)
         self.render_settings = project_settings["maya"]["render_settings"]
+        self.render_target = self.render_settings.get(
+            "render_target", self.render_target)
+        self.local = self.render_settings.get("local", self.local)
 
     def get_product_type_items(self) -> list[ProductTypeItem]:
         if self.product_type_items:
@@ -88,8 +92,35 @@ class CreateRender(plugin.RenderlayerCreator):
 
         super().create(product_name, instance_data, pre_create_data)
 
-    def get_instance_attr_defs(self):
-        """Create instance settings."""
+    def register_callbacks(self):
+        self.create_context.add_value_changed_callback(self.on_values_changed)
+
+    def on_values_changed(self, event):
+        """Update instance attribute definitions on render target changes."""
+        for instance_change in event["changes"]:
+            instance = instance_change["instance"]
+            if instance is None:
+                # Change is on context
+                continue
+            if instance["creator_identifier"] != self.identifier:
+                continue
+            changes = instance_change["changes"].get(
+                "creator_attributes") or {}
+            if "render_target" not in changes:
+                continue
+            instance.set_create_attr_defs(
+                self.get_attr_defs_for_instance(instance))
+
+    def get_attr_defs_for_instance(self, instance):
+        """Return the attribute definitions for a render instance.
+
+        The 'Local render method' attribute is only visible when the render
+        target of the instance is 'Local machine rendering'.
+        """
+        attributes = instance["creator_attributes"]
+        render_target = attributes.get("render_target", self.render_target)
+
+        show_local_render_method = render_target == "local"
 
         render_target_items: dict[str, str] = {
             "local": "Local machine rendering",
@@ -97,11 +128,27 @@ class CreateRender(plugin.RenderlayerCreator):
             "farm": "Farm Rendering",
         }
 
+        local_render_method_items: dict[str, str] = {
+            "batch_render": "Batch Render",
+            "render_sequence": "Render Sequence",
+        }
+
         return [
             EnumDef("render_target",
                     items=render_target_items,
                     label="Render target",
                     default=self.render_target),
+            EnumDef("local_render_method",
+                    items=local_render_method_items,
+                    label="Local render method",
+                    tooltip=(
+                        "Render method used when Render target is "
+                        "'Local machine rendering'. Render Sequence renders "
+                        "inside the current Maya session and does not "
+                        "require an additional Arnold batch render license."
+                    ),
+                    default=self.local,
+                    visible=show_local_render_method),
             BoolDef("review",
                     label="Review",
                     tooltip="Mark as reviewable",
