@@ -7,6 +7,25 @@ from ayon_maya.api import lib, plugin
 from maya import cmds, mel
 
 
+def normalize_render_filepath(filepath: str) -> str:
+    """Normalize Maya's deep EXR extension to the written ``.exr`` files.
+
+    Maya reports the deep EXR output format as ``deepexr`` through
+    ``defaultRenderGlobals.imfPluginKey`` while Arnold writes ``.exr``
+    files. Some render product paths can therefore contain a ``.deepexr``
+    extension even though the rendered file ends with ``.exr``.
+
+    Args:
+        filepath (str): Expected render file path.
+
+    Returns:
+        str: File path with a normalized extension.
+    """
+    if filepath.lower().endswith(".deepexr"):
+        return filepath[:-len(".deepexr")] + ".exr"
+    return filepath
+
+
 # Render Sequence stores its settings in Maya optionVars. These are global,
 # persistent values, so force the values required for a deterministic local
 # render and restore the user's values afterwards.
@@ -232,6 +251,7 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
         )
         for filepaths in expected_files[0].values():
             for filepath in filepaths:
+                filepath = normalize_render_filepath(filepath)
                 relative_path = os.path.relpath(filepath, image_directory)
                 tmp_filepath = os.path.join(
                     image_directory,
