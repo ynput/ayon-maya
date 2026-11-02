@@ -1083,7 +1083,7 @@ class RenderProductsRedshift(ARenderProducts):
         if "/" in beauty_prefix:
             beauty_path, _, beauty_file = beauty_prefix.rpartition("/")
         else:
-            beauty_path, beauty_file = "", beauty_prefix
+            beauty_path, beauty_file = ".", beauty_prefix
         file_prefix = file_prefix.replace("<BeautyPath>", beauty_path)
         file_prefix = file_prefix.replace("<BeautyFile>", beauty_file)
         original_prefix = self.layer_data.filePrefix
