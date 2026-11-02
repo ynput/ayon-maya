@@ -3,6 +3,7 @@ import contextlib
 import os
 from typing import Optional
 
+from ayon_core.pipeline.publish import PublishError
 from ayon_maya.api import lib, plugin
 from maya import cmds, mel
 
@@ -47,6 +48,62 @@ RENDER_SEQUENCE_OPTION_VARS = {
     # "Test Resolution" (for example 50%).
     "renderViewTestResolution": 1,
 }
+
+
+@contextlib.contextmanager
+def arnold_sequence_aov_output_modes(renderer: str):
+    """Make batch-only AOV drivers visible to interactive Render Sequence."""
+    if renderer.lower() != "arnold":
+        yield
+        return
+
+    original = {}
+    try:
+        for driver in cmds.ls(type="aiAOVDriver") or []:
+            output_mode = cmds.getAttr(f"{driver}.outputMode")
+            if output_mode == 1:  # Batch only
+                original[driver] = output_mode
+                cmds.setAttr(f"{driver}.outputMode", 2)  # GUI + Batch
+        yield
+    finally:
+        for driver, output_mode in original.items():
+            cmds.setAttr(f"{driver}.outputMode", output_mode)
+
+
+@contextlib.contextmanager
+def arnold_cpu_for_deep_exr(renderer: str):
+    """Temporarily use CPU when Arnold deep EXR is requested on GPU."""
+    if renderer.lower() != "arnold":
+        yield False
+        return
+
+    image_format = cmds.getAttr("defaultRenderGlobals.imfPluginKey")
+    render_device = cmds.getAttr(
+        "defaultArnoldRenderOptions.renderDevice"
+    )
+    active_layer = cmds.editRenderLayerGlobals(
+    query=True, currentRenderLayer=True
+)
+    if image_format != "deepexr" or render_device != 1:
+        yield False
+        return
+
+    try:
+        cmds.setAttr("defaultArnoldRenderOptions.renderDevice", 0)
+        yield True
+    finally:
+        # Revert to the original render layer if it has changed.
+        current_layer = cmds.editRenderLayerGlobals(
+            query=True, currentRenderLayer=True
+        )
+        if current_layer != active_layer:
+            cmds.editRenderLayerGlobals(
+                currentRenderLayer=active_layer
+            )
+        cmds.setAttr(
+            "defaultArnoldRenderOptions.renderDevice",
+            render_device,
+        )
 
 
 @contextlib.contextmanager
@@ -227,6 +284,18 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
             )
             render_method = "Batch Render"
 
+            # Switch to CPU only for Arnold deep EXR on GPU. The stack will
+            # restore the original render device when it exits, including on
+            # error.
+            switched_to_cpu = stack.enter_context(
+                arnold_cpu_for_deep_exr(renderer)
+            )
+            if switched_to_cpu:
+                self.log.warning(
+                    "Arnold GPU cannot render deep EXR. Switching this local "
+                    "render to CPU; the scene render device will be restored."
+                )
+
             if (
                 local_render_method == "render_sequence"
                 and render_sequence_supported()
@@ -234,6 +303,9 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
                 render_method = "Render Sequence"
                 self.log.debug(
                     f"Rendering '{layer}' using Render Sequence"
+                )
+                stack.enter_context(
+                    arnold_sequence_aov_output_modes(renderer)
                 )
                 stack.enter_context(
                     render_sequence_optionvars(image_directory)
@@ -273,7 +345,7 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
                     if os.path.exists(path)
                 ]
                 if not existing:
-                    raise RuntimeError(
+                    raise PublishError(
                         "Render did not produce expected file at: "
                         f"{filepath}\n"
                         f"Local render method: {render_method}\n"
