@@ -220,10 +220,18 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
             stack.enter_context(only_renderable(layer))
             stack.enter_context(revert_to_layer(layer))
 
+            # Read the renderer after switching layer: it can be overridden
+            # per render layer.
+            renderer = cmds.getAttr(
+                "defaultRenderGlobals.currentRenderer"
+            )
+            render_method = "Batch Render"
+
             if (
                 local_render_method == "render_sequence"
                 and render_sequence_supported()
             ):
+                render_method = "Render Sequence"
                 self.log.debug(
                     f"Rendering '{layer}' using Render Sequence"
                 )
@@ -234,8 +242,8 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
             else:
                 if local_render_method == "render_sequence":
                     self.log.debug(
-                        "Render Sequence is not supported for this renderer, "
-                        "falling back to Batch Render."
+                        "Render Sequence is not available; falling back to "
+                        "Batch Render."
                     )
                 self.log.debug(
                     f"Rendering '{layer}' using Batch Render"
@@ -266,7 +274,13 @@ class ExtractLocalRender(plugin.MayaExtractorPlugin):
                 ]
                 if not existing:
                     raise RuntimeError(
-                        f"Render did not produce expected file at: {filepath}"
+                        "Render did not produce expected file at: "
+                        f"{filepath}\n"
+                        f"Local render method: {render_method}\n"
+                        f"Renderer: {renderer}\n"
+                        f"Render layer: {layer}\n"
+                        "Check the Maya Script Editor and Render View for "
+                        "render errors."
                     )
 
                 existing.sort(key=os.path.getmtime, reverse=True)
