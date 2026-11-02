@@ -1073,14 +1073,25 @@ class RenderProductsRedshift(ARenderProducts):
         # with Maya render tokens for generating file sequences. We validate to
         # a specific AOV fileprefix so we only need to account for one
         # replacement.
-        if not product.multipart and product.driver:
-            file_prefix = self._get_attr(product.driver + ".filePrefix")
-            self.layer_data.filePrefix = file_prefix.replace(
-                "<BeautyPath>/<BeautyFile>",
-                "<Scene>/<RenderLayer>/<RenderLayer>"
-            )
+        if product.multipart or not product.driver:
+            return super().get_files(product)
+        file_prefix = self._get_attr(product.driver + ".filePrefix")
+        if not file_prefix:
+            return super().get_files(product)
 
-        return super().get_files(product)
+        beauty_prefix = super().get_renderer_prefix()
+        if "/" in beauty_prefix:
+            beauty_path, _, beauty_file = beauty_prefix.rpartition("/")
+        else:
+            beauty_path, beauty_file = "", beauty_prefix
+        file_prefix = file_prefix.replace("<BeautyPath>", beauty_path)
+        file_prefix = file_prefix.replace("<BeautyFile>", beauty_file)
+        original_prefix = self.layer_data.filePrefix
+        try:
+            self.layer_data.filePrefix = file_prefix
+            return super().get_files(product)
+        finally:
+            self.layer_data.filePrefix = original_prefix
 
     def get_multipart(self) -> bool:
         # For Redshift we don't directly return upon forcing multilayer
