@@ -17,8 +17,7 @@ class CollectLocalRenderInstances(plugin.MayaInstancePlugin):
 
     transfer_keys = {
         "creator_attributes",
-        "publish_attributes",
-        "transientData"
+        "publish_attributes"
     }
 
     def process(self, instance):
