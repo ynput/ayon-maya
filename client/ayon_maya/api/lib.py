@@ -9,6 +9,7 @@ import json
 import logging
 import contextlib
 from collections import OrderedDict, defaultdict
+from functools import lru_cache
 from math import ceil
 from typing import Optional
 
@@ -1400,6 +1401,21 @@ def is_visible(node,
     return True
 
 # region ID
+@lru_cache(maxsize=1)
+def is_cbid_workflow_enabled() -> bool:
+    """Return whether the `cbId` workflow is enabled for the current project.
+
+    This reads `ayon+settings://maya/use_cbid_workflow`. The result is cached
+    because the project does not change during a Maya session.
+
+    Returns:
+        bool: True when the `cbId` workflow is enabled.
+
+    """
+    project_settings = get_project_settings(get_current_project_name())
+    return project_settings["maya"].get("use_cbid_workflow", True)
+
+
 def get_id_required_nodes(referenced_nodes=False,
                           nodes=None,
                           existing_ids=True):

@@ -75,9 +75,9 @@ class MayaSettings(BaseSettingsModel):
         description=(
             "When enabled, a per node `cbId` identifier will be created and "
             "validated for many product types. This is then used for look "
-            "publishing and many others. By disabling this, the `cbId` "
-            "attribute will still be created on scene save but it will not "
-            "be validated."))
+            "publishing and many others. When disabled, the `cbId` "
+            "attribute is no longer created on scene save and it is not "
+            "validated."))
 
     open_workfile_post_initialization: bool = SettingsField(
         True, title="Open Workfile Post Initialization")

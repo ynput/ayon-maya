@@ -640,17 +640,19 @@ def on_save():
     """Automatically add IDs to new nodes
 
     Any transform of a mesh, without an existing ID, is given one
-    automatically on file save.
+    automatically on file save. This is skipped when the `cbId` workflow
+    is disabled in project settings.
     """
     log.info("Running callback on save..")
     # remove lockfile if users jumps over from one scene to another
     _remove_workfile_lock()
 
-    # Generate ids of the current context on nodes in the scene
-    nodes = lib.get_id_required_nodes(referenced_nodes=False,
-                                      existing_ids=False)
-    for node, new_id in lib.generate_ids(nodes):
-        lib.set_id(node, new_id, overwrite=False)
+    if lib.is_cbid_workflow_enabled():
+        # Generate ids of the current context on nodes in the scene
+        nodes = lib.get_id_required_nodes(referenced_nodes=False,
+                                          existing_ids=False)
+        for node, new_id in lib.generate_ids(nodes):
+            lib.set_id(node, new_id, overwrite=False)
 
     # We are now starting the actual save directly
     global _about_to_save
