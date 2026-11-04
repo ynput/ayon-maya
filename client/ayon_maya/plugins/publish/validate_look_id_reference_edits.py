@@ -6,6 +6,7 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
 )
+from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from maya import cmds
 
@@ -28,8 +29,11 @@ class ValidateLookIdReferenceEdits(plugin.MayaInstancePlugin):
 
     @classmethod
     def apply_settings(cls, project_settings):
-        # Disable plug-in if cbId workflow is disabled
-        if not project_settings["maya"].get("use_cbid_workflow", True):
+        # Only validate ids when the cbId workflow is fully enabled
+        if (
+            lib.get_cbid_workflow_from_settings(project_settings)
+            != lib.CbIdWorkflow.ON
+        ):
             cls.enabled = False
             return
 

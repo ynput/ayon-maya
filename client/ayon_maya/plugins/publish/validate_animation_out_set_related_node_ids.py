@@ -42,8 +42,11 @@ class ValidateOutRelatedNodeIds(plugin.MayaInstancePlugin,
                                        category="maya")
         apply_plugin_settings_automatically(cls, settings, logger=cls.log)
 
-        # Disable plug-in if cbId workflow is disabled
-        if not project_settings["maya"].get("use_cbid_workflow", True):
+        # Only validate ids when the cbId workflow is fully enabled
+        if (
+            lib.get_cbid_workflow_from_settings(project_settings)
+            != lib.CbIdWorkflow.ON
+        ):
             cls.enabled = False
             return
 

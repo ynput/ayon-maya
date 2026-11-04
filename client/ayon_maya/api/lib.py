@@ -1401,19 +1401,46 @@ def is_visible(node,
     return True
 
 # region ID
-@lru_cache(maxsize=1)
-def is_cbid_workflow_enabled() -> bool:
-    """Return whether the `cbId` workflow is enabled for the current project.
+class CbIdWorkflow:
+    """Values of the `ayon+settings://maya/use_cbid_workflow` setting."""
+    # Generate ids on save and validate them on publish
+    ON = "on"
+    # Generate ids on save, but do not validate them on publish
+    GENERATE = "generate"
+    # Do not generate ids and do not validate them
+    OFF = "off"
 
-    This reads `ayon+settings://maya/use_cbid_workflow`. The result is cached
-    because the project does not change during a Maya session.
+
+def get_cbid_workflow_from_settings(project_settings: dict) -> str:
+    """Return the `cbId` workflow state from the given project settings.
+
+    Args:
+        project_settings (dict): Project settings.
 
     Returns:
-        bool: True when the `cbId` workflow is enabled.
+        str: One of the `CbIdWorkflow` values.
+
+    """
+    value = project_settings["maya"].get("use_cbid_workflow", CbIdWorkflow.ON)
+    # Backwards compatibility for the setting when it was a boolean
+    if isinstance(value, bool):
+        return CbIdWorkflow.ON if value else CbIdWorkflow.OFF
+    return value
+
+
+@lru_cache(maxsize=1)
+def get_cbid_workflow() -> str:
+    """Return the `cbId` workflow state for the current project.
+
+    The result is cached because the project does not change during a
+    Maya session.
+
+    Returns:
+        str: One of the `CbIdWorkflow` values.
 
     """
     project_settings = get_project_settings(get_current_project_name())
-    return project_settings["maya"].get("use_cbid_workflow", True)
+    return get_cbid_workflow_from_settings(project_settings)
 
 
 def get_id_required_nodes(referenced_nodes=False,
