@@ -5,14 +5,13 @@ from ayon_core.pipeline.publish import (
     PublishXmlValidationError,
     RepairAction,
     ValidateContentsOrder,
-    apply_plugin_settings_automatically,
-    get_plugin_settings,
 )
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 
 
-class ValidateRigOutSetNodeIds(plugin.MayaInstancePlugin,
+class ValidateRigOutSetNodeIds(plugin.CbIdValidatorMixin,
+                               plugin.MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Validate if deformed shapes have related IDs to the original shapes.
 
@@ -32,20 +31,6 @@ class ValidateRigOutSetNodeIds(plugin.MayaInstancePlugin,
     ]
     allow_history_only = False
     optional = False
-
-    @classmethod
-    def apply_settings(cls, project_settings):
-        # Preserve automatic settings applying logic
-        settings = get_plugin_settings(plugin=cls,
-                                       project_settings=project_settings,
-                                       log=cls.log,
-                                       category="maya")
-        apply_plugin_settings_automatically(cls, settings, logger=cls.log)
-
-        # Disable plug-in if cbId workflow is disabled
-        if not project_settings["maya"].get("use_cbid_workflow", True):
-            cls.enabled = False
-            return
 
     def process(self, instance):
         """Process all meshes"""

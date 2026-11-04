@@ -9,6 +9,8 @@ import json
 import logging
 import contextlib
 from collections import OrderedDict, defaultdict
+from enum import Enum
+from functools import lru_cache
 from math import ceil
 from typing import Optional
 
@@ -1400,6 +1402,61 @@ def is_visible(node,
     return True
 
 # region ID
+class CbIdWorkflow(str, Enum):
+    """Values of the `ayon+settings://maya/use_cbid_workflow` setting.
+
+    Members compare equal to their string value, e.g.
+    `CbIdWorkflow.ON == "on"`.
+    """
+    # Generate ids on save and validate them on publish
+    ON = "on"
+    # Generate ids on save, but do not validate them on publish
+    GENERATE = "generate"
+    # Do not generate ids and do not validate them
+    OFF = "off"
+
+
+def get_cbid_workflow_from_settings(project_settings: dict) -> CbIdWorkflow:
+    """Return the `cbId` workflow state from the given project settings.
+
+    Unknown values fall back to `CbIdWorkflow.ON` with a warning.
+
+    Args:
+        project_settings (dict): Project settings.
+
+    Returns:
+        CbIdWorkflow: The `cbId` workflow state.
+
+    """
+    value = project_settings["maya"].get("use_cbid_workflow", "on")
+    # Backwards compatibility for the setting when it was a boolean
+    if isinstance(value, bool):
+        return CbIdWorkflow.ON if value else CbIdWorkflow.OFF
+    try:
+        return CbIdWorkflow(value)
+    except ValueError:
+        log.warning(
+            "Invalid value for 'use_cbid_workflow' setting: %r. "
+            "Falling back to 'on'.", value
+        )
+        return CbIdWorkflow.ON
+
+
+@lru_cache(maxsize=1)
+def get_cbid_workflow() -> CbIdWorkflow:
+    """Return the `cbId` workflow state for the current project.
+
+    The result is cached because the project does not change during a
+    Maya session.
+
+    Returns:
+        CbIdWorkflow: The `cbId` workflow state.
+
+    """
+    project_settings = get_project_settings(get_current_project_name())
+    return get_cbid_workflow_from_settings(project_settings)
+
+
 def get_id_required_nodes(referenced_nodes=False,
                           nodes=None,
                           existing_ids=True):

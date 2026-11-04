@@ -22,7 +22,8 @@ def is_valid_uuid(value) -> bool:
     return True
 
 
-class ValidateNodeIDsRelated(plugin.MayaInstancePlugin,
+class ValidateNodeIDsRelated(plugin.CbIdValidatorMixin,
+                             plugin.MayaInstancePlugin,
                              OptionalPyblishPluginMixin):
     """Validate nodes have a related `cbId` to the instance.data[folderPath]"""
 
@@ -35,13 +36,6 @@ class ValidateNodeIDsRelated(plugin.MayaInstancePlugin,
 
     actions = [ayon_maya.api.action.SelectInvalidAction,
                ayon_maya.api.action.GenerateUUIDsOnInvalidAction]
-
-    @classmethod
-    def apply_settings(cls, project_settings):
-        # Disable plug-in if cbId workflow is disabled
-        if not project_settings["maya"].get("use_cbid_workflow", True):
-            cls.enabled = False
-            return
 
     def process(self, instance):
         """Process all nodes in instance (including hierarchy)"""
