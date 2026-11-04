@@ -6,12 +6,12 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
 )
-from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateLookIdReferenceEdits(plugin.MayaInstancePlugin):
+class ValidateLookIdReferenceEdits(plugin.CbIdValidatorMixin,
+                                   plugin.MayaInstancePlugin):
     """Validate nodes in look have no reference edits to cbId.
 
     Note:
@@ -26,16 +26,6 @@ class ValidateLookIdReferenceEdits(plugin.MayaInstancePlugin):
     label = 'Look Id Reference Edits'
     actions = [ayon_maya.api.action.SelectInvalidAction,
                RepairAction]
-
-    @classmethod
-    def apply_settings(cls, project_settings):
-        # Only validate ids when the cbId workflow is fully enabled
-        if (
-            lib.get_cbid_workflow_from_settings(project_settings)
-            != lib.CbIdWorkflow.ON
-        ):
-            cls.enabled = False
-            return
 
     def process(self, instance):
         invalid = self.get_invalid(instance)

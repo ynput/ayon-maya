@@ -7,7 +7,6 @@ from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
 )
 from ayon_maya.api.lib import get_id, set_id
-from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from maya import cmds
 
@@ -17,7 +16,8 @@ def get_basename(node):
     return node.rsplit("|", 1)[-1].rsplit(":", 1)[-1]
 
 
-class ValidateRigOutputIds(plugin.MayaInstancePlugin):
+class ValidateRigOutputIds(plugin.CbIdValidatorMixin,
+                           plugin.MayaInstancePlugin):
     """Validate rig output ids.
 
     Ids must share the same id as similarly named nodes in the scene. This is
@@ -30,16 +30,6 @@ class ValidateRigOutputIds(plugin.MayaInstancePlugin):
     actions = [RepairAction,
                ayon_maya.api.action.SelectInvalidAction]
     optional = True
-
-    @classmethod
-    def apply_settings(cls, project_settings):
-        # Only validate ids when the cbId workflow is fully enabled
-        if (
-            lib.get_cbid_workflow_from_settings(project_settings)
-            != lib.CbIdWorkflow.ON
-        ):
-            cls.enabled = False
-            return
 
     def process(self, instance):
         invalid = self.get_invalid(instance, compute=True)

@@ -7,7 +7,8 @@ from ayon_maya.api import lib
 from ayon_maya.api import plugin
 
 
-class ValidateNodeIDs(plugin.MayaInstancePlugin):
+class ValidateNodeIDs(plugin.CbIdValidatorMixin,
+                      plugin.MayaInstancePlugin):
     """Validate nodes have a Colorbleed Id.
 
     When IDs are missing from nodes *save your scene* and they should be
@@ -29,16 +30,6 @@ class ValidateNodeIDs(plugin.MayaInstancePlugin):
 
     actions = [ayon_maya.api.action.SelectInvalidAction,
                ayon_maya.api.action.GenerateUUIDsOnInvalidAction]
-
-    @classmethod
-    def apply_settings(cls, project_settings):
-        # Only validate ids when the cbId workflow is fully enabled
-        if (
-            lib.get_cbid_workflow_from_settings(project_settings)
-            != lib.CbIdWorkflow.ON
-        ):
-            cls.enabled = False
-            return
 
     def process(self, instance):
         """Process all meshes"""
