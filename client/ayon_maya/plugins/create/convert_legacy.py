@@ -151,23 +151,22 @@ class MayaLegacyConvertor(ProductConvertorPlugin,
                 or product_base_type_to_id.get(legacy_key)
             )
             if creator_id is None:
-                self.log.warning((
-                    "Unable to convert legacy instance with family '{}'"
-                    " because there is no matching new creator"
-                ).format(legacy_key))
+                self.log.warning(
+                    f"Unable to convert legacy instance with family '{legacy_key}'"
+                    f" because there is no matching new creator"
+                )
                 continue
 
             creator = self.create_context.creators.get(creator_id)
             if creator is None:
-                self.log.warning((
-                    "Unable to convert legacy instance with family '{}'"
-                    " because creator '{}' is not available"
-                ).format(legacy_key, creator_id))
+                self.log.warning(
+                    f"Unable to convert legacy instance with family '{legacy_key}'"
+                    f" because creator '{creator_id}' is not available"
+                )
                 continue
 
             self.log.info(
-                "Converting legacy instance '{}' to creator '{}'",
-                legacy_key, creator_id
+                f"Converting legacy instance '{legacy_key}' to creator '{creator_id}'",
             )
             data["creator_identifier"] = creator_id
             if isinstance(creator, plugin.RenderlayerCreator):
@@ -217,11 +216,9 @@ class MayaLegacyConvertor(ProductConvertorPlugin,
             singleton_node = creator._get_singleton_node()
             if singleton_node:
                 self.log.error(
-                    "Can't convert legacy renderlayer instance '{}' because"
-                    " new style instance '{}' already exists".format(
-                        instance_node,
-                        singleton_node
-                    )
+                    "Can't convert legacy renderlayer instance "
+                    f"'{instance_node}' because new style "
+                    f"instance '{singleton_node}' already exists"
                 )
                 continue
 
