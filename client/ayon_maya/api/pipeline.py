@@ -758,10 +758,7 @@ def on_new():
 
 
 def on_task_changed():
-    """Update the menu label and prompt to reset context settings on save.
-
-    The Maya workspace is updated in `MayaHost._after_context_change`.
-    """
+    """Update the menu label and prompt to reset context settings on save."""
     menu.update_menu_task_label()
 
     global _about_to_save
