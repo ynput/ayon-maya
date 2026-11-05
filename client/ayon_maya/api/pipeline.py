@@ -55,7 +55,6 @@ from .workio import (
     save_file,
     file_extensions,
     has_unsaved_changes,
-    work_root,
     current_file
 )
 
@@ -148,9 +147,6 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def save_workfile(self, filepath=None):
         return save_file(filepath)
-
-    def work_root(self, session):
-        return work_root(session)
 
     def get_current_workfile(self):
         return current_file()
