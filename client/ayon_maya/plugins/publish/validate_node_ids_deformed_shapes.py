@@ -9,7 +9,8 @@ from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateNodeIdsDeformedShape(plugin.MayaInstancePlugin):
+class ValidateNodeIdsDeformedShape(plugin.CbIdValidatorMixin,
+                                   plugin.MayaInstancePlugin):
     """Validate if deformed shapes have related IDs to the original shapes.
 
     When a deformer is applied in the scene on a referenced mesh that already
@@ -26,13 +27,6 @@ class ValidateNodeIdsDeformedShape(plugin.MayaInstancePlugin):
         ayon_maya.api.action.SelectInvalidAction,
         RepairAction
     ]
-
-    @classmethod
-    def apply_settings(cls, project_settings):
-        # Disable plug-in if cbId workflow is disabled
-        if not project_settings["maya"].get("use_cbid_workflow", True):
-            cls.enabled = False
-            return
 
     def process(self, instance):
         """Process all the nodes in the instance"""
