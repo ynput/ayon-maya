@@ -9,7 +9,7 @@ from ayon_core.lib import (
 class CreateMultiverseUsdComp(plugin.MayaCreator):
     """Create Multiverse USD Composition"""
 
-    identifier = "io.openpype.creators.maya.mvusdcomposition"
+    identifier = "io.ayon.creators.maya.mvusdcomposition"
     label = "Multiverse USD Composition"
     product_base_type = "mvUsdComposition"
     product_type = product_base_type

@@ -7,7 +7,7 @@ from maya import cmds  # noqa
 class CreateUnrealStaticMesh(plugin.MayaCreator):
     """Unreal Static Meshes with collisions."""
 
-    identifier = "io.openpype.creators.maya.unrealstaticmesh"
+    identifier = "io.ayon.creators.maya.unrealstaticmesh"
     label = "Unreal - Static Mesh"
     product_base_type = "staticMesh"
     product_type = product_base_type

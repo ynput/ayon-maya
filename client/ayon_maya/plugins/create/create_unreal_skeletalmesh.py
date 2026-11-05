@@ -12,7 +12,7 @@ from maya import cmds  # noqa
 class CreateUnrealSkeletalMesh(plugin.MayaCreator):
     """Unreal Static Meshes with collisions."""
 
-    identifier = "io.openpype.creators.maya.unrealskeletalmesh"
+    identifier = "io.ayon.creators.maya.unrealskeletalmesh"
     label = "Unreal - Skeletal Mesh"
     product_base_type = "skeletalMesh"
     product_type = product_base_type

@@ -21,7 +21,7 @@ TRANSPARENCIES = [
 class CreateReview(plugin.MayaCreator):
     """Playblast reviewable"""
 
-    identifier = "io.openpype.creators.maya.review"
+    identifier = "io.ayon.creators.maya.review"
     label = "Review"
     product_base_type = "review"
     product_type = product_base_type

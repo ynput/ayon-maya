@@ -8,7 +8,7 @@ from ayon_core.lib import BoolDef
 class CreateVrayProxy(plugin.MayaCreator):
     """Alembic pointcache for animated data"""
 
-    identifier = "io.openpype.creators.maya.vrayproxy"
+    identifier = "io.ayon.creators.maya.vrayproxy"
     label = "VRay Proxy"
     product_base_type = "vrayproxy"
     product_type = product_base_type

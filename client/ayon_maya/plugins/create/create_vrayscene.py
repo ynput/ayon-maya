@@ -12,7 +12,7 @@ from ayon_core.lib import BoolDef
 class CreateVRayScene(plugin.RenderlayerCreator):
     """Create Vray Scene."""
 
-    identifier = "io.openpype.creators.maya.vrayscene"
+    identifier = "io.ayon.creators.maya.vrayscene"
 
     product_base_type = "vrayscene"
     product_type = product_base_type
