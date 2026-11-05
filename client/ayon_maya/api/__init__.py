@@ -21,7 +21,6 @@ from .workio import (
     current_file,
     has_unsaved_changes,
     file_extensions,
-    work_root
 )
 
 from .lib import (
@@ -52,7 +51,6 @@ __all__ = [
     "current_file",
     "has_unsaved_changes",
     "file_extensions",
-    "work_root",
 
     # Utility functions
     "lsattr",
