@@ -18,6 +18,15 @@ from ayon_core.pipeline.workfile import BuildWorkfile
 from ayon_core.tools.utils import host_tools
 from ayon_core.tools.workfile_template_build import open_template_ui
 
+# Tool to manage workfile templates was added in a later ayon-core version
+try:
+    from ayon_core.tools.workfile_template_build import (  # noqa: F401
+        show_workfile_template_builder,
+    )
+    HAS_TEMPLATE_BUILDER_TOOL = True
+except ImportError:
+    HAS_TEMPLATE_BUILDER_TOOL = False
+
 # Function 'save_next_version' was introduced in ayon-core 1.5.0
 try:
     from ayon_core.pipeline.workfile import save_next_version
@@ -34,7 +43,8 @@ from .workfile_template_builder import (
     create_placeholder,
     update_placeholder,
     build_workfile_template,
-    update_workfile_template
+    update_workfile_template,
+    show_template_builder,
 )
 from .workfile_template_builder import MayaTemplateBuilder
 
@@ -56,6 +66,53 @@ def get_context_label():
     return "{}, {}".format(
         get_current_folder_path(),
         get_current_task_name()
+    )
+
+
+def _add_template_builder_menu():
+    """Separate template builder actions for older ayon-core versions."""
+    builder_menu = cmds.menuItem(
+        "Build Workfile (Templates)",
+        subMenu=True,
+        tearOff=True,
+        parent=MENU_NAME
+    )
+    cmds.menuItem(
+        dividerLabel="Use Template",
+        divider=True,
+        parent=builder_menu
+    )
+    cmds.menuItem(
+        "Build from Template",
+        parent=builder_menu,
+        command=build_workfile_template
+    )
+    cmds.menuItem(
+        "Update from Template",
+        parent=builder_menu,
+        command=update_workfile_template
+    )
+    cmds.menuItem(
+        dividerLabel="Adjust Template",
+        divider=True,
+        parent=builder_menu
+    )
+    cmds.menuItem(
+        "Open Template",
+        parent=builder_menu,
+        command=lambda *args: open_template_ui(
+            MayaTemplateBuilder(registered_host()), get_main_window()
+        ),
+    )
+    cmds.menuItem(
+        "Create Placeholder",
+        parent=builder_menu,
+        command=create_placeholder
+    )
+    cmds.menuItem(
+        "Update Placeholder",
+        parent=builder_menu,
+        command=update_placeholder
     )
 
 
@@ -144,49 +201,13 @@ def install(project_settings):
             "Build Workfile (Legacy)",
             command=lambda *args: BuildWorkfile().process()
         )
-        builder_menu = cmds.menuItem(
-            "Build Workfile (Templates)",
-            subMenu=True,
-            tearOff=True,
-            parent=MENU_NAME
-        )
-        cmds.menuItem(
-            dividerLabel="Use Template", 
-            divider=True, 
-            parent=builder_menu
-        )
-        cmds.menuItem(
-            "Build from Template",
-            parent=builder_menu,
-            command=build_workfile_template
-        )
-        cmds.menuItem(
-            "Update from Template",
-            parent=builder_menu,
-            command=update_workfile_template
-        )
-        cmds.menuItem(
-            dividerLabel="Adjust Template",
-            divider=True,
-            parent=builder_menu
-        )
-        cmds.menuItem(
-            "Open Template",
-            parent=builder_menu,
-            command=lambda *args: open_template_ui(
-                MayaTemplateBuilder(registered_host()), get_main_window()
-            ),
-        )
-        cmds.menuItem(
-            "Create Placeholder",
-            parent=builder_menu,
-            command=create_placeholder
-        )
-        cmds.menuItem(
-            "Update Placeholder",
-            parent=builder_menu,
-            command=update_placeholder
-        )
+        if HAS_TEMPLATE_BUILDER_TOOL:
+            cmds.menuItem(
+                "Template Builder...",
+                command=show_template_builder
+            )
+        else:
+            _add_template_builder_menu()
 
         cmds.setParent(MENU_NAME, menu=True)
         cmds.menuItem(
