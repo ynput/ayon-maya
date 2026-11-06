@@ -19,6 +19,7 @@ from ayon_core.host import (
     IPublishHost,
     HostDirmap,
     ContextChangeData,
+    ContextChangeReason,
 )
 from ayon_core.tools.utils import host_tools
 from ayon_core.tools.workfiles.lock_dialog import WorkfileLockDialog
@@ -192,10 +193,10 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     def _after_context_change(self, context_change_data: ContextChangeData):
         """Set the Maya workspace to the work directory of the new context.
 
-        The workdir is computed from the new context instead of read from
-        `AYON_WORKDIR`. That environment variable is only updated when a
-        workfile is opened or saved, so after a context-only change it still
-        points to the previous context's workdir.
+        On workfile open or save, `AYON_WORKDIR` is set to the workfile's
+        directory, so that is used. For other context changes it still points
+        to the previous context's workdir, so the workdir is computed from the
+        new context instead.
 
         Args:
             context_change_data (ContextChangeData): Object with information
@@ -207,13 +208,19 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         if lib.IS_HEADLESS:
             return
 
-        workdir = str(get_workdir(
-            context_change_data.project_entity,
-            context_change_data.folder_entity,
-            context_change_data.task_entity,
-            host_name=self.name,
-            anatomy=context_change_data.anatomy,
-        ))
+        if context_change_data.reason in (
+            ContextChangeReason.workfile_open,
+            ContextChangeReason.workfile_save,
+        ):
+            workdir = os.environ["AYON_WORKDIR"]
+        else:
+            workdir = str(get_workdir(
+                context_change_data.project_entity,
+                context_change_data.folder_entity,
+                context_change_data.task_entity,
+                host_name=self.name,
+                anatomy=context_change_data.anatomy,
+            ))
         if not os.path.exists(workdir):
             self.log.warning(
                 "Can't set project for new context because path does not "
