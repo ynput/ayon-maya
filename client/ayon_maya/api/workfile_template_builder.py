@@ -205,6 +205,16 @@ class MayaPlaceholderPlugin(PlaceholderPlugin):
         cmds.hide(node)
         cmds.setAttr("{}.hiddenInOutliner".format(node), True)
 
+    def select_placeholder(self, placeholder_item):
+        """Select the placeholder node in the scene.
+
+        Placeholder nodes are hidden in the outliner, but they are shown in
+        the attribute editor and channel box when selected.
+        """
+        cmds.select(
+            placeholder_item.scene_identifier, replace=True, noExpand=True
+        )
+
     def delete_placeholder(self, placeholder):
         """Remove placeholder if building was successful
 
@@ -264,6 +274,48 @@ def trigger_on_new_file() -> None:
     host = registered_host()
     builder = MayaTemplateBuilder(host)
     builder.trigger_on_new_file()
+
+
+class _TemplateBuilderWindowCache:
+    window = None
+
+
+def show_template_builder(*args):
+    """Show the workfile template builder tool.
+
+    The window is reused when it was opened before. The placeholder that is
+    selected in the scene is selected in the tool.
+    """
+    from ayon_core.tools.workfile_template_build import (
+        show_workfile_template_builder,
+    )
+
+    window = _TemplateBuilderWindowCache.window
+    if window is not None:
+        try:
+            window.refresh()
+            window.show()
+            window.raise_()
+            window.activateWindow()
+        except RuntimeError:
+            # The Qt object was deleted
+            window = None
+
+    if window is None:
+        builder = MayaTemplateBuilder(registered_host())
+        window = show_workfile_template_builder(
+            builder, parent=get_main_window()
+        )
+        _TemplateBuilderWindowCache.window = window
+
+    # Added in a later ayon-core version than the tool itself
+    select_placeholder = getattr(window, "select_placeholder", None)
+    if select_placeholder is None:
+        return
+
+    for node in cmds.ls(selection=True, long=True):
+        if select_placeholder(node):
+            break
 
 
 def build_workfile_template(*args):
