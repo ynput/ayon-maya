@@ -10,6 +10,21 @@ def aov_separators_enum():
     ]
 
 
+def render_target_enum():
+    return [
+        {"value": "local", "label": "Local machine rendering"},
+        {"value": "local_no_render", "label": "Use existing frames (local)"},
+        {"value": "farm", "label": "Farm Rendering"},
+    ]
+
+
+def local_render_method_enum():
+    return [
+        {"value": "batch_render", "label": "Batch Render"},
+        {"value": "render_sequence", "label": "Render Sequence"},
+    ]
+
+
 def arnold_image_format_enum():
     """Return enumerator for Arnold output formats."""
     return [
@@ -459,6 +474,21 @@ class RenderSettingsModel(BaseSettingsModel):
         title="Reset Current Frame")
     remove_aovs: bool = SettingsField(
         title="Remove existing AOVs")
+    render_target: str = SettingsField(
+        "farm",
+        title="Default Render Target",
+        enum_resolver=render_target_enum,
+        conditional_enum=True,
+    )
+    local: str = SettingsField(
+        "batch_render",
+        title="Default Local Render Method",
+        description=(
+            "Default 'Local render method' for new instances when "
+            "Render target is 'Local machine rendering'."
+        ),
+        enum_resolver=local_render_method_enum,
+    )
     arnold_renderer: ArnoldSettingsModel = SettingsField(
         default_factory=ArnoldSettingsModel,
         title="Arnold Renderer")
@@ -484,6 +514,8 @@ DEFAULT_RENDER_SETTINGS = {
     "aov_separator": "underscore",
     "reset_current_frame": False,
     "remove_aovs": False,
+    "render_target": "farm",
+    "local": "batch_render",
     "arnold_renderer": {
         "image_prefix": "<Scene>/<RenderLayer>/<RenderLayer>",
         "image_format": "exr",

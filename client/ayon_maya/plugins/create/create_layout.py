@@ -22,7 +22,16 @@ class CreateLayout(plugin.MayaCreator):
                     label="Include Children Transforms",
                     tooltip="Enable this when include all the transform data"
                             "of objects"
-                    )
+                    ),
+            BoolDef("sampleAtPlayhead",
+                    label="Sample at Playhead",
+                    tooltip=(
+                        "By default layout transforms are sampled at the "
+                        "start frame of the folder so publishing is "
+                        "deterministic. Enable this to sample at the current "
+                        "timeline frame instead (legacy behaviour)."
+                    ),
+                    default=False),
         ]
 
     def get_detail_description(self):
@@ -41,4 +50,16 @@ class CreateLayout(plugin.MayaCreator):
         Note that any vertex deformations (like vertex edits, blendshapes or 
         deformers) will not be stored as edits. Loading a Layout will purely
         consider the collect transform data and the referenced assets.
+
+        ### Sampling frame
+
+        The JSON package stores a single static transform per loaded asset.
+        By default those transforms are sampled at the start frame of the
+        published folder, making publishes deterministic regardless of where
+        the timeline playhead is. The Maya Scene written alongside it is not
+        affected and keeps its animation keyframes.
+
+        The sampled frame is recorded as `sample_frame` in each JSON element.
+        The field is omitted when the layout is sampled at the playhead
+        instead (see the "Sample at Playhead" attribute).
         """)

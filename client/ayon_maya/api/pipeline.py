@@ -55,7 +55,6 @@ from .workio import (
     save_file,
     file_extensions,
     has_unsaved_changes,
-    work_root,
     current_file
 )
 
@@ -148,9 +147,6 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def save_workfile(self, filepath=None):
         return save_file(filepath)
-
-    def work_root(self, session):
-        return work_root(session)
 
     def get_current_workfile(self):
         return current_file()
@@ -640,17 +636,19 @@ def on_save():
     """Automatically add IDs to new nodes
 
     Any transform of a mesh, without an existing ID, is given one
-    automatically on file save.
+    automatically on file save. This is skipped when the `cbId` workflow
+    is set to "off" in project settings.
     """
     log.info("Running callback on save..")
     # remove lockfile if users jumps over from one scene to another
     _remove_workfile_lock()
 
-    # Generate ids of the current context on nodes in the scene
-    nodes = lib.get_id_required_nodes(referenced_nodes=False,
-                                      existing_ids=False)
-    for node, new_id in lib.generate_ids(nodes):
-        lib.set_id(node, new_id, overwrite=False)
+    if lib.get_cbid_workflow() != lib.CbIdWorkflow.OFF:
+        # Generate ids of the current context on nodes in the scene
+        nodes = lib.get_id_required_nodes(referenced_nodes=False,
+                                          existing_ids=False)
+        for node, new_id in lib.generate_ids(nodes):
+            lib.set_id(node, new_id, overwrite=False)
 
     # We are now starting the actual save directly
     global _about_to_save

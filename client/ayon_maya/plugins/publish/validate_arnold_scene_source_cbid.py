@@ -8,7 +8,8 @@ from ayon_maya.api import lib
 from ayon_maya.api import plugin
 
 
-class ValidateArnoldSceneSourceCbid(plugin.MayaInstancePlugin,
+class ValidateArnoldSceneSourceCbid(plugin.CbIdValidatorMixin,
+                                    plugin.MayaInstancePlugin,
                                     OptionalPyblishPluginMixin):
     """Validate Arnold Scene Source Cbid.
 
@@ -20,13 +21,6 @@ class ValidateArnoldSceneSourceCbid(plugin.MayaInstancePlugin,
     label = "Validate Arnold Scene Source CBID"
     actions = [RepairAction]
     optional = False
-
-    @classmethod
-    def apply_settings(cls, project_settings):
-        # Disable plug-in if cbId workflow is disabled
-        if not project_settings["maya"].get("use_cbid_workflow", True):
-            cls.enabled = False
-            return
 
     @staticmethod
     def _get_nodes_by_name(nodes):
