@@ -33,11 +33,20 @@ class ExtractGPUCache(plugin.MayaExtractorPlugin,
         staging_dir = self.staging_dir(instance)
         filename = "{}_gpu_cache".format(instance.name)
 
+        # Frame range including handles. Instances without a frame range
+        # (should not happen, `model` collects the current frame) fall back
+        # to the current frame.
+        current_frame = cmds.currentTime(query=True)
+        start = float(instance.data.get("frameStartHandle", current_frame))
+        end = float(instance.data.get("frameEndHandle", current_frame))
+
         # Write out GPU cache file.
         kwargs = {
             "directory": staging_dir,
             "fileName": filename,
             "saveMultipleFiles": False,
+            "startTime": start,
+            "endTime": end,
             "simulationRate": self.step,
             "sampleMultiplier": self.stepSave,
             "optimize": self.optimize,
