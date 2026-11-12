@@ -77,8 +77,10 @@ class OpenWithoutReferencesAction(WorkfileSimpleActionPlugin):
         selection: WorkfileActionSelection,
         form_values: dict[str, Any],
     ) -> Optional[WorkfileActionResult]:
+        # A result is returned when the user should be asked first, or
+        #   when saving failed. Otherwise it is bool if workfile was saved.
         result = self.ask_to_save_changes(form_values)
-        if result is not None:
+        if isinstance(result, WorkfileActionResult):
             return result
 
         host = self.host
