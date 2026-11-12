@@ -9,12 +9,29 @@ from ayon_maya.api.lib import get_reference_node
 
 
 def get_container_reference_node(container: dict[str, Any]) -> Optional[str]:
-    """Return the reference node of the container, if any."""
+    """Return the reference node of the container, if any.
+
+    This is used in `is_compatible` so must be fast. Instead of querying all
+    set members (which can be thousands of nodes for e.g. older containers or
+    non-reference containers), only the reference nodes connected to the
+    objectSet are queried.
+    """
     node = container.get("objectName")
-    if not node or not cmds.objExists(node):
+    if (
+        not node
+        or not cmds.objExists(node)
+        or cmds.nodeType(node) != "objectSet"
+    ):
         return None
-    members = cmds.sets(node, query=True, nodesOnly=True) or []
-    return get_reference_node(members)
+    references = cmds.listConnections(
+        f"{node}.dnSetMembers",
+        source=True,
+        destination=False,
+        type="reference",
+    )
+    if not references:
+        return None
+    return get_reference_node(references)
 
 
 def is_reference_loaded(container: dict[str, Any]) -> Optional[bool]:
