@@ -5,19 +5,17 @@ def _convert_model_extractor_families(overrides):
     publish = overrides.get("publish", {})
 
     for plugin_name in ("ExtractGPUCache", "ExtractAlembic"):
-        settings = publish.get(plugin_name, {})
-        families = settings.get("families")
-        if not isinstance(families, list):
+        families = publish.get(plugin_name, {}).get("families")
+        if (
+            not families
+            or not isinstance(families, list)
+            or "model" not in families
+        ):
             continue
 
-        converted = []
-        for family in families:
-            if family == "model":
-                family = "model.extract"
-            if family not in converted:
-                converted.append(family)
-
-        settings["families"] = converted
+        while "model" in families:
+            families.remove("model")
+        families.append("model.extract")
 
 
 def _convert_product_base_types_0_6_0(overrides):
