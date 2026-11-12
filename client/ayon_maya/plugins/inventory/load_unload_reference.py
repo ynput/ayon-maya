@@ -23,6 +23,8 @@ def get_container_reference_node(container: dict[str, Any]) -> Optional[str]:
         or cmds.nodeType(node) != "objectSet"
     ):
         return None
+    # Using listConnections because it is much faster than
+    # using `cmds.sets` to query all members and filters directly
     references = cmds.listConnections(
         f"{node}.dnSetMembers",
         source=True,
