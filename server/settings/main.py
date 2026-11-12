@@ -43,6 +43,18 @@ def angular_unit_enum():
     ]
 
 
+def cbid_workflow_enum():
+    """Get cbId workflow states enumerator."""
+    return [
+        {"label": "On", "value": "on"},
+        {
+            "label": "Generate ids, but do not validate them",
+            "value": "generate",
+        },
+        {"label": "Off", "value": "off"},
+    ]
+
+
 def maya_file_extensions_enum():
     return [
         {"value": "ma", "label": "Maya Ascii (.ma)"},
@@ -70,14 +82,19 @@ class ExtMappingItemModel(BaseSettingsModel):
 class MayaSettings(BaseSettingsModel):
     """Maya Project Settings."""
 
-    use_cbid_workflow: bool = SettingsField(
-        True, title="Use cbId workflow",
+    use_cbid_workflow: str = SettingsField(
+        "on", title="Use cbId workflow",
+        enum_resolver=cbid_workflow_enum,
         description=(
-            "When enabled, a per node `cbId` identifier will be created and "
-            "validated for many product types. This is then used for look "
-            "publishing and many others. By disabling this, the `cbId` "
-            "attribute will still be created on scene save but it will not "
-            "be validated."))
+            "Per node `cbId` identifiers are used for look publishing, Yeti "
+            "and many others.\n"
+            "- **On**: `cbId` attributes are created on scene save and "
+            "validated on publish.\n"
+            "- **Generate ids, but do not validate them**: `cbId` attributes "
+            "are created on scene save but not validated.\n"
+            "- **Off**: `cbId` attributes are not created on scene save and "
+            "not validated. Workflows relying on `cbId`, like look "
+            "assignment and Yeti, may not work."))
 
     open_workfile_post_initialization: bool = SettingsField(
         True, title="Open Workfile Post Initialization")
@@ -120,6 +137,13 @@ class MayaSettings(BaseSettingsModel):
         default_factory=TemplatedProfilesModel,
         title="Templated Workfile Build Settings")
 
+    @validator("use_cbid_workflow", pre=True)
+    def convert_legacy_cbid_workflow(cls, value):
+        # Backwards compatibility for when the setting was a boolean
+        if isinstance(value, bool):
+            return "on" if value else "off"
+        return value
+
     @validator("ext_mapping")
     def validate_unique_outputs(cls, value):
         ensure_unique_names(value)
@@ -142,7 +166,7 @@ DEFAULT_MEL_WORKSPACE_SETTINGS = "\n".join((
 ))
 
 DEFAULT_MAYA_SETTING = {
-    "use_cbid_workflow": True,
+    "use_cbid_workflow": "on",
     "open_workfile_post_initialization": True,
     "explicit_plugins_loading": DEFAULT_EXPLITCIT_PLUGINS_LOADING_SETTINGS,
     "imageio": DEFAULT_IMAGEIO_SETTINGS,
