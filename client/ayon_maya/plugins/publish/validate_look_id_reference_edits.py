@@ -10,7 +10,8 @@ from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateLookIdReferenceEdits(plugin.MayaInstancePlugin):
+class ValidateLookIdReferenceEdits(plugin.CbIdValidatorMixin,
+                                   plugin.MayaInstancePlugin):
     """Validate nodes in look have no reference edits to cbId.
 
     Note:
@@ -25,13 +26,6 @@ class ValidateLookIdReferenceEdits(plugin.MayaInstancePlugin):
     label = 'Look Id Reference Edits'
     actions = [ayon_maya.api.action.SelectInvalidAction,
                RepairAction]
-
-    @classmethod
-    def apply_settings(cls, project_settings):
-        # Disable plug-in if cbId workflow is disabled
-        if not project_settings["maya"].get("use_cbid_workflow", True):
-            cls.enabled = False
-            return
 
     def process(self, instance):
         invalid = self.get_invalid(instance)

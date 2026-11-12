@@ -23,6 +23,7 @@ class CollectSkeletonMesh(plugin.MayaInstancePlugin):
 
         # Store current frame to ensure single frame export
         frame = cmds.currentTime(query=True)
+        frame = int(round(frame))
         instance.data["frameStart"] = frame
         instance.data["frameEnd"] = frame
 

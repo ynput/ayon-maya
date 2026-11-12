@@ -8,7 +8,8 @@ from ayon_maya.api import lib
 from ayon_maya.api import plugin
 
 
-class ValidateNodeIdsInDatabase(plugin.MayaInstancePlugin):
+class ValidateNodeIdsInDatabase(plugin.CbIdValidatorMixin,
+                                plugin.MayaInstancePlugin):
     """Validate if the CB Id is related to an folder in the database
 
     All nodes with the `cbId` attribute will be validated to ensure that
@@ -25,13 +26,6 @@ class ValidateNodeIdsInDatabase(plugin.MayaInstancePlugin):
 
     actions = [ayon_maya.api.action.SelectInvalidAction,
                ayon_maya.api.action.GenerateUUIDsOnInvalidAction]
-
-    @classmethod
-    def apply_settings(cls, project_settings):
-        # Disable plug-in if cbId workflow is disabled
-        if not project_settings["maya"].get("use_cbid_workflow", True):
-            cls.enabled = False
-            return
 
     def process(self, instance):
         invalid = self.get_invalid(instance)
