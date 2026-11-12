@@ -34,5 +34,6 @@ class CollectUnrealStaticMesh(plugin.MayaInstancePlugin):
             pformat(instance.data.get("collisionMembers"))))
 
         frame = cmds.currentTime(query=True)
+        frame = int(round(frame))
         instance.data["frameStart"] = frame
         instance.data["frameEnd"] = frame
