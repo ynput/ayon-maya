@@ -18,6 +18,8 @@ from ayon_core.host import (
     ILoadHost,
     IPublishHost,
     HostDirmap,
+    ContextChangeData,
+    ContextChangeReason,
 )
 from ayon_core.tools.utils import host_tools
 from ayon_core.tools.workfiles.lock_dialog import WorkfileLockDialog
@@ -40,6 +42,7 @@ from ayon_core.pipeline import (
     registered_host,
 )
 from ayon_core.pipeline.load import any_outdated_containers
+from ayon_core.pipeline.workfile import get_workdir
 from ayon_core.pipeline.workfile.lock_workfile import (
     create_workfile_lock,
     remove_workfile_lock,
@@ -187,6 +190,54 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             encoded = encoded.decode("utf-8")
         return cmds.fileInfo("OpenPypeContext", encoded)
 
+    def _after_context_change(self, context_change_data: ContextChangeData):
+        """Set the Maya workspace to the work directory of the new context.
+
+        On workfile open or save, `AYON_WORKDIR` is set to the workfile's
+        directory, so that is used. For other context changes it still points
+        to the previous context's workdir, so the workdir is computed from the
+        new context instead.
+
+        Args:
+            context_change_data (ContextChangeData): Object with information
+                about context change.
+
+        """
+        super()._after_context_change(context_change_data)
+
+        if lib.IS_HEADLESS:
+            return
+
+        if context_change_data.reason in (
+            ContextChangeReason.workfile_open,
+            ContextChangeReason.workfile_save,
+        ):
+            workdir = os.environ["AYON_WORKDIR"]
+        else:
+            workdir = str(get_workdir(
+                context_change_data.project_entity,
+                context_change_data.folder_entity,
+                context_change_data.task_entity,
+                host_name=self.name,
+                anatomy=context_change_data.anatomy,
+            ))
+        if not os.path.exists(workdir):
+            self.log.warning(
+                "Can't set project for new context because path does not "
+                "exist: %s", workdir
+            )
+            return
+
+        self.log.info(
+            "Updating Maya workspace for context change to %s", workdir
+        )
+        _set_project(workdir)
+
+        # Set Maya fileDialog's start-dir to /scenes
+        frule_scene = cmds.workspace(fileRuleEntry="scene")
+        cmds.optionVar(stringValue=("browserLocationmayaBinaryscene",
+                                    workdir + "/" + frule_scene))
+
     def _register_callbacks(self):
         for handler, event in self._op_events.copy().items():
             if event is None:
@@ -286,14 +337,19 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             trigger_on_app_launch()
 
 
-def _set_project():
-    """Sets the maya project to the current Session's work directory.
+def _set_project(workdir=None):
+    """Sets the maya project to the given work directory.
+
+    Args:
+        workdir (Optional[str]): Work directory to set as Maya workspace.
+            Defaults to the `AYON_WORKDIR` environment variable.
 
     Returns:
         None
 
     """
-    workdir = os.getenv("AYON_WORKDIR")
+    if workdir is None:
+        workdir = os.getenv("AYON_WORKDIR")
 
     try:
         os.makedirs(workdir)
@@ -709,24 +765,8 @@ def on_new():
 
 
 def on_task_changed():
-    """Wrapped function of app initialize and maya's on task changed"""
-    # Run
+    """Update the menu label and prompt to reset context settings on save."""
     menu.update_menu_task_label()
-
-    workdir = os.getenv("AYON_WORKDIR")
-    if os.path.exists(workdir):
-        log.info("Updating Maya workspace for task change to %s", workdir)
-        _set_project()
-
-        # Set Maya fileDialog's start-dir to /scenes
-        frule_scene = cmds.workspace(fileRuleEntry="scene")
-        cmds.optionVar(stringValue=("browserLocationmayaBinaryscene",
-                                    workdir + "/" + frule_scene))
-
-    else:
-        log.warning((
-            "Can't set project for new context because path does not exist: {}"
-        ).format(workdir))
 
     global _about_to_save
     if not lib.IS_HEADLESS and _about_to_save:
