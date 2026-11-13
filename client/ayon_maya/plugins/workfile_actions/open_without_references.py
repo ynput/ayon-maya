@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-import contextlib
 import os
 from typing import Optional, Any
-
-from maya import cmds
 
 from ayon_core.host.interfaces import OpenWorkfileOptionalData
 from ayon_core.lib.icon_definitions import MaterialSymbolsIcon
@@ -13,30 +10,6 @@ from ayon_core.pipeline.actions import (
     WorkfileActionSelection,
     WorkfileActionResult,
 )
-
-
-@contextlib.contextmanager
-def _open_without_references(host):
-    """Make the host open workfiles without loading of references.
-
-    Host method 'open_workfile_with_context' is still used to open
-        the workfile, so the context is changed and workfile events are
-        triggered as usual.
-    """
-    def _open_workfile(filepath):
-        return cmds.file(
-            filepath,
-            open=True,
-            force=True,
-            loadReferenceDepth="none",
-        )
-
-    host.open_workfile = _open_workfile
-    try:
-        yield
-    finally:
-        # Remove the override from the host object
-        del host.open_workfile
 
 
 class OpenWithoutReferencesAction(WorkfileSimpleActionPlugin):
@@ -84,7 +57,7 @@ class OpenWithoutReferencesAction(WorkfileSimpleActionPlugin):
             return result
 
         host = self.host
-        with _open_without_references(host):
+        with host.open_workfile_options(loadReferenceDepth="none"):
             host.open_workfile_with_context(
                 selection.filepath,
                 selection.get_folder_entity(),

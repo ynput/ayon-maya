@@ -55,6 +55,7 @@ from ayon_maya.lib import create_workspace_mel
 from . import menu, lib
 from .workio import (
     open_file,
+    open_file_options,
     save_file,
     file_extensions,
     has_unsaved_changes,
@@ -147,6 +148,29 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def open_workfile(self, filepath):
         return open_file(filepath)
+
+    def open_workfile_options(self, **options):
+        """Open workfiles with additional `cmds.file` flags in this context.
+
+        The options apply to every workfile open done through the host,
+        including 'open_workfile_with_context', so the context change and
+        workfile events are triggered as usual.
+
+        Example:
+            >>> host = registered_host()
+            >>> with host.open_workfile_options(loadReferenceDepth="none"):
+            ...     host.open_workfile_with_context(
+            ...         filepath, folder_entity, task_entity
+            ...     )
+
+        Args:
+            **options: Flags passed to `cmds.file` on workfile open.
+
+        Returns:
+            ContextManager: Applies the options while it is active.
+
+        """
+        return open_file_options(**options)
 
     def save_workfile(self, filepath=None):
         return save_file(filepath)
