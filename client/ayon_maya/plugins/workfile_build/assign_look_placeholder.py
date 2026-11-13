@@ -27,6 +27,7 @@ class AssignLookPlaceholderPlugin(MayaPlaceholderPlugin):
 
     identifier = "maya.assignlook"
     label = "Assign Look"
+    icon = {"type": "material-symbols", "name": "palette"}
 
     def get_placeholder_options(self, options=None):
         options = options or {}
