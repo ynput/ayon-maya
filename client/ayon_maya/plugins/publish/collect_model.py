@@ -25,6 +25,11 @@ class CollectModelData(plugin.MayaInstancePlugin):
     def process(self, instance):
         # Extract only current frame (override)
         frame = cmds.currentTime(query=True)
+        
+        # Maya can return a fractional frame, so we need to round it
+        # AYON currently only supports integer frames
+        frame = int(round(frame))
+
         instance.data["frameStart"] = frame
         instance.data["frameEnd"] = frame
 
