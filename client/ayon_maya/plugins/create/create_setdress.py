@@ -7,7 +7,7 @@ from ayon_core.lib import BoolDef
 class CreateSetDress(plugin.MayaCreator):
     """A grouped package of loaded content"""
 
-    identifier = "io.openpype.creators.maya.setdress"
+    identifier = "io.ayon.creators.maya.setdress"
     label = "Set Dress"
     product_base_type = "setdress"
     product_type = product_base_type
@@ -30,13 +30,13 @@ class CreateSetDress(plugin.MayaCreator):
 
     def get_detail_description(self):
         return inspect.cleandoc("""### Setdress
-        
+
         The Setdress creator allows you to export a Maya Scene, usually
-        containing multiple assets into a single package called a "setdress". 
+        containing multiple assets into a single package called a "setdress".
         This is useful for organizing and managing complex scenes that require
         multiple assets to be loaded together - of potentially a variety of
         datatypes.
-        
+
         It exports purely as a Maya Scene file (.ma or .mb) which can be
         loaded back into Maya preserving all the original data, making this
         a Maya-specific solution for set assembly and scene organization.

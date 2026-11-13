@@ -15,7 +15,7 @@ from ayon_core.lib import (
 class CreateArnoldSceneSource(plugin.MayaCreator):
     """Arnold Scene Source"""
 
-    identifier = "io.openpype.creators.maya.ass"
+    identifier = "io.ayon.creators.maya.ass"
     label = "Arnold Scene Source"
     product_base_type = "ass"
     product_type = product_base_type
@@ -131,7 +131,7 @@ class CreateArnoldSceneSourceProxy(CreateArnoldSceneSource):
     This product type facilitates working with proxy geometry in the viewport.
     """
 
-    identifier = "io.openpype.creators.maya.assproxy"
+    identifier = "io.ayon.creators.maya.assproxy"
     label = "Arnold Scene Source Proxy"
     product_base_type = "assProxy"
     product_type = product_base_type
