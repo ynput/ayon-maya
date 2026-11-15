@@ -33,7 +33,7 @@ class ValidateOrnatrixCacheContent(plugin.MayaInstancePlugin,
         invalid = []
         if len(ox_hair_shapes) == 0:
             cls.log.warning("No Ornatrix Hair shapes found to cache from.")
-            invalid.append(nodes)
+            invalid.extend(nodes)
 
         return invalid
 

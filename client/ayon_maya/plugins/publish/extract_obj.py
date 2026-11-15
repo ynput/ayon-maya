@@ -157,8 +157,8 @@ class ExtractObj(plugin.MayaExtractorPlugin,
                 self.log.debug(f"Including texture: {texture_src}")
                 transfers.append((texture_src, texture_dest))
 
-        if "representation" not in instance.data:
-            instance.data["representation"] = []
+        if "representations" not in instance.data:
+            instance.data["representations"] = []
 
         representation = {
             'name': 'obj',

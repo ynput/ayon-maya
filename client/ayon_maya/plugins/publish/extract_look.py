@@ -670,8 +670,8 @@ class ExtractLook(plugin.MayaExtractorPlugin,
                             "colorspace '{}'. The already processed texture "
                             "result's colorspace '{}' will be used."
                             "".format(filepath,
-                                      colorspace,
                                       processed_file["color_space"],
+                                      colorspace,
                                       processed_file["result_color_space"]))
 
                     self._set_resource_result_colorspace(

@@ -11,9 +11,9 @@ from maya import cmds
 import maya.api.OpenMaya as om
 import logging
 
-import maya.app.renderSetup.model.utils as utils
 from maya.app.renderSetup.model import renderSetup
 from maya.app.renderSetup.model.override import (
+    Override,
     AbsOverride,
     RelOverride,
     UniqueOverride
@@ -155,14 +155,17 @@ def get_attr_in_layer(node_attr, layer, as_string=True):
     for match, layer_override, index in overrides:
         if isinstance(layer_override, AbsOverride):
             # Absolute override
-            value = get_attribute(layer_override.name() + ".attrValue")
+            override_value = get_attribute(
+                f"{layer_override.name()}.attrValue"
+            )
             if match == EXACT_MATCH:
-                # value = value
-                pass
+                value = override_value
             elif match == PARENT_MATCH:
-                value = value[index]
+                value = override_value[index]
             elif match == CLIENT_MATCH:
-                value[index] = value
+                # The override is on a child plug of the queried plug, so
+                # only that child's value changes
+                value[index] = override_value
 
         elif isinstance(layer_override, RelOverride):
             # Relative override
@@ -299,7 +302,7 @@ def get_attr_overrides(node_attr, layer,
     # Iterate over the overrides in reverse so we get the last
     # overrides first and can "break" whenever an absolute
     # override is reached
-    layer_overrides = list(utils.getOverridesRecursive(rs_layer))
+    layer_overrides = list(iter_layer_overrides(rs_layer))
     for layer_override in reversed(layer_overrides):
 
         if skip_disabled and not layer_override.isEnabled():
@@ -349,6 +352,44 @@ def get_attr_overrides(node_attr, layer,
     return reversed(plug_overrides)
 
 
+def iter_layer_overrides(layer):
+    """Iterate layer overrides in order of priority (lowest first).
+
+    Note: We cannot use `maya.app.renderSetup.model.utils.getOverridesRecursive`
+        here because it traverses via `getChildren()` which, on a RenderLayer
+        (unlike on a Group or Collection), only returns collections. That means
+        any overrides living inside groups would be silently skipped.
+        Instead, we use `getContainers()` on the layer which returns both
+        collections and groups, interleaved in their actual priority order.
+        From there on, `getChildren()` on groups/collections correctly
+        returns nested items.
+
+    Args:
+        layer (RenderLayer): RenderLayer to iterate the overrides for
+
+    Yields:
+        Override: Each override object found in the layer hierarchy.
+    """
+    if hasattr(layer, "getContainers"):
+        children = layer.getContainers()
+    else:
+        children = layer.getChildren()
+
+    # Use a stack in reverse so that popping preserves the priority order
+    stack = list(reversed(children))
+    while stack:
+        obj = stack.pop()
+        if isinstance(obj, Override):
+            yield obj
+            continue
+
+        # Skip disabled groups/collections as their overrides are not active
+        if hasattr(obj, "isEnabled") and not obj.isEnabled():
+            continue
+
+        stack.extend(reversed(obj.getChildren()))
+
+
 def get_shader_in_layer(node, layer):
     """Return the assigned shader in a renderlayer without switching layers.
 
@@ -389,7 +430,7 @@ def get_shader_in_layer(node, layer):
                                        source=False,
                                        destination=True,
                                        type="renderLayer") or []
-    connections = filter(lambda x: x.endswith(".outPlug"), connections)
+    connections = [x for x in connections if x.endswith(".outPlug")]
     if not connections:
         # If no overrides anywhere on the shader, just get the current shader
         return _get_connected_shader(plug)

@@ -3,7 +3,11 @@ from maya import cmds
 from ayon_core.settings import get_project_settings
 from ayon_maya.api import plugin, lib
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.lib import maintained_selection, unique_namespace
+from ayon_maya.api.lib import (
+    maintained_selection,
+    unique_namespace,
+    set_attribute
+)
 from ayon_maya.api.plugin import get_load_color_for_product_base_type
 from ayon_core.lib import EnumDef
 
@@ -94,6 +98,12 @@ class OxAlembicLoader(plugin.Loader):
         ox_nodes = cmds.ls(members, type="BakedHairNode", long=True)
         for node in ox_nodes:
             cmds.setAttr(f"{node}.sourceFilePath1", path, type="string")
+
+        for key, value in [
+            ("representation", context["representation"]["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, container['objectName'])
 
     def switch(self, container, context):
         self.update(container, context)

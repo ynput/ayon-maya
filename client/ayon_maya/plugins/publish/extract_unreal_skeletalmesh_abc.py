@@ -22,9 +22,13 @@ class ExtractUnrealSkeletalMeshAbc(plugin.MayaExtractorPlugin,
         self.log.debug("Extracting pointcache..")
 
         geo = cmds.listRelatives(
-            instance.data.get("geometry"), allDescendents=True, fullPath=True)
+            instance.data.get("geometry"),
+            allDescendents=True,
+            fullPath=True) or []
         joints = cmds.listRelatives(
-            instance.data.get("joints"), allDescendents=True, fullPath=True)
+            instance.data.get("joints"),
+            allDescendents=True,
+            fullPath=True) or []
 
         nodes = geo + joints
 

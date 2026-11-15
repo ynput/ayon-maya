@@ -9,6 +9,8 @@ import json
 import logging
 import contextlib
 from collections import OrderedDict, defaultdict
+from enum import Enum
+from functools import lru_cache
 from math import ceil
 from typing import Optional
 
@@ -130,10 +132,9 @@ def unlocked(node):
         if not cmds.objExists(node):
             # Node might have been renamed or deleted; try and find it by uuid.
             nodes_from_id = cmds.ls(node_uuid, long=True) or []
-            if not nodes_from_id:
-                return
-            node = nodes_from_id[0]
-        cmds.lockNode(node, lock=has_locked)
+            node = nodes_from_id[0] if nodes_from_id else None
+        if node:
+            cmds.lockNode(node, lock=has_locked)
 
 
 @contextlib.contextmanager
@@ -732,7 +733,9 @@ def imprint(node, data):
             set_type = {"keyable": False, "channelBox": True}
             value = 0  # enum default
         else:
-            raise TypeError("Unsupported type: %r" % type(value))
+            raise TypeError(
+                f"Unsupported type for '{node}.{key}': {type(value)}"
+            )
 
         cmds.addAttr(node, longName=key, **add_type)
         cmds.setAttr(node + "." + key, value, **set_type)
@@ -1153,21 +1156,27 @@ def displaySmoothness(nodes,
 
     originals = dict((node, parse(node)) for node in nodes)
 
-    try:
-        # Apply current state
-        cmds.displaySmoothness(nodes,
-                               divisionsU=divisionsU,
-                               divisionsV=divisionsV,
-                               pointsWire=pointsWire,
-                               pointsShaded=pointsShaded,
-                               polygonObject=polygonObject)
-        yield
-    finally:
-        # Revert state
-        _iteritems = getattr(originals, "iteritems", originals.items)
-        for node, state in _iteritems():
-            if state:
-                cmds.displaySmoothness(node, **state)
+    # Temporarily disable the smooth warning dialog for meshes
+    meshes = cmds.ls(nodes, type="mesh") or []
+    disable_smooth_warn = {f"{mesh}.smoothWarn": False for mesh in meshes}
+
+    with attribute_values(disable_smooth_warn):
+        try:
+            # Apply current state
+            cmds.displaySmoothness(
+                nodes,
+                divisionsU=divisionsU,
+                divisionsV=divisionsV,
+                pointsWire=pointsWire,
+                pointsShaded=pointsShaded,
+                polygonObject=polygonObject,
+            )
+            yield
+        finally:
+            # Revert state
+            for node, state in originals.items():
+                if state:
+                    cmds.displaySmoothness(node, **state)
 
 
 @contextlib.contextmanager
@@ -1393,6 +1402,61 @@ def is_visible(node,
     return True
 
 # region ID
+class CbIdWorkflow(str, Enum):
+    """Values of the `ayon+settings://maya/use_cbid_workflow` setting.
+
+    Members compare equal to their string value, e.g.
+    `CbIdWorkflow.ON == "on"`.
+    """
+    # Generate ids on save and validate them on publish
+    ON = "on"
+    # Generate ids on save, but do not validate them on publish
+    GENERATE = "generate"
+    # Do not generate ids and do not validate them
+    OFF = "off"
+
+
+def get_cbid_workflow_from_settings(project_settings: dict) -> CbIdWorkflow:
+    """Return the `cbId` workflow state from the given project settings.
+
+    Unknown values fall back to `CbIdWorkflow.ON` with a warning.
+
+    Args:
+        project_settings (dict): Project settings.
+
+    Returns:
+        CbIdWorkflow: The `cbId` workflow state.
+
+    """
+    value = project_settings["maya"].get("use_cbid_workflow", "on")
+    # Backwards compatibility for the setting when it was a boolean
+    if isinstance(value, bool):
+        return CbIdWorkflow.ON if value else CbIdWorkflow.OFF
+    try:
+        return CbIdWorkflow(value)
+    except ValueError:
+        log.warning(
+            "Invalid value for 'use_cbid_workflow' setting: %r. "
+            "Falling back to 'on'.", value
+        )
+        return CbIdWorkflow.ON
+
+
+@lru_cache(maxsize=1)
+def get_cbid_workflow() -> CbIdWorkflow:
+    """Return the `cbId` workflow state for the current project.
+
+    The result is cached because the project does not change during a
+    Maya session.
+
+    Returns:
+        CbIdWorkflow: The `cbId` workflow state.
+
+    """
+    project_settings = get_project_settings(get_current_project_name())
+    return get_cbid_workflow_from_settings(project_settings)
+
+
 def get_id_required_nodes(referenced_nodes=False,
                           nodes=None,
                           existing_ids=True):
@@ -3332,7 +3396,7 @@ def get_attr_in_layer(attr, layer, as_string=True):
                                        source=False,
                                        destination=True,
                                        type="renderLayer") or []
-    connections = filter(lambda x: x.endswith(".plug"), connections)
+    connections = [x for x in connections if x.endswith(".plug")]
     if not connections:
         return cmds.getAttr(attr)
 
@@ -4396,6 +4460,7 @@ def get_rig_animation_instance_variant(context, namespace, options=None)-> str:
         product_base_type = product_type
     product_name = product_entity["name"]
 
+    options = options or {}
     custom_product_name = options.get("animationProductName")
     if custom_product_name:
         for old_key, new_key in (
@@ -4514,6 +4579,8 @@ def create_camera_instance(
     """
     if options is None:
         options = {}
+    if log is None:
+        log = logging.getLogger(__name__)
 
     referenced_nodes: list[str] = [
         node for node in nodes 
@@ -4697,83 +4764,83 @@ def force_shader_assignments_to_faces(shapes):
         yield
         return
 
-    all_render_sets = set()
+    sel = OpenMaya.MSelectionList()
     for shape in shapes:
-        render_sets = cmds.listSets(object=shape, t=1, extendToShape=False)
-        if render_sets:
-            all_render_sets.update(render_sets)
+        sel.add(shape)
 
-    shapes_lookup = set(shapes)
-
-    # Maya has the tendency to return component assignment using the transform
-    # name instead of the shape name, like `pCube1.f[1]` instead of
-    # `pCube1Shape.f[1]` so we need to take those into consideration as members
-    def get_parent(_shape: str) -> str:
-        return _shape.rsplit("|", 1)[0]
-
-    components_lookup = {f"{shape}." for shape in shapes}
-    components_lookup.update(f"{get_parent(shape)}." for shape in shapes)
-    components_lookup = tuple(components_lookup)  # support str.startswith
-
-    original_assignments = {}
+    # Only the assignments to the shape as a whole need to be converted. Those
+    # are the connections from the shape's `instObjGroups[]` plug for the
+    # instance to a shading engine. Component assignments connect from its
+    # `objectGroups[]` children instead and are left untouched.
+    modifier = OpenMaya.MDGModifier()
     override_assignments = defaultdict(list)
-    for shading_engine in cmds.ls(list(all_render_sets), type="shadingEngine"):
-        members = cmds.sets(shading_engine, query=True)
-        if not members:
-            continue
-
-        members = cmds.ls(members, long=True)
-
-        # Include ALL originals, even those not among our shapes
-        original_assignments[shading_engine] = members
-
-        has_conversions = False
-        for member in members:
-            # Only consider shapes from our inputs
-            if (
-                    member not in shapes_lookup
-                    and not member.startswith(components_lookup)
-            ):
+    fn_node = OpenMaya.MFnDependencyNode()
+    faces_exist = OpenMaya.MSelectionList()
+    for i in range(sel.length()):
+        dag = sel.getDagPath(i)
+        shape = dag.fullPathName()
+        fn_node.setObject(dag.node())
+        plug = fn_node.findPlug("instObjGroups", False).elementByLogicalIndex(
+            dag.instanceNumber())
+        for destination in plug.connectedTo(False, True):
+            shading_engine = destination.node()
+            if not shading_engine.hasFn(OpenMaya.MFn.kShadingEngine):
                 continue
 
-            if "." not in member:
-                # Convert to face assignments
-                member = f"{member}.f[*]"
-                if not cmds.objExists(member):
-                    # It is possible for a mesh to have no faces at all
-                    # for which we cannot convert to face assignments anyway.
-                    # It is a `mesh` node type - it just would error on
-                    # 'No object matches name' when trying to assign to the
-                    # faces. So we skip the conversion
-                    log.debug(
-                        "Skipping face assignment conversion because "
-                        f"no mesh faces were found: {member}")
-                    continue
+            faces = f"{shape}.f[*]"
+            try:
+                faces_exist.add(faces)
+            except RuntimeError:
+                # It is possible for a mesh to have no faces at all
+                # for which we cannot convert to face assignments anyway.
+                # It is a `mesh` node type - it just would error on
+                # 'Object does not exist' when trying to add the faces.
+                # So we skip the conversion
+                log.debug(
+                    "Skipping face assignment conversion because "
+                    f"no mesh faces were found: {shape}")
+                continue
 
-                has_conversions = True
-            override_assignments[shading_engine].append(member)
+            # Remove the shape from the shading engine because that allows
+            # maya to assign its faces instead
+            modifier.disconnect(plug, destination)
+            fn_node.setObject(shading_engine)
+            override_assignments[fn_node.name()].append(faces)
 
-        if not has_conversions:
-            # We can skip this shading engine completely because
-            # we have nothing to override
-            original_assignments.pop(shading_engine, None)
-            override_assignments.pop(shading_engine, None)
+    if not override_assignments:
+        # Do nothing
+        yield
+        return
 
+    for shading_engine, faces in override_assignments.items():
+        modifier.commandToExecute(
+            'sets -edit -forceElement "{}" {};'.format(
+                shading_engine,
+                " ".join(f'"{member}"' for member in faces)
+            )
+        )
+
+    # The face assignments are made with an undoable command through the
+    # modifier so that undoing the modifier reverts the scene to the exact
+    # state before. That is faster than removing the face assignments again,
+    # and does not leave any `groupId` or `groupParts` nodes behind. The
+    # command only tracks its undo if the undo queue is enabled, which by
+    # default it is not in a headless session.
+    undo_state = cmds.undoInfo(query=True, state=True)
     try:
-        # Apply overrides
-        for shading_engine, override_members in override_assignments.items():
-            # We force remove the members because this allows maya to take
-            # out the mesh (also without the components)
-            cmds.sets(clear=shading_engine)
-            cmds.sets(override_members, forceElement=shading_engine)
-
+        if not undo_state:
+            cmds.undoInfo(stateWithoutFlush=True)
+        try:
+            # Apply overrides
+            modifier.doIt()
+        finally:
+            if not undo_state:
+                cmds.undoInfo(stateWithoutFlush=False)
         yield
 
     finally:
         # Revert to original assignments
-        for shading_engine, original_members in original_assignments.items():
-            cmds.sets(clear=shading_engine)
-            cmds.sets(original_members, forceElement=shading_engine)
+        modifier.undoIt()
 
 
 def nodetype_exists(nodetype: str) -> bool:

@@ -21,6 +21,11 @@ class CreateMayaUsd(plugin.MayaCreator):
 
     allow_animation = True
 
+    # Defaults for creator attributes, can be overridden by settings
+    include_user_defined_attributes = False
+    attr = ""
+    attr_prefix = ""
+
     def register_callbacks(self):
         self.create_context.add_value_changed_callback(self.on_values_changed)
 
@@ -118,14 +123,14 @@ class CreateMayaUsd(plugin.MayaCreator):
                         "Whether to include all custom maya attributes found "
                         "on nodes as metadata (userProperties) in USD."
                     ),
-                    default=False),
+                    default=self.include_user_defined_attributes),
             TextDef("attr",
                     label="Custom Attributes",
-                    default="",
+                    default=self.attr,
                     placeholder="attr1, attr2"),
             TextDef("attrPrefix",
                     label="Custom Attributes Prefix",
-                    default="",
+                    default=self.attr_prefix,
                     placeholder="prefix1, prefix2"),
             EnumDef("jobContext",
                     label="Job Context",

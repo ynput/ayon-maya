@@ -68,7 +68,7 @@ def yetigraph_attribute_values(assumed_destination, resources):
 
     finally:
         for resource in resources:
-            if "graphnode" not in resources:
+            if "graphnode" not in resource:
                 continue
 
             try:

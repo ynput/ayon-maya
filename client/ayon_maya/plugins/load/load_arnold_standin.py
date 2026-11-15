@@ -8,6 +8,7 @@ from ayon_maya.api.lib import (
     get_attribute_input,
     get_fps_for_current_context,
     maintained_selection,
+    set_attribute,
     unique_namespace,
 )
 from ayon_maya.api.pipeline import containerise
@@ -229,11 +230,12 @@ class ArnoldStandinLoader(plugin.Loader):
         sequence = is_sequence(dso_path)
         cmds.setAttr(standin + ".useFrameExtension", sequence)
 
-        cmds.setAttr(
-            container["objectName"] + ".representation",
-            repre_entity["id"],
-            type="string"
-        )
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, container['objectName'])
+
 
     def switch(self, container, context):
         self.update(container, context)
