@@ -1167,6 +1167,30 @@ class MayaContextPlugin(ContextPlugin):
     hosts = ["maya"]
 
 
+class CbIdValidatorMixin:
+    """Disable the publish plug-in unless the `cbId` workflow is "on".
+
+    Otherwise applies the plug-in settings like ayon-core does for plug-ins
+    without an `apply_settings` method.
+    """
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        if (
+            lib.get_cbid_workflow_from_settings(project_settings)
+            != lib.CbIdWorkflow.ON
+        ):
+            cls.enabled = False
+            return
+
+        settings = publish.get_plugin_settings(
+            plugin=cls, project_settings=project_settings, log=cls.log
+        )
+        publish.apply_plugin_settings_automatically(
+            cls, settings, logger=cls.log
+        )
+
+
 class MayaExtractorPlugin(publish.Extractor):
     """Base class for extract plugins."""
 

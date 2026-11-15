@@ -1,6 +1,13 @@
 from typing import Any
 
 
+def _convert_use_cbid_workflow_0_6_15(overrides):
+    """`use_cbid_workflow` changed from a boolean to an enum in 0.6.15"""
+    value = overrides.get("use_cbid_workflow")
+    if isinstance(value, bool):
+        overrides["use_cbid_workflow"] = "on" if value else "off"
+
+
 def _convert_product_base_types_0_6_0(overrides):
     publish_override = overrides.get("publish", {})
     if "ValidateAnimationProductTypePublish" in publish_override:
@@ -112,4 +119,5 @@ def convert_settings_overrides(
     _convert_scene_units(overrides)
     _convert_workfile_builder_0_6_0(overrides)
     _convert_product_base_types_0_6_0(overrides)
+    _convert_use_cbid_workflow_0_6_15(overrides)
     return overrides

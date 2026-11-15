@@ -1,6 +1,10 @@
 """Host API required Work Files tool"""
 import os
+import contextlib
 from maya import cmds
+
+# Additional `cmds.file` flags used by `open_file`, see `open_file_options`
+_open_file_options = {}
 
 
 def file_extensions():
@@ -21,8 +25,29 @@ def save_file(filepath):
     cmds.file(save=True, type=file_type)
 
 
+@contextlib.contextmanager
+def open_file_options(**options):
+    """Open files with additional `cmds.file` flags within this context.
+
+    Example:
+        >>> with open_file_options(loadReferenceDepth="none"):
+        ...     open_file(filepath)
+
+    Args:
+        **options: Flags passed to `cmds.file` by `open_file`.
+
+    """
+    global _open_file_options
+    previous_options = _open_file_options
+    _open_file_options = {**previous_options, **options}
+    try:
+        yield
+    finally:
+        _open_file_options = previous_options
+
+
 def open_file(filepath):
-    return cmds.file(filepath, open=True, force=True)
+    return cmds.file(filepath, open=True, force=True, **_open_file_options)
 
 
 def current_file():
@@ -32,35 +57,3 @@ def current_file():
         return None
 
     return current_filepath
-
-
-def work_root(session):
-    work_dir = session["AYON_WORKDIR"]
-    scene_dir = None
-
-    # Query scene file rule from workspace.mel if it exists in WORKDIR
-    # We are parsing the workspace.mel manually as opposed to temporarily
-    # setting the Workspace in Maya in a context manager since Maya had a
-    # tendency to crash on frequently changing the workspace when this
-    # function was called many times as one scrolled through Work Files assets.
-    workspace_mel = os.path.join(work_dir, "workspace.mel")
-    if os.path.exists(workspace_mel):
-        scene_rule = 'workspace -fr "scene" '
-        # We need to use builtins as `open` is overridden by the workio API
-        open_file = __builtins__["open"]
-        with open_file(workspace_mel, "r") as f:
-            for line in f:
-                if line.strip().startswith(scene_rule):
-                    # remainder == "rule";
-                    remainder = line[len(scene_rule):]
-                    # scene_dir == rule
-                    scene_dir = remainder.split('"')[1]
-    else:
-        # We can't query a workspace that does not exist
-        # so we return similar to what we do in other hosts.
-        scene_dir = session.get("AVALON_SCENEDIR")
-
-    if scene_dir:
-        return os.path.join(work_dir, scene_dir)
-    else:
-        return work_dir
