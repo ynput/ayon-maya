@@ -16,7 +16,7 @@ class CreateMultishotLayout(plugin.MayaCreator):
     shot a Layout will be created.
 
     """
-    identifier = "io.openpype.creators.maya.multishotlayout"
+    identifier = "io.ayon.creators.maya.multishotlayout"
     label = "Multi-shot Layout"
     product_base_type = "layout"
     product_type = product_base_type

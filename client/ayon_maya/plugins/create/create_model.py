@@ -8,7 +8,7 @@ from ayon_core.lib import (
 class CreateModel(plugin.MayaCreator):
     """Polygonal static geometry"""
 
-    identifier = "io.openpype.creators.maya.model"
+    identifier = "io.ayon.creators.maya.model"
     label = "Model"
     product_base_type = "model"
     product_type = product_base_type

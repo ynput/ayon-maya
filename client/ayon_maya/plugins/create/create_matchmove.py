@@ -13,7 +13,7 @@ class CreateMatchmove(plugin.MayaCreator):
     It is expected to be extracted into .abc or .ma
     """
 
-    identifier = "io.openpype.creators.maya.matchmove"
+    identifier = "io.ayon.creators.maya.matchmove"
     label = "Matchmove"
     product_base_type = "matchmove"
     product_type = product_base_type
