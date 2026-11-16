@@ -235,6 +235,16 @@ class LoadersModel(BaseSettingsModel):
         default_factory=LoaderEnabledUseAyonEntityURIModel,
         title="Maya Load USD to Maya Proxy Loader"
     )
+    MayaUsdProxyReferenceUsd: LoaderEnabledUseAyonEntityURIModel = (
+        SettingsField(
+            default_factory=LoaderEnabledUseAyonEntityURIModel,
+            title="Maya USD Add Reference Loader"
+        )
+    )
+    MayaUsdProxyAddMayaReferenceLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="Maya USD Add Maya Reference Loader"
+    )
     MultiverseUsdLoader: LoaderEnabledModel = SettingsField(
         default_factory=LoaderEnabledModel,
         title="Multiverse USD Loader"
@@ -351,6 +361,11 @@ DEFAULT_LOADERS_SETTING = {
         "enabled": True,
         "use_ayon_entity_uri": False
     },
+    "MayaUsdProxyReferenceUsd": {
+        "enabled": True,
+        "use_ayon_entity_uri": False
+    },
+    "MayaUsdProxyAddMayaReferenceLoader": {"enabled": True},
     "MultiverseUsdLoader": {"enabled": False},
     "MultiverseUsdOverLoader": {"enabled": False},
     "RedshiftProxyLoader": {"enabled": True},
