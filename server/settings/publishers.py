@@ -808,6 +808,48 @@ class ExtractMayaUsdGeneralModel(BasicExtractorModel):
         return value
 
 
+class ExtractMayaUsdAnimModel(BasicExtractorModel):
+    """Animation specific Maya USD export options.
+
+    Disable the geometry data that does not change over time, like UVs,
+    color sets and materials, to reduce the size of the animation output.
+
+    Only the options listed here are specific to the animation export.
+    All other export options (e.g. Strip Namespaces, World-Space or Merge
+    Transform and Shape) use the values from the **Extract Maya USD**
+    settings.
+    """
+    overrides: list[str] = SettingsField(
+        enum_resolver=extract_maya_usd_overrides_enum,
+        title="Exposed Overrides",
+        description=(
+            "Expose the attribute in this list to the user when publishing."
+            " Options not defined in these settings default to the values"
+            " from the Extract Maya USD settings."
+        ),
+    )
+    exportUVs: bool = SettingsField(
+        title="Export UVs",
+        default=True,
+        description="Enable or disable export of UV sets.",
+    )
+    exportColorSets: bool = SettingsField(
+        title="Export Color Sets",
+        default=True,
+        description="Enable or disable exporting of color sets.",
+    )
+    exportMaterials: bool = SettingsField(
+        title="Export Materials",
+        default=True,
+        description="Enable or disable export of materials.",
+    )
+    exportAssignedMaterials: bool = SettingsField(
+        title="Export Assigned Materials",
+        default=False,
+        description="Only export materials that are assigned to meshes.",
+    )
+
+
 class ExtractMayaSceneRawModel(BasicExtractorModel):
     """Add loaded instances to those published families:"""
     add_for_families: list[str] = SettingsField(
@@ -1355,9 +1397,13 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicExtractorModel,
         title="Extract Maya USD with Pointcache"
     )
-    ExtractMayaUsdAnim: BasicExtractorModel = SettingsField(
-        default_factory=BasicExtractorModel,
-        title="Extract Maya USD with Animation"
+    ExtractMayaUsdAnim: ExtractMayaUsdAnimModel = SettingsField(
+        default_factory=ExtractMayaUsdAnimModel,
+        title="Extract Maya USD with Animation",
+        description=(
+            "Export options not defined here are taken from the"
+            " Extract Maya USD settings."
+        ),
     )
     ExtractMultiverseLook: BasicExtractorModel = SettingsField(
         default_factory=BasicExtractorModel,
@@ -2162,6 +2208,18 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "active": False,
+        "overrides": [
+            "stripNamespaces",
+            "worldspace",
+            "exportComponentTags",
+            "exportVisibility",
+            "mergeTransformAndShape",
+            "defaultMeshScheme"
+        ],
+        "exportUVs": True,
+        "exportColorSets": True,
+        "exportMaterials": True,
+        "exportAssignedMaterials": False,
     },
     "ExtractMultiverseLook": {
         "enabled": False,
