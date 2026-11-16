@@ -47,7 +47,11 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
             cmds.loadPlugin("mayaUsdPlugin", quiet=True)
 
             shape = mayaUsd_createStageWithNewLayer.createStageWithNewLayer()
-            stage = mayaUsd.ufe.getStage('|world' + shape)
+            # Get the stage from the full DAG path of the shape. Prefixing
+            # it with `|world` fails to find the stage on new proxy shapes.
+            stage = mayaUsd.ufe.getStage(shape)
+            if not stage:
+                raise RuntimeError(f"Unable to get USD stage from: {shape}")
             prim_path = "/root"
             UsdGeom.Xform.Define(stage, prim_path)
             root_layer = stage.GetRootLayer()
