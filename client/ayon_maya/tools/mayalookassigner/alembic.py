@@ -4,8 +4,6 @@ import os
 from collections import defaultdict
 import logging
 
-import six
-
 import alembic.Abc
 
 
@@ -71,16 +69,21 @@ def get_alembic_paths_by_property(filename, attr, verbose=False):
         if not _property.isConstant():
             log.warning("Id not constant on: {0}".format(name))
 
-        # Get first value sample
-        value = _property.getValue()[0]
+        # Maya alembic export seems to export `cbId` string as array property
+        # whereas Houdini primitive `cbId` attribute comes through as a
+        # scalar property (which still holds the string?)
+        if isinstance(_property, alembic.Abc.IArrayProperty):
+            # Get first value sample
+            value = _property.getValue()[0]
+        else:
+            value = _property.getValue()
 
         obj_ids[name] = value
 
     return obj_ids
 
 
-def get_alembic_ids_cache(path):
-    # type: (str) -> dict
+def get_alembic_ids_cache(path: str) -> dict:
     """Build a id to node mapping in Alembic file.
 
     Nodes without IDs are ignored.
@@ -91,7 +94,7 @@ def get_alembic_ids_cache(path):
     """
     node_ids = get_alembic_paths_by_property(path, attr="cbId")
     id_nodes = defaultdict(list)
-    for node, _id in six.iteritems(node_ids):
+    for node, _id in node_ids.items():
         id_nodes[_id].append(node)
 
-    return dict(six.iteritems(id_nodes))
+    return dict(id_nodes.items())

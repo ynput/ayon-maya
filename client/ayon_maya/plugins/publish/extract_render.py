@@ -1,0 +1,369 @@
+from __future__ import annotations
+import contextlib
+import os
+from typing import Optional
+
+from ayon_core.pipeline.publish import PublishError
+from ayon_maya.api import lib, plugin
+from maya import cmds, mel
+
+
+def normalize_render_filepath(filepath: str) -> str:
+    """Normalize Maya's deep EXR extension to the written ``.exr`` files.
+
+    Maya reports the deep EXR output format as ``deepexr`` through
+    ``defaultRenderGlobals.imfPluginKey`` while Arnold writes ``.exr``
+    files. Some render product paths can therefore contain a ``.deepexr``
+    extension even though the rendered file ends with ``.exr``.
+
+    Args:
+        filepath (str): Expected render file path.
+
+    Returns:
+        str: File path with a normalized extension.
+    """
+    if filepath.lower().endswith(".deepexr"):
+        return filepath[:-len(".deepexr")] + ".exr"
+    return filepath
+
+
+# Render Sequence stores its settings in Maya optionVars. These are global,
+# persistent values, so force the values required for a deterministic local
+# render and restore the user's values afterwards.
+RENDER_SEQUENCE_OPTION_VARS = {
+    # Render the current render layer only. The extractor switches to the
+    # layer of the instance before invoking Render Sequence.
+    "renderSequenceAllLayers": 0,
+    # Render all renderable cameras, matching Batch Render behavior.
+    "renderSequenceAllCameras": 1,
+    # Do not keep rendered images in the Render View.
+    "renderSequenceAddToRenderView": 0,
+    "renderSequenceAddAllLayers": 0,
+    "renderSequenceAddAllCameras": 0,
+    # Never use an interactive Render View region.
+    "renderSequenceRegion": 0,
+    # Respect Render Setup local overrides.
+    "renderSequenceIgnoreLocalOverrides": 0,
+    # Render at the Render Settings resolution instead of a Render View
+    # "Test Resolution" (for example 50%).
+    "renderViewTestResolution": 1,
+}
+
+
+@contextlib.contextmanager
+def arnold_sequence_aov_output_modes(renderer: str):
+    """Make batch-only AOV drivers visible to interactive Render Sequence."""
+    if renderer.lower() != "arnold":
+        yield
+        return
+
+    original = {}
+    try:
+        for driver in cmds.ls(type="aiAOVDriver") or []:
+            output_mode = cmds.getAttr(f"{driver}.outputMode")
+            if output_mode == 1:  # Batch only
+                original[driver] = output_mode
+                cmds.setAttr(f"{driver}.outputMode", 2)  # GUI + Batch
+        yield
+    finally:
+        for driver, output_mode in original.items():
+            cmds.setAttr(f"{driver}.outputMode", output_mode)
+
+
+@contextlib.contextmanager
+def arnold_cpu_for_deep_exr(renderer: str):
+    """Temporarily use CPU when Arnold deep EXR is requested on GPU."""
+    if renderer.lower() != "arnold":
+        yield False
+        return
+
+    image_format = cmds.getAttr("defaultRenderGlobals.imfPluginKey")
+    render_device = cmds.getAttr(
+        "defaultArnoldRenderOptions.renderDevice"
+    )
+    active_layer = cmds.editRenderLayerGlobals(
+    query=True, currentRenderLayer=True
+)
+    if image_format != "deepexr" or render_device != 1:
+        yield False
+        return
+
+    try:
+        cmds.setAttr("defaultArnoldRenderOptions.renderDevice", 0)
+        yield True
+    finally:
+        # Revert to the original render layer if it has changed.
+        current_layer = cmds.editRenderLayerGlobals(
+            query=True, currentRenderLayer=True
+        )
+        if current_layer != active_layer:
+            cmds.editRenderLayerGlobals(
+                currentRenderLayer=active_layer
+            )
+        cmds.setAttr(
+            "defaultArnoldRenderOptions.renderDevice",
+            render_device,
+        )
+
+
+@contextlib.contextmanager
+def only_renderable(active_layer: str):
+    """Set `active_layer` as only active renderlayer during context"""
+    layers = cmds.ls(type="renderLayer")
+    original: dict[str, bool] = {}
+    try:
+        for layer in layers:
+            current_state: bool = cmds.getAttr(f"{layer}.renderable")
+            target_state: bool = layer == active_layer
+            original[layer] = current_state
+            if current_state != target_state:
+                cmds.setAttr(f"{layer}.renderable", target_state)
+        cmds.refresh(f=True)
+        yield
+    finally:
+        # Revert states
+        for layer, target_state in original.items():
+            current_state: bool = cmds.getAttr(f"{layer}.renderable")
+            if current_state != target_state:
+                cmds.setAttr(f"{layer}.renderable", target_state)
+
+
+@contextlib.contextmanager
+def revert_to_layer(layer: Optional[str] = None):
+    """Revert back to original layer at end of context"""
+    original_layer = cmds.editRenderLayerGlobals(query=True,
+                                                 currentRenderLayer=True)
+    try:
+        if layer is not None:
+            cmds.editRenderLayerGlobals(currentRenderLayer=layer)
+        yield
+    finally:
+        cmds.editRenderLayerGlobals(currentRenderLayer=original_layer)
+
+
+@contextlib.contextmanager
+def render_sequence_optionvars(output_directory: str):
+    """Temporarily force the Render Sequence optionVars.
+
+    Args:
+        output_directory (str): Directory to render into. This overrides the
+            user's optional Render Sequence "Alternate Output File Location".
+    """
+    alternate_key = "RenderSequenceAlternateOutputFileLocation"
+    # `renderSequence` takes over this optionVar during the render and always
+    # removes it afterwards, so an artist value must be restored by us.
+    override_key = "OverrideFileOutputDirectory"
+
+    previous = {}
+    previous_alternate = (
+        cmds.optionVar(query=alternate_key)
+        if cmds.optionVar(exists=alternate_key) else None
+    )
+    previous_override_directory = (
+        cmds.optionVar(query=override_key)
+        if cmds.optionVar(exists=override_key) else None
+    )
+    try:
+        # Keep mutations inside the try block so failed setup is restored.
+        for key, value in RENDER_SEQUENCE_OPTION_VARS.items():
+            existed = cmds.optionVar(exists=key)
+            previous[key] = cmds.optionVar(query=key) if existed else None
+            cmds.optionVar(intValue=(key, value))
+
+        cmds.optionVar(stringValue=(alternate_key, output_directory))
+        yield
+
+    finally:
+        if previous_override_directory is None:
+            if cmds.optionVar(exists=override_key):
+                cmds.optionVar(remove=override_key)
+        else:
+            cmds.optionVar(stringValue=(
+                override_key, previous_override_directory))
+
+        if previous_alternate is None:
+            cmds.optionVar(remove=alternate_key)
+        else:
+            cmds.optionVar(
+                stringValue=(alternate_key, previous_alternate)
+            )
+
+        for key, value in previous.items():
+            if value is None:
+                cmds.optionVar(remove=key)
+            elif isinstance(value, float):
+                cmds.optionVar(floatValue=(key, value))
+            else:
+                cmds.optionVar(intValue=(key, value))
+
+
+def render_sequence_supported() -> bool:
+    """Return whether Render Sequence can be used for the current renderer.
+
+    This must be called with the target render layer current, because the
+    renderer can be overridden per render layer.
+
+    Returns:
+        bool: True if Render Sequence is supported, False otherwise.
+    """
+    if cmds.about(batch=True):
+        return False
+    if not mel.eval("exists renderSequence"):
+        return False
+    renderer = cmds.getAttr("defaultRenderGlobals.currentRenderer")
+    mtoa_arv_sequence = os.environ.get("MTOA_ARV_SEQUENCE")
+    if renderer.lower() == "arnold" and mtoa_arv_sequence not in (None, "0"):
+        return False
+
+    try:
+        sequence_proc = cmds.renderer(
+            renderer, query=True, renderSequenceProcedure=True
+        )
+    except (RuntimeError, ValueError):
+        # The renderer does not expose a Render Sequence procedure (Maya
+        # raises for renderers without it, e.g. mayaSoftware). Fall back to
+        # Batch Render instead of risking a silent `renderSequence` no-op.
+        return False
+
+    return bool(sequence_proc)
+
+
+class ExtractLocalRender(plugin.MayaExtractorPlugin):
+    """Extract local render
+
+    Note that we do not target the 'render.local' instances here. That's
+    because a single layer may have multiple AOV file outputs but we never
+    want to trigger multiple renders for the same layer. Instead, we only
+    target the 'renderlayer' instances here which represent a single layer
+    to be rendered. But we still need to respect the local render flag in that
+    case.
+    """
+    label = "Extract Local Render"
+    families = ["renderlayer"]
+
+    # When enabled try to hide the render view during rendering to avoid
+    # it popping up in front of the user.
+    offscreen: bool = True
+
+    def process(self, instance):
+        creator_attributes = instance.data.get("creator_attributes", {})
+
+        # Skip if explicitly marked for farm
+        if instance.data.get("farm"):
+            self.log.debug("Instance marked for farm, skipping local render.")
+            return
+
+        if creator_attributes.get("render_target") != "local":
+            self.log.debug(
+                "Instance render target is not local, skipping local render."
+            )
+            return
+
+        local_render_method: str = creator_attributes.get(
+            "local_render_method", "batch_render"
+        )
+
+        # Get the render layer from the instance data using the legacy layer
+        # node name, switch to it and render a sequence locally.
+        layer: str = instance.data["setMembers"]
+
+        image_directory: str = os.path.join(
+            cmds.workspace(query=True, rootDirectory=True),
+            cmds.workspace(fileRuleEntry="images"),
+        )
+
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(lib.maintained_time())
+            stack.enter_context(only_renderable(layer))
+            stack.enter_context(revert_to_layer(layer))
+
+            # Read the renderer after switching layer: it can be overridden
+            # per render layer.
+            renderer = cmds.getAttr(
+                "defaultRenderGlobals.currentRenderer"
+            )
+            render_method = "Batch Render"
+
+            # Switch to CPU only for Arnold deep EXR on GPU. The stack will
+            # restore the original render device when it exits, including on
+            # error.
+            switched_to_cpu = stack.enter_context(
+                arnold_cpu_for_deep_exr(renderer)
+            )
+            if switched_to_cpu:
+                self.log.warning(
+                    "Arnold GPU cannot render deep EXR. Switching this local "
+                    "render to CPU; the scene render device will be restored."
+                )
+
+            if (
+                local_render_method == "render_sequence"
+                and render_sequence_supported()
+            ):
+                render_method = "Render Sequence"
+                self.log.debug(
+                    f"Rendering '{layer}' using Render Sequence"
+                )
+                stack.enter_context(
+                    arnold_sequence_aov_output_modes(renderer)
+                )
+                stack.enter_context(
+                    render_sequence_optionvars(image_directory)
+                )
+                mel.eval('renderSequence')
+            else:
+                if local_render_method == "render_sequence":
+                    self.log.debug(
+                        "Render Sequence is not available; falling back to "
+                        "Batch Render."
+                    )
+                self.log.debug(
+                    f"Rendering '{layer}' using Batch Render"
+                )
+                # Render scene
+                mel.eval('mayaBatchRenderProcedure(0, "", "", "", "")')
+
+        # Because we're in an interactive session with user interface Maya some
+        # renderers will render into a `tmp` subfolder under the 'images' file
+        # rule directory. We need to move the files up a folder.
+        expected_files: list[dict[str, list[str]]] = (
+            instance.data["expectedFiles"]
+        )
+        for filepaths in expected_files[0].values():
+            for filepath in filepaths:
+                filepath = normalize_render_filepath(filepath)
+                relative_path = os.path.relpath(filepath, image_directory)
+                tmp_filepath = os.path.join(
+                    image_directory,
+                    "tmp",
+                    relative_path,
+                )
+
+                # Find the newest of two files, allowing it to be in tmp/
+                existing = [
+                    path for path in (filepath, tmp_filepath)
+                    if os.path.exists(path)
+                ]
+                if not existing:
+                    raise PublishError(
+                        "Render did not produce expected file at: "
+                        f"{filepath}\n"
+                        f"Local render method: {render_method}\n"
+                        f"Renderer: {renderer}\n"
+                        f"Render layer: {layer}\n"
+                        "Check the Maya Script Editor and Render View for "
+                        "render errors."
+                    )
+
+                existing.sort(key=os.path.getmtime, reverse=True)
+                latest = existing[0]
+                if latest == filepath:
+                    # Do nothing, file is already in place
+                    continue
+
+                dest_dir = os.path.dirname(filepath)
+                os.makedirs(dest_dir, exist_ok=True)
+                self.log.debug(
+                    f"Moving rendered file: {tmp_filepath} -> {filepath}"
+                )
+                os.replace(tmp_filepath, filepath)

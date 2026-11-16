@@ -7,9 +7,11 @@ from ayon_maya.api.workfile_template_builder import MayaTemplateBuilder
 class LoadAsTemplate(plugin.Loader):
     """Load workfile as a template """
 
-    product_types = {"workfile", "mayaScene"}
+    product_base_types = {"workfile", "mayaScene"}
+    product_types = product_base_types
     label = "Load as template"
-    representations = ["ma", "mb"]
+    representations = {"*"}
+    extensions = ["ma", "mb"]
     icon = "wrench"
     color = "#775555"
     order = 10

@@ -2,13 +2,15 @@
 import os
 
 import pyblish.api
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import fbx
 from ayon_maya.api.lib import get_namespace, namespaced, strip_namespace
 from ayon_maya.api import plugin
 from maya import cmds  # noqa
 
 
-class ExtractFBXAnimation(plugin.MayaExtractorPlugin):
+class ExtractFBXAnimation(plugin.MayaExtractorPlugin,
+                          OptionalPyblishPluginMixin):
     """Extract Rig in FBX format from Maya.
 
     This extracts the rig in fbx with the constraints
@@ -20,8 +22,11 @@ class ExtractFBXAnimation(plugin.MayaExtractorPlugin):
     order = pyblish.api.ExtractorOrder
     label = "Extract Animation (FBX)"
     families = ["animation.fbx"]
+    targets = ["local", "remote"]
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         # Define output path
         staging_dir = self.staging_dir(instance)
         filename = "{0}.fbx".format(instance.name)
@@ -37,7 +42,10 @@ class ExtractFBXAnimation(plugin.MayaExtractorPlugin):
         instance.data["referencedAssetsContent"] = True
         fbx_exporter.set_options_from_instance(instance)
 
-        namespace = get_namespace(out_members[0])
+        # Export relative only to the first level of the namespace,
+        # keeping any nested namespaces intact. Fix #147
+        # So `root:sublevel:mesh` becomes `sublevel:mesh`
+        namespace = get_namespace(out_members[0]).split(":", 1)[0]
         relative_out_members = [
             strip_namespace(node, namespace) for node in out_members
         ]
@@ -45,7 +53,7 @@ class ExtractFBXAnimation(plugin.MayaExtractorPlugin):
             ":" + namespace,
             new=False,
             relative_names=True
-        ) as namespace:
+        ) as _namespace:
             fbx_exporter.export(relative_out_members, path)
 
         representations = instance.data.setdefault("representations", [])

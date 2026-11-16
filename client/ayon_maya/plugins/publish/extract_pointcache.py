@@ -68,6 +68,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
     writeColorSets = False
     writeCreases = False
     writeFaceSets = False
+    writeFaceSetsForceFaceAssignment = False
     writeNormals = True
     writeUVSets = False
     writeVisibility = False
@@ -193,7 +194,7 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
                 "melPostJobCallback", self.melPostJobCallback
             ),
             "pythonPerFrameCallback": attribute_values.get(
-                "pythonPerFrameCallback", self.pythonPostJobCallback
+                "pythonPerFrameCallback", self.pythonPerFrameCallback
             ),
             "pythonPostJobCallback": attribute_values.get(
                 "pythonPostJobCallback", self.pythonPostJobCallback
@@ -238,14 +239,16 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
         else:
             kwargs["preRollStartFrame"] = None
 
-        shapes = self.get_members_shapes(instance)
-
         suspend = not instance.data.get("refresh", False)
         with contextlib.ExitStack() as stack:
             stack.enter_context(suspended_refresh(suspend=suspend))
             stack.enter_context(maintained_selection())
-            if instance.data.get("writeFaceSets", True):
-                stack.enter_context(force_shader_assignments_to_faces(shapes))
+            if (
+                kwargs.get("writeFaceSets")
+                and self.writeFaceSetsForceFaceAssignment
+            ):
+                meshes = cmds.ls(nodes, type="mesh", long=True)
+                stack.enter_context(force_shader_assignments_to_faces(meshes))
             cmds.select(nodes, noExpand=True)
             self.log.debug(
                 "Running `extract_alembic` with the keyword arguments: "
@@ -297,10 +300,6 @@ class ExtractAlembic(plugin.MayaExtractorPlugin,
 
     def get_members_and_roots(self, instance):
         return instance[:], instance.data.get("setMembers")
-
-    def get_members_shapes(self, instance):
-        nodes = list(instance[:])
-        return cmds.ls(nodes, type=("mesh", "nurbsCurve"), long=True)
 
     @classmethod
     def get_attribute_defs(cls):

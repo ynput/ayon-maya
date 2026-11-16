@@ -8,16 +8,14 @@ instance.
 
 import contextlib
 import json
-import sys
 
 import maya.app.renderSetup.model.renderSetup as renderSetup
-import six
+from maya import cmds
+
 from ayon_core.lib import BoolDef, EnumDef
-from ayon_core.pipeline import get_representation_path
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 from ayon_maya.api.pipeline import containerise
-from maya import cmds
 
 
 @contextlib.contextmanager
@@ -48,9 +46,11 @@ def mark_all_imported(enabled):
 class RenderSetupLoader(plugin.Loader):
     """Load json preset for RenderSetup overwriting current one."""
 
-    product_types = {"rendersetup"}
-    representations = {"json"}
-    defaults = ['Main']
+    product_base_types = {"rendersetup"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"json"}
+    defaults = ["Main"]
 
     label = "Load RenderSetup template"
     icon = "tablet"
@@ -147,20 +147,22 @@ class RenderSetupLoader(plugin.Loader):
             "setting specified by user not included in loaded version "
             "will be lost.")
         repre_entity = context["representation"]
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         with open(path, "r") as file:
             try:
                 renderSetup.instance().decode(
                     json.load(file), renderSetup.DECODE_AND_OVERWRITE, None)
             except Exception:
                 self.log.error("There were errors during loading")
-                six.reraise(*sys.exc_info())
+                raise
 
         # Update metadata
         node = container["objectName"]
-        cmds.setAttr("{}.representation".format(node),
-                     repre_entity["id"],
-                     type="string")
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            lib.set_attribute(key, value, node)
         self.log.info("... updated")
 
     def switch(self, container, context):

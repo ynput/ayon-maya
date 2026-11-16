@@ -35,7 +35,7 @@ class ScriptsmenuModel(BaseSettingsModel):
         description="Choose the way to define the custom scripts menu "
                     "via settings",
         enum_resolver=lambda: _definition_mode_type,
-        conditionalEnum=True,
+        conditional_enum=True,
         default="definition"
     )
     definition: list[ScriptsmenuSubmodel] = SettingsField(

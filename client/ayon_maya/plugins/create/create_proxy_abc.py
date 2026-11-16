@@ -14,6 +14,7 @@ class CreateProxyAlembic(plugin.MayaCreator):
     identifier = "io.openpype.creators.maya.proxyabc"
     label = "Proxy Alembic"
     product_type = "proxyAbc"
+    product_base_type = "proxyAbc"
     icon = "gears"
     write_color_sets = False
     write_face_sets = False
@@ -23,6 +24,9 @@ class CreateProxyAlembic(plugin.MayaCreator):
         defs = lib.collect_animation_defs()
 
         defs.extend([
+            BoolDef("farm",
+                    label="Submit to Farm",
+                    default=False),
             BoolDef("writeColorSets",
                     label="Write vertex colors",
                     tooltip="Write vertex colors with the geometry",
@@ -41,10 +45,10 @@ class CreateProxyAlembic(plugin.MayaCreator):
             TextDef("attr",
                     label="Custom Attributes",
                     default="",
-                    placeholder="attr1, attr2"),
+                    placeholder="attr1; attr2"),
             TextDef("attrPrefix",
                     label="Custom Attributes Prefix",
-                    placeholder="prefix1, prefix2")
+                    placeholder="prefix1; prefix2")
         ])
 
         return defs

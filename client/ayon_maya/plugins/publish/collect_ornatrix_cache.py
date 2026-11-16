@@ -26,7 +26,7 @@ class CollectOxCache(plugin.MayaInstancePlugin):
             if not ox_cache_nodes:
                 continue
             # transfer cache file
-            if instance.data["productType"] == "oxcache":
+            if instance.data["productBaseType"] == "oxcache":
                 # strip the namespace
                 namespace = get_namespace(ox_shape)
                 ox_shape = strip_namespace(ox_shape, namespace)

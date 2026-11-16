@@ -2,11 +2,11 @@
 import os
 
 import maya.cmds as cmds
-import qargparse
+from ayon_core.lib import TextDef
+from ayon_core.pipeline import get_current_project_name
 from ayon_api import get_representation_by_id
-from ayon_core.pipeline import get_representation_path
 from ayon_maya.api import plugin
-from ayon_maya.api.lib import maintained_selection
+from ayon_maya.api.lib import maintained_selection, set_attribute
 from ayon_maya.api.pipeline import containerise
 from maya import mel
 
@@ -14,8 +14,10 @@ from maya import mel
 class MultiverseUsdOverLoader(plugin.Loader):
     """Reference file"""
 
-    product_types = {"mvUsdOverride"}
-    representations = {"usda", "usd", "udsz"}
+    product_base_types = {"mvUsdOverride"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"usda", "usd", "udsz"}
 
     label = "Load Usd Override into Compound"
     order = -10
@@ -23,10 +25,10 @@ class MultiverseUsdOverLoader(plugin.Loader):
     color = "orange"
 
     options = [
-        qargparse.String(
+        TextDef(
             "Which Compound",
             label="Compound",
-            help="Select which compound to add this as a layer to."
+            tooltip="Select which compound to add this as a layer to."
         )
     ]
 
@@ -83,14 +85,17 @@ class MultiverseUsdOverLoader(plugin.Loader):
         mvShape = container['mvUsdCompoundShape']
         assert mvShape, "Missing mv source"
 
-        project_name = context["project"]["name"]
+        previous_project_name = container.get(
+            "project_name", get_current_project_name()
+        )
         repre_entity = context["representation"]
         prev_representation_id = cmds.getAttr("{}.representation".format(node))
-        prev_representation = get_representation_by_id(project_name,
-                                                       prev_representation_id)
+        prev_representation = get_representation_by_id(
+            previous_project_name, prev_representation_id
+        )
         prev_path = os.path.normpath(prev_representation["attrib"]["path"])
 
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
 
         for shape in shapes:
             asset_paths = multiverse.GetUsdCompoundAssetPaths(shape)
@@ -102,9 +107,11 @@ class MultiverseUsdOverLoader(plugin.Loader):
             asset_paths[prev_path_idx] = path
             multiverse.SetUsdCompoundAssetPaths(shape, asset_paths)
 
-        cmds.setAttr("{}.representation".format(node),
-                     repre_entity["id"],
-                     type="string")
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, node)
         mel.eval('refreshEditorTemplates;')
 
     def switch(self, container, context):

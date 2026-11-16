@@ -12,7 +12,7 @@ from maya import cmds
 
 class ValidateOrnatrixCacheContent(plugin.MayaInstancePlugin,
                                    OptionalPyblishPluginMixin):
-    """Adheres to the content of 'oxcache' product type
+    """Adheres to the content of 'oxcache' product base type
 
     See `get_description` for more details.
 
@@ -33,7 +33,7 @@ class ValidateOrnatrixCacheContent(plugin.MayaInstancePlugin,
         invalid = []
         if len(ox_hair_shapes) == 0:
             cls.log.warning("No Ornatrix Hair shapes found to cache from.")
-            invalid.append(nodes)
+            invalid.extend(nodes)
 
         return invalid
 
@@ -56,7 +56,7 @@ class ValidateOrnatrixCacheContent(plugin.MayaInstancePlugin,
             ### Ornatrix cache content is invalid
 
             Your oxrig or oxcache instance does not adhere to the rules of an
-            oxcache product type:
+            oxcache product base type:
 
             - Must have a Ornatrix `HairShape` nodes to cache.
 

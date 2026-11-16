@@ -1,8 +1,8 @@
-from ayon_core.pipeline import get_representation_path
 from ayon_maya.api.lib import (
     get_container_members,
     namespaced,
     pairwise,
+    set_attribute,
     unique_namespace,
 )
 from ayon_maya.api.pipeline import containerise
@@ -83,9 +83,11 @@ class CameraWindow(QtWidgets.QDialog):
 class ImagePlaneLoader(plugin.Loader):
     """Specific loader of plate for image planes on selected camera."""
 
-    product_types = {"image", "plate", "render"}
+    product_base_types = {"image", "plate", "render"}
+    product_types = product_base_types
     label = "Load imagePlane"
-    representations = {"mov", "exr", "preview", "png", "jpg"}
+    representations = {"*"}
+    extensions = {"mov", "mp4", "exr", "png", "jpg", "jpeg"}
     icon = "image"
     color = "orange"
 
@@ -216,13 +218,15 @@ class ImagePlaneLoader(plugin.Loader):
         assert image_planes, "Image plane not found."
         image_plane_shape = image_planes[0]
 
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
         cmds.setAttr("{}.imageName".format(image_plane_shape),
                      path,
                      type="string")
-        cmds.setAttr("{}.representation".format(container["objectName"]),
-                     repre_entity["id"],
-                     type="string")
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, container['objectName'])
 
         colorspace = self.get_colorspace(repre_entity)
         if colorspace:
@@ -237,12 +241,12 @@ class ImagePlaneLoader(plugin.Loader):
         start_frame = folder_entity["attrib"]["frameStart"]
         end_frame = folder_entity["attrib"]["frameEnd"]
 
-        for attr, value in {
-            "frameOffset": 0,
-            "frameIn": start_frame,
-            "frameOut": end_frame,
-            "frameCache": end_frame
-        }:
+        for attr, value in (
+            ("frameOffset", 0),
+            ("frameIn", start_frame),
+            ("frameOut", end_frame),
+            ("frameCache", end_frame),
+        ):
             plug = "{}.{}".format(image_plane_shape, attr)
             cmds.setAttr(plug, value)
 

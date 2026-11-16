@@ -11,9 +11,6 @@ class CollectPointcache(plugin.MayaInstancePlugin):
     label = "Collect Pointcache"
 
     def process(self, instance):
-        if instance.data.get("farm"):
-            instance.data["families"].append("publish.farm")
-
         proxy_set = None
         for node in cmds.ls(instance.data["setMembers"],
                             exactType="objectSet"):
@@ -34,7 +31,8 @@ class CollectPointcache(plugin.MayaInstancePlugin):
                         cmds.ls(member, long=True)
                     )
                     instance.data["proxy"].extend(
-                        cmds.listRelatives(member, shapes=True, fullPath=True)
+                        cmds.listRelatives(
+                            member, shapes=True, fullPath=True) or []
                     )
                 self.log.debug(
                     "Found proxy members: {}".format(instance.data["proxy"])

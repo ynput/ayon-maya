@@ -172,6 +172,7 @@ class ViewportOptionsSetting(BaseSettingsModel):
     fluids: bool = SettingsField(False, title="Fluids")
     follicles: bool = SettingsField(False, title="Follicles")
     greasePencils: bool = SettingsField(False, title="Grease Pencils")
+    bluePencil: bool = SettingsField(False, title="Blue Pencil")
     grid: bool = SettingsField(False, title="Grid")
     hairSystems: bool = SettingsField(True, title="Hair Systems")
     handles: bool = SettingsField(False, title="Handles")
@@ -220,7 +221,7 @@ class CameraOptionsSetting(BaseSettingsModel):
     displaySafeTitle: bool = SettingsField(False, title="Display Safe Title")
     displayFilmPivot: bool = SettingsField(False, title="Display Film Pivot")
     displayFilmOrigin: bool = SettingsField(False, title="Display Film Origin")
-    overscan: int = SettingsField(1.0, title="Overscan")
+    overscan: float = SettingsField(1.0, title="Overscan")
 
 
 class CapturePresetSetting(BaseSettingsModel):
@@ -252,7 +253,7 @@ class CapturePresetSetting(BaseSettingsModel):
         title="Camera Options")
 
 
-class ProfilesModel(BaseSettingsModel):
+class PlayblastProfilesModel(BaseSettingsModel):
     _layout = "expanded"
     task_types: list[str] = SettingsField(
         default_factory=list,
@@ -272,17 +273,23 @@ class ProfilesModel(BaseSettingsModel):
 
 
 class ExtractPlayblastSetting(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
     capture_preset: CapturePresetSetting = SettingsField(
         default_factory=CapturePresetSetting,
         title="DEPRECATED! Please use \"Profiles\" below. Capture Preset"
     )
-    profiles: list[ProfilesModel] = SettingsField(
+    profiles: list[PlayblastProfilesModel] = SettingsField(
         default_factory=list,
         title="Profiles"
     )
 
 
 DEFAULT_PLAYBLAST_SETTING = {
+    "enabled": True,
+    "optional": False,
+    "active": True,
     "capture_preset": {
         "Codec": {
             "compression": "png",
@@ -353,6 +360,7 @@ DEFAULT_PLAYBLAST_SETTING = {
             "fluids": False,
             "follicles": False,
             "greasePencils": False,
+            "bluePencil": False,
             "grid": False,
             "hairSystems": True,
             "handles": False,

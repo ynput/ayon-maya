@@ -1,3 +1,6 @@
+import inspect
+from collections import defaultdict
+
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
     PublishValidationError,
@@ -25,7 +28,7 @@ class ValidateLookNoDefaultShaders(plugin.MayaInstancePlugin):
 
     """
 
-    order = ValidateContentsOrder + 0.01
+    order = ValidateContentsOrder - 0.01
     families = ['look']
     label = 'Look No Default Shaders'
     actions = [ayon_maya.api.action.SelectInvalidAction]
@@ -35,29 +38,46 @@ class ValidateLookNoDefaultShaders(plugin.MayaInstancePlugin):
 
     def process(self, instance):
         """Process all the nodes in the instance"""
-
         invalid = self.get_invalid(instance)
         if invalid:
-            raise PublishValidationError("Invalid node relationships found: "
-                               "{0}".format(invalid))
+            raise PublishValidationError(
+                "Nodes found with default shader assigned. "
+                "Please assign a different shader.",
+                description=self.get_description()
+            )
 
     @classmethod
     def get_invalid(cls, instance):
 
         invalid = set()
+        invalid_by_shader = defaultdict(list)
         for node in instance:
             # Get shading engine connections
             shaders = cmds.listConnections(node, type="shadingEngine") or []
-
-            # Check for any disallowed connections on *all* nodes
-            if any(s in cls.DEFAULT_SHADERS for s in shaders):
-
-                # Explicitly log each individual "wrong" connection.
-                for s in shaders:
-                    if s in cls.DEFAULT_SHADERS:
-                        cls.log.error("Node has unallowed connection to "
-                                      "'{}': {}".format(s, node))
-
+            for shader in cls.DEFAULT_SHADERS.intersection(shaders):
+                invalid_by_shader[shader].append(node)
                 invalid.add(node)
 
+        # Log all the invalid connections
+        for shader, nodes in invalid_by_shader.items():
+            node_list = "\n".join(f"- {node}" for node in sorted(nodes))
+            cls.log.error(
+                f"Default shader '{shader}' found on:\n{node_list}"
+            )
+
         return list(invalid)
+
+    @staticmethod
+    def get_description() -> str:
+        return inspect.cleandoc("""
+            ### Default shaders are assigned
+            
+            Some nodes in the look have default shaders assigned to them. 
+            Default shaders are not allowed in the look as they can introduce
+            problems when referenced (overriding local scene shaders). 
+            
+            Avoid using for example _lambert1_ or _standardSurface1_ in your 
+            look.
+            
+            To fix this, please assign a different shader to the nodes.
+        """)

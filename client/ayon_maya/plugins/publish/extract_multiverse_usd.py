@@ -1,13 +1,15 @@
 import os
 
 import pyblish.api
-import six
+
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api.lib import maintained_selection
 from ayon_maya.api import plugin
 from maya import cmds, mel
 
 
-class ExtractMultiverseUsd(plugin.MayaExtractorPlugin):
+class ExtractMultiverseUsd(plugin.MayaExtractorPlugin,
+                           OptionalPyblishPluginMixin):
     """Extractor for Multiverse USD Asset data.
 
     This will extract settings for a Multiverse Write Asset operation:
@@ -130,7 +132,7 @@ class ExtractMultiverseUsd(plugin.MayaExtractorPlugin):
 
             # Ensure the data is of correct type
             value = instance.data[key]
-            if isinstance(value, six.text_type):
+            if isinstance(value, str):
                 value = str(value)
             if not isinstance(value, self.options[key]):
                 self.log.warning(
@@ -153,7 +155,8 @@ class ExtractMultiverseUsd(plugin.MayaExtractorPlugin):
         return members
 
     def process(self, instance):
-
+        if not self.is_active(instance.data):
+            return
         # Load plugin first
         cmds.loadPlugin("MultiverseForMaya", quiet=True)
 

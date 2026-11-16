@@ -3,6 +3,7 @@ import os
 import tempfile
 
 import xgenm
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api.lib import (
     attribute_values,
     delete_after,
@@ -13,7 +14,8 @@ from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractXgen(plugin.MayaExtractorPlugin):
+class ExtractXgen(plugin.MayaExtractorPlugin,
+                  OptionalPyblishPluginMixin):
     """Extract Xgen
 
     Workflow:
@@ -27,8 +29,11 @@ class ExtractXgen(plugin.MayaExtractorPlugin):
     label = "Extract Xgen"
     families = ["xgen"]
     scene_type = "ma"
+    targets = ["local", "remote"]
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         if "representations" not in instance.data:
             instance.data["representations"] = []
 

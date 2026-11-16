@@ -1,5 +1,8 @@
-from ayon_core.pipeline import get_representation_path
-from ayon_maya.api.lib import get_container_members, unique_namespace
+from ayon_maya.api.lib import (
+    get_container_members,
+    set_attribute,
+    unique_namespace
+)
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
 from maya import cmds, mel
@@ -8,9 +11,11 @@ from maya import cmds, mel
 class AudioLoader(plugin.Loader):
     """Specific loader of audio."""
 
-    product_types = {"audio"}
+    product_base_types = {"audio"}
+    product_types = product_base_types
     label = "Load audio"
-    representations = {"wav"}
+    representations = {"*"}
+    extensions = {"wav"}
     icon = "volume-up"
     color = "orange"
 
@@ -48,7 +53,7 @@ class AudioLoader(plugin.Loader):
         members = get_container_members(container)
         audio_nodes = cmds.ls(members, type="audio")
 
-        assert audio_nodes is not None, "Audio node not found."
+        assert audio_nodes, "Audio node not found."
         audio_node = audio_nodes[0]
 
         current_sound = cmds.timeControl(
@@ -58,7 +63,7 @@ class AudioLoader(plugin.Loader):
         )
         activate_sound = current_sound == audio_node
 
-        path = get_representation_path(repre_entity)
+        path = self.filepath_from_context(context)
 
         cmds.sound(
             audio_node,
@@ -89,11 +94,11 @@ class AudioLoader(plugin.Loader):
                 displaySound=True
             )
 
-        cmds.setAttr(
-            container["objectName"] + ".representation",
-            repre_entity["id"],
-            type="string"
-        )
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, container["objectName"])
 
     def switch(self, container, context):
         self.update(container, context)

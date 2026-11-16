@@ -1,4 +1,7 @@
 import inspect
+from typing import List
+
+import pyblish.api
 
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
@@ -28,7 +31,7 @@ class ValidateLookContents(plugin.MayaInstancePlugin):
     label = 'Look Data Contents'
     actions = [ayon_maya.api.action.SelectInvalidAction]
 
-    def process(self, instance):
+    def process(self, instance: pyblish.api.Instance):
         """Process all the nodes in the instance"""
 
         if not instance[:]:
@@ -41,28 +44,21 @@ class ValidateLookContents(plugin.MayaInstancePlugin):
                 description=self.get_description())
 
     @classmethod
-    def get_invalid(cls, instance):
+    def get_invalid(cls, instance: pyblish.api.Instance) -> List[str]:
         """Get all invalid nodes"""
 
         # check if data has the right attributes and content
         attributes = cls.validate_lookdata_attributes(instance)
         # check the looks for ID
         looks = cls.validate_looks(instance)
-        # check if file nodes have valid files
-        files = cls.validate_files(instance)
 
-        invalid = looks + attributes + files
-
+        invalid = looks + attributes
         return invalid
 
     @classmethod
-    def validate_lookdata_attributes(cls, instance):
-        """Check if the lookData has the required attributes
-
-        Args:
-            instance
-
-        """
+    def validate_lookdata_attributes(
+            cls, instance: pyblish.api.Instance) -> List[str]:
+        """Check if the lookData has the required attributes"""
 
         invalid = set()
 
@@ -70,8 +66,7 @@ class ValidateLookContents(plugin.MayaInstancePlugin):
         lookdata = instance.data["lookData"]
         for key in keys:
             if key not in lookdata:
-                cls.log.error("Look Data has no key "
-                              "'{}'".format(key))
+                cls.log.error(f"Look Data has no key '{key}'")
                 invalid.add(instance.name)
 
         # Validate at least one single relationship is collected
@@ -87,18 +82,27 @@ class ValidateLookContents(plugin.MayaInstancePlugin):
         for attr_changes in lookdata["attributes"]:
             if not attr_changes["uuid"] and not attr_changes["attributes"]:
                 cls.log.error("Node '%s' has no cbId, please set the "
-                              "attributes to its children if it has any"
+                              "attributes to its children if it has any."
                               % attr_changes["name"])
                 invalid.add(instance.name)
 
         return list(invalid)
 
     @classmethod
-    def validate_looks(cls, instance):
+    def validate_looks(cls, instance: pyblish.api.Instance) -> List[str]:
 
         looks = instance.data["lookData"]["relationships"]
         invalid = []
+
+        # Ignore objects that are default objects, like e.g. default shading
+        # engines because those should be captured by other validators.
+        ignored_defaults = set(cmds.ls(defaultNodes=True))
+
         for name, data in looks.items():
+            if name in ignored_defaults:
+                cls.log.warning(f"Ignoring default node without UUID '{name}'")
+                continue
+
             if not data["uuid"]:
                 cls.log.error("Look '{}' has no UUID".format(name))
                 invalid.append(name)
@@ -106,23 +110,7 @@ class ValidateLookContents(plugin.MayaInstancePlugin):
         return invalid
 
     @classmethod
-    def validate_files(cls, instance):
-
-        invalid = []
-
-        resources = instance.data.get("resources", [])
-        for resource in resources:
-            files = resource["files"]
-            if len(files) == 0:
-                node = resource["node"]
-                cls.log.error("File node '%s' uses no or non-existing "
-                              "files" % node)
-                invalid.append(node)
-
-        return invalid
-
-    @classmethod
-    def validate_renderer(cls, instance):
+    def validate_renderer(cls, instance: pyblish.api.Instance):
         # TODO: Rewrite this to be more specific and configurable
         renderer = cmds.getAttr(
             'defaultRenderGlobals.currentRenderer').lower()
@@ -139,22 +127,22 @@ class ValidateLookContents(plugin.MayaInstancePlugin):
             if processor == renderer:
                 continue
             else:
-                cls.log.error("Converted texture does not match current renderer.") # noqa
+                cls.log.error(
+                    "Converted texture does not match current renderer.")
 
     @staticmethod
-    def get_description():
+    def get_description() -> str:
         return inspect.cleandoc("""
             ## Invalid look contents
 
             This validator does a general validation on the look contents and
             settings.
 
-            Likely issues:
+            Common issues:
 
             - The look must have geometry members.
             - All shader and set relationships must have valid `cbId` 
               attributes so that they can be correctly applied elsewhere.
-            - Files used by the textures and file nodes must exist on disk.
 
             #### Issues with cbId attributes
 
@@ -164,4 +152,57 @@ class ValidateLookContents(plugin.MayaInstancePlugin):
             If it still fails, then likely you have referenced nodes that do
             not have a valid `cbId`. This should usually be fixed in the scene
             from which that geometry or shader was initially created.
+        """)
+
+
+class ValidateLookContentsFiles(plugin.MayaInstancePlugin):
+    """Validate look resources have valid files.
+
+    Rules:
+        * Look data must have `relationships` and `attributes` keys.
+        * At least one relationship must be collection.
+        * All relationship object sets at least have an ID value
+
+    Tip:
+        * When no node IDs are found on shadingEngines please save your scene
+        and try again.
+
+    """
+
+    order = ValidateContentsOrder
+    families = ['look']
+    label = 'Textures Have No Files'
+    actions = [ayon_maya.api.action.SelectInvalidAction]
+
+    def process(self, instance: pyblish.api.Instance):
+        if self.get_invalid(instance):
+            raise PublishValidationError(
+                "Look has file nodes for which no files were found on disk.",
+                description=self.get_description())
+
+    @classmethod
+    def get_invalid(cls, instance: pyblish.api.Instance) -> List[str]:
+        """Get all invalid nodes"""
+        invalid = []
+        resources = instance.data.get("resources", [])
+        for resource in resources:
+            files = resource["files"]
+            if len(files) == 0:
+                node = resource["node"]
+                cls.log.error("File node '%s' uses no or non-existing "
+                              "files" % node)
+                invalid.append(node)
+        return invalid
+
+    @staticmethod
+    def get_description() -> str:
+        return inspect.cleandoc("""
+            ### Look texture has no files
+
+            Missing files on disk for textures used by the look. This may be
+            because the texture has no filepath set or points to a non-existing
+            path.
+
+            Files used by the textures and file nodes must exist on disk. 
+            Please update the relevant filepaths.                    
         """)

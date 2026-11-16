@@ -10,12 +10,16 @@ class CreateRedshiftProxy(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.redshiftproxy"
     label = "Redshift Proxy"
-    product_type = "redshiftproxy"
+    product_base_type = "redshiftproxy"
+    product_type = product_base_type
     icon = "gears"
 
     def get_instance_attr_defs(self):
 
         defs = [
+            BoolDef("farm",
+                    label="Submit to Farm",
+                    default=False),
             BoolDef("animation",
                     label="Export animation",
                     default=False)

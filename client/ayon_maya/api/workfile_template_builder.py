@@ -1,4 +1,5 @@
 import json
+import logging
 
 from maya import cmds
 
@@ -20,13 +21,13 @@ from ayon_core.tools.workfile_template_build import (
 
 from .lib import read, imprint, get_main_window
 
+log = logging.getLogger(__name__)
+
 PLACEHOLDER_SET = "PLACEHOLDERS_SET"
 
 
 class MayaTemplateBuilder(AbstractTemplateBuilder):
     """Concrete implementation of AbstractTemplateBuilder for maya"""
-
-    use_legacy_creators = True
 
     def import_template(self, path):
         """Import template into current scene.
@@ -101,6 +102,7 @@ class MayaPlaceholderPlugin(PlaceholderPlugin):
     Inherited classes must still implement `populate_placeholder`
 
     """
+    skip_discovery = True
 
     use_selection_as_parent = True
     item_class = PlaceholderItem
@@ -158,7 +160,7 @@ class MayaPlaceholderPlugin(PlaceholderPlugin):
                 changed_values[key] = value
 
         # Delete attributes to ensure we imprint new data with correct type
-        for key in changed_values.keys():
+        for key, value in changed_values.items():
             placeholder_item.data[key] = value
             if cmds.attributeQuery(key, node=node_name, exists=True):
                 attribute = "{}.{}".format(node_name, key)
@@ -246,9 +248,30 @@ class MayaPlaceholderPlugin(PlaceholderPlugin):
         return data
 
 
+def trigger_on_app_launch() -> None:
+    """Build the workfile template during application
+    launch if the setting is enabled.
+    """
+    host = registered_host()
+    builder = MayaTemplateBuilder(host)
+    builder.trigger_on_app_launch()
+
+
+def trigger_on_new_file() -> None:
+    """Build the workfile template during new file creation
+    if the setting is enabled.
+    """
+    host = registered_host()
+    builder = MayaTemplateBuilder(host)
+    builder.trigger_on_new_file()
+
+
 def build_workfile_template(*args):
     builder = MayaTemplateBuilder(registered_host())
-    builder.build_template()
+    preset = builder.get_template_preset()
+    if not preset.has_valid_path():
+        return
+    builder.build_template(preset=preset)
 
 
 def update_workfile_template(*args):

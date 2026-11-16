@@ -4,24 +4,31 @@ import os
 
 from ayon_maya.api.alembic import extract_alembic
 from ayon_maya.api.lib import maintained_selection, suspended_refresh
+from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
 from ayon_maya.api import plugin
 from maya import cmds  # noqa
 
 
-class ExtractUnrealSkeletalMeshAbc(plugin.MayaExtractorPlugin):
+class ExtractUnrealSkeletalMeshAbc(plugin.MayaExtractorPlugin,
+                                   OptionalPyblishPluginMixin):
     """Extract Unreal Skeletal Mesh as FBX from Maya. """
 
     label = "Extract Unreal Skeletal Mesh - Alembic"
     families = ["skeletalMesh"]
-    optional = True
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         self.log.debug("Extracting pointcache..")
 
         geo = cmds.listRelatives(
-            instance.data.get("geometry"), allDescendents=True, fullPath=True)
+            instance.data.get("geometry"),
+            allDescendents=True,
+            fullPath=True) or []
         joints = cmds.listRelatives(
-            instance.data.get("joints"), allDescendents=True, fullPath=True)
+            instance.data.get("joints"),
+            allDescendents=True,
+            fullPath=True) or []
 
         nodes = geo + joints
 

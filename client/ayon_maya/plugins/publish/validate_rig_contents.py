@@ -21,7 +21,7 @@ class ValidateRigContents(plugin.MayaInstancePlugin,
     order = ValidateContentsOrder
     label = "Rig Contents"
     families = ["rig"]
-    action = [ayon_maya.api.action.SelectInvalidAction]
+    actions = [ayon_maya.api.action.SelectInvalidAction]
     optional = True
 
     accepted_output = ["mesh", "transform"]
@@ -133,9 +133,12 @@ class ValidateRigContents(plugin.MayaInstancePlugin,
             )
         # Validate members are inside the hierarchy from root node
         root_nodes = cmds.ls(set_members, assemblies=True, long=True)
-        hierarchy = cmds.listRelatives(root_nodes, allDescendents=True,
-                                       fullPath=True) + root_nodes
-        hierarchy = set(hierarchy)
+        children = cmds.listRelatives(
+            root_nodes, 
+            allDescendents=True, 
+            fullPath=True
+        ) or []
+        hierarchy = set(root_nodes + children)
         invalid_hierarchy = []
         for node in content:
             if node not in hierarchy:
@@ -212,9 +215,28 @@ class ValidateSkeletonRigContents(ValidateRigContents):
 
     order = ValidateContentsOrder
     label = "Skeleton Rig Contents"
-    hosts = ["maya"]
     families = ["rig.fbx"]
     optional = True
+
+    @classmethod
+    def get_attr_defs_for_instance(cls, create_context, instance):
+        """Publish attribute definitions for an instance.
+
+        Attributes available for all families in plugin's `families` attribute.
+
+        Args:
+            create_context (CreateContext): Create context.
+            instance (CreatedInstance): Instance for which attributes are
+                collected.
+
+        Returns:
+            list[AbstractAttrDef]: Attribute definitions for plugin.
+
+        """
+        if instance.product_base_type != "rig":
+            return []
+
+        return cls.get_attribute_defs()
 
     @classmethod
     def get_invalid(cls, instance):
@@ -224,6 +246,9 @@ class ValidateSkeletonRigContents(ValidateRigContents):
 
         # Ensure contents in sets and retrieve long path for all objects
         output_content = instance.data.get("skeleton_mesh", [])
+        if not output_content:
+            return
+
         output_content = cmds.ls(skeleton_mesh_nodes, long=True)
 
         invalid_hierarchy = cls.invalid_hierarchy(

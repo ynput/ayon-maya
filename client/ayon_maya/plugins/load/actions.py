@@ -1,8 +1,8 @@
 """A module containing generic loader actions that will display in the Loader.
 
 """
-import qargparse
 from ayon_core.pipeline import load
+from ayon_core.lib import BoolDef
 from ayon_maya.api.lib import (
     maintained_selection,
     get_custom_namespace
@@ -13,13 +13,15 @@ import ayon_maya.api.plugin
 class SetFrameRangeLoader(load.LoaderPlugin):
     """Set frame range excluding pre- and post-handles"""
 
-    product_types = {
+    product_base_types = {
         "animation",
         "camera",
         "proxyAbc",
         "pointcache",
     }
-    representations = {"abc"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"abc"}
 
     label = "Set frame range"
     order = 11
@@ -48,13 +50,15 @@ class SetFrameRangeLoader(load.LoaderPlugin):
 class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
     """Set frame range including pre- and post-handles"""
 
-    product_types = {
+    product_base_types = {
         "animation",
         "camera",
         "proxyAbc",
         "pointcache",
     }
-    representations = {"abc"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"abc"}
 
     label = "Set frame range (with handles)"
     order = 12
@@ -94,8 +98,9 @@ class ImportMayaLoader(ayon_maya.api.plugin.Loader):
         so you could also use it as a new base.
 
     """
-    representations = {"ma", "mb", "obj"}
-    product_types = {
+    representations = {"*"}
+    extensions = {"ma", "mb", "obj"}
+    product_base_types = {
         "model",
         "pointcache",
         "proxyAbc",
@@ -110,6 +115,7 @@ class ImportMayaLoader(ayon_maya.api.plugin.Loader):
         "staticMesh",
         "workfile",
     }
+    product_types = product_base_types
 
     label = "Import"
     order = 10
@@ -117,17 +123,20 @@ class ImportMayaLoader(ayon_maya.api.plugin.Loader):
     color = "#775555"
 
     options = [
-        qargparse.Boolean(
+        BoolDef(
             "clean_import",
-            label="Clean import",
+            label="Strip existing AYON asset metadata",
             default=False,
-            help="Should all occurrences of cbId be purged?"
+            tooltip=(
+                "When enabled, existing AYON 'cbId' attributes on nodes will "
+                "be removed upon import."
+            )
         )
     ]
 
     @classmethod
     def apply_settings(cls, project_settings):
-        super(ImportMayaLoader, cls).apply_settings(project_settings)
+        super().apply_settings(project_settings)
         cls.enabled = cls.load_settings["import_loader"].get("enabled", True)
 
     def load(self, context, name=None, namespace=None, data=None):
@@ -142,6 +151,7 @@ class ImportMayaLoader(ayon_maya.api.plugin.Loader):
                                                 "import_loader")
 
         namespace = get_custom_namespace(custom_namespace)
+        custom_group_name = custom_group_name.format(namespace=namespace)
 
         if not options.get("attach_to_root", True):
             custom_group_name = namespace

@@ -24,7 +24,7 @@ class ValidateVrayReferencedAOVs(plugin.MayaInstancePlugin,
 
     order = pyblish.api.ValidatorOrder
     label = 'VRay Referenced AOVs'
-    families = ['renderlayer']
+    families = ["renderlayer"]
     actions = [RepairContextAction]
     optional = False
 

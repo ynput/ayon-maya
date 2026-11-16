@@ -39,7 +39,7 @@ class ValidateAlembicVisibleOnly(plugin.MayaInstancePlugin,
     @classmethod
     def get_invalid(cls, instance):
 
-        if instance.data["productType"] == "animation":
+        if instance.data["productBaseType"] == "animation":
             # Special behavior to use the nodes in out_SET
             nodes = instance.data["out_hierarchy"]
         else:

@@ -9,8 +9,10 @@ from ayon_maya.api import lib, plugin
 class YetiRigLoader(plugin.ReferenceLoader):
     """This loader will load Yeti rig."""
 
-    product_types = {"yetiRig"}
-    representations = {"ma"}
+    product_base_types = {"yetiRig"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"ma"}
 
     label = "Load Yeti Rig"
     order = -9
@@ -27,11 +29,6 @@ class YetiRigLoader(plugin.ReferenceLoader):
 
         attach_to_root = options.get("attach_to_root", True)
         group_name = options["group_name"]
-
-        # no group shall be created
-        if not attach_to_root:
-            group_name = namespace
-
         with lib.maintained_selection():
             file_url = self.prepare_root_value(
                 path, context["project"]["name"]
@@ -45,13 +42,13 @@ class YetiRigLoader(plugin.ReferenceLoader):
                 groupName=group_name
             )
 
-        color = plugin.get_load_color_for_product_type("yetiRig")
+        color = plugin.get_load_color_for_product_base_type("yetiRig")
         if color is not None:
             red, green, blue = color
-            cmds.setAttr(group_name + ".useOutlinerColor", 1)
-            cmds.setAttr(
-                group_name + ".outlinerColor", red, green, blue
-            )
+            roots = lib.get_highest_in_hierarchy(nodes)
+            for root in roots:
+                cmds.setAttr(f"{root}.useOutlinerColor", 1)
+                cmds.setAttr(f"{root}.outlinerColor", red, green, blue)
         self[:] = nodes
 
         if self.create_cache_instance_on_load:
@@ -62,7 +59,7 @@ class YetiRigLoader(plugin.ReferenceLoader):
         return nodes
 
     def _create_yeti_cache_instance(self, nodes: List[str], variant: str):
-        """Create a yeticache product type instance to publish the output.
+        """Create a yeticache instance to publish the output.
 
         This is similar to how loading animation rig will automatically create
         an animation instance for publishing any loaded character rigs, but

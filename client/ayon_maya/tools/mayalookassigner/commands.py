@@ -87,7 +87,7 @@ def create_folder_id_hash(nodes):
             for k, _ in ids.items():
                 id = k.split(":")[0]
                 node_id_hash[id].append(node)
-        elif cmds.nodeType(node) == "aiStandIn":
+        elif cmds.nodeType(node) in {"aiStandIn", "gpuCache"}:
             for id, _ in arnold_standin.get_nodes_by_id(node).items():
                 id = id.split(":")[0]
                 node_id_hash[id].append(node)
@@ -151,7 +151,7 @@ def create_items_from_nodes(nodes):
             log.warning(
                 "Id found on {num} nodes for which no folder is found database,"
                 " skipping '{folder_id}'".format(
-                    num=len(nodes),
+                    num=len(id_nodes),
                     folder_id=folder_id
                 )
             )

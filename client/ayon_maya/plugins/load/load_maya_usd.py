@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 import maya.cmds as cmds
-from ayon_maya.api.lib import namespaced, unique_namespace
+from ayon_maya.api.lib import (
+    namespaced,
+    set_attribute,
+    unique_namespace
+)
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
 
@@ -8,8 +12,10 @@ from ayon_maya.api import plugin
 class MayaUsdLoader(plugin.Loader):
     """Read USD data in a Maya USD Proxy"""
 
-    product_types = {"model", "usd", "pointcache", "animation"}
-    representations = {"usd", "usda", "usdc", "usdz", "abc"}
+    product_base_types = {"model", "usd", "pointcache", "animation"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"usd", "usda", "usdc", "usdz", "abc"}
 
     label = "Load USD to Maya Proxy"
     order = -1
@@ -74,9 +80,11 @@ class MayaUsdLoader(plugin.Loader):
         for shape in shapes:
             cmds.setAttr("{}.filePath".format(shape), path, type="string")
 
-        cmds.setAttr("{}.representation".format(node),
-                     context["representation"]["id"],
-                     type="string")
+        for key, value in [
+            ("representation", context["representation"]["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, node)
 
     def switch(self, container, context):
         self.update(container, context)

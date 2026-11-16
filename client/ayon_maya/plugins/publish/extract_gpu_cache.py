@@ -11,6 +11,7 @@ class ExtractGPUCache(plugin.MayaExtractorPlugin,
 
     label = "GPU Cache"
     families = ["model", "animation", "pointcache"]
+    targets = ["local", "remote"]
     step = 1.0
     stepSave = 1
     optimize = True
@@ -23,16 +24,29 @@ class ExtractGPUCache(plugin.MayaExtractorPlugin,
         if not self.is_active(instance.data):
             return
 
+        if instance.data.get("farm"):
+            self.log.debug("Should be processed on farm, skipping.")
+            return
+
         cmds.loadPlugin("gpuCache", quiet=True)
 
         staging_dir = self.staging_dir(instance)
         filename = "{}_gpu_cache".format(instance.name)
+
+        # Frame range including handles. Instances without a frame range
+        # (should not happen, `model` collects the current frame) fall back
+        # to the current frame.
+        current_frame = cmds.currentTime(query=True)
+        start = float(instance.data.get("frameStartHandle", current_frame))
+        end = float(instance.data.get("frameEndHandle", current_frame))
 
         # Write out GPU cache file.
         kwargs = {
             "directory": staging_dir,
             "fileName": filename,
             "saveMultipleFiles": False,
+            "startTime": start,
+            "endTime": end,
             "simulationRate": self.step,
             "sampleMultiplier": self.stepSave,
             "optimize": self.optimize,

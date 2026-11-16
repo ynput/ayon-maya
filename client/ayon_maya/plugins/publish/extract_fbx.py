@@ -3,13 +3,15 @@ import os
 
 import maya.mel as mel  # noqa
 import pyblish.api
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import fbx
 from ayon_maya.api.lib import maintained_selection
 from ayon_maya.api import plugin
 from maya import cmds  # noqa
 
 
-class ExtractFBX(plugin.MayaExtractorPlugin):
+class ExtractFBX(plugin.MayaExtractorPlugin,
+                 OptionalPyblishPluginMixin):
     """Extract FBX from Maya.
 
     This extracts reproducible FBX exports ignoring any of the
@@ -21,6 +23,8 @@ class ExtractFBX(plugin.MayaExtractorPlugin):
     families = ["fbx"]
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         fbx_exporter = fbx.FBXExtractor(log=self.log)
 
         # Define output path
@@ -43,8 +47,6 @@ class ExtractFBX(plugin.MayaExtractorPlugin):
         # Export
         with maintained_selection():
             fbx_exporter.export(members, path)
-            cmds.select(members, r=1, noExpand=True)
-            mel.eval('FBXExport -f "{}" -s'.format(path))
 
         if "representations" not in instance.data:
             instance.data["representations"] = []

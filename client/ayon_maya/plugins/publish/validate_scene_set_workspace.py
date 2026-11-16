@@ -31,7 +31,9 @@ class ValidateSceneSetWorkspace(plugin.MayaContextPlugin):
     """Validate the scene is inside the currently set Maya workspace"""
 
     order = ValidatePipelineOrder
-    label = 'Maya Workspace Set'
+    label = "Maya Workspace Set"
+
+    targets = ["local"]
 
     def process(self, context):
 

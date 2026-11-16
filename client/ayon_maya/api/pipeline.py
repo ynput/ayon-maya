@@ -18,6 +18,8 @@ from ayon_core.host import (
     ILoadHost,
     IPublishHost,
     HostDirmap,
+    ContextChangeData,
+    ContextChangeReason,
 )
 from ayon_core.tools.utils import host_tools
 from ayon_core.tools.workfiles.lock_dialog import WorkfileLockDialog
@@ -37,8 +39,10 @@ from ayon_core.pipeline import (
     deregister_workfile_build_plugin_path,
     AYON_CONTAINER_ID,
     AVALON_CONTAINER_ID,
+    registered_host,
 )
 from ayon_core.pipeline.load import any_outdated_containers
+from ayon_core.pipeline.workfile import get_workdir
 from ayon_core.pipeline.workfile.lock_workfile import (
     create_workfile_lock,
     remove_workfile_lock,
@@ -51,10 +55,10 @@ from ayon_maya.lib import create_workspace_mel
 from . import menu, lib
 from .workio import (
     open_file,
+    open_file_options,
     save_file,
     file_extensions,
     has_unsaved_changes,
-    work_root,
     current_file
 )
 
@@ -79,6 +83,17 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     def __init__(self):
         super(MayaHost, self).__init__()
         self._op_events = {}
+        self.app_launch_completed = False
+
+    def get_app_information(self):
+        from ayon_core.host import ApplicationInformation
+
+        version = cmds.about(version=True)
+
+        return ApplicationInformation(
+            app_name="Maya",
+            app_version=version,
+        )
 
     def install(self):
         project_name = get_current_project_name()
@@ -129,14 +144,36 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         )
         register_event_callback("workfile.save.after", after_workfile_save)
 
+        self._register_maya_usd_chasers()
+
     def open_workfile(self, filepath):
         return open_file(filepath)
 
+    def open_workfile_options(self, **options):
+        """Open workfiles with additional `cmds.file` flags in this context.
+
+        The options apply to every workfile open done through the host,
+        including 'open_workfile_with_context', so the context change and
+        workfile events are triggered as usual.
+
+        Example:
+            >>> host = registered_host()
+            >>> with host.open_workfile_options(loadReferenceDepth="none"):
+            ...     host.open_workfile_with_context(
+            ...         filepath, folder_entity, task_entity
+            ...     )
+
+        Args:
+            **options: Flags passed to `cmds.file` on workfile open.
+
+        Returns:
+            ContextManager: Applies the options while it is active.
+
+        """
+        return open_file_options(**options)
+
     def save_workfile(self, filepath=None):
         return save_file(filepath)
-
-    def work_root(self, session):
-        return work_root(session)
 
     def get_current_workfile(self):
         return current_file()
@@ -161,13 +198,69 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             return {}
 
         data = data[0]  # Maya seems to return a list
+        # Maya 2027+ does not return bytes, so we convert it
+        if int(cmds.about(version=True)) >= 2027 and isinstance(data, str):
+            data = data.encode("utf-8")
         decoded = base64.b64decode(data).decode("utf-8")
         return json.loads(decoded)
 
     def update_context_data(self, data, changes):
         json_str = json.dumps(data)
+        # Always base64 encode
         encoded = base64.b64encode(json_str.encode("utf-8"))
+        # Convert bytes to str for fileInfo storage
+        # fileInfo expects a string value, not bytes
+        if int(cmds.about(version=True)) >= 2027 and isinstance(encoded, bytes):
+            encoded = encoded.decode("utf-8")
         return cmds.fileInfo("OpenPypeContext", encoded)
+
+    def _after_context_change(self, context_change_data: ContextChangeData):
+        """Set the Maya workspace to the work directory of the new context.
+
+        On workfile open or save, `AYON_WORKDIR` is set to the workfile's
+        directory, so that is used. For other context changes it still points
+        to the previous context's workdir, so the workdir is computed from the
+        new context instead.
+
+        Args:
+            context_change_data (ContextChangeData): Object with information
+                about context change.
+
+        """
+        super()._after_context_change(context_change_data)
+
+        if lib.IS_HEADLESS:
+            return
+
+        if context_change_data.reason in (
+            ContextChangeReason.workfile_open,
+            ContextChangeReason.workfile_save,
+        ):
+            workdir = os.environ["AYON_WORKDIR"]
+        else:
+            workdir = str(get_workdir(
+                context_change_data.project_entity,
+                context_change_data.folder_entity,
+                context_change_data.task_entity,
+                host_name=self.name,
+                anatomy=context_change_data.anatomy,
+            ))
+        if not os.path.exists(workdir):
+            self.log.warning(
+                "Can't set project for new context because path does not "
+                "exist: %s", workdir
+            )
+            return
+
+        self.log.info(
+            "Updating Maya workspace for context change to %s", workdir
+        )
+        _set_project(workdir)
+
+        # Set Maya fileDialog's start-dir to /scenes
+        frule_scene = cmds.workspace(fileRuleEntry="scene")
+        cmds.optionVar(stringValue=("browserLocationmayaBinaryscene",
+                                    workdir + "/" + frule_scene))
 
     def _register_callbacks(self):
         for handler, event in self._op_events.copy().items():
@@ -239,15 +332,48 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         self.log.info("Installed event handler _check_lock_file..")
         self.log.info("Installed event handler _before_close_maya..")
 
+    def _register_maya_usd_chasers(self):
+        """Register Maya USD chasers if Maya USD libraries are available."""
 
-def _set_project():
-    """Sets the maya project to the current Session's work directory.
+        try:
+            import mayaUsd.lib  # noqa
+        except ImportError:
+            # Do not register if Maya USD is not available
+            return
+
+        self.log.info("Installing AYON Maya USD chasers..")
+
+        from .chasers import export_filter_properties  # noqa
+
+        for export_chaser in [
+            export_filter_properties.FilterPropertiesExportChaser
+        ]:
+            mayaUsd.lib.ExportChaser.Register(export_chaser,
+                                              export_chaser.name)
+
+    def on_init_end(self):
+        self.app_launch_completed = True
+
+        # If we haven't opened a file on launch, then allow to trigger
+        # app launch template builder
+        if not self.get_current_workfile():
+            from .workfile_template_builder import trigger_on_app_launch
+            trigger_on_app_launch()
+
+
+def _set_project(workdir=None):
+    """Sets the maya project to the given work directory.
+
+    Args:
+        workdir (Optional[str]): Work directory to set as Maya workspace.
+            Defaults to the `AYON_WORKDIR` environment variable.
 
     Returns:
         None
 
     """
-    workdir = os.getenv("AYON_WORKDIR")
+    if workdir is None:
+        workdir = os.getenv("AYON_WORKDIR")
 
     try:
         os.makedirs(workdir)
@@ -258,7 +384,15 @@ def _set_project():
         else:
             raise
 
-    cmds.workspace(workdir, openWorkspace=True)
+    try:
+        cmds.workspace(workdir, openWorkspace=True)
+    except RuntimeError:
+        # Allow to pass through with an error log in case `workspace.mel`
+        # may have been invalid or setting workspace fails for some other
+        # reason.
+        log.error(
+            "Failed to set Maya workspace to '%s'", workdir, exc_info=True
+        )
 
 
 def _on_maya_initialized(*args):
@@ -347,10 +481,18 @@ def parse_container(container):
         container (str): A container node name.
 
     Returns:
-        dict: The container schema data for this container node.
+        Optional[dict[str, Any]]: The container schema data for this container
+         if it meets all the required metadata.
 
     """
     data = lib.read(container)
+
+    required = ["id", "name", "namespace", "loader", "representation"]
+    missing = [key for key in required if key not in data]
+    if missing:
+        log.warning("Container '%s' is missing required keys: %s",
+                    container, missing)
+        return
 
     # Backwards compatibility pre-schemas for containers
     data["schema"] = data.get("schema", "openpype:container-1.0")
@@ -411,14 +553,17 @@ def ls():
     they are called 'containers'
 
     Yields:
-        dict: container
+        dict[str, Any]: container
 
     """
     container_names = _ls()
     for container in sorted(container_names):
-        yield parse_container(container)
+        container_data = parse_container(container)
+        if container_data:
+            yield container_data
 
 
+@lib.undo_chunk()
 def containerise(name,
                  namespace,
                  nodes,
@@ -451,8 +596,8 @@ def containerise(name,
         ("namespace", namespace),
         ("loader", loader),
         ("representation", context["representation"]["id"]),
+        ("project_name", context["project"]["name"])
     ]
-
     for key, value in data:
         cmds.addAttr(container, longName=key, dataType="string")
         cmds.setAttr(container + "." + key, str(value), type="string")
@@ -521,7 +666,7 @@ def on_init():
 
 def on_before_save():
     """Run validation for scene's FPS prior to saving"""
-    return lib.validate_fps()
+    return lib.validate_fps() and lib.validate_scene_units()
 
 
 def on_after_save():
@@ -571,17 +716,19 @@ def on_save():
     """Automatically add IDs to new nodes
 
     Any transform of a mesh, without an existing ID, is given one
-    automatically on file save.
+    automatically on file save. This is skipped when the `cbId` workflow
+    is set to "off" in project settings.
     """
     log.info("Running callback on save..")
     # remove lockfile if users jumps over from one scene to another
     _remove_workfile_lock()
 
-    # Generate ids of the current context on nodes in the scene
-    nodes = lib.get_id_required_nodes(referenced_nodes=False,
-                                      existing_ids=False)
-    for node, new_id in lib.generate_ids(nodes):
-        lib.set_id(node, new_id, overwrite=False)
+    if lib.get_cbid_workflow() != lib.CbIdWorkflow.OFF:
+        # Generate ids of the current context on nodes in the scene
+        nodes = lib.get_id_required_nodes(referenced_nodes=False,
+                                          existing_ids=False)
+        for node, new_id in lib.generate_ids(nodes):
+            lib.set_id(node, new_id, overwrite=False)
 
     # We are now starting the actual save directly
     global _about_to_save
@@ -596,6 +743,7 @@ def on_open():
     # Validate FPS after update_task_from_path to
     # ensure it is using correct FPS for the folder
     lib.validate_fps()
+    lib.validate_scene_units()
     lib.fix_incompatible_containers()
 
     if any_outdated_containers():
@@ -624,33 +772,25 @@ def on_open():
 
 
 def on_new():
-    """Set project resolution and fps when create a new file"""
+    """Set project resolution and fps when create a new file.
+    If the project has a workfile template, create it.
+    """
     log.info("Running callback on new..")
     with lib.suspended_refresh():
         lib.set_context_settings()
+
+    # Do not trigger new file template build trigger on Maya startup
+    host: MayaHost = registered_host()
+    if host.app_launch_completed:
+        from .workfile_template_builder import trigger_on_new_file
+        trigger_on_new_file()
 
     _remove_workfile_lock()
 
 
 def on_task_changed():
-    """Wrapped function of app initialize and maya's on task changed"""
-    # Run
+    """Update the menu label and prompt to reset context settings on save."""
     menu.update_menu_task_label()
-
-    workdir = os.getenv("AYON_WORKDIR")
-    if os.path.exists(workdir):
-        log.info("Updating Maya workspace for task change to %s", workdir)
-        _set_project()
-
-        # Set Maya fileDialog's start-dir to /scenes
-        frule_scene = cmds.workspace(fileRuleEntry="scene")
-        cmds.optionVar(stringValue=("browserLocationmayaBinaryscene",
-                                    workdir + "/" + frule_scene))
-
-    else:
-        log.warning((
-            "Can't set project for new context because path does not exist: {}"
-        ).format(workdir))
 
     global _about_to_save
     if not lib.IS_HEADLESS and _about_to_save:

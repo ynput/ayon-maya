@@ -7,7 +7,8 @@ from ayon_maya.api import lib
 from ayon_maya.api import plugin
 
 
-class ValidateNodeIDs(plugin.MayaInstancePlugin):
+class ValidateNodeIDs(plugin.CbIdValidatorMixin,
+                      plugin.MayaInstancePlugin):
     """Validate nodes have a Colorbleed Id.
 
     When IDs are missing from nodes *save your scene* and they should be
@@ -18,23 +19,17 @@ class ValidateNodeIDs(plugin.MayaInstancePlugin):
 
     order = ValidatePipelineOrder
     label = 'Instance Nodes Have ID'
-    families = ["model",
-                "look",
-                "rig",
-                "pointcache",
-                "animation",
-                "yetiRig",
-                "assembly"]
+    families = [
+        "model",
+        "look",
+        "rig",
+        "pointcache",
+        "animation",
+        "yetiRig",
+    ]
 
     actions = [ayon_maya.api.action.SelectInvalidAction,
                ayon_maya.api.action.GenerateUUIDsOnInvalidAction]
-
-    @classmethod
-    def apply_settings(cls, project_settings):
-        # Disable plug-in if cbId workflow is disabled
-        if not project_settings["maya"].get("use_cbid_workflow", True):
-            cls.enabled = False
-            return
 
     def process(self, instance):
         """Process all meshes"""
@@ -43,12 +38,11 @@ class ValidateNodeIDs(plugin.MayaInstancePlugin):
         invalid = self.get_invalid(instance)
         if invalid:
             names = "\n".join(
-                "- {}".format(node) for node in invalid
+                "- {}".format(node) for node in sorted(invalid)
             )
             raise PublishXmlValidationError(
                 plugin=self,
-                message="Nodes found without IDs: {}".format(invalid),
-                formatting_data={"nodes": names}
+                message="Nodes found without IDs:\n{}".format(names)
             )
 
     @classmethod

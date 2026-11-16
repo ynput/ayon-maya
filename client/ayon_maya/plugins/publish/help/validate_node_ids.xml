@@ -15,11 +15,6 @@ save your scene again.
 After that restart publishing with Reload button.
 </description>
 <detail>
-### Invalid nodes
-
-{nodes}
-
-
 ### How could this happen?
 
 This often happens if you've generated new nodes but haven't saved your scene

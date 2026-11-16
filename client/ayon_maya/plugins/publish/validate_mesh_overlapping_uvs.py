@@ -1,15 +1,16 @@
 import math
 
-import ayon_maya.api.action
 import maya.api.OpenMaya as om
+from maya import cmds
+
 from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError,
     ValidateMeshOrder,
 )
+
+import ayon_maya.api.action
 from ayon_maya.api import plugin
-from maya import cmds
-from six.moves import xrange
 
 
 def _as_report_list(values, prefix="- ", suffix="\n"):
@@ -31,7 +32,7 @@ class GetOverlappingUVs(object):
         """
         center = []
         radius = []
-        for i in xrange(meshfn.numPolygons):  # noqa: F821
+        for i in range(meshfn.numPolygons):  # noqa: F821
             # get uvs from face
             uarray = []
             varray = []
@@ -94,7 +95,7 @@ class GetOverlappingUVs(object):
         # loop through all vertices to construct edges/rays
         u = uarray[-1]
         v = varray[-1]
-        for i in xrange(len(uarray)):  # noqa: F821
+        for i in range(len(uarray)):  # noqa: F821
             orig.append(uarray[i])
             orig.append(varray[i])
             vec.append(u - uarray[i])
@@ -129,14 +130,14 @@ class GetOverlappingUVs(object):
         """
         face1Size = len(face1Orig)
         face2Size = len(face2Orig)
-        for i in xrange(0, face1Size, 2):  # noqa: F821
+        for i in range(0, face1Size, 2):  # noqa: F821
             o1x = face1Orig[i]
             o1y = face1Orig[i+1]
             v1x = face1Vec[i]
             v1y = face1Vec[i+1]
             n1x = v1y
             n1y = -v1x
-            for j in xrange(0, face2Size, 2):  # noqa: F821
+            for j in range(0, face2Size, 2):  # noqa: F821
                 # Given ray1(O1, V1) and ray2(O2, V2)
                 # Normal of ray1 is (V1.y, V1.x)
                 o2x = face2Orig[j]
@@ -195,7 +196,7 @@ class GetOverlappingUVs(object):
         meshfn = om.MFnMesh(mesh)
 
         center, radius = self._createBoundingCircle(meshfn)
-        for i in xrange(meshfn.numPolygons):  # noqa: F821
+        for i in range(meshfn.numPolygons):  # noqa: F821
             rayb1, face1Orig, face1Vec = self._createRayGivenFace(meshfn, i)
             if not rayb1:
                 continue

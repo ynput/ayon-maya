@@ -13,7 +13,7 @@ class ValidateRenderNoDefaultCameras(plugin.MayaInstancePlugin,
     """Ensure no default (startup) cameras are to be rendered."""
 
     order = ValidateContentsOrder
-    families = ['renderlayer']
+    families = ["renderlayer"]
     label = "No Default Cameras Renderable"
     actions = [ayon_maya.api.action.SelectInvalidAction]
     optional = False

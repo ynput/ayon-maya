@@ -9,7 +9,7 @@ class ValidateReview(plugin.MayaInstancePlugin):
 
     order = ValidateContentsOrder
     label = "Validate Review"
-    families = ["review"]
+    families = ["review.playblast"]
 
     def process(self, instance):
         cameras = instance.data["cameras"]
@@ -19,7 +19,7 @@ class ValidateReview(plugin.MayaInstancePlugin):
             raise PublishValidationError(
                 "No camera found in review instance: {}".format(instance)
             )
-        elif len(cameras) > 2:
+        elif len(cameras) > 1:
             raise PublishValidationError(
                 "Only a single camera is allowed for a review instance but "
                 "more than one camera found in review instance: {}. "

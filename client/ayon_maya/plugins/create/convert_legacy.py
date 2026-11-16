@@ -26,7 +26,7 @@ class MayaLegacyConvertor(ProductConvertorPlugin,
 
     # Cases where the identifier or new product type doesn't correspond to the
     # original family on the legacy instances
-    product_type_mapping = {
+    product_base_type_mapping = {
         "rendering": "io.openpype.creators.maya.renderlayer",
     }
 
@@ -54,36 +54,36 @@ class MayaLegacyConvertor(ProductConvertorPlugin,
 
         # From all current new style manual creators find the mapping
         # from product type to identifier
-        product_type_to_id = {}
+        product_base_type_to_id = {}
         for identifier, creator in self.create_context.creators.items():
-            product_type = getattr(creator, "product_type", None)
-            if not product_type:
+            product_base_type = creator.product_base_type
+            if not product_base_type:
                 continue
 
-            if product_type in product_type_to_id:
+            if product_base_type in product_base_type_to_id:
                 # We have a clash of product type -> identifier. Multiple
                 # new style creators use the same product type
                 self.log.warning(
-                    "Clash on product type->identifier: {}".format(identifier)
+                    f"Clash on product type->identifier: {identifier}"
                 )
-            product_type_to_id[product_type] = identifier
+            product_base_type_to_id[product_base_type] = identifier
 
-        product_type_to_id.update(self.product_type_mapping)
+        product_base_type_to_id.update(self.product_base_type_mapping)
 
         # We also embed the current 'task' into the instance since legacy
         # instances didn't store that data on the instances. The old style
         # logic was thus to be live to the current task to begin with.
         data = dict()
         data["task"] = self.create_context.get_current_task_name()
-        for product_type, instance_nodes in legacy.items():
-            if product_type not in product_type_to_id:
+        for product_base_type, instance_nodes in legacy.items():
+            if product_base_type not in product_base_type_to_id:
                 self.log.warning((
                     "Unable to convert legacy instance with family '{}'"
                     " because there is no matching new creator"
-                ).format(product_type))
+                ).format(product_base_type))
                 continue
 
-            creator_id = product_type_to_id[product_type]
+            creator_id = product_base_type_to_id[product_base_type]
             creator = self.create_context.creators[creator_id]
             data["creator_identifier"] = creator_id
 
@@ -137,7 +137,7 @@ class MayaLegacyConvertor(ProductConvertorPlugin,
 
             # The product type gets converted to the new product type (this
             # is due to "rendering" being converted to "renderlayer")
-            original_data["productType"] = creator.product_type
+            original_data["productBaseType"] = creator.product_base_type
 
             # recreate product name as without it would be
             # `renderingMain` vs correct `renderMain`

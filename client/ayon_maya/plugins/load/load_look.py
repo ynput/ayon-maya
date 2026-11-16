@@ -5,18 +5,23 @@ from collections import defaultdict
 
 import ayon_maya.api.plugin
 from ayon_api import get_representation_by_name
-from ayon_core.pipeline import get_representation_path
 from ayon_core.tools.utils import ScrollMessageBox
 from ayon_maya.api import lib
-from ayon_maya.api.lib import get_reference_node
+from ayon_maya.api.lib import (
+    get_reference_node,
+    get_representation_path_by_project
+)
+
 from qtpy import QtWidgets
 
 
 class LookLoader(ayon_maya.api.plugin.ReferenceLoader):
     """Specific loader for lookdev"""
 
-    product_types = {"look"}
-    representations = {"ma"}
+    product_base_types = {"look"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"ma"}
 
     label = "Reference look"
     order = -10
@@ -80,7 +85,9 @@ class LookLoader(ayon_maya.api.plugin.ReferenceLoader):
         )
 
         # Load relationships
-        shader_relation = get_representation_path(json_representation)
+        shader_relation = get_representation_path_by_project(
+            project_name, json_representation
+        )
         with open(shader_relation, "r") as f:
             json_data = json.load(f)
 
@@ -125,14 +132,15 @@ class LookLoader(ayon_maya.api.plugin.ReferenceLoader):
         """
         from maya import cmds
 
+        meshes = set()
         for shader in shader_nodes:
             future = cmds.listHistory(shader, future=True)
-            connections = cmds.listConnections(future,
-                                               type='mesh')
-            if connections:
-                # Ensure unique entries only to optimize query and results
-                connections = list(set(connections))
-                return cmds.listRelatives(connections,
-                                          shapes=True,
-                                          fullPath=True) or []
-        return []
+            meshes.update(cmds.listConnections(future, type='mesh') or [])
+
+        if not meshes:
+            return []
+
+        # Ensure unique entries only to optimize query and results
+        return cmds.listRelatives(list(meshes),
+                                  shapes=True,
+                                  fullPath=True) or []

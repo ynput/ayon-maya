@@ -131,7 +131,7 @@ class ValidateRenderSettings(plugin.MayaInstancePlugin,
         invalid = False
 
         renderer = instance.data['renderer']
-        layer = instance.data['renderlayer']
+        layer = instance.data["renderlayer"]
         cameras = instance.data.get("cameras", [])
 
         # Prefix attribute can return None when a value was never set
@@ -291,7 +291,7 @@ class ValidateRenderSettings(plugin.MayaInstancePlugin,
                     render_value = cmds.getAttr(
                         "{}.{}".format(node, data["attribute"])
                     )
-                except PublishValidationError:
+                except (ValueError, RuntimeError):
                     invalid = True
                     cls.log.error(
                         "Cannot get value of {}.{}".format(

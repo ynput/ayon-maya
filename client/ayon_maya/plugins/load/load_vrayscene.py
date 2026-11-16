@@ -1,18 +1,22 @@
 # -*- coding: utf-8 -*-
 import maya.cmds as cmds  # noqa
-from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
-from ayon_maya.api.lib import maintained_selection, namespaced, unique_namespace
+from ayon_maya.api.lib import (
+    maintained_selection, namespaced, unique_namespace,
+    set_attribute
+)
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
-from ayon_maya.api.plugin import get_load_color_for_product_type
+from ayon_maya.api.plugin import get_load_color_for_product_base_type
 
 
 class VRaySceneLoader(plugin.Loader):
     """Load Vray scene"""
 
-    product_types = {"vrayscene_layer"}
-    representations = {"vrscene"}
+    product_base_types = {"vrayscene_layer"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"vrscene"}
 
     label = "Import VRay Scene"
     order = -10
@@ -20,8 +24,6 @@ class VRaySceneLoader(plugin.Loader):
     color = "orange"
 
     def load(self, context, name, namespace, data):
-        product_type = context["product"]["productType"]
-
         folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
             folder_name + "_",
@@ -46,8 +48,14 @@ class VRaySceneLoader(plugin.Loader):
 
         # colour the group node
         project_name = context["project"]["name"]
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
         settings = get_project_settings(project_name)
-        color = get_load_color_for_product_type(product_type, settings)
+        color = get_load_color_for_product_base_type(
+            product_base_type, settings
+        )
         if color is not None:
             red, green, blue = color
             cmds.setAttr("{0}.useOutlinerColor".format(root_node), 1)
@@ -72,7 +80,7 @@ class VRaySceneLoader(plugin.Loader):
         assert vraymeshes, "Cannot find VRayScene in container"
 
         repre_entity = context["representation"]
-        filename = get_representation_path(repre_entity)
+        filename = self.filepath_from_context(context)
 
         for vray_mesh in vraymeshes:
             cmds.setAttr("{}.FilePath".format(vray_mesh),
@@ -80,9 +88,11 @@ class VRaySceneLoader(plugin.Loader):
                          type="string")
 
         # Update metadata
-        cmds.setAttr("{}.representation".format(node),
-                     repre_entity["id"],
-                     type="string")
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, node)
 
     def remove(self, container):
 

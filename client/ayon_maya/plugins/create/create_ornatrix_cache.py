@@ -11,7 +11,8 @@ class CreateOxCache(plugin.MayaCreator):
 
     identifier = "io.ayon.creators.maya.oxcache"
     label = "Ornatrix Cache"
-    product_type = "oxcache"
+    product_base_type = "oxcache"
+    product_type = product_base_type
     icon = "pagelines"
     description = "Ornatrix Cache"
 
@@ -26,6 +27,9 @@ class CreateOxCache(plugin.MayaCreator):
         ]
         defs.extend(
             [
+                BoolDef("farm",
+                        label="Submit to Farm",
+                        default=False),
                 EnumDef("format",
                         items={
                             0: "Ogawa",

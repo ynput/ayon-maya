@@ -4,19 +4,25 @@ import os
 
 import clique
 import maya.cmds as cmds
-from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
 from ayon_maya.api import plugin
-from ayon_maya.api.lib import maintained_selection, namespaced, unique_namespace
+from ayon_maya.api.lib import (
+    maintained_selection,
+    namespaced,
+    set_attribute,
+    unique_namespace
+)
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import get_load_color_for_product_type
+from ayon_maya.api.plugin import get_load_color_for_product_base_type
 
 
 class RedshiftProxyLoader(plugin.Loader):
     """Load Redshift proxy"""
 
-    product_types = {"redshiftproxy"}
-    representations = {"rs"}
+    product_base_types = {"*"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"rs", "usd", "usda", "usdc", "abc"}
 
     label = "Import Redshift Proxy"
     order = -10
@@ -25,8 +31,6 @@ class RedshiftProxyLoader(plugin.Loader):
 
     def load(self, context, name=None, namespace=None, options=None):
         """Plugin entry point."""
-        product_type = context["product"]["productType"]
-
         folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
             folder_name + "_",
@@ -43,14 +47,23 @@ class RedshiftProxyLoader(plugin.Loader):
             with namespaced(namespace, new=False):
                 nodes, group_node = self.create_rs_proxy(name, path)
 
+        proxy = nodes[0]  # RedshiftProxyMesh
+        self._set_rs_proxy_file_type(proxy, path)
+
         self[:] = nodes
         if not nodes:
             return
 
         # colour the group node
         project_name = context["project"]["name"]
+        product_entity = context["product"]
+        product_base_type = product_entity.get("productBaseType")
+        if not product_base_type:
+            product_base_type = product_entity["productType"]
         settings = get_project_settings(project_name)
-        color = get_load_color_for_product_type(product_type, settings)
+        color = get_load_color_for_product_base_type(
+            product_base_type, settings
+        )
         if color is not None:
             red, green, blue = color
             cmds.setAttr("{0}.useOutlinerColor".format(group_node), 1)
@@ -74,17 +87,20 @@ class RedshiftProxyLoader(plugin.Loader):
         rs_meshes = cmds.ls(members, type="RedshiftProxyMesh")
         assert rs_meshes, "Cannot find RedshiftProxyMesh in container"
         repre_entity = context["representation"]
-        filename = get_representation_path(repre_entity)
+        filename = self.filepath_from_context(context)
 
         for rs_mesh in rs_meshes:
             cmds.setAttr("{}.fileName".format(rs_mesh),
                          filename,
                          type="string")
+            self._set_rs_proxy_file_type(rs_mesh, filename)
 
         # Update metadata
-        cmds.setAttr("{}.representation".format(node),
-                     repre_entity["id"],
-                     type="string")
+        for key, value in [
+            ("representation", repre_entity["id"]),
+            ("project_name", context["project"]["name"]),
+        ]:
+            set_attribute(key, value, node)
 
     def remove(self, container):
 
@@ -148,3 +164,40 @@ class RedshiftProxyLoader(plugin.Loader):
             cmds.setAttr("{}.useFrameExtension".format(rs_mesh), 1)
 
         return nodes, group_node
+
+    def _set_rs_proxy_file_type(self, proxy: str, path: str):
+        """Set Redshift Proxy file type attribute based on input file."""
+
+        extension = os.path.splitext(path)[1].lower()
+        file_type = {
+            ".rs": 0,
+            ".usd": 1,
+            ".abc": 2
+        }.get(extension, None)
+
+        # If file type is not recognized, log a warning
+        if file_type is None:
+            self.log.warning("Unknown file type: %s. "
+                             "File Type may be set incorrectly", extension)
+            return
+
+        # If this redshift release (prior to 2025.4.0+) does not have the
+        # `proxyFileType` attribute and the file type is not 0 (rsproxy), then
+        # log a warning
+        if not cmds.attributeQuery("proxyFileType", node=proxy, exists=True):
+            if file_type != 0:
+                self.log.warning(
+                    "Redshift Proxy file type attribute not found. File Type"
+                    " may be set incorrectly. You may need a newer Redshift"
+                    " release (2025.4.0+) to support USD and Alembic in"
+                    " Redshift Proxies. ")
+            return
+
+        cmds.setAttr(proxy + ".proxyFileType", file_type)
+
+    @classmethod
+    def get_representation_name_aliases(cls, representation_name):
+        # Allow switching between the different supported representations
+        # automatically if a newer version does not have the currently used
+        # representation
+        return ["rs", "usd", "abc"]

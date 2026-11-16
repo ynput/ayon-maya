@@ -36,7 +36,7 @@ class ValidateSkeletalMeshTriangulated(plugin.MayaInstancePlugin):
         invalid = []
 
         for obj in cmds.listRelatives(
-                cmds.ls(geo), allDescendents=True, fullPath=True):
+                cmds.ls(geo), allDescendents=True, fullPath=True) or []:
             n_triangles = cmds.polyEvaluate(obj, triangle=True)
             n_faces = cmds.polyEvaluate(obj, face=True)
 

@@ -13,8 +13,19 @@ from ayon_core.pipeline import (
     get_current_task_name,
     registered_host
 )
+from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.pipeline.workfile import BuildWorkfile
 from ayon_core.tools.utils import host_tools
+from ayon_core.tools.workfile_template_build import open_template_ui
+
+# Function 'save_next_version' was introduced in ayon-core 1.5.0
+try:
+    from ayon_core.pipeline.workfile import save_next_version
+except ImportError:
+    from ayon_core.pipeline.context_tools import (
+        version_up_current_workfile as save_next_version
+    )
+
 from ayon_maya.api import lib, lib_rendersettings
 from .lib import get_main_window, IS_HEADLESS
 from ..tools import show_look_assigner
@@ -25,8 +36,6 @@ from .workfile_template_builder import (
     build_workfile_template,
     update_workfile_template
 )
-from ayon_core.pipeline.context_tools import version_up_current_workfile
-from ayon_core.tools.workfile_template_build import open_template_ui
 from .workfile_template_builder import MayaTemplateBuilder
 
 log = logging.getLogger(__name__)
@@ -56,7 +65,7 @@ def install(project_settings):
         return
 
     def add_menu():
-        pyblish_icon = host_tools.get_pyblish_icon()
+        ayon_icon = get_ayon_icon_filepath()
         parent_widget = get_main_window()
         cmds.menu(
             MENU_NAME,
@@ -70,7 +79,8 @@ def install(project_settings):
             "currentContext",
             label=get_context_label(),
             parent=MENU_NAME,
-            enable=False
+            enable=False,
+            image=ayon_icon
         )
 
         cmds.setParent("..", menu=True)
@@ -81,54 +91,11 @@ def install(project_settings):
                     cmds.menuItem(divider=True)
                     cmds.menuItem(
                         "Version Up Workfile",
-                        command=lambda *args: version_up_current_workfile()
+                        command=lambda *args: save_next_version()
                     )
         except KeyError:
             print("Version Up Workfile setting not found in "
                   "Core Settings. Please update Core Addon")
-
-        cmds.menuItem(divider=True)
-
-        cmds.menuItem(
-            "Create...",
-            command=lambda *args: host_tools.show_publisher(
-                parent=parent_widget,
-                tab="create"
-            )
-        )
-
-        cmds.menuItem(
-            "Load...",
-            command=lambda *args: host_tools.show_loader(
-                parent=parent_widget,
-                use_context=True
-            )
-        )
-
-        cmds.menuItem(
-            "Publish...",
-            command=lambda *args: host_tools.show_publisher(
-                parent=parent_widget,
-                tab="publish"
-            ),
-            image=pyblish_icon
-        )
-
-        cmds.menuItem(
-            "Manage...",
-            command=lambda *args: host_tools.show_scene_inventory(
-                parent=parent_widget
-            )
-        )
-
-        cmds.menuItem(
-            "Library...",
-            command=lambda *args: host_tools.show_library_loader(
-                parent=parent_widget
-            )
-        )
-
-        cmds.menuItem(divider=True)
 
         cmds.menuItem(
             "Work Files...",
@@ -136,65 +103,70 @@ def install(project_settings):
                 parent=parent_widget
             ),
         )
-
+        
+        cmds.menuItem(divider=True)
         cmds.menuItem(
-            "Set Frame Range",
-            command=lambda *args: lib.reset_frame_range()
+            "Create...",
+            command=lambda *args: host_tools.show_publisher(
+                parent=parent_widget,
+                tab="create"
+            )
+        )
+        cmds.menuItem(
+            "Publish...",
+            command=lambda *args: host_tools.show_publisher(
+                parent=parent_widget,
+                tab="publish"
+            )
+        )
+        cmds.menuItem(
+            "Load...",
+            command=lambda *args: host_tools.show_loader(
+                parent=parent_widget,
+                use_context=True
+            )
+        )
+        cmds.menuItem(
+            "Manage...",
+            command=lambda *args: host_tools.show_scene_inventory(
+                parent=parent_widget
+            )
         )
 
-        cmds.menuItem(
-            "Set Resolution",
-            command=lambda *args: lib.reset_scene_resolution()
-        )
-
-        cmds.menuItem(
-            "Set Colorspace",
-            command=lambda *args: lib.set_colorspace(),
-        )
-
-        cmds.menuItem(
-            "Set Render Settings",
-            command=lambda *args: lib_rendersettings.RenderSettings().set_default_renderer_settings()    # noqa
-        )
-
-        cmds.menuItem(divider=True, parent=MENU_NAME)
-        cmds.menuItem(
-            "Build First Workfile",
-            parent=MENU_NAME,
-            command=lambda *args: BuildWorkfile().process()
-        )
-
+        cmds.menuItem(divider=True)     
         cmds.menuItem(
             "Look assigner...",
             command=lambda *args: show_look_assigner(
                 parent_widget
             )
         )
-
         cmds.menuItem(
-            "Experimental tools...",
-            command=lambda *args: host_tools.show_experimental_tools_dialog(
-                parent_widget
-            )
+            "Build Workfile (Legacy)",
+            command=lambda *args: BuildWorkfile().process()
         )
-
         builder_menu = cmds.menuItem(
-            "Template Builder",
+            "Build Workfile (Templates)",
             subMenu=True,
             tearOff=True,
             parent=MENU_NAME
         )
         cmds.menuItem(
-            "Build Workfile from template",
+            dividerLabel="Use Template", 
+            divider=True, 
+            parent=builder_menu
+        )
+        cmds.menuItem(
+            "Build from Template",
             parent=builder_menu,
             command=build_workfile_template
         )
         cmds.menuItem(
-            "Update Workfile from template",
+            "Update from Template",
             parent=builder_menu,
             command=update_workfile_template
         )
         cmds.menuItem(
+            dividerLabel="Adjust Template",
             divider=True,
             parent=builder_menu
         )
@@ -217,6 +189,40 @@ def install(project_settings):
         )
 
         cmds.setParent(MENU_NAME, menu=True)
+        cmds.menuItem(
+            "Experimental tools...",
+            command=lambda *args: host_tools.show_experimental_tools_dialog(
+                parent_widget
+            )
+        )
+        
+        cmds.menuItem(divider=True)
+        set_defaults_menu = cmds.menuItem(
+            "Set workfile attributes",
+            subMenu=True,
+            tearOff=True,
+            parent=MENU_NAME
+        )
+        cmds.menuItem(
+            "Colorspace",
+            parent=set_defaults_menu,
+            command=lambda *args: lib.set_colorspace(),
+        )
+        cmds.menuItem(
+            "Frame Range",
+            parent=set_defaults_menu,
+            command=lambda *args: lib.reset_frame_range()
+        )         
+        cmds.menuItem(
+            "Render Settings",
+            parent=set_defaults_menu,
+            command=lambda *args: lib_rendersettings.RenderSettings().set_default_renderer_settings()    # noqa
+        )
+        cmds.menuItem(
+            "Resolution",
+            parent=set_defaults_menu,
+            command=lambda *args: lib.reset_scene_resolution()
+        )
 
     def add_scripts_menu(project_settings):
         try:

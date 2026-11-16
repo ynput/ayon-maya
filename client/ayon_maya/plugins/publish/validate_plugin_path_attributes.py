@@ -44,6 +44,9 @@ class ValidatePluginPathAttributes(plugin.MayaInstancePlugin,
             for key in file_attrs.keys()
             if key in all_node_types
         ]
+        if not node_types:
+            # Note: `cmds.ls(type=[])` would list all nodes in the scene
+            return invalid
 
         for node, node_type in pairwise(cmds.ls(type=node_types,
                                                 showType=True)):

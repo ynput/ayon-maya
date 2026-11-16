@@ -4,11 +4,13 @@ import tempfile
 
 import pyblish.api
 
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 
 
-class ExtractThumbnail(plugin.MayaExtractorPlugin):
+class ExtractThumbnail(plugin.MayaExtractorPlugin,
+                       OptionalPyblishPluginMixin):
     """Extract viewport thumbnail.
 
     Takes review camera and creates a thumbnail based on viewport
@@ -17,9 +19,11 @@ class ExtractThumbnail(plugin.MayaExtractorPlugin):
     """
     order = pyblish.api.ExtractorOrder - 0.3
     label = "Thumbnail"
-    families = ["review"]
+    families = ["review.playblast"]
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         self.log.debug("Extracting thumbnail..")
 
         camera = instance.data["review_camera"]
@@ -49,6 +53,18 @@ class ExtractThumbnail(plugin.MayaExtractorPlugin):
             instance, camera, path,
             start=1, end=1,
             capture_preset=capture_preset)
+        # Force thumbnail capture to JPG if blue pencil is enabled
+        # as png captures alpha channels which maps out only the
+        # blue pencil's annotation and it doesn't show the composited
+        # version of the thumbnail.
+        # This is temporary until a better solution is implemented.
+        if preset["viewport_options"].get("bluePencil"):
+            self.log.debug(
+                "Blue Pencil is enabled; forcing thumbnail capture to JPG "
+                "so annotations are composited over the thumbnail image "
+                "instead of exported as a transparent annotation layer."
+            )
+            preset["compression"] = "jpg"
 
         preset["camera_options"].update({
             "displayGateMask": False,
@@ -74,7 +90,7 @@ class ExtractThumbnail(plugin.MayaExtractorPlugin):
 
         representation = {
             "name": "thumbnail",
-            "ext": "jpg",
+            "ext": os.path.splitext(thumbnail)[-1].lstrip(".").lower(),
             "files": thumbnail,
             "stagingDir": dst_staging,
             "thumbnail": True

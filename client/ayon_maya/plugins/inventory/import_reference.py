@@ -11,9 +11,11 @@ class ImportReference(InventoryAction):
     icon = "download"
     color = "#d8d8d8"
 
+    supported_loaders = {"ReferenceLoader", "MayaUSDReferenceLoader"}
+
     def process(self, containers):
         for container in containers:
-            if container["loader"] != "ReferenceLoader":
+            if container["loader"] not in self.supported_loaders:
                 print("Not a reference, skipping")
                 continue
 
@@ -25,3 +27,7 @@ class ImportReference(InventoryAction):
             cmds.file(ref_file, importReference=True)
 
         return True  # return anything to trigger model refresh
+
+    @classmethod
+    def is_compatible(cls, container):
+        return container.get("loader") in cls.supported_loaders

@@ -5,14 +5,13 @@ from ayon_core.pipeline.publish import (
     PublishXmlValidationError,
     RepairAction,
     ValidateContentsOrder,
-    apply_plugin_settings_automatically,
-    get_plugin_settings,
 )
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 
 
-class ValidateRigOutSetNodeIds(plugin.MayaInstancePlugin,
+class ValidateRigOutSetNodeIds(plugin.CbIdValidatorMixin,
+                               plugin.MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Validate if deformed shapes have related IDs to the original shapes.
 
@@ -32,20 +31,6 @@ class ValidateRigOutSetNodeIds(plugin.MayaInstancePlugin,
     ]
     allow_history_only = False
     optional = False
-
-    @classmethod
-    def apply_settings(cls, project_settings):
-        # Preserve automatic settings applying logic
-        settings = get_plugin_settings(plugin=cls,
-                                       project_settings=project_settings,
-                                       log=cls.log,
-                                       category="maya")
-        apply_plugin_settings_automatically(cls, settings, logger=cls.log)
-
-        # Disable plug-in if cbId workflow is disabled
-        if not project_settings["maya"].get("use_cbid_workflow", True):
-            cls.enabled = False
-            return
 
     def process(self, instance):
         """Process all meshes"""
@@ -140,10 +125,29 @@ class ValidateSkeletonRigOutSetNodeIds(ValidateRigOutSetNodeIds):
     """
 
     order = ValidateContentsOrder
-    families = ["rig.fbx"]
-    hosts = ['maya']
     label = 'Skeleton Rig Out Set Node Ids'
+    families = ["rig.fbx"]
     optional = False
+
+    @classmethod
+    def get_attr_defs_for_instance(cls, create_context, instance):
+        """Publish attribute definitions for an instance.
+
+        Attributes available for all families in plugin's `families` attribute.
+
+        Args:
+            create_context (CreateContext): Create context.
+            instance (CreatedInstance): Instance for which attributes are
+                collected.
+
+        Returns:
+            list[AbstractAttrDef]: Attribute definitions for plugin.
+
+        """
+        if instance.product_base_type != "rig":
+            return []
+
+        return cls.get_attribute_defs()
 
     @classmethod
     def get_node(cls, instance):

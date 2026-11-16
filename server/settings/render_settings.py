@@ -10,6 +10,21 @@ def aov_separators_enum():
     ]
 
 
+def render_target_enum():
+    return [
+        {"value": "local", "label": "Local machine rendering"},
+        {"value": "local_no_render", "label": "Use existing frames (local)"},
+        {"value": "farm", "label": "Farm Rendering"},
+    ]
+
+
+def local_render_method_enum():
+    return [
+        {"value": "batch_render", "label": "Batch Render"},
+        {"value": "render_sequence", "label": "Render Sequence"},
+    ]
+
+
 def arnold_image_format_enum():
     """Return enumerator for Arnold output formats."""
     return [
@@ -287,6 +302,10 @@ class AdditionalOptionsModel(BaseSettingsModel):
     value: str = SettingsField("", title="Value")
 
 
+class MayaHardwareSettingsModel(BaseSettingsModel):
+    image_prefix: str = SettingsField(title="Image prefix template")
+
+
 class ArnoldSettingsModel(BaseSettingsModel):
     image_prefix: str = SettingsField(title="Image prefix template")
     image_format: str = SettingsField(
@@ -341,13 +360,21 @@ class RedshiftSettingsModel(BaseSettingsModel):
     image_prefix: str = SettingsField(title="Image prefix template")
     # both engines are using the same enumerator,
     #   both were originally str because of JSON limitation.
+    gi_enabled: bool = SettingsField(
+        False,
+        title="Enable Global Illumination"
+    )
     primary_gi_engine: str = SettingsField(
         enum_resolver=redshift_primary_gi_engine_enum,
-        title="Primary GI Engine"
+        title="Primary GI Engine",
+        description="Set the Primary GI engine. "
+                    "If `None` it is not managed by AYON."
     )
     secondary_gi_engine: str = SettingsField(
         enum_resolver=redshift_secondary_gi_engine_enum,
-        title="Secondary GI Engine"
+        title="Secondary GI Engine",
+        description="Set the Secondary GI engine. "
+                    "If `None` it is not managed by AYON."
     )
     image_format: str = SettingsField(
         enum_resolver=redshift_image_output_enum,
@@ -447,6 +474,21 @@ class RenderSettingsModel(BaseSettingsModel):
         title="Reset Current Frame")
     remove_aovs: bool = SettingsField(
         title="Remove existing AOVs")
+    render_target: str = SettingsField(
+        "farm",
+        title="Default Render Target",
+        enum_resolver=render_target_enum,
+        conditional_enum=True,
+    )
+    local: str = SettingsField(
+        "batch_render",
+        title="Default Local Render Method",
+        description=(
+            "Default 'Local render method' for new instances when "
+            "Render target is 'Local machine rendering'."
+        ),
+        enum_resolver=local_render_method_enum,
+    )
     arnold_renderer: ArnoldSettingsModel = SettingsField(
         default_factory=ArnoldSettingsModel,
         title="Arnold Renderer")
@@ -459,6 +501,10 @@ class RenderSettingsModel(BaseSettingsModel):
     renderman_renderer: RendermanSettingsModel = SettingsField(
         default_factory=RendermanSettingsModel,
         title="Renderman Renderer")
+    mayahardware2_renderer: MayaHardwareSettingsModel = SettingsField(
+        default_factory=MayaHardwareSettingsModel,
+        title="Maya Hardware 2.0 Renderer"
+    )
 
 
 DEFAULT_RENDER_SETTINGS = {
@@ -468,8 +514,10 @@ DEFAULT_RENDER_SETTINGS = {
     "aov_separator": "underscore",
     "reset_current_frame": False,
     "remove_aovs": False,
+    "render_target": "farm",
+    "local": "batch_render",
     "arnold_renderer": {
-        "image_prefix": "<Scene>/<RenderLayer>/<RenderLayer>_<RenderPass>",
+        "image_prefix": "<Scene>/<RenderLayer>/<RenderLayer>",
         "image_format": "exr",
         "multilayer_exr": True,
         "tiled": True,
@@ -485,6 +533,7 @@ DEFAULT_RENDER_SETTINGS = {
     },
     "redshift_renderer": {
         "image_prefix": "<Scene>/<RenderLayer>/<RenderLayer>",
+        "gi_enabled": False,
         "primary_gi_engine": "0",
         "secondary_gi_engine": "0",
         "image_format": "exr",
@@ -502,5 +551,8 @@ DEFAULT_RENDER_SETTINGS = {
         "cryptomatte_dir": "<imagedir>/<layer>{aov_separator}cryptomatte.<f4>.<ext>",
         "watermark_dir": "<imagedir>/<layer>{aov_separator}watermarkFilter.<f4>.<ext>",
         "additional_options": []
+    },
+    "mayahardware2_renderer":{
+        "image_prefix": "<Scene>/<RenderLayer>/<RenderLayer>",
     }
 }

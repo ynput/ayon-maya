@@ -29,7 +29,7 @@ class CollectNewInstances(plugin.MayaInstancePlugin):
     order = pyblish.api.CollectorOrder
     hosts = ["maya"]
 
-    valid_empty_product_types = {"workfile", "renderlayer"}
+    valid_empty_product_base_types = {"workfile", "renderlayer"}
 
     def process(self, instance):
 
@@ -62,7 +62,9 @@ class CollectNewInstances(plugin.MayaInstancePlugin):
             instance[:] = members_hierarchy
 
         elif (
-            instance.data["productType"] not in self.valid_empty_product_types
+            instance.data["productBaseType"] not in (
+                self.valid_empty_product_base_types
+            )
         ):
             self.log.warning("Empty instance: \"%s\" " % objset)
         # Store the exact members of the object set

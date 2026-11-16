@@ -1,3 +1,5 @@
+import os
+
 import ayon_api
 import pyblish.api
 from ayon_core.pipeline import KnownPublishError
@@ -11,7 +13,7 @@ class CollectReview(plugin.MayaInstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.3
     label = 'Collect Review Data'
-    families = ["review"]
+    families = ["review.playblast"]
 
     def process(self, instance):
 
@@ -39,8 +41,8 @@ class CollectReview(plugin.MayaInstancePlugin):
         if camera is not None:
             attr = camera + ".focalLength"
             if lib.get_attribute_input(attr):
-                start = instance.data["frameStart"]
-                end = instance.data["frameEnd"] + 1
+                start = instance.data["frameStartHandle"]
+                end = instance.data["frameEndHandle"] + 1
                 time_range = range(int(start), int(end))
                 focal_length = [cmds.getAttr(attr, time=t) for t in time_range]
             else:
@@ -68,12 +70,13 @@ class CollectReview(plugin.MayaInstancePlugin):
             data = reviewable_inst.data
 
             self.log.debug(
-                'Adding review family to {}'.format(reviewable_product)
+                'Adding review families to {}'.format(reviewable_product)
             )
+            review_families = ["review", "review.playblast"]
             if data.get('families'):
-                data['families'].append('review')
+                data['families'].extend(review_families)
             else:
-                data['families'] = ['review']
+                data['families'] = review_families
 
             data["cameras"] = cameras
             data['review_camera'] = camera
@@ -133,9 +136,6 @@ class CollectReview(plugin.MayaInstancePlugin):
             # as Extract Playblast is already adding fps to representation.
             instance.data["fps"] = instance.context.data["fps"]
 
-            # make ftrack publishable
-            instance.data.setdefault("families", []).append('ftrack')
-
             # Collect audio
             playback_slider = mel.eval('$tmpVar=$gPlayBackSlider')
             audio_name = cmds.timeControl(playback_slider,
@@ -146,8 +146,11 @@ class CollectReview(plugin.MayaInstancePlugin):
             )
 
             def get_audio_node_data(node):
+                audio_frame_offset = cmds.getAttr("{}.offset".format(node))
+                timeline_frame = instance.data["frameStartHandle"]
+                offset_seconds = (audio_frame_offset - timeline_frame) / float(instance.data["fps"])
                 return {
-                    "offset": cmds.getAttr("{}.offset".format(node)),
+                    "offset_in_seconds": offset_seconds,
                     "filename": cmds.getAttr("{}.filename".format(node))
                 }
 
@@ -169,5 +172,18 @@ class CollectReview(plugin.MayaInstancePlugin):
 
                     if start_audio <= end_frame and end_audio > start_frame:
                         audio_data.append(get_audio_node_data(node))
+
+            # Exclude audio data with filenames that can't be found with a
+            # warning to avoid a harder error on e.g. Extract Review
+            valid_audio_data = []
+            for audio in audio_data:
+                if not os.path.exists(audio["filename"]):
+                    self.log.warning(
+                        "Timeline audio file not found on disk: '{}'. "
+                        "Ignoring audio.".format(audio["filename"])
+                    )
+                    continue
+                valid_audio_data.append(audio)
+            audio_data = valid_audio_data
 
             instance.data["audio"] = audio_data
