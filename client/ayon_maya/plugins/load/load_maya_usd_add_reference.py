@@ -1,121 +1,64 @@
 # -*- coding: utf-8 -*-
-import uuid
-
-from ayon_core.pipeline import load
-from ayon_core.pipeline.load import get_representation_path_from_context
-from ayon_maya.api.usdlib import (
-    containerise_prim,
-    iter_ufe_usd_selection
-)
-
 from maya import cmds
-import mayaUsd
+
+from ayon_maya.api import plugin
 
 
-class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
-    """Add a USD Reference into mayaUsdProxyShape
+class MayaUsdProxyReferenceUsd(plugin.Loader):
+    """Add a USD Reference to a prim in a Maya USD Proxy Shape stage.
 
-    TODO: It'd be much easier if this loader would be capable of returning the
-        available containers in the scene based on the AYON URLs inside a USD
-        stage. That way we could potentially avoid the need the custom
-        identifier, stay closer to USD native data and rely solely on the
-        AYON:asset=blue,subset=modelMain,version=1 url
+    Select a USD prim in a Maya USD stage to add the reference to. With no
+    USD prim selected a new stage is created and the reference is added to
+    its `/root` prim.
+
+    The AYON container data is stored in the `customData` of the added
+    `Sdf.Reference` so that each loaded reference is its own container, even
+    when multiple are loaded onto the same prim.
 
     """
 
-    product_types = {"model", "usd", "pointcache", "animation"}
-    representations = ["usd", "usda", "usdc", "usdz", "abc"]
+    product_base_types = {"model", "usd", "pointcache", "animation"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"usd", "usda", "usdc", "usdz", "abc"}
 
     label = "USD Add Reference"
     order = 0
     icon = "code-fork"
     color = "orange"
 
-    identifier_key = "ayon_identifier"
-
     def load(self, context, name=None, namespace=None, options=None):
+        # Make sure we can load the plugin
+        cmds.loadPlugin("mayaUsdPlugin", quiet=True)
 
-        from pxr import Sdf
+        from ayon_maya.api import usdlib
 
-        selection = list(iter_ufe_usd_selection())
-        if not selection:
-            # Create a maya USD proxy with /root prim and add the reference
-            import mayaUsd_createStageWithNewLayer
-            from pxr import UsdGeom
+        ufe_path = usdlib.get_load_target_ufe_path()
+        prim = usdlib.ufe_path_to_prim(ufe_path)
 
-            # Make sure we can load the plugin
-            cmds.loadPlugin("mayaUsdPlugin", quiet=True)
-
-            shape = mayaUsd_createStageWithNewLayer.createStageWithNewLayer()
-            # Get the stage from the full DAG path of the shape. Prefixing
-            # it with `|world` fails to find the stage on new proxy shapes.
-            stage = mayaUsd.ufe.getStage(shape)
-            if not stage:
-                raise RuntimeError(f"Unable to get USD stage from: {shape}")
-            prim_path = "/root"
-            UsdGeom.Xform.Define(stage, prim_path)
-            root_layer = stage.GetRootLayer()
-            root_layer.defaultPrim = prim_path
-            prim = stage.GetPrimAtPath(prim_path)
-        else:
-            assert len(selection) == 1, "Select only one PRIM please"
-            ufe_path = selection[0]
-            prim = mayaUsd.ufe.ufePathToPrim(ufe_path)
-
-        if not prim:
-            raise RuntimeError("Invalid primitive")
-
-        # Define reference using Sdf.Reference so we can directly set custom
-        # data for it
-        path = get_representation_path_from_context(context)
-
-        references = prim.GetReferences()
-
-        # Add unique containerised data to the reference
-        identifier = str(prim.GetPath()) + ":" + str(uuid.uuid4())
-        identifier_data = {self.identifier_key: identifier}
-        reference = Sdf.Reference(assetPath=path,
-                                  customData=identifier_data)
-
-        success = references.AddReference(reference)
-        if not success:
-            raise RuntimeError("Failed to add reference")
-
-        # TODO: We should actually just use the data on the `Sdf.Reference`
-        #   instead of on the USDPrim
-        container = containerise_prim(
-            prim,
+        path = self.filepath_from_context(context)
+        data = usdlib.get_container_data(
+            loader=self.__class__.__name__,
             name=name,
             namespace=namespace or "",
             context=context,
-            loader=self.__class__.__name__
         )
-
-        return container
+        proxy = ufe_path.split(",", 1)[0]
+        return usdlib.add_reference_container(proxy, prim, path, data)
 
     def update(self, container, context):
         # type: (dict, dict) -> None
         """Update container with specified representation."""
+        from ayon_maya.api import usdlib
 
-        from pxr import Sdf
-
-        prim = container["prim"]
         path = self.filepath_from_context(context)
-        for references, index in self._get_prim_references(prim):
-            reference = references[index]
-            new_reference = Sdf.Reference(
-                assetPath=path,
-                customData=reference.customData,
-                layerOffset=reference.layerOffset,
-                primPath=reference.primPath
-            )
-            references[index] = new_reference
-
-        # Update representation id
-        # TODO: Do this in prim spec where we update reference path?
-        # TODO: Store this in the Sdf.Reference CustomData instead?
-        prim.SetCustomDataByKey(
-            "ayon:representation", context["representation"]["id"]
+        usdlib.update_reference_container(
+            container,
+            path=path,
+            data={
+                "representation": context["representation"]["id"],
+                "project_name": context["project"]["name"],
+            }
         )
 
     def switch(self, container, context):
@@ -124,27 +67,6 @@ class MayaUsdProxyReferenceUsd(load.LoaderPlugin):
     def remove(self, container):
         # type: (dict) -> None
         """Remove loaded container."""
-        prim = container["prim"]
+        from ayon_maya.api import usdlib
 
-        # Pop the references from the prepended items list
-        related_references = reversed(list(self._get_prim_references(prim)))
-        for references, index in related_references:
-            references.remove(references[index])
-
-        prim.ClearCustomDataByKey("ayon")
-
-    def _get_prim_references(self, prim):
-
-        # Get a list of all prepended references
-        for prim_spec in prim.GetPrimStack():
-            if not prim_spec:
-                continue
-
-            if not prim_spec.hasReferences:
-                continue
-
-            prepended_items = prim_spec.referenceList.prependedItems
-            for index, _reference in enumerate(prepended_items):
-                # Override the matching reference identifier
-                # TODO: Make sure we only return the correct reference
-                yield prepended_items, index
+        usdlib.remove_reference_container(container)

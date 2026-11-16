@@ -1,20 +1,23 @@
 # -*- coding: utf-8 -*-
 import contextlib
 
-from ayon_core.pipeline import load
-from ayon_maya.api.lib import unique_namespace
-from ayon_maya.api.usdlib import (
-    containerise_prim,
-    iter_ufe_usd_selection
-)
-
 from maya import cmds
-import mayaUsd
+
+from ayon_maya.api import plugin
+from ayon_maya.api.lib import unique_namespace
 
 
 @contextlib.contextmanager
 def no_edit_mode(prim, restore_after=True):
-    """Ensure MayaReference prim is not in edit mode during context"""
+    """Ensure MayaReference prim is not in edit mode during context.
+
+    If the MayaReference prim is currently edited as Maya data, its edits are
+    discarded. If `restore_after` is enabled, it is edited as Maya data again
+    after the context.
+
+    """
+    import mayaUsd.lib
+
     pulled_node = mayaUsd.lib.PrimUpdaterManager.readPullInformation(prim)
     ufe_path = None
     try:
@@ -34,37 +37,39 @@ def no_edit_mode(prim, restore_after=True):
             cmds.mayaUsdEditAsMaya(ufe_path)
 
 
-class MayaUsdProxyAddMayaReferenceLoader(load.LoaderPlugin):
-    """Read USD data in a Maya USD Proxy
+class MayaUsdProxyAddMayaReferenceLoader(plugin.Loader):
+    """Add a Maya Reference prim to a Maya USD Proxy Shape stage.
 
-    TODO: It'd be much easier if this loader would be capable of returning the
-        available containers in the scene based on the AYON URLs inside a USD
-        stage. That way we could potentially avoid the need for custom metadata
-        keys, stay closer to USD native data and rely solely on the
-        AYON:asset=blue,subset=modelMain,version=1 url
+    Select a USD prim in a Maya USD stage to add the MayaReference prim under.
+    With no USD prim selected a new stage is created and the MayaReference
+    prim is added under its `/root` prim.
+
+    The AYON container data is stored in the `customData` of the created
+    MayaReference prim.
 
     """
 
-    product_types = {"*"}
-    representations = ["*"]
-    extensions = ["ma", "mb"]
+    product_base_types = {"*"}
+    product_types = product_base_types
+    representations = {"*"}
+    extensions = {"ma", "mb"}
 
     label = "USD Add Maya Reference"
     order = 1
     icon = "code-fork"
     color = "orange"
 
-    identifier_key = "ayon_identifier"
-
     def load(self, context, name=None, namespace=None, options=None):
-
-        selection = list(iter_ufe_usd_selection())
-        assert len(selection) == 1, "Select only one PRIM please"
-        ufe_path = selection[0]
-        path = self.filepath_from_context(context)
         # Make sure we can load the plugin
         cmds.loadPlugin("mayaUsdPlugin", quiet=True)
+
+        import mayaUsd.ufe
         import mayaUsdAddMayaReference
+        from pxr import Tf
+        from ayon_maya.api import usdlib
+
+        ufe_path = usdlib.get_load_target_ufe_path()
+        parent_prim = usdlib.ufe_path_to_prim(ufe_path)
 
         folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
@@ -72,28 +77,33 @@ class MayaUsdProxyAddMayaReferenceLoader(load.LoaderPlugin):
             prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
+        prim_name = mayaUsd.ufe.uniqueChildName(
+            parent_prim, Tf.MakeValidIdentifier(f"{folder_name}_{name}")
+        )
+
+        path = self.filepath_from_context(context)
         prim = mayaUsdAddMayaReference.createMayaReferencePrim(
             ufe_path,
             path,
             namespace,
-            # todo: add more of the arguments
-            # mayaReferencePrimName Nameprim_name,
+            mayaReferencePrimName=prim_name,
+            # TODO: Expose more of the arguments as load options
             # groupPrim (3-tuple, group name, type and kind)
             # variantSet (2-tuple, variant set name and variant name)
         )
-        if not prim:
-            # Failed to add a reference
-            raise RuntimeError(f"Failed to add a reference at {ufe_path}")
+        if not prim or not prim.IsValid():
+            raise RuntimeError(
+                f"Failed to add a Maya reference prim at: {ufe_path}"
+            )
 
-        containerise_prim(
-            prim,
+        data = usdlib.get_container_data(
+            loader=self.__class__.__name__,
             name=name,
-            namespace=namespace or "",
+            namespace=namespace,
             context=context,
-            loader=self.__class__.__name__
         )
-
-        return prim
+        proxy = ufe_path.split(",", 1)[0]
+        return usdlib.imprint_prim_container(proxy, prim, data)
 
     def _update_reference_path(self, prim, filepath):
         """Update MayaReference prim 'mayaReference' in nearest prim spec"""
@@ -109,16 +119,19 @@ class MayaUsdProxyAddMayaReferenceLoader(load.LoaderPlugin):
         stack = prim.GetPrimStack()
         for prim_spec in stack:
             if "mayaReference" not in prim_spec.attributes:
-                # prim spec defines no opinion on mayaRefernce attribute?
+                # prim spec defines no opinion on mayaReference attribute?
                 continue
 
             attr = prim_spec.attributes["mayaReference"]
-            if attr.permission != Sdf.PermissionPublic:
-                print(f"Not allowed to edit: {attr}")
+            if (
+                attr.permission != Sdf.PermissionPublic
+                or not prim_spec.layer.permissionToEdit
+            ):
+                self.log.debug(f"Not allowed to edit: {attr.path}")
                 continue
 
             if filepath != attr.default:
-                print(
+                self.log.debug(
                     f"Updating {attr.path} - {attr.default} -> {filepath}")
                 attr.default = filepath
 
@@ -133,19 +146,18 @@ class MayaUsdProxyAddMayaReferenceLoader(load.LoaderPlugin):
     def update(self, container, context):
         # type: (dict, dict) -> None
         """Update container with specified representation."""
+        from ayon_maya.api import usdlib
 
-        prim = container["prim"]
-        representation = context["representation"]
+        prim = self._get_prim(container)
         filepath = self.filepath_from_context(context)
 
         with no_edit_mode(prim):
             self._update_reference_path(prim, filepath)
 
-        # Update representation id
-        # TODO: Do this in prim spec where we update reference path?
-        prim.SetCustomDataByKey(
-            "ayon:representation", representation["id"]
-        )
+        usdlib.update_prim_container(container, {
+            "representation": context["representation"]["id"],
+            "project_name": context["project"]["name"],
+        })
 
     def switch(self, container, context):
         self.update(container, context)
@@ -153,10 +165,32 @@ class MayaUsdProxyAddMayaReferenceLoader(load.LoaderPlugin):
     def remove(self, container):
         # type: (dict) -> None
         """Remove loaded container."""
+        from ayon_maya.api import usdlib
 
-        from ayon_maya.api.usdlib import remove_spec
+        stage = usdlib.get_proxy_stage(container["proxy"])
+        prim = stage.GetPrimAtPath(container["prim_path"]) if stage else None
+        if not prim:
+            # The prim is not composed, e.g. it is in an unselected variant
+            self._remove_prim_specs(container, composed_only=False)
+            return
 
-        prim = container["prim"]
         with no_edit_mode(prim, restore_after=False):
-            for spec in prim.GetPrimStack():
-                remove_spec(spec)
+            self._remove_prim_specs(container, composed_only=True)
+
+    @staticmethod
+    def _remove_prim_specs(container, composed_only):
+        from ayon_maya.api import usdlib
+
+        prim_specs = list(
+            usdlib.iter_container_prim_specs(container, composed_only)
+        )
+        for prim_spec in prim_specs:
+            usdlib.ensure_layer_editable(prim_spec.layer)
+        for prim_spec in prim_specs:
+            usdlib.remove_spec(prim_spec)
+
+    @staticmethod
+    def _get_prim(container):
+        from ayon_maya.api import usdlib
+
+        return usdlib.ufe_path_to_prim(container["objectName"])
