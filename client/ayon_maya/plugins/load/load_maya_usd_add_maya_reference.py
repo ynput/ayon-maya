@@ -2,6 +2,7 @@
 import contextlib
 
 from ayon_core.pipeline import load
+from ayon_maya.api.lib import unique_namespace
 from ayon_maya.api.usdlib import (
     containerise_prim,
     iter_ufe_usd_selection
@@ -61,11 +62,16 @@ class MayaUsdProxyAddMayaReferenceLoader(load.LoaderPlugin):
         assert len(selection) == 1, "Select only one PRIM please"
         ufe_path = selection[0]
         path = self.filepath_from_context(context)
-         # Make sure we can load the plugin
+        # Make sure we can load the plugin
         cmds.loadPlugin("mayaUsdPlugin", quiet=True)
         import mayaUsdAddMayaReference
 
-        namespace = "test"
+        folder_name = context["folder"]["name"]
+        namespace = namespace or unique_namespace(
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
+            suffix="_",
+        )
         prim = mayaUsdAddMayaReference.createMayaReferencePrim(
             ufe_path,
             path,
@@ -138,7 +144,7 @@ class MayaUsdProxyAddMayaReferenceLoader(load.LoaderPlugin):
         # Update representation id
         # TODO: Do this in prim spec where we update reference path?
         prim.SetCustomDataByKey(
-            "ayon:representation", str(representation["_id"])
+            "ayon:representation", representation["id"]
         )
 
     def switch(self, container, context):
