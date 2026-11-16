@@ -574,9 +574,6 @@ def _ls():
         if value in ids:
             yield fn_dep.name()
 
-    for container in ls_maya_usd_proxy_prims():
-        yield container
-
 
 def ls_maya_usd_proxy_prims():
     # TODO: This might be nicer once the Loader API gets a refactor where
@@ -613,6 +610,9 @@ def ls():
         container_data = parse_container(container)
         if container_data:
             yield container_data
+
+    # Containers loaded into Maya USD proxy shape stages
+    yield from ls_maya_usd_proxy_prims()
 
 
 @lib.undo_chunk()
