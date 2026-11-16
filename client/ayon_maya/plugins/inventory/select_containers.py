@@ -31,14 +31,10 @@ class HighlightBySceneSelection(InventoryAction):
 
     def process(self, containers):
 
-        selection = set(cmds.ls(selection=True, long=True, objectsOnly=True))
-        # Include selected USD prims (UFE paths) to match containers inside
-        # Maya USD stages
-        selection.update(
-            path for path in cmds.ls(selection=True, ufeObjects=True,
-                                     long=True, absoluteName=True) or []
-            if "," in path
-        )
+        # Include UFE objects so selected USD prims (UFE paths) also match
+        # containers inside Maya USD stages
+        selection = set(cmds.ls(selection=True, ufeObjects=True, long=True,
+                                objectsOnly=True))
         host = registered_host()
 
         to_select = []

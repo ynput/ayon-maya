@@ -111,8 +111,7 @@ def iter_ufe_usd_selection() -> Iterator[str]:
         str: UFE path of a selected USD prim in a Maya USD proxy stage.
 
     """
-    for path in cmds.ls(selection=True, ufeObjects=True, long=True,
-                        absoluteName=True) or []:
+    for path in cmds.ls(selection=True, ufeObjects=True, long=True) or []:
         if "," not in path:
             continue
 
