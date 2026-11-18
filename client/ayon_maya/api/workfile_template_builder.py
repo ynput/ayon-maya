@@ -276,10 +276,6 @@ def trigger_on_new_file() -> None:
     builder.trigger_on_new_file()
 
 
-class _TemplateBuilderWindowCache:
-    window = None
-
-
 def show_template_builder(*args):
     """Show the workfile template builder tool.
 
@@ -290,24 +286,10 @@ def show_template_builder(*args):
         show_workfile_template_builder,
     )
 
-    window = _TemplateBuilderWindowCache.window
-    if window is not None:
-        try:
-            window.refresh()
-            window.show()
-            window.raise_()
-            window.activateWindow()
-        except RuntimeError:
-            # The Qt object was deleted
-            window = None
-
-    if window is None:
-        builder = MayaTemplateBuilder(registered_host())
-        window = show_workfile_template_builder(
-            builder, parent=get_main_window()
-        )
-        _TemplateBuilderWindowCache.window = window
-
+    builder = MayaTemplateBuilder(registered_host())
+    window = show_workfile_template_builder(
+        builder, parent=get_main_window()
+    )
     # Added in a later ayon-core version than the tool itself
     select_placeholder = getattr(window, "select_placeholder", None)
     if select_placeholder is None:
