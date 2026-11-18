@@ -19,6 +19,7 @@ from ayon_maya.api.workfile_template_builder import (
 class MayaPlaceholderLoadPlugin(MayaPlaceholderPlugin, PlaceholderLoadMixin):
     identifier = "maya.load"
     label = "Maya load"
+    icon = {"type": "material-symbols", "name": "download"}
 
     item_class = LoadPlaceholderItem
 

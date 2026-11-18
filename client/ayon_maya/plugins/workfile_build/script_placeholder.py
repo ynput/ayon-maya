@@ -50,6 +50,7 @@ class MayaPlaceholderScriptPlugin(MayaPlaceholderPlugin):
 
     identifier = "maya.runscript"
     label = "Run Python Script"
+    icon = {"type": "material-symbols", "name": "code"}
 
     use_selection_as_parent = False
 
@@ -186,6 +187,16 @@ class MayaPlaceholderScriptPlugin(MayaPlaceholderPlugin):
                 self.delete_placeholder, placeholder)
             self.builder.add_on_finished_callback(
                 delete_callback, order=placeholder.order + 1)
+
+    def repopulate_placeholder(self, placeholder):
+        """Re-run only the populate script of the placeholder.
+
+        Callback scripts are not registered again, so a test build does not
+        run depth/finished callbacks twice.
+        """
+        populate_script = placeholder.data.get("populate_script")
+        if populate_script:
+            self.run_script(placeholder, populate_script)
 
     def run_script(self, placeholder, script, event=None):
         """Run script
