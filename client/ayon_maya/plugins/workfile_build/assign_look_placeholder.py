@@ -90,6 +90,13 @@ class AssignLookPlaceholderPlugin(MayaPlaceholderPlugin):
             self.builder.add_on_finished_callback(
                 delete_callback, order=placeholder.order)
 
+    def repopulate_placeholder(self, placeholder):
+        """Re-apply the look to the current placeholder members."""
+        # Allow re-assigning to nodes that were processed by a previous run.
+        placeholder.data.pop("processed", None)
+        placeholder.data.pop("finished", None)
+        self.assign_look(placeholder)
+
     def assign_look(self, placeholder):
         if placeholder.data.get("finished", False):
             # If not recursive we mark it finished after the first depth
