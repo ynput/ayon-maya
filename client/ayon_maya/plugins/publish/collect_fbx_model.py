@@ -10,7 +10,7 @@ class CollectFbxModel(plugin.MayaInstancePlugin,
 
     order = pyblish.api.CollectorOrder + 0.2
     label = "Collect Fbx Model"
-    families = ["model"]
+    families = ["model.extract"]
     optional = True
 
     def process(self, instance):
@@ -26,4 +26,4 @@ class CollectFbxModel(plugin.MayaInstancePlugin,
         for key in {
             "bakeComplexAnimation", "bakeResampleAnimation",
             "skins", "constraints", "lights"}:
-                instance.data[key] = False
+            instance.data[key] = False

@@ -1,6 +1,23 @@
 from typing import Any
 
 
+def _convert_model_extractor_families(overrides):
+    publish = overrides.get("publish", {})
+
+    for plugin_name in ("ExtractGPUCache", "ExtractAlembic"):
+        families = publish.get(plugin_name, {}).get("families")
+        if (
+            not families
+            or not isinstance(families, list)
+            or "model" not in families
+        ):
+            continue
+
+        while "model" in families:
+            families.remove("model")
+        families.append("model.extract")
+
+
 def _convert_use_cbid_workflow_0_6_15(overrides):
     """`use_cbid_workflow` changed from a boolean to an enum in 0.6.15"""
     value = overrides.get("use_cbid_workflow")
@@ -119,5 +136,6 @@ def convert_settings_overrides(
     _convert_scene_units(overrides)
     _convert_workfile_builder_0_6_0(overrides)
     _convert_product_base_types_0_6_0(overrides)
+    _convert_model_extractor_families(overrides)
     _convert_use_cbid_workflow_0_6_15(overrides)
     return overrides
