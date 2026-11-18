@@ -1,7 +1,6 @@
 import os
 import json
 import logging
-import traceback
 from functools import partial
 
 from qtpy import QtWidgets, QtGui
@@ -17,13 +16,7 @@ from ayon_core.pipeline import (
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.pipeline.workfile import BuildWorkfile
 from ayon_core.tools.utils import host_tools
-
-# The template builder tool (and its Open Template UI) was added in a later
-# ayon-core version. Keep the old submenu usable when core is older.
-try:
-    from ayon_core.tools.workfile_template_build import open_template_ui
-except ImportError:
-    open_template_ui = None
+from ayon_core.tools.workfile_template_build import open_template_ui
 
 # Tool to manage workfile templates was added in a later ayon-core version
 try:
@@ -76,35 +69,6 @@ def get_context_label():
     )
 
 
-def _open_template_ui():
-    """Open the template, with a fallback for older ayon-core versions."""
-    if open_template_ui is not None:
-        open_template_ui(
-            MayaTemplateBuilder(registered_host()), get_main_window()
-        )
-        return
-
-    answer = QtWidgets.QMessageBox.question(
-        get_main_window(),
-        "Opening template",
-        (
-            "Caution! You will lose unsaved changes.\n"
-            "Do you want to continue?"
-        ),
-        QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-    )
-    if answer != QtWidgets.QMessageBox.Yes:
-        return
-    try:
-        MayaTemplateBuilder(registered_host()).open_template()
-    except Exception:
-        QtWidgets.QMessageBox.critical(
-            get_main_window(),
-            "Template Load Failed",
-            traceback.format_exc(),
-        )
-
-
 def _add_template_builder_menu():
     """Separate template builder actions for older ayon-core versions."""
     builder_menu = cmds.menuItem(
@@ -136,7 +100,9 @@ def _add_template_builder_menu():
     cmds.menuItem(
         "Open Template",
         parent=builder_menu,
-        command=lambda *args: _open_template_ui(),
+        command=lambda *args: open_template_ui(
+            MayaTemplateBuilder(registered_host()), get_main_window()
+        ),
     )
     cmds.menuItem(
         "Create Placeholder",
