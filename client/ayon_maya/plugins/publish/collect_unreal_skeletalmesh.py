@@ -13,6 +13,7 @@ class CollectUnrealSkeletalMesh(plugin.MayaInstancePlugin):
 
     def process(self, instance):
         frame = cmds.currentTime(query=True)
+        frame = int(round(frame))
         instance.data["frameStart"] = frame
         instance.data["frameEnd"] = frame
 

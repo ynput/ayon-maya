@@ -1,12 +1,12 @@
 import os
-from ayon_core.addon import AYONAddon, IHostAddon
+from ayon_core.addon import AYONAddon, IHostAddon, IPluginPaths
 
 from .version import __version__
 
 MAYA_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class MayaAddon(AYONAddon, IHostAddon):
+class MayaAddon(AYONAddon, IHostAddon, IPluginPaths):
     name = "maya"
     version = __version__
     host_name = "maya"
@@ -47,3 +47,10 @@ class MayaAddon(AYONAddon, IHostAddon):
 
     def get_workfile_extensions(self):
         return [".ma", ".mb"]
+
+    def get_workfile_action_plugin_paths(self, host_name):
+        if host_name != self.host_name:
+            return []
+        return [
+            os.path.join(MAYA_ROOT_DIR, "plugins", "workfile_actions")
+        ]

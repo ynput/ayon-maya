@@ -737,8 +737,7 @@ class Loader(LoaderPlugin):
             loader_key (str): key to get separate configuration from Settings
                 ('reference_loader'|'import_loader')
         """
-
-        options["attach_to_root"] = True
+        attach_to_root = options.get("attach_to_root", True)
         custom_naming = self.load_settings[loader_key]
 
         if not custom_naming["namespace"]:
@@ -746,8 +745,9 @@ class Loader(LoaderPlugin):
                             "Maya ReferenceLoader settings")
         elif not custom_naming["group_name"]:
             self.log.debug("No custom group_name, no group will be created.")
-            options["attach_to_root"] = False
+            attach_to_root = False
 
+        options["attach_to_root"] = attach_to_root
         formatting_data = self.get_namespace_template_data(context)
         namespace_template = custom_naming["namespace"]
         group_name_template = custom_naming["group_name"]
