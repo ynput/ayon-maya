@@ -122,11 +122,11 @@ class BaseMayaUsdProxyTest(unittest.TestCase):
         stage.GetRootLayer().Save()
         return path
 
-    def make_maya_file(self, name):
+    def make_maya_file(self, name, node_name=None):
         path = os.path.join(self.tmpdir, f"{name}.ma").replace("\\", "/")
         if not os.path.exists(path):
             cmds.file(new=True, force=True)
-            cmds.polyCube(name=name)
+            cmds.polyCube(name=node_name or name)
             cmds.file(rename=path)
             cmds.file(save=True, type="mayaAscii", force=True)
             cmds.file(new=True, force=True)
@@ -438,6 +438,58 @@ class TestUsdAddMayaReferenceLoader(BaseMayaUsdProxyTest):
         container = self.load(path, "repre1")
         self.assertEqual(container["prim_path"], "/root/hero_modelMain")
         self.assertEqual(len(cmds.ls(type="mayaUsdProxyShape")), 1)
+
+    def get_maya_namespace(self, container):
+        prim = self.get_stage(container).GetPrimAtPath(
+            container["prim_path"])
+        return prim.GetAttribute("mayaNamespace").Get()
+
+    def test_update_and_remove_while_edited_as_maya(self):
+        """Updating keeps Maya edits, removing discards them"""
+        import mayaUsd.lib
+
+        path = self.make_maya_file("v1", node_name="cube")
+        path_v2 = self.make_maya_file("v2", node_name="cube")
+        cmds.select(clear=True)
+        container = self.load(path, "repre1")
+        namespace = self.get_maya_namespace(container)
+        prim = self.get_stage(container).GetPrimAtPath(
+            container["prim_path"])
+
+        cmds.mayaUsdEditAsMaya(container["objectName"])
+        pulled_node = mayaUsd.lib.PrimUpdaterManager.readPullInformation(
+            prim)
+        self.assertTrue(pulled_node)
+        cube = f"{namespace}:cube"
+        cmds.setAttr(f"{cube}.translateX", 5)
+
+        loader_module = self.add_maya_reference_module
+        loader = loader_module.MayaUsdProxyAddMayaReferenceLoader()
+        loader.update(self.get_container(container),
+                      make_context(path_v2, "repre2"))
+
+        # Still edited as Maya data, with the edit kept
+        self.assertEqual(
+            mayaUsd.lib.PrimUpdaterManager.readPullInformation(prim),
+            pulled_node
+        )
+        self.assertEqual(cmds.getAttr(f"{cube}.translateX"), 5)
+        self.assertEqual(
+            cmds.referenceQuery(cube, filename=True, withoutCopyNumber=True),
+            path_v2
+        )
+        self.assertEqual(prim.GetAttribute("mayaReference").Get().path,
+                         path_v2)
+        self.assertEqual(self.get_container(container)["representation"],
+                         "repre2")
+
+        loader.remove(self.get_container(container))
+        self.assertFalse(
+            self.get_stage(container).GetPrimAtPath(
+                container["prim_path"]).IsValid()
+        )
+        self.assertFalse(cmds.ls(cube))
+        self.assertEqual(self.get_usd_containers(), [])
 
     def test_lock_and_unlock_version(self):
         path = self.make_maya_file("cubeA")

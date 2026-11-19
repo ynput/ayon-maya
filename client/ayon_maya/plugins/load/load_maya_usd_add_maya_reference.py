@@ -1,40 +1,13 @@
 # -*- coding: utf-8 -*-
-import contextlib
+from __future__ import annotations
+
+from typing import Optional
 
 from maya import cmds
 
+from ayon_core.pipeline.load import LoadError
 from ayon_maya.api import plugin
 from ayon_maya.api.lib import unique_namespace
-
-
-@contextlib.contextmanager
-def no_edit_mode(prim, restore_after=True):
-    """Ensure MayaReference prim is not in edit mode during context.
-
-    If the MayaReference prim is currently edited as Maya data, its edits are
-    discarded. If `restore_after` is enabled, it is edited as Maya data again
-    after the context.
-
-    """
-    import mayaUsd.lib
-
-    pulled_node = mayaUsd.lib.PrimUpdaterManager.readPullInformation(prim)
-    ufe_path = None
-    try:
-        # remove edit state if pulled
-        if pulled_node:
-            import mayaUsdUtils
-            assert mayaUsdUtils.isPulledMayaReference(pulled_node)
-            cmds.mayaUsdDiscardEdits(pulled_node)
-
-            # Discarding the edits directly selects the prim
-            # so we can get the UFE path from selection
-            ufe_path = cmds.ls(selection=True, ufeObjects=True, long=True)[0]
-
-        yield prim, ufe_path, pulled_node
-    finally:
-        if restore_after and pulled_node and ufe_path:
-            cmds.mayaUsdEditAsMaya(ufe_path)
 
 
 class MayaUsdProxyAddMayaReferenceLoader(plugin.Loader):
@@ -150,9 +123,19 @@ class MayaUsdProxyAddMayaReferenceLoader(plugin.Loader):
 
         prim = self._get_prim(container)
         filepath = self.filepath_from_context(context)
+        self._update_reference_path(prim, filepath)
 
-        with no_edit_mode(prim):
-            self._update_reference_path(prim, filepath)
+        # When edited as Maya data, update the Maya reference itself so the
+        # artist's edits are kept
+        pulled_node = self._get_pulled_node(prim)
+        if pulled_node:
+            reference_node = cmds.listConnections(
+                f"{pulled_node}.message", type="reference", source=False
+            )
+            if not reference_node:
+                raise LoadError(
+                    f"No Maya reference found for: {pulled_node}")
+            cmds.file(filepath, loadReference=reference_node[0])
 
         usdlib.update_prim_container(container, {
             "representation": context["representation"]["id"],
@@ -174,8 +157,10 @@ class MayaUsdProxyAddMayaReferenceLoader(plugin.Loader):
             self._remove_prim_specs(container, composed_only=False)
             return
 
-        with no_edit_mode(prim, restore_after=False):
-            self._remove_prim_specs(container, composed_only=True)
+        pulled_node = self._get_pulled_node(prim)
+        if pulled_node:
+            cmds.mayaUsdDiscardEdits(pulled_node)
+        self._remove_prim_specs(container, composed_only=True)
 
     @staticmethod
     def _remove_prim_specs(container, composed_only):
@@ -194,3 +179,10 @@ class MayaUsdProxyAddMayaReferenceLoader(plugin.Loader):
         from ayon_maya.api import usdlib
 
         return usdlib.ufe_path_to_prim(container["objectName"])
+
+    @staticmethod
+    def _get_pulled_node(prim) -> Optional[str]:
+        """Return the Maya node of the prim if it is edited as Maya data."""
+        import mayaUsd.lib
+
+        return mayaUsd.lib.PrimUpdaterManager.readPullInformation(prim) or None
