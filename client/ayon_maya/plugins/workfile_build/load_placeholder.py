@@ -94,6 +94,10 @@ class MayaPlaceholderLoadPlugin(MayaPlaceholderPlugin, PlaceholderLoadMixin):
         if not container:
             return
 
+        if isinstance(container, dict) and container.get("usd_container_type"):
+            # A container in a Maya USD stage has no Maya nodes to parent
+            return
+
         container_roots: list[str] = get_container_transforms(container)
 
         roots: list[str] = []
