@@ -78,56 +78,17 @@ class MayaUsdProxyAddMayaReferenceLoader(plugin.Loader):
         proxy = ufe_path.split(",", 1)[0]
         return usdlib.imprint_prim_container(proxy, prim, data)
 
-    def _update_reference_path(self, prim, filepath):
-        """Update MayaReference prim 'mayaReference' in nearest prim spec"""
-
-        from pxr import Sdf
-
-        # We want to update the authored opinion in the right place, e.g.
-        # within a VariantSet if it's authored there. We go through the
-        # PrimStack to find the first prim spec that authors an opinion
-        # on the 'mayaReference' attribute where we have permission to
-        # change it. This could technically mean we're altering it in
-        # layers that we might not want to (e.g. a published USD file?)
-        stack = prim.GetPrimStack()
-        for prim_spec in stack:
-            if "mayaReference" not in prim_spec.attributes:
-                # prim spec defines no opinion on mayaReference attribute?
-                continue
-
-            attr = prim_spec.attributes["mayaReference"]
-            if (
-                attr.permission != Sdf.PermissionPublic
-                or not prim_spec.layer.permissionToEdit
-            ):
-                self.log.debug(f"Not allowed to edit: {attr.path}")
-                continue
-
-            if filepath != attr.default:
-                self.log.debug(
-                    f"Updating {attr.path} - {attr.default} -> {filepath}")
-                attr.default = filepath
-
-            # Attribute is either updated or already set to
-            # the value in that layer
-            return
-
-        # Just define in the current edit layer?
-        attr = prim.GetAttribute("mayaReference")
-        attr.Set(filepath)
-
     def update(self, container, context):
         # type: (dict, dict) -> None
         """Update container with specified representation."""
         from ayon_maya.api import usdlib
 
-        prim = self._get_prim(container)
         filepath = self.filepath_from_context(context)
-        self._update_reference_path(prim, filepath)
+        self._update_reference_path(container, filepath)
 
         # When edited as Maya data, update the Maya reference itself so the
         # artist's edits are kept
-        pulled_node = self._get_pulled_node(prim)
+        pulled_node = self._get_pulled_node(container)
         if pulled_node:
             reference_node = cmds.listConnections(
                 f"{pulled_node}.message", type="reference", source=False
@@ -150,39 +111,47 @@ class MayaUsdProxyAddMayaReferenceLoader(plugin.Loader):
         """Remove loaded container."""
         from ayon_maya.api import usdlib
 
-        stage = usdlib.get_proxy_stage(container["proxy"])
-        prim = stage.GetPrimAtPath(container["prim_path"]) if stage else None
-        if not prim:
-            # The prim is not composed, e.g. it is in an unselected variant
-            self._remove_prim_specs(container, composed_only=False)
-            return
-
-        pulled_node = self._get_pulled_node(prim)
-        if pulled_node:
-            cmds.mayaUsdDiscardEdits(pulled_node)
-        self._remove_prim_specs(container, composed_only=True)
-
-    @staticmethod
-    def _remove_prim_specs(container, composed_only):
-        from ayon_maya.api import usdlib
-
-        prim_specs = list(
-            usdlib.iter_container_prim_specs(container, composed_only)
-        )
+        prim_specs = list(usdlib.iter_container_prim_specs(container))
         for prim_spec in prim_specs:
             usdlib.ensure_layer_editable(prim_spec.layer)
+
+        pulled_node = self._get_pulled_node(container)
+        if pulled_node:
+            cmds.mayaUsdDiscardEdits(pulled_node)
+
         for prim_spec in prim_specs:
             usdlib.remove_spec(prim_spec)
 
     @staticmethod
-    def _get_prim(container):
+    def _update_reference_path(container, filepath):
+        """Set `mayaReference` in the strongest container prim spec."""
         from ayon_maya.api import usdlib
 
-        return usdlib.ufe_path_to_prim(container["objectName"])
+        for prim_spec in usdlib.iter_container_prim_specs(container):
+            if "mayaReference" not in prim_spec.attributes:
+                continue
+            usdlib.ensure_layer_editable(prim_spec.layer)
+            prim_spec.attributes["mayaReference"].default = filepath
+            return
+
+        raise LoadError(
+            f"No 'mayaReference' opinion found for: {container['objectName']}"
+        )
 
     @staticmethod
-    def _get_pulled_node(prim) -> Optional[str]:
+    def _get_pulled_node(container) -> Optional[str]:
         """Return the Maya node of the prim if it is edited as Maya data."""
         import mayaUsd.lib
+        from pxr import Sdf
+        from ayon_maya.api import usdlib
 
+        stage = usdlib.get_proxy_stage(container["proxy"])
+        prim = stage.GetPrimAtPath(container["prim_path"]) if stage else None
+        spec_path = Sdf.Path(container["prim_spec_path"])
+        if not prim or not any(
+            prim_spec.path == spec_path for prim_spec in prim.GetPrimStack()
+        ):
+            # The container's prim is not composed, e.g. it is in an
+            # unselected variant
+            return None
         return mayaUsd.lib.PrimUpdaterManager.readPullInformation(prim) or None

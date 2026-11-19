@@ -280,9 +280,10 @@ def get_container_data(
 def _make_container(
     data: dict,
     proxy: str,
-    prim_path: Sdf.Path,
+    prim_spec_path: Sdf.Path,
     container_type: str,
 ) -> dict:
+    prim_path = prim_spec_path.StripAllVariantSelections()
     container = dict(data)
     container.update({
         # Transient data
@@ -291,9 +292,18 @@ def _make_container(
         "namespace": str(prim_path),
         "proxy": proxy,
         "prim_path": str(prim_path),
+        # The path of the prim specs holding the container data, including
+        # variant selections, e.g. `/root{model=main}asset`
+        "prim_spec_path": str(prim_spec_path),
         "usd_container_type": container_type,
     })
     return container
+
+
+def _get_edit_target_spec_path(prim: Usd.Prim) -> Sdf.Path:
+    """Return the path of the spec the stage's edit target authors to."""
+    edit_target = prim.GetStage().GetEditTarget()
+    return edit_target.MapToSpecPath(prim.GetPath())
 
 
 def iter_stage_containers(stage: Usd.Stage, proxy: str) -> Iterator[dict]:
@@ -307,19 +317,19 @@ def iter_stage_containers(stage: Usd.Stage, proxy: str) -> Iterator[dict]:
         dict: Container data.
 
     """
-    processed_prim_paths = set()
+    processed_spec_paths = set()
     processed_identifiers = set()
     for layer in get_local_layers(stage):
         for prim_spec in iter_prim_specs(layer):
-            prim_path = prim_spec.path.StripAllVariantSelections()
+            spec_path = prim_spec.path
 
             # Prim containers, e.g. MayaReference prims
             data = _get_container_data(prim_spec.customData)
-            if data and prim_path not in processed_prim_paths:
+            if data and spec_path not in processed_spec_paths:
                 # Only consider the strongest opinion
-                processed_prim_paths.add(prim_path)
+                processed_spec_paths.add(spec_path)
                 yield _make_container(
-                    data, proxy, prim_path, CONTAINER_TYPE_PRIM
+                    data, proxy, spec_path, CONTAINER_TYPE_PRIM
                 )
 
             # USD reference containers
@@ -331,12 +341,12 @@ def iter_stage_containers(stage: Usd.Stage, proxy: str) -> Iterator[dict]:
                     continue
                 # A reference may be listed in multiple list ops, so we
                 # only yield it once.
-                key = (prim_path, data.get("identifier"))
+                key = (spec_path, data.get("identifier"))
                 if key in processed_identifiers:
                     continue
                 processed_identifiers.add(key)
                 yield _make_container(
-                    data, proxy, prim_path, CONTAINER_TYPE_REFERENCE
+                    data, proxy, spec_path, CONTAINER_TYPE_REFERENCE
                 )
 
 
@@ -371,41 +381,25 @@ def ensure_layer_editable(layer: Sdf.Layer):
         )
 
 
-def iter_container_prim_specs(
-    container: dict,
-    composed_only: bool = True,
-) -> Iterator[Sdf.PrimSpec]:
-    """Yield prim specs of a container's prim in the stage's local layers.
+def iter_container_prim_specs(container: dict) -> Iterator[Sdf.PrimSpec]:
+    """Yield the container's prim specs in the stage's local layers.
+
+    These are the prim specs at the container's `prim_spec_path`, from the
+    strongest to the weakest layer. Because that path includes the variant
+    selections this also works for containers in unselected variants.
 
     Args:
         container (dict): The USD container.
-        composed_only (bool): When enabled, only yield the prim specs that
-            contribute to the composed prim, from strongest to weakest
-            opinion. When disabled, yield all prim specs for the prim path
-            in the local layers, including those in unselected variants.
-            This requires traversing the local layers so is much slower.
 
     Yields:
         Sdf.PrimSpec: The prim specs.
 
     """
     stage = _get_container_stage(container)
-    prim_path = Sdf.Path(container["prim_path"])
-    local_layers = get_local_layers(stage)
-
-    if not composed_only:
-        for layer in local_layers:
-            for prim_spec in iter_prim_specs(layer):
-                if prim_spec.path.StripAllVariantSelections() == prim_path:
-                    yield prim_spec
-        return
-
-    prim = stage.GetPrimAtPath(prim_path)
-    if not prim:
-        return
-    local_identifiers = {layer.identifier for layer in local_layers}
-    for prim_spec in prim.GetPrimStack():
-        if prim_spec.layer.identifier in local_identifiers:
+    spec_path = Sdf.Path(container["prim_spec_path"])
+    for layer in get_local_layers(stage):
+        prim_spec = layer.GetPrimAtPath(spec_path)
+        if prim_spec:
             yield prim_spec
 
 
@@ -423,16 +417,13 @@ def find_reference(
 
     """
     identifier = container["identifier"]
-    # Search the composed prim first, because that is fast. If not found,
-    # the reference may be authored in e.g. an unselected variant.
-    for composed_only in (True, False):
-        for prim_spec in iter_container_prim_specs(container, composed_only):
-            if not prim_spec.hasReferences:
-                continue
-            for reference in _iter_reference_list_items(prim_spec):
-                data = _get_container_data(reference.customData)
-                if data and data.get("identifier") == identifier:
-                    return prim_spec, reference
+    for prim_spec in iter_container_prim_specs(container):
+        if not prim_spec.hasReferences:
+            continue
+        for reference in _iter_reference_list_items(prim_spec):
+            data = _get_container_data(reference.customData)
+            if data and data.get("identifier") == identifier:
+                return prim_spec, reference
 
     raise LoadError(
         f"Unable to find USD reference for container: "
@@ -472,7 +463,8 @@ def add_reference_container(
         raise LoadError(f"Failed to add reference to: {prim.GetPath()}")
 
     return _make_container(
-        data, proxy, prim.GetPath(), CONTAINER_TYPE_REFERENCE
+        data, proxy, _get_edit_target_spec_path(prim),
+        CONTAINER_TYPE_REFERENCE
     )
 
 
@@ -522,7 +514,9 @@ def imprint_prim_container(proxy: str, prim: Usd.Prim, data: dict) -> dict:
 
     """
     prim.SetCustomDataByKey(CONTAINER_KEY, data)
-    return _make_container(data, proxy, prim.GetPath(), CONTAINER_TYPE_PRIM)
+    return _make_container(
+        data, proxy, _get_edit_target_spec_path(prim), CONTAINER_TYPE_PRIM
+    )
 
 
 def update_prim_container(container: dict, data: dict):
@@ -530,18 +524,12 @@ def update_prim_container(container: dict, data: dict):
 
     The data is updated in the prim specs that hold the container data.
     """
-    # Search the composed prim first, because that is fast. If not found,
-    # the prim may be authored in e.g. an unselected variant.
-    for composed_only in (True, False):
-        prim_specs = [
-            prim_spec
-            for prim_spec in iter_container_prim_specs(
-                container, composed_only)
-            if _get_container_data(prim_spec.customData)
-        ]
-        if prim_specs:
-            break
-    else:
+    prim_specs = [
+        prim_spec
+        for prim_spec in iter_container_prim_specs(container)
+        if _get_container_data(prim_spec.customData)
+    ]
+    if not prim_specs:
         raise LoadError(
             "Unable to find USD prim container data for: "
             f"{container['objectName']}"

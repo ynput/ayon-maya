@@ -142,7 +142,8 @@ class BaseMayaUsdProxyTest(unittest.TestCase):
         """Return the latest container data from `ls()`"""
         for other in self.get_usd_containers():
             if (
-                other["objectName"] == container["objectName"]
+                other["prim_spec_path"] == container["prim_spec_path"]
+                and other["proxy"] == container["proxy"]
                 and other.get("identifier") == container.get("identifier")
             ):
                 return other
@@ -490,6 +491,52 @@ class TestUsdAddMayaReferenceLoader(BaseMayaUsdProxyTest):
         )
         self.assertFalse(cmds.ls(cube))
         self.assertEqual(self.get_usd_containers(), [])
+
+    def test_containers_in_variants(self):
+        """Containers at the same prim path in different variants"""
+        path = self.make_maya_file("cubeA")
+        path_v2 = self.make_maya_file("cubeB")
+        ufe_path = self.usdlib.create_stage_with_root_prim("/root")
+        stage = self.usdlib.get_proxy_stage(ufe_path.split(",", 1)[0])
+        variant_set = stage.GetPrimAtPath("/root").GetVariantSets(
+            ).AddVariantSet("model")
+        containers = {}
+        for variant in ("a", "b"):
+            variant_set.AddVariant(variant)
+            variant_set.SetVariantSelection(variant)
+            with variant_set.GetVariantEditContext():
+                cmds.select(ufe_path, replace=True)
+                containers[variant] = self.load(path, f"repre_{variant}")
+
+        self.assertEqual(containers["a"]["prim_path"],
+                         containers["b"]["prim_path"])
+        self.assertEqual(
+            sorted(c["representation"] for c in self.get_usd_containers()),
+            ["repre_a", "repre_b"]
+        )
+
+        # Update and remove the container in the unselected variant
+        loader_module = self.add_maya_reference_module
+        loader = loader_module.MayaUsdProxyAddMayaReferenceLoader()
+        loader.update(self.get_container(containers["a"]),
+                      make_context(path_v2, "repre_a2"))
+        layer = stage.GetRootLayer()
+        spec_a = layer.GetPrimAtPath("/root{model=a}hero_modelMain")
+        spec_b = layer.GetPrimAtPath("/root{model=b}hero_modelMain")
+        self.assertEqual(spec_a.attributes["mayaReference"].default.path,
+                         path_v2)
+        self.assertEqual(spec_b.attributes["mayaReference"].default.path,
+                         path)
+
+        loader.remove(self.get_container(containers["a"]))
+        self.assertFalse(layer.GetPrimAtPath("/root{model=a}hero_modelMain"))
+        self.assertTrue(layer.GetPrimAtPath("/root{model=b}hero_modelMain"))
+        self.assertTrue(
+            stage.GetPrimAtPath(containers["b"]["prim_path"]).IsValid())
+        self.assertEqual(
+            [c["representation"] for c in self.get_usd_containers()],
+            ["repre_b"]
+        )
 
     def test_lock_and_unlock_version(self):
         path = self.make_maya_file("cubeA")
