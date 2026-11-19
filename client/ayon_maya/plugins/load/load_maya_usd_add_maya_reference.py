@@ -10,6 +10,32 @@ from ayon_maya.api import plugin
 from ayon_maya.api.lib import unique_namespace
 
 
+def get_stage_maya_namespaces() -> set[str]:
+    """Return the `mayaNamespace` values authored in all Maya USD stages.
+
+    MayaReference prims only create their Maya namespace when they are edited
+    as Maya data, so these are not found as existing Maya namespaces.
+    """
+    from pxr import Sdf
+    from ayon_maya.api import usdlib
+
+    namespaces = set()
+    for _proxy, stage in usdlib.iter_proxy_stages():
+        for layer in usdlib.get_local_layers(stage):
+            paths = []
+
+            def _collect(path):
+                if path.IsPrimPropertyPath() and path.name == "mayaNamespace":
+                    paths.append(path)
+
+            layer.Traverse(Sdf.Path.absoluteRootPath, _collect)
+            for path in paths:
+                value = layer.GetAttributeAtPath(path).default
+                if value:
+                    namespaces.add(value)
+    return namespaces
+
+
 class MayaUsdProxyAddMayaReferenceLoader(plugin.Loader):
     """Add a Maya Reference prim to a Maya USD Proxy Shape stage.
 
@@ -49,6 +75,7 @@ class MayaUsdProxyAddMayaReferenceLoader(plugin.Loader):
             folder_name + "_",
             prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
+            exclude=get_stage_maya_namespaces(),
         )
         prim_name = mayaUsd.ufe.uniqueChildName(
             parent_prim, Tf.MakeValidIdentifier(f"{folder_name}_{name}")

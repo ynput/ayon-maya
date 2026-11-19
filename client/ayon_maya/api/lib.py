@@ -481,13 +481,17 @@ def get_custom_namespace(custom_namespace):
     )
 
 
-def unique_namespace(namespace, format="%02d", prefix="", suffix=""):
+def unique_namespace(
+    namespace, format="%02d", prefix="", suffix="", exclude=None
+):
     """Return unique namespace
 
     Arguments:
         namespace (str): Name of namespace to consider
         format (str, optional): Formatting of the given iteration number
         suffix (str, optional): Only consider namespaces with this suffix.
+        exclude (Optional[set[str]]): Namespaces to consider as existing
+            even though they do not exist in the scene (yet).
 
     >>> unique_namespace("bar")
     # bar01
@@ -530,7 +534,7 @@ def unique_namespace(namespace, format="%02d", prefix="", suffix=""):
         nr_namespace = namespace + format % iteration
         unique = prefix + nr_namespace + suffix
 
-        if not exists(unique):
+        if unique not in (exclude or ()) and not exists(unique):
             return start + unique + end
 
         iteration += 1

@@ -350,8 +350,8 @@ def iter_stage_containers(stage: Usd.Stage, proxy: str) -> Iterator[dict]:
                 )
 
 
-def iter_containers() -> Iterator[dict]:
-    """Yield AYON containers in all Maya USD proxy shape stages."""
+def iter_proxy_stages() -> Iterator[tuple[str, Usd.Stage]]:
+    """Yield all Maya USD proxy shapes with their USD stage."""
     if not is_maya_usd_plugin_loaded():
         return
 
@@ -360,7 +360,12 @@ def iter_containers() -> Iterator[dict]:
         if not stage:
             log.warning(f"Unable to get USD stage from: {proxy}")
             continue
+        yield proxy, stage
 
+
+def iter_containers() -> Iterator[dict]:
+    """Yield AYON containers in all Maya USD proxy shape stages."""
+    for proxy, stage in iter_proxy_stages():
         yield from iter_stage_containers(stage, proxy)
 
 

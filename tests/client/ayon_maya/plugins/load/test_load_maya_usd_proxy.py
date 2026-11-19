@@ -445,6 +445,25 @@ class TestUsdAddMayaReferenceLoader(BaseMayaUsdProxyTest):
             container["prim_path"])
         return prim.GetAttribute("mayaNamespace").Get()
 
+    def test_unique_namespaces(self):
+        """Namespaces are unique, even though none exists in Maya yet"""
+        path = self.make_maya_file("cubeA")
+        ufe_path = self.usdlib.create_stage_with_root_prim("/root")
+        cmds.select(ufe_path, replace=True)
+        container_a = self.load(path, "repre1")
+        cmds.select(ufe_path, replace=True)
+        container_b = self.load(path, "repre1")
+        # Also unique across stages
+        cmds.select(clear=True)
+        container_c = self.load(path, "repre1")
+        self.assertNotEqual(container_a["proxy"], container_c["proxy"])
+
+        namespaces = [
+            self.get_maya_namespace(container)
+            for container in (container_a, container_b, container_c)
+        ]
+        self.assertEqual(len(set(namespaces)), 3, namespaces)
+
     def test_update_and_remove_while_edited_as_maya(self):
         """Updating keeps Maya edits, removing discards them"""
         import mayaUsd.lib
