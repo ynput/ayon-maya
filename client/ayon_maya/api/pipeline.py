@@ -23,6 +23,9 @@ from ayon_core.host import (
 )
 from ayon_core.tools.utils import host_tools
 from ayon_core.tools.workfiles.lock_dialog import WorkfileLockDialog
+from ayon_core.tools.workfiles.widgets.task_in_use_dialog import (
+    install_task_in_use_notifier,
+)
 from ayon_core.lib import (
     register_event_callback,
     emit_event
@@ -128,6 +131,7 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         self._register_callbacks()
 
         menu.install(project_settings)
+        install_task_in_use_notifier()
 
         register_event_callback("save", on_save)
         register_event_callback("open", on_open)
