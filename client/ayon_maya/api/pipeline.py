@@ -23,6 +23,7 @@ from ayon_core.host import (
 )
 from ayon_core.tools.utils import host_tools
 from ayon_core.tools.workfiles.lock_dialog import WorkfileLockDialog
+from ayon_core.tools.task_in_use import install_task_in_use_notifier
 from ayon_core.lib import (
     register_event_callback,
     emit_event
@@ -43,6 +44,10 @@ from ayon_core.pipeline import (
 )
 from ayon_core.pipeline.load import any_outdated_containers
 from ayon_core.pipeline.workfile import get_workdir
+from ayon_core.pipeline.workfile.task_usage import (
+    install_task_usage_tracker,
+    uninstall_task_usage_tracker,
+)
 from ayon_core.pipeline.workfile.lock_workfile import (
     create_workfile_lock,
     remove_workfile_lock,
@@ -128,6 +133,10 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         self._register_callbacks()
 
         menu.install(project_settings)
+        install_task_in_use_notifier()
+        install_task_usage_tracker(self)
+        # Maya does not call 'atexit' callbacks on exit
+        register_event_callback("before.close", uninstall_task_usage_tracker)
 
         register_event_callback("save", on_save)
         register_event_callback("open", on_open)
