@@ -45,6 +45,7 @@ from ayon_core.pipeline import (
 from ayon_core.pipeline.load import any_outdated_containers
 from ayon_core.pipeline.workfile import get_workdir
 from ayon_core.pipeline.workfile.task_usage import (
+    install_task_usage_tracker,
     uninstall_task_usage_tracker,
 )
 from ayon_core.pipeline.workfile.lock_workfile import (
@@ -133,6 +134,7 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         menu.install(project_settings)
         install_task_in_use_notifier()
+        install_task_usage_tracker(self)
         # Maya does not call 'atexit' callbacks on exit
         register_event_callback("before.close", uninstall_task_usage_tracker)
 
