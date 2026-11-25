@@ -70,7 +70,7 @@ def get_context_label():
 
 
 def _add_template_builder_menu():
-    """Separate template builder actions for older ayon-core versions."""
+    """Add separate template builder actions to the AYON menu."""
     builder_menu = cmds.menuItem(
         "Build Workfile (Templates)",
         subMenu=True,
@@ -206,8 +206,7 @@ def install(project_settings):
                 "Template Builder...",
                 command=show_template_builder
             )
-        else:
-            _add_template_builder_menu()
+        _add_template_builder_menu()
 
         cmds.setParent(MENU_NAME, menu=True)
         cmds.menuItem(
