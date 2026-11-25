@@ -90,6 +90,10 @@ class MayaTemplateBuilder(AbstractTemplateBuilder):
 
         return True
 
+    def get_selected_placeholder_identifiers(self):
+        """Return selected nodes so the tool can follow Maya selection."""
+        return cmds.ls(selection=True, long=True)
+
 
 class MayaPlaceholderPlugin(PlaceholderPlugin):
     """Base Placeholder Plugin for Maya with one unified cache.
