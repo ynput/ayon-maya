@@ -9,7 +9,7 @@ from ayon_core.lib import (
 class CreateMultiverseUsdOver(plugin.MayaCreator):
     """Create Multiverse USD Override"""
 
-    identifier = "io.openpype.creators.maya.mvusdoverride"
+    identifier = "io.ayon.creators.maya.mvusdoverride"
     label = "Multiverse USD Override"
     product_base_type = "mvUsdOverride"
     product_type = product_base_type

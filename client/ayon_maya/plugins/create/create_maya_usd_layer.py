@@ -5,7 +5,7 @@ from ayon_core.lib import EnumDef
 class CreateMayaUsdLayer(plugin.MayaCreator):
     """Create Maya USD Export from `mayaUsdProxyShape` layer"""
 
-    identifier = "io.openpype.creators.maya.mayausdlayer"
+    identifier = "io.ayon.creators.maya.mayausdlayer"
     label = "Maya USD Export Layer"
     product_base_type = "usd"
     product_type = product_base_type

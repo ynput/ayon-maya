@@ -9,7 +9,7 @@ from ayon_maya.api import (
 class CreateYetiRig(plugin.MayaCreator):
     """Output for procedural plugin nodes ( Yeti / XGen / etc)"""
 
-    identifier = "io.openpype.creators.maya.yetirig"
+    identifier = "io.ayon.creators.maya.yetirig"
     label = "Yeti Rig"
     product_base_type = "yetiRig"
     product_type = product_base_type

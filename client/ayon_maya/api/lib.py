@@ -4389,6 +4389,89 @@ def get_reference_node_parents(ref):
     return parents
 
 
+def get_optional_attribute(node: str, attribute: str):
+    """Get an attribute value, or None when the attribute does not exist.
+
+    `get_attribute` raises `ValueError` for a missing attribute, which makes
+    it awkward for optional metadata such as the legacy Avalon keys.
+
+    Arguments:
+        node (str): The name of the node.
+        attribute (str): The name of the attribute.
+
+    Returns:
+        Any: The attribute value, or None when it does not exist.
+
+    """
+    if not cmds.attributeQuery(attribute, node=node, exists=True):
+        return None
+    return get_attribute(f"{node}.{attribute}")
+
+
+def convert_legacy_instance_data(node: str) -> bool:
+    """Convert legacy Avalon instance metadata on `node` to AYON.
+
+    Instances created before the Avalon -> AYON rename store
+    `AVALON_INSTANCE_ID` in their `id` attribute and use OpenPype era key
+    names. The node is updated in place so that opening an older scene
+    migrates it on collect.
+
+    Only AYON keys are added; legacy keys are intentionally left in place
+    because the legacy instance convertor still reads them
+    (`MayaLegacyConvertor`) and removing them would be destructive.
+    The `family`/`subset` -> AYON key mapping is handled by
+    `CreatedInstance` in ayon-core, so it is not duplicated here.
+
+    The conversion is best effort. Both instance ids are accepted when
+    collecting and `CreatedInstance` maps `asset` to `folderPath` itself,
+    so an instance that is not converted still collects fine. Hence the
+    node is left untouched when it is referenced (the edit would only end
+    up as a reference edit in the current scene) or when it can not be
+    written to. Collecting instances must never fail because one of them
+    could not be migrated.
+
+    Arguments:
+        node (str): The name of the instance node (an objectSet).
+
+    Returns:
+        bool: Whether anything was converted.
+
+    """
+    convert_id = get_optional_attribute(node, "id") == AVALON_INSTANCE_ID
+
+    # OpenPype stored the folder path as `asset`. Mirrors the conversion
+    # `CreatedInstance` does in ayon-core so node data is AYON ready.
+    asset_name = get_optional_attribute(node, "asset")
+    convert_asset = bool(
+        asset_name and get_optional_attribute(node, "folderPath") is None
+    )
+    if not convert_id and not convert_asset:
+        return False
+
+    if cmds.referenceQuery(node, isNodeReferenced=True):
+        return False
+
+    log.debug(
+        "Converting legacy Avalon instance '%s' to AYON instance.", node
+    )
+    try:
+        # Instance nodes may be locked, which disallows adding attributes
+        with unlocked(node):
+            if convert_id:
+                set_attribute("id", AYON_INSTANCE_ID, node)
+            if convert_asset:
+                set_attribute("folderPath", asset_name, node)
+    except RuntimeError as exc:
+        log.warning(
+            "Unable to convert legacy Avalon instance '%s' to AYON "
+            "instance: %s",
+            node, exc
+        )
+        return False
+
+    return True
+
+
 def get_creator_identifier(node: str) -> str | None:
     """Get the creator identifier of an instance node.
 
@@ -4425,7 +4508,7 @@ def update_animation_instance(
         )
     object_sets = cmds.ls(object_sets, type="objectSet")
     create_context = CreateContext(registered_host(), discover_publish_plugins=False)
-    animation_creator_identifier = "io.openpype.creators.maya.animation"
+    animation_creator_identifier = "io.ayon.creators.maya.animation"
     animation_creator = create_context.creators.get(animation_creator_identifier)
     variant = get_rig_animation_instance_variant(context, namespace)
     target_name = animation_creator.get_product_name(
@@ -4541,7 +4624,7 @@ def create_rig_animation_instance(
         log.info("Creating product: {}".format(variant))
 
     # Fill creator identifier
-    creator_identifier = "io.openpype.creators.maya.animation"
+    creator_identifier = "io.ayon.creators.maya.animation"
 
     host = registered_host()
     create_context = CreateContext(host)
@@ -4624,7 +4707,7 @@ def create_camera_instance(
         log.info(f"Creating product: {namespace}")
 
     # Fill creator identifier
-    creator_identifier = "io.openpype.creators.maya.camera"
+    creator_identifier = "io.ayon.creators.maya.camera"
 
     host = registered_host()
     create_context = CreateContext(host)

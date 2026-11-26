@@ -11,7 +11,7 @@ from maya import cmds
 class CreateMayaUsd(plugin.MayaCreator):
     """Create Maya USD Export from maya scene objects"""
 
-    identifier = "io.openpype.creators.maya.mayausd"
+    identifier = "io.ayon.creators.maya.mayausd"
     label = "Maya USD"
     product_base_type = "usd"
     product_type = product_base_type

@@ -1,3 +1,4 @@
+
 import ayon_api
 from maya import cmds  # noqa: F401
 
@@ -16,7 +17,7 @@ class CreateMultishotLayout(plugin.MayaCreator):
     shot a Layout will be created.
 
     """
-    identifier = "io.openpype.creators.maya.multishotlayout"
+    identifier = "io.ayon.creators.maya.multishotlayout"
     label = "Multi-shot Layout"
     product_base_type = "layout"
     product_type = product_base_type
@@ -93,7 +94,7 @@ class CreateMultishotLayout(plugin.MayaCreator):
                 f"folder: {pre_create_data['shotParent']}."))
 
         # Get layout creator
-        layout_creator_id = "io.openpype.creators.maya.layout"
+        layout_creator_id = "io.ayon.creators.maya.layout"
         layout_creator: Creator = self.create_context.creators.get(
             layout_creator_id)
         if not layout_creator:

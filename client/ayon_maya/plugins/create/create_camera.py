@@ -8,7 +8,7 @@ from ayon_core.lib import BoolDef
 class CreateCamera(plugin.MayaCreator):
     """Single baked camera"""
 
-    identifier = "io.openpype.creators.maya.camera"
+    identifier = "io.ayon.creators.maya.camera"
     label = "Camera"
     product_base_type = "camera"
     product_type = product_base_type
@@ -31,7 +31,7 @@ class CreateCamera(plugin.MayaCreator):
 class CreateCameraRig(plugin.MayaCreator):
     """Complex hierarchy with camera."""
 
-    identifier = "io.openpype.creators.maya.camerarig"
+    identifier = "io.ayon.creators.maya.camerarig"
     label = "Camera Rig"
     product_base_type = "camerarig"
     product_type = product_base_type
