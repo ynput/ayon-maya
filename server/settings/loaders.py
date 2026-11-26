@@ -50,7 +50,7 @@ class MayaUsdProxyLoaderModel(LoaderEnabledModel):
 
 
 class MayaUsdProxyReferenceLoaderModel(
-    LoaderEnabledUseAyonEntityURIModel, MayaUsdProxyLoaderModel
+    MayaUsdProxyLoaderModel, LoaderEnabledUseAyonEntityURIModel
 ):
     pass
 
