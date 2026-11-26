@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 
 import pyblish.api
 from ayon_core.pipeline import registered_host
@@ -25,16 +26,21 @@ def get_path_in_folder(path: str, folder: str) -> str | None:
     return relative_path.replace("\\", "/")
 
 
-class ExtractWorkfileMayaUsdLayers(plugin.MayaInstancePlugin):
+def normalize_path(path: str) -> str:
+    return os.path.normcase(os.path.normpath(path))
+
+
+class ExtractWorkfileMayaUsdLayers(plugin.MayaExtractorPlugin):
     """Publish the USD files of Maya USD stages saved next to the workfile.
 
     With the Maya USD save option "Save the Maya scene file and USD files"
     the layers of a shared stage are saved to USD files next to the Maya
     scene, which refers to them by absolute path.
 
-    These USD files are published next to the published workfile and their
-    paths are made relative, so the published workfile uses its own copies.
-    The paths resolve to the same files for the workfile itself.
+    Copies of these USD files are published next to the published workfile,
+    with relative paths between them. The workfile is saved with relative
+    paths to them for publishing, so the published workfile uses the
+    published copies. The open scene keeps the original paths.
     """
 
     label = "Workfile Maya USD Layers"
@@ -48,12 +54,12 @@ class ExtractWorkfileMayaUsdLayers(plugin.MayaInstancePlugin):
             return
 
         import mayaUsd.ufe
+        from pxr import Sdf
 
         context = instance.context
-        current_file = context.data["currentFile"]
-        folder = os.path.dirname(current_file)
-        layer_paths: set[str] = set()
-        scene_changed = False
+        folder = os.path.dirname(context.data["currentFile"])
+        file_paths: dict[str, str] = {}
+        layers = {}
         for proxy in cmds.ls(type="mayaUsdProxyShapeBase", long=True):
             # Their paths are stored in the referenced file
             if cmds.referenceQuery(proxy, isNodeReferenced=True):
@@ -72,54 +78,84 @@ class ExtractWorkfileMayaUsdLayers(plugin.MayaInstancePlugin):
             if file_path is None:
                 continue
 
-            if cmds.getAttr(f"{proxy}.filePath") != file_path:
-                self.log.debug(f"Setting relative path on {proxy}: {file_path}")
-                cmds.setAttr(f"{proxy}.filePathRelative", True)
-                cmds.setAttr(f"{proxy}.filePath", file_path, type="string")
-                scene_changed = True
-
             stage_layers = {
-                os.path.normcase(os.path.normpath(layer.realPath)): layer
+                normalize_path(layer.realPath): layer
                 for layer in stage.GetLayerStack(includeSessionLayers=False)
                 if not layer.anonymous
             }
-            self._collect_layers(root_layer, folder, stage_layers, layer_paths)
+            proxy_layers = {}
+            self._collect_layers(
+                root_layer, folder, stage_layers, proxy_layers)
+            unsaved = [
+                path for path, (layer, _) in proxy_layers.items()
+                if layer.dirty
+            ]
+            if unsaved:
+                # The Maya USD save option saved these edits in the Maya
+                # scene or not at all
+                self.log.warning(
+                    f"Not publishing the USD files of {proxy}, because they"
+                    f" have USD edits that are not saved to them: {unsaved}"
+                )
+                continue
 
-        if scene_changed:
-            project_name = context.data["projectName"]
-            project_settings = context.data["project_settings"]
-            if is_workfile_lock_enabled("maya", project_name, project_settings):
-                remove_workfile_lock(current_file)
-            self.log.info(f"Saving current file: {current_file}")
-            registered_host().save_workfile(current_file)
+            file_paths[proxy] = file_path
+            layers.update(proxy_layers)
 
+        if not file_paths:
+            return
+
+        staging_dir = self.staging_dir(instance)
         publish_dir = instance.data["publishDir"]
         transfers = instance.data.setdefault("transfers", [])
-        for path in sorted(layer_paths):
-            destination = os.path.join(
-                publish_dir, get_path_in_folder(path, folder))
+        for path, (layer, sublayer_paths) in layers.items():
+            relative_path = get_path_in_folder(path, folder)
+            staged_path = os.path.join(staging_dir, relative_path)
+            os.makedirs(os.path.dirname(staged_path), exist_ok=True)
+            shutil.copyfile(path, staged_path)
+            if sublayer_paths != list(layer.subLayerPaths):
+                staged_layer = Sdf.Layer.FindOrOpen(staged_path)
+                staged_layer.subLayerPaths = sublayer_paths
+                staged_layer.Save()
+
+            destination = os.path.join(publish_dir, relative_path)
             self.log.debug(f"Transfer: {path} > {destination}")
-            transfers.append((path, destination))
+            transfers.append((staged_path, destination))
 
-    def _collect_layers(self, layer, folder, stage_layers, layer_paths):
-        """Collect the paths of `layer` and its sublayers inside `folder`.
+        original_file_paths = {}
+        for proxy, file_path in file_paths.items():
+            original_file_paths[proxy] = (
+                cmds.getAttr(f"{proxy}.filePath"),
+                cmds.getAttr(f"{proxy}.filePathRelative"),
+            )
+            cmds.setAttr(f"{proxy}.filePathRelative", True)
+            cmds.setAttr(f"{proxy}.filePath", file_path, type="string")
+        try:
+            self._save_workfile(context)
+        finally:
+            for proxy, (file_path, relative) in original_file_paths.items():
+                cmds.setAttr(f"{proxy}.filePath", file_path, type="string")
+                cmds.setAttr(f"{proxy}.filePathRelative", relative)
 
-        The paths to these sublayers are made relative to their parent layer.
+    def _collect_layers(self, layer, folder, stage_layers, layers):
+        """Collect `layer` and its sublayers inside `folder`.
 
         Args:
             layer (Sdf.Layer): Layer inside `folder`.
             folder (str): The folder of the workfile.
             stage_layers (dict[str, Sdf.Layer]): The stage's file layers by
                 their normalized path.
-            layer_paths (set[str]): The collected layer paths.
+            layers (dict[str, tuple[Sdf.Layer, list[str]]]): The collected
+                layers by their path, with their sublayer paths to publish
+                them with. Paths to collected sublayers are relative.
 
         """
-        layer_paths.add(layer.realPath)
-        layer_folder = os.path.dirname(layer.realPath)
         sublayer_paths = list(layer.subLayerPaths)
+        layers[layer.realPath] = (layer, sublayer_paths)
+        layer_folder = os.path.dirname(layer.realPath)
         for index, path in enumerate(sublayer_paths):
-            sublayer = stage_layers.get(os.path.normcase(
-                os.path.normpath(layer.ComputeAbsolutePath(path))))
+            sublayer = stage_layers.get(
+                normalize_path(layer.ComputeAbsolutePath(path)))
             if (
                 sublayer is None
                 or get_path_in_folder(sublayer.realPath, folder) is None
@@ -131,12 +167,16 @@ class ExtractWorkfileMayaUsdLayers(plugin.MayaInstancePlugin):
             if not relative_path.startswith("../"):
                 relative_path = f"./{relative_path}"
             sublayer_paths[index] = relative_path
-            if sublayer.realPath not in layer_paths:
-                self._collect_layers(
-                    sublayer, folder, stage_layers, layer_paths)
+            if sublayer.realPath not in layers:
+                self._collect_layers(sublayer, folder, stage_layers, layers)
 
-        if sublayer_paths != list(layer.subLayerPaths):
-            self.log.debug(
-                f"Setting relative sublayer paths in {layer.realPath}")
-            layer.subLayerPaths = sublayer_paths
-            layer.Save()
+    def _save_workfile(self, context):
+        current_file = context.data["currentFile"]
+        project_name = context.data["projectName"]
+        project_settings = context.data["project_settings"]
+        if is_workfile_lock_enabled("maya", project_name, project_settings):
+            remove_workfile_lock(current_file)
+        self.log.info(
+            f"Saving current file with relative USD file paths: {current_file}"
+        )
+        registered_host().save_workfile(current_file)

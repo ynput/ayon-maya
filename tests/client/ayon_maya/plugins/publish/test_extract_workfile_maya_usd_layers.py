@@ -170,6 +170,7 @@ class TestExtractWorkfileMayaUsdLayers(unittest.TestCase):
         })
         instance = context.create_instance("workfileMain")
         instance.data["publishDir"] = self.publish_dir
+        instance.data["stagingDir"] = os.path.join(self.tmpdir, "staging")
         self.module.ExtractWorkfileMayaUsdLayers().process(instance)
 
         transfers = instance.data.get("transfers", [])
@@ -181,45 +182,24 @@ class TestExtractWorkfileMayaUsdLayers(unittest.TestCase):
             shutil.copy(source, destination)
         return published_scene, transfers
 
+    def get_proxy(self):
+        return cmds.ls(type="mayaUsdProxyShape", long=True)[0]
+
     def get_stage(self):
         import mayaUsd.ufe
 
-        shape = cmds.ls(type="mayaUsdProxyShape", long=True)[0]
-        return mayaUsd.ufe.getStage(shape)
+        return mayaUsd.ufe.getStage(self.get_proxy())
 
-    def test_publish_uses_published_usd_files(self):
-        shape = self.create_stage()
-        self.save_scene()
-        work_files = sorted(
+    def get_work_usd_files(self):
+        return sorted(
             name for name in os.listdir(self.work_dir) if name.endswith(".usd")
         )
-        self.assertEqual(len(work_files), 2, "Maya USD saved no USD files")
 
-        published_scene, transfers = self.publish()
-
-        root_layer = self.get_stage().GetRootLayer()
-        root_name = os.path.basename(root_layer.realPath)
-        self.assertTrue(cmds.getAttr(f"{shape}.filePathRelative"))
-        self.assertEqual(cmds.getAttr(f"{shape}.filePath"), root_name)
-        self.assertEqual(
-            list(root_layer.subLayerPaths),
-            [f"./{name}" for name in work_files if name != root_name],
-        )
-        self.assertFalse(cmds.file(query=True, modified=True))
-        self.assertEqual(
-            sorted(
-                (os.path.basename(source), destination)
-                for source, destination in transfers
-            ),
-            [
-                (name, os.path.join(self.publish_dir, name))
-                for name in work_files
-            ],
-        )
-
-        # Change the work USD file after publishing
+    def assert_published_scene_uses_published_files(self, published_scene):
+        """Open the published scene with the work USD files changed."""
         from pxr import Sdf
 
+        root_name = os.path.basename(self.get_stage().GetRootLayer().realPath)
         cmds.file(new=True, force=True)
         work_root_layer = Sdf.Layer.FindOrOpen(
             os.path.join(self.work_dir, root_name))
@@ -241,6 +221,75 @@ class TestExtractWorkfileMayaUsdLayers(unittest.TestCase):
         stage = self.get_stage()
         self.assertTrue(stage.GetPrimAtPath("/root/in_sublayer"))
         self.assertTrue(stage.GetPrimAtPath("/root/after_publish"))
+
+    def test_publish_uses_published_usd_files(self):
+        shape = self.create_stage()
+        self.save_scene()
+        work_files = self.get_work_usd_files()
+        self.assertEqual(len(work_files), 2, "Maya USD saved no USD files")
+        file_path = cmds.getAttr(f"{shape}.filePath")
+        sublayer_paths = list(self.get_stage().GetRootLayer().subLayerPaths)
+
+        published_scene, transfers = self.publish()
+
+        self.assertEqual(
+            sorted(
+                (os.path.basename(source), destination)
+                for source, destination in transfers
+            ),
+            [
+                (name, os.path.join(self.publish_dir, name))
+                for name in work_files
+            ],
+        )
+        # The open scene and the work USD files keep their paths
+        self.assertEqual(cmds.getAttr(f"{shape}.filePath"), file_path)
+        self.assertFalse(cmds.getAttr(f"{shape}.filePathRelative"))
+        self.assertEqual(
+            list(self.get_stage().GetRootLayer().subLayerPaths),
+            sublayer_paths,
+        )
+        self.assert_published_scene_uses_published_files(published_scene)
+
+    def test_session_layer_edits(self):
+        self.create_stage()
+        self.save_scene()
+        stage = self.get_stage()
+        stage.SetEditTarget(stage.GetSessionLayer())
+        stage.DefinePrim("/root/in_session_layer", "Xform")
+        stage.SetEditTarget(stage.GetRootLayer())
+        self.save_scene()
+
+        published_scene, transfers = self.publish()
+
+        self.assertEqual(len(transfers), 2)
+        self.assertTrue(
+            self.get_stage().GetPrimAtPath("/root/in_session_layer"))
+        self.assert_published_scene_uses_published_files(published_scene)
+
+    def test_locked_layer(self):
+        self.create_stage()
+        self.save_scene()
+        self.get_stage().GetRootLayer().SetPermissionToEdit(False)
+
+        published_scene, transfers = self.publish()
+
+        self.assertEqual(len(transfers), 2)
+        self.assert_published_scene_uses_published_files(published_scene)
+
+    def test_unsaved_usd_edits_are_skipped(self):
+        shape = self.create_stage()
+        self.save_scene()
+        file_path = cmds.getAttr(f"{shape}.filePath")
+        self.get_stage().DefinePrim("/root/in_maya_scene", "Xform")
+        with maya_usd_save_option(2):
+            self.save_scene()
+
+        _, transfers = self.publish()
+
+        self.assertEqual(transfers, [])
+        self.assertEqual(cmds.getAttr(f"{shape}.filePath"), file_path)
+        self.assertFalse(cmds.file(query=True, modified=True))
 
     def test_unshared_stage_is_ignored(self):
         shape = self.create_stage(share_stage=False)
@@ -268,8 +317,7 @@ class TestExtractWorkfileMayaUsdLayers(unittest.TestCase):
 
         _, transfers = self.publish()
 
-        self.assertEqual(
-            [os.path.basename(source) for source, _ in transfers], [])
+        self.assertEqual(transfers, [])
         self.assertEqual(cmds.getAttr(f"{shape}.filePath"), file_path)
 
 
