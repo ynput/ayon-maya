@@ -73,9 +73,6 @@ WORKFILE_BUILD_PATH = os.path.join(PLUGINS_DIR, "workfile_build")
 
 AVALON_CONTAINERS = ":AVALON_CONTAINERS"
 
-# Track whether the workfile tool is about to save
-_about_to_save = False
-
 
 class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     name = "maya"
@@ -222,6 +219,9 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         to the previous context's workdir, so the workdir is computed from the
         new context instead.
 
+        When saving the workfile into a different folder or task, the user is
+        also offered to match the scene settings to the new context.
+
         Args:
             context_change_data (ContextChangeData): Object with information
                 about context change.
@@ -250,17 +250,19 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
                 "Can't set project for new context because path does not "
                 "exist: %s", workdir
             )
-            return
+        else:
+            self.log.info(
+                "Updating Maya workspace for context change to %s", workdir
+            )
+            _set_project(workdir)
 
-        self.log.info(
-            "Updating Maya workspace for context change to %s", workdir
-        )
-        _set_project(workdir)
+            # Set Maya fileDialog's start-dir to /scenes
+            frule_scene = cmds.workspace(fileRuleEntry="scene")
+            cmds.optionVar(stringValue=("browserLocationmayaBinaryscene",
+                                        workdir + "/" + frule_scene))
 
-        # Set Maya fileDialog's start-dir to /scenes
-        frule_scene = cmds.workspace(fileRuleEntry="scene")
-        cmds.optionVar(stringValue=("browserLocationmayaBinaryscene",
-                                    workdir + "/" + frule_scene))
+        if context_change_data.reason == ContextChangeReason.workfile_save:
+            lib.prompt_reset_context()
 
     def _register_callbacks(self):
         for handler, event in self._op_events.copy().items():
@@ -730,10 +732,6 @@ def on_save():
         for node, new_id in lib.generate_ids(nodes):
             lib.set_id(node, new_id, overwrite=False)
 
-    # We are now starting the actual save directly
-    global _about_to_save
-    _about_to_save = False
-
 
 def on_open():
     """On scene open let's assume the containers have changed."""
@@ -789,13 +787,8 @@ def on_new():
 
 
 def on_task_changed():
-    """Update the menu label and prompt to reset context settings on save."""
+    """Update the menu label for the new context."""
     menu.update_menu_task_label()
-
-    global _about_to_save
-    if not lib.IS_HEADLESS and _about_to_save:
-        # Let's prompt the user to update the context settings or not
-        lib.prompt_reset_context()
 
 
 def before_workfile_open():
@@ -810,9 +803,6 @@ def before_workfile_save(event):
     workdir_path = event["workdir_path"]
     if workdir_path:
         create_workspace_mel(workdir_path, project_name)
-
-    global _about_to_save
-    _about_to_save = True
 
 
 def workfile_save_before_xgen(event):
