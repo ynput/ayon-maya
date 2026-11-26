@@ -142,16 +142,10 @@ def create_stage_with_root_prim(
         str: The UFE path to the created prim.
 
     """
+    import mayaUsd_createStageWithNewLayer
     from pxr import UsdGeom
 
-    transform = cmds.createNode("transform", name="stage1", skipSelect=True)
-    shape = cmds.createNode(
-        "mayaUsdProxyShape",
-        name="stageShape1",
-        parent=transform,
-        skipSelect=True,
-    )
-    cmds.connectAttr("time1.outTime", f"{shape}.time")
+    shape = mayaUsd_createStageWithNewLayer.createStageWithNewLayer()
     cmds.setAttr(f"{shape}.shareStage", share_stage)
     shape = cmds.ls(shape, long=True)[0]
     stage = get_proxy_stage(shape)
