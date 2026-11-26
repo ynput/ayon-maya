@@ -96,7 +96,7 @@ class TestExtractWorkfileMayaUsdLayers(unittest.TestCase):
         self.tmpdir = tempfile.mkdtemp(prefix="test_workfile_usd_layers_")
         self.addCleanup(shutil.rmtree, self.tmpdir, ignore_errors=True)
         self.work_dir = os.path.join(self.tmpdir, "work")
-        self.publish_dir = os.path.join(self.tmpdir, "publish")
+        self.publish_dir = os.path.join(self.tmpdir, "publish", "v001")
         os.makedirs(self.work_dir)
         self.scene = os.path.join(self.work_dir, "scene_v001.ma").replace(
             "\\", "/")
@@ -242,6 +242,15 @@ class TestExtractWorkfileMayaUsdLayers(unittest.TestCase):
                 for name in work_files
             ],
         )
+        # Only the root layer is staged to change its sublayer path
+        root_name = os.path.basename(file_path)
+        for source, _ in transfers:
+            self.assertEqual(
+                os.path.normcase(os.path.dirname(source))
+                == os.path.normcase(os.path.normpath(self.work_dir)),
+                os.path.basename(source) != root_name,
+                source,
+            )
         # The open scene and the work USD files keep their paths
         self.assertEqual(cmds.getAttr(f"{shape}.filePath"), file_path)
         self.assertFalse(cmds.getAttr(f"{shape}.filePathRelative"))
@@ -250,6 +259,50 @@ class TestExtractWorkfileMayaUsdLayers(unittest.TestCase):
             sublayer_paths,
         )
         self.assert_published_scene_uses_published_files(published_scene)
+
+    def test_references(self):
+        from pxr import Sdf
+
+        def create_layer(path, prim_name):
+            layer = Sdf.Layer.CreateNew(path)
+            Sdf.CreatePrimInLayer(layer, f"/{prim_name}").specifier = (
+                Sdf.SpecifierDef)
+            layer.defaultPrim = prim_name
+            layer.Save()
+
+        other_dir = os.path.join(self.tmpdir, "other")
+        os.makedirs(other_dir)
+        create_layer(os.path.join(self.work_dir, "in_folder.usda"), "a")
+        create_layer(os.path.join(other_dir, "outside.usda"), "b")
+        self.create_stage()
+        self.save_scene()
+        stage = self.get_stage()
+        for prim_path, asset_path in (
+            ("/root/in_folder", "./in_folder.usda"),
+            ("/root/outside", "../other/outside.usda"),
+        ):
+            stage.DefinePrim(prim_path).GetReferences().AddReference(
+                asset_path)
+        self.save_scene()
+
+        published_scene, transfers = self.publish()
+
+        self.assertIn(
+            os.path.join(self.publish_dir, "in_folder.usda"),
+            [destination for _, destination in transfers],
+        )
+        cmds.file(published_scene, open=True, force=True)
+        stage = self.get_stage()
+        for prim_path, folder in (
+            ("/root/in_folder", self.publish_dir),
+            ("/root/outside", other_dir),
+        ):
+            layer = stage.GetPrimAtPath(prim_path).GetPrimStack()[-1].layer
+            self.assertEqual(
+                os.path.normcase(os.path.dirname(layer.realPath)),
+                os.path.normcase(os.path.normpath(folder)),
+                prim_path,
+            )
 
     def test_session_layer_edits(self):
         self.create_stage()

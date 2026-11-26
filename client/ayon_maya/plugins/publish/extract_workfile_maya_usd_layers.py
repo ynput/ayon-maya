@@ -37,10 +37,11 @@ class ExtractWorkfileMayaUsdLayers(plugin.MayaExtractorPlugin):
     the layers of a shared stage are saved to USD files next to the Maya
     scene, which refers to them by absolute path.
 
-    Copies of these USD files are published next to the published workfile,
-    with relative paths between them. The workfile is saved with relative
-    paths to them for publishing, so the published workfile uses the
-    published copies. The open scene keeps the original paths.
+    These USD files, and the USD files inside the workfile folder they
+    sublayer, reference or payload, are published next to the published
+    workfile with relative paths between them. The workfile is saved with
+    relative paths to them for publishing, so the published workfile uses
+    the published copies. The open scene keeps the original paths.
     """
 
     label = "Workfile Maya USD Layers"
@@ -80,7 +81,7 @@ class ExtractWorkfileMayaUsdLayers(plugin.MayaExtractorPlugin):
 
             stage_layers = {
                 normalize_path(layer.realPath): layer
-                for layer in stage.GetLayerStack(includeSessionLayers=False)
+                for layer in stage.GetUsedLayers()
                 if not layer.anonymous
             }
             proxy_layers = {}
@@ -105,22 +106,26 @@ class ExtractWorkfileMayaUsdLayers(plugin.MayaExtractorPlugin):
         if not file_paths:
             return
 
-        staging_dir = self.staging_dir(instance)
         publish_dir = instance.data["publishDir"]
         transfers = instance.data.setdefault("transfers", [])
-        for path, (layer, sublayer_paths) in layers.items():
+        for path, (_, asset_paths) in layers.items():
             relative_path = get_path_in_folder(path, folder)
-            staged_path = os.path.join(staging_dir, relative_path)
-            os.makedirs(os.path.dirname(staged_path), exist_ok=True)
-            shutil.copyfile(path, staged_path)
-            if sublayer_paths != list(layer.subLayerPaths):
-                staged_layer = Sdf.Layer.FindOrOpen(staged_path)
-                staged_layer.subLayerPaths = sublayer_paths
+            source = path
+            if asset_paths:
+                # Update the asset paths in a copy, the work file stays as is
+                source = os.path.join(
+                    self.staging_dir(instance), relative_path)
+                os.makedirs(os.path.dirname(source), exist_ok=True)
+                shutil.copyfile(path, source)
+                staged_layer = Sdf.Layer.FindOrOpen(source)
+                for old_path, new_path in asset_paths.items():
+                    staged_layer.UpdateCompositionAssetDependency(
+                        old_path, new_path)
                 staged_layer.Save()
 
             destination = os.path.join(publish_dir, relative_path)
-            self.log.debug(f"Transfer: {path} > {destination}")
-            transfers.append((staged_path, destination))
+            self.log.debug(f"Transfer: {source} > {destination}")
+            transfers.append((source, destination))
 
         original_file_paths = {}
         for proxy, file_path in file_paths.items():
@@ -138,37 +143,48 @@ class ExtractWorkfileMayaUsdLayers(plugin.MayaExtractorPlugin):
                 cmds.setAttr(f"{proxy}.filePathRelative", relative)
 
     def _collect_layers(self, layer, folder, stage_layers, layers):
-        """Collect `layer` and its sublayers inside `folder`.
+        """Collect `layer` and the USD files inside `folder` it depends on.
 
         Args:
             layer (Sdf.Layer): Layer inside `folder`.
             folder (str): The folder of the workfile.
             stage_layers (dict[str, Sdf.Layer]): The stage's file layers by
                 their normalized path.
-            layers (dict[str, tuple[Sdf.Layer, list[str]]]): The collected
-                layers by their path, with their sublayer paths to publish
-                them with. Paths to collected sublayers are relative.
+            layers (dict[str, tuple[Sdf.Layer, dict[str, str]]]): The
+                collected layers by their path, with the asset paths to
+                change in their published copy: paths to collected layers
+                become relative and relative paths to other files absolute.
 
         """
-        sublayer_paths = list(layer.subLayerPaths)
-        layers[layer.realPath] = (layer, sublayer_paths)
+        from pxr import Sdf
+
+        asset_paths = {}
+        layers[layer.realPath] = (layer, asset_paths)
         layer_folder = os.path.dirname(layer.realPath)
-        for index, path in enumerate(sublayer_paths):
-            sublayer = stage_layers.get(
-                normalize_path(layer.ComputeAbsolutePath(path)))
-            if (
-                sublayer is None
-                or get_path_in_folder(sublayer.realPath, folder) is None
-            ):
+        for asset_path in layer.GetCompositionAssetDependencies():
+            path = layer.ComputeAbsolutePath(asset_path)
+            if get_path_in_folder(path, folder) is None:
+                # Keep resolving to the same file from the published copy
+                if asset_path.startswith(("./", "../")):
+                    asset_paths[asset_path] = path
+                continue
+
+            dependency = (
+                stage_layers.get(normalize_path(path))
+                or Sdf.Layer.FindOrOpen(path)
+            )
+            if dependency is None:
                 continue
 
             relative_path = os.path.relpath(
-                sublayer.realPath, layer_folder).replace("\\", "/")
+                dependency.realPath, layer_folder).replace("\\", "/")
             if not relative_path.startswith("../"):
                 relative_path = f"./{relative_path}"
-            sublayer_paths[index] = relative_path
-            if sublayer.realPath not in layers:
-                self._collect_layers(sublayer, folder, stage_layers, layers)
+            if relative_path != asset_path:
+                asset_paths[asset_path] = relative_path
+            if dependency.realPath not in layers:
+                self._collect_layers(
+                    dependency, folder, stage_layers, layers)
 
     def _save_workfile(self, context):
         current_file = context.data["currentFile"]
