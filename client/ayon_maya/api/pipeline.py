@@ -240,8 +240,18 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         # Maya 2027+ does not return bytes, so we convert it
         if int(cmds.about(version=True)) >= 2027 and isinstance(data, str):
             data = data.encode("utf-8")
-        decoded = base64.b64decode(data).decode("utf-8")
-        return json.loads(decoded)
+        try:
+            decoded = base64.b64decode(data).decode("utf-8")
+            return json.loads(decoded)
+        except (ValueError, TypeError) as exc:
+            # `binascii.Error` (invalid base64) and JSON/UTF-8 decode errors
+            # are all `ValueError`s. A corrupt payload would otherwise keep
+            # the host unusable until the scene is repaired by hand. Treat it
+            # as missing so the next save writes a valid context again.
+            log.warning(
+                "Could not read the AYON context data, ignoring it: %s", exc
+            )
+            return {}
 
     def update_context_data(self, data, changes):
         json_str = json.dumps(data)

@@ -333,7 +333,8 @@ class ReferenceLoader(plugin.ReferenceLoader):
 
             # Then only here confirm whether this is an animation instance, if so
             # then we will want to auto-remove the instance
-            if get_creator_identifier(object_set) == "io.openpype.creators.maya.animation":
+            creator_identifier = get_creator_identifier(object_set)
+            if creator_identifier == "io.ayon.creators.maya.animation":
                 cmds.lockNode(object_set, lock=False)
                 cmds.delete(object_set)
 

@@ -599,8 +599,10 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
     @classmethod
     def convert_attribute_values(cls, create_context, instance):
         # Convert creator attribute 'mergeTransformAndShape' to
-        # plugin attribute, because this attribute has moved from
-        # the `io.openpype.creators.maya.mayausd` creator to this extractor
+        # plugin attribute, because this attribute has moved from the USD
+        # creator to this extractor. Legacy instances are converted to the
+        # AYON creator identifier before publishing, so only the current
+        # identifier is expected here.
         super().convert_attribute_values(create_context, instance)
         if (
                 not cls.enabled
@@ -610,7 +612,7 @@ class ExtractMayaUsd(plugin.MayaExtractorPlugin,
             return
         if (
                 instance.data.get("creator_identifier")
-                != "io.openpype.creators.maya.mayausd"
+                != "io.ayon.creators.maya.mayausd"
         ):
             return
         creator_attributes = instance.data.get("creator_attributes", {})

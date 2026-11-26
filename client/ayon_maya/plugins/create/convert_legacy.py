@@ -1,7 +1,9 @@
 import ayon_api
 
+from contextlib import ExitStack
+
 from ayon_core.pipeline.create.creator_plugins import ProductConvertorPlugin
-from ayon_maya.api import plugin
+from ayon_maya.api import lib, plugin
 from ayon_maya.api.lib import read
 
 from maya import cmds
@@ -169,10 +171,24 @@ class MayaLegacyConvertor(ProductConvertorPlugin,
                 f"Converting legacy instance '{legacy_key}' to creator '{creator_id}'",
             )
             data["creator_identifier"] = creator_id
-            if isinstance(creator, plugin.RenderlayerCreator):
-                self._convert_per_renderlayer(instance_nodes, data, creator)
-            else:
-                self._convert_regular(instance_nodes, data)
+            # Legacy instance nodes can be locked (e.g. animation instances
+            # created with `lock_animation_instance_on_load`). Unlock them
+            # while the instance data is rewritten and restore the lock
+            # afterwards.
+            try:
+                with ExitStack() as stack:
+                    for instance_node in instance_nodes:
+                        stack.enter_context(lib.unlocked(instance_node))
+                    if isinstance(creator, plugin.RenderlayerCreator):
+                        self._convert_per_renderlayer(
+                            instance_nodes, data, creator)
+                    else:
+                        self._convert_regular(instance_nodes, data)
+            except RuntimeError as exc:
+                self.log.warning(
+                    f"Unable to convert legacy instances for family "
+                    f"'{legacy_key}': {exc}"
+                )
 
         # The scene changed while converting; drop the cached instance data so
         # that the creators collect the converted instances during this
@@ -191,8 +207,15 @@ class MayaLegacyConvertor(ProductConvertorPlugin,
         # We only imprint the creator identifier for it to identify
         # as the new style creator
         for instance_node in instance_nodes:
-            self.imprint_instance_node(instance_node,
-                                       data=data.copy())
+            try:
+                with lib.unlocked(instance_node):
+                    self.imprint_instance_node(instance_node,
+                                               data=data.copy())
+            except RuntimeError as exc:
+                self.log.warning(
+                    "Unable to convert legacy instance '%s': %s",
+                    instance_node, exc
+                )
 
     def _convert_per_renderlayer(self, instance_nodes, data, creator):
         # Split the instance into an instance per layer
