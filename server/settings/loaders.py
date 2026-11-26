@@ -17,6 +17,44 @@ class LoaderEnabledUseAyonEntityURIModel(LoaderEnabledModel):
     )
 
 
+def new_stage_usd_edits_enum():
+    return [
+        {"label": "Maya scene file", "value": "maya_scene"},
+        {"label": "Maya USD save preference", "value": "maya_usd_preference"},
+    ]
+
+
+class MayaUsdProxyLoaderModel(LoaderEnabledModel):
+    new_stage_usd_edits: str = SettingsField(
+        "maya_scene",
+        title="Save USD edits of new stages in",
+        enum_resolver=new_stage_usd_edits_enum,
+        description=(
+            "With no USD prim selected the loader creates a new USD stage. "
+            "This sets where the USD edits of that stage are saved.\n"
+            "- **Maya scene file**: The stage is created unshared and its "
+            "USD edits are saved in the Maya scene file, so the workfile "
+            "holds everything that was loaded. Maya USD can not save more "
+            "than 2 GB per layer in the Maya scene file, and large USD "
+            "edits make the Maya scene file big.\n"
+            "- **Maya USD save preference**: The stage is created shared, "
+            "like Maya's *Stage with New Layer*, and the Maya USD save "
+            "preference sets where its USD edits are saved. By default "
+            "Maya USD asks the artist on save. *Save the Maya scene file "
+            "and USD files* writes them to USD files next to the Maya "
+            "scene file, which are not published with the workfile.\n\n"
+            "With the Maya USD save preference *Save the Maya scene file "
+            "only* the USD edits are not saved with either option."
+        ),
+    )
+
+
+class MayaUsdProxyReferenceLoaderModel(
+    LoaderEnabledUseAyonEntityURIModel, MayaUsdProxyLoaderModel
+):
+    pass
+
+
 class ColorsSetting(BaseSettingsModel):
     model: ColorRGBA_uint8 = SettingsField(
         (209, 132, 30, 1.0), title="Model:")
@@ -235,15 +273,17 @@ class LoadersModel(BaseSettingsModel):
         default_factory=LoaderEnabledUseAyonEntityURIModel,
         title="Maya Load USD to Maya Proxy Loader"
     )
-    MayaUsdProxyReferenceUsd: LoaderEnabledUseAyonEntityURIModel = (
+    MayaUsdProxyReferenceUsd: MayaUsdProxyReferenceLoaderModel = (
         SettingsField(
-            default_factory=LoaderEnabledUseAyonEntityURIModel,
+            default_factory=MayaUsdProxyReferenceLoaderModel,
             title="Maya USD Add Reference Loader"
         )
     )
-    MayaUsdProxyAddMayaReferenceLoader: LoaderEnabledModel = SettingsField(
-        default_factory=LoaderEnabledModel,
-        title="Maya USD Add Maya Reference Loader"
+    MayaUsdProxyAddMayaReferenceLoader: MayaUsdProxyLoaderModel = (
+        SettingsField(
+            default_factory=MayaUsdProxyLoaderModel,
+            title="Maya USD Add Maya Reference Loader"
+        )
     )
     MultiverseUsdLoader: LoaderEnabledModel = SettingsField(
         default_factory=LoaderEnabledModel,
@@ -363,9 +403,13 @@ DEFAULT_LOADERS_SETTING = {
     },
     "MayaUsdProxyReferenceUsd": {
         "enabled": True,
-        "use_ayon_entity_uri": False
+        "use_ayon_entity_uri": False,
+        "new_stage_usd_edits": "maya_scene"
     },
-    "MayaUsdProxyAddMayaReferenceLoader": {"enabled": True},
+    "MayaUsdProxyAddMayaReferenceLoader": {
+        "enabled": True,
+        "new_stage_usd_edits": "maya_scene"
+    },
     "MultiverseUsdLoader": {"enabled": False},
     "MultiverseUsdOverLoader": {"enabled": False},
     "RedshiftProxyLoader": {"enabled": True},

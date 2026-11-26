@@ -21,6 +21,7 @@ Or with `mayapy` with `PYTHONPATH` set up to include `ayon_core`, `ayon_maya`
 and their dependencies. If those are not importable the tests are skipped.
 
 """
+import contextlib
 import os
 import sys
 import shutil
@@ -69,6 +70,32 @@ def make_context(path, representation_id):
         # Test only: the path the patched `filepath_from_context` returns
         "representation": {"id": representation_id, "_path": path},
     }
+
+
+@contextlib.contextmanager
+def maya_usd_save_option(option):
+    """Set the Maya USD save option (1: USD files, 2: Maya scene, 3: none)
+
+    Also disables Maya USD's save prompt, so saving does not block.
+    """
+    values = {
+        "mayaUsd_SerializedUsdEditsLocation": option,
+        "mayaUsd_SerializedUsdEditsLocationPrompt": 0,
+    }
+    original = {
+        name: cmds.optionVar(query=name)
+        for name in values if cmds.optionVar(exists=name)
+    }
+    for name, value in values.items():
+        cmds.optionVar(intValue=(name, value))
+    try:
+        yield
+    finally:
+        for name in values:
+            if name in original:
+                cmds.optionVar(intValue=(name, original[name]))
+            else:
+                cmds.optionVar(remove=name)
 
 
 class BaseMayaUsdProxyTest(unittest.TestCase):
@@ -131,6 +158,17 @@ class BaseMayaUsdProxyTest(unittest.TestCase):
             cmds.file(save=True, type="mayaAscii", force=True)
             cmds.file(new=True, force=True)
         return path
+
+    def save_and_reopen(self, save_option):
+        """Save the scene to a new folder, reopen it and return the folder"""
+        folder = tempfile.mkdtemp(dir=self.tmpdir)
+        path = os.path.join(folder, "scene.ma").replace("\\", "/")
+        with maya_usd_save_option(save_option):
+            cmds.file(rename=path)
+            cmds.file(save=True, type="mayaAscii", force=True)
+        cmds.file(new=True, force=True)
+        cmds.file(path, open=True, force=True)
+        return folder
 
     def get_usd_containers(self):
         return [
@@ -602,6 +640,61 @@ class TestHostListing(BaseMayaUsdProxyTest):
                 self.assertTrue(members)
 
 
+class TestNewStageSave(BaseMayaUsdProxyTest):
+    """Where a new stage's USD edits are saved
+
+    These save and reopen scenes, so they run last: after a scene with a
+    USD stage was reopened, Maya USD's Edit As Maya on a new stage can crash
+    Maya in that session.
+    """
+
+    def load(self, path, representation_id, name="modelMain"):
+        loader = self.add_reference_module.MayaUsdProxyReferenceUsd()
+        return loader.load(make_context(path, representation_id), name=name)
+
+    def test_new_stage_saved_in_maya_scene(self):
+        """A new stage is unshared, so Maya USD saves it in the Maya scene
+
+        Even with the Maya USD (default) save option to save USD edits to
+        USD files.
+        """
+        path = self.make_usd_file("asset")
+        cmds.select(clear=True)
+        container = self.load(path, "repre1")
+        self.assertFalse(cmds.getAttr(f"{container['proxy']}.shareStage"))
+
+        folder = self.save_and_reopen(save_option=1)
+        self.assertEqual(os.listdir(folder), ["scene.ma"])
+        containers = self.get_usd_containers()
+        self.assertEqual(len(containers), 1)
+        self.assertEqual(containers[0]["identifier"],
+                         container["identifier"])
+        stage = self.get_stage(containers[0])
+        self.assertTrue(stage.GetPrimAtPath("/root/geo").IsValid())
+
+    def test_new_stage_uses_maya_usd_save_preference(self):
+        """A shared new stage is saved as the Maya USD save option sets"""
+        loader = self.add_reference_module.MayaUsdProxyReferenceUsd
+        self.addCleanup(setattr, loader, "new_stage_usd_edits",
+                        loader.new_stage_usd_edits)
+        loader.new_stage_usd_edits = "maya_usd_preference"
+
+        path = self.make_usd_file("asset")
+        cmds.select(clear=True)
+        container = self.load(path, "repre1")
+        self.assertTrue(cmds.getAttr(f"{container['proxy']}.shareStage"))
+
+        folder = self.save_and_reopen(save_option=1)
+        usd_files = [
+            name for name in os.listdir(folder) if name.endswith(".usd")
+        ]
+        self.assertEqual(len(usd_files), 1)
+        containers = self.get_usd_containers()
+        self.assertEqual(len(containers), 1)
+        self.assertEqual(containers[0]["identifier"],
+                         container["identifier"])
+
+
 def run():
     """Run the tests and return whether they all passed."""
     cmds.loadPlugin("mayaUsdPlugin", quiet=True)
@@ -614,6 +707,7 @@ def run():
         TestUsdAddReferenceLoader,
         TestUsdAddMayaReferenceLoader,
         TestHostListing,
+        TestNewStageSave,
     ):
         suite.addTests(
             unittest.defaultTestLoader.loadTestsFromTestCase(test_case))

@@ -27,13 +27,18 @@ class MayaUsdProxyReferenceUsd(plugin.Loader):
     icon = "code-fork"
     color = "orange"
 
+    # Where the USD edits of a new stage are saved, defined in settings
+    new_stage_usd_edits = "maya_scene"
+
     def load(self, context, name=None, namespace=None, options=None):
         # Make sure we can load the plugin
         cmds.loadPlugin("mayaUsdPlugin", quiet=True)
 
         from ayon_maya.api import usdlib
 
-        ufe_path = usdlib.get_load_target_ufe_path()
+        ufe_path = usdlib.get_load_target_ufe_path(
+            share_new_stage=self.new_stage_usd_edits == "maya_usd_preference"
+        )
         prim = usdlib.ufe_path_to_prim(ufe_path)
 
         path = self.filepath_from_context(context)

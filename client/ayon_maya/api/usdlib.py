@@ -122,22 +122,37 @@ def iter_ufe_usd_selection() -> Iterator[str]:
         yield path
 
 
-def create_stage_with_root_prim(prim_path: str = "/root") -> str:
+def create_stage_with_root_prim(
+    prim_path: str = "/root",
+    share_stage: bool = False,
+) -> str:
     """Create a new Maya USD proxy shape with a stage holding a single prim.
 
     The prim is set as the default prim of the stage's root layer.
 
+    An unshared stage saves its USD edits in the Maya scene file. A shared
+    stage saves them as set in the Maya USD save preference, which can write
+    them to USD files next to the Maya scene file.
+
     Args:
         prim_path (str): The prim path of the root prim to create.
+        share_stage (bool): Whether to create a shared stage.
 
     Returns:
         str: The UFE path to the created prim.
 
     """
-    import mayaUsd_createStageWithNewLayer
     from pxr import UsdGeom
 
-    shape = mayaUsd_createStageWithNewLayer.createStageWithNewLayer()
+    transform = cmds.createNode("transform", name="stage1", skipSelect=True)
+    shape = cmds.createNode(
+        "mayaUsdProxyShape",
+        name="stageShape1",
+        parent=transform,
+        skipSelect=True,
+    )
+    cmds.connectAttr("time1.outTime", f"{shape}.time")
+    cmds.setAttr(f"{shape}.shareStage", share_stage)
     shape = cmds.ls(shape, long=True)[0]
     stage = get_proxy_stage(shape)
     if not stage:
@@ -148,11 +163,15 @@ def create_stage_with_root_prim(prim_path: str = "/root") -> str:
     return get_ufe_path(shape, prim_path)
 
 
-def get_load_target_ufe_path() -> str:
+def get_load_target_ufe_path(share_new_stage: bool = False) -> str:
     """Return the UFE path of the USD prim a loader should load into.
 
     This is the selected USD prim, or a newly created stage's root prim if
     no USD prim is selected.
+
+    Args:
+        share_new_stage (bool): Whether a newly created stage is shared.
+            See `create_stage_with_root_prim`.
 
     Raises:
         LoadError: When more than one USD prim is selected.
@@ -171,7 +190,7 @@ def get_load_target_ufe_path() -> str:
     if selection:
         return selection[0]
 
-    return create_stage_with_root_prim()
+    return create_stage_with_root_prim(share_stage=share_new_stage)
 
 
 def ufe_path_to_prim(ufe_path: str) -> Usd.Prim:
