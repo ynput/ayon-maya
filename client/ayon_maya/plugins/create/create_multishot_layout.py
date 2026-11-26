@@ -1,4 +1,3 @@
-import io
 
 import ayon_api
 from maya import cmds  # noqa: F401
