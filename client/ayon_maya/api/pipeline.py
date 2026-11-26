@@ -562,6 +562,11 @@ def ls():
         if container_data:
             yield container_data
 
+    # Containers loaded into Maya USD proxy shape stages
+    if cmds.pluginInfo("mayaUsdPlugin", query=True, loaded=True):
+        from . import usdlib
+        yield from usdlib.iter_containers()
+
 
 @lib.undo_chunk()
 def containerise(name,
