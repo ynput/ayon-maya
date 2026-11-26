@@ -752,8 +752,7 @@ class Loader(LoaderPlugin):
             loader_key (str): key to get separate configuration from Settings
                 ('reference_loader'|'import_loader')
         """
-
-        options["attach_to_root"] = True
+        attach_to_root = options.get("attach_to_root", True)
         custom_naming = self.load_settings[loader_key]
 
         if not custom_naming["namespace"]:
@@ -761,8 +760,9 @@ class Loader(LoaderPlugin):
                             "Maya ReferenceLoader settings")
         elif not custom_naming["group_name"]:
             self.log.debug("No custom group_name, no group will be created.")
-            options["attach_to_root"] = False
+            attach_to_root = False
 
+        options["attach_to_root"] = attach_to_root
         formatting_data = self.get_namespace_template_data(context)
         namespace_template = custom_naming["namespace"]
         group_name_template = custom_naming["group_name"]
@@ -1180,6 +1180,30 @@ class MayaContextPlugin(ContextPlugin):
 
     settings_category = SETTINGS_CATEGORY
     hosts = ["maya"]
+
+
+class CbIdValidatorMixin:
+    """Disable the publish plug-in unless the `cbId` workflow is "on".
+
+    Otherwise applies the plug-in settings like ayon-core does for plug-ins
+    without an `apply_settings` method.
+    """
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        if (
+            lib.get_cbid_workflow_from_settings(project_settings)
+            != lib.CbIdWorkflow.ON
+        ):
+            cls.enabled = False
+            return
+
+        settings = publish.get_plugin_settings(
+            plugin=cls, project_settings=project_settings, log=cls.log
+        )
+        publish.apply_plugin_settings_automatically(
+            cls, settings, logger=cls.log
+        )
 
 
 class MayaExtractorPlugin(publish.Extractor):

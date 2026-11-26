@@ -18,6 +18,8 @@ from ayon_core.host import (
     ILoadHost,
     IPublishHost,
     HostDirmap,
+    ContextChangeData,
+    ContextChangeReason,
 )
 from ayon_core.tools.utils import host_tools
 from ayon_core.tools.workfiles.lock_dialog import WorkfileLockDialog
@@ -40,6 +42,7 @@ from ayon_core.pipeline import (
     registered_host,
 )
 from ayon_core.pipeline.load import any_outdated_containers
+from ayon_core.pipeline.workfile import get_workdir
 from ayon_core.pipeline.workfile.lock_workfile import (
     create_workfile_lock,
     remove_workfile_lock,
@@ -52,10 +55,10 @@ from ayon_maya.lib import create_workspace_mel
 from . import menu, lib
 from .workio import (
     open_file,
+    open_file_options,
     save_file,
     file_extensions,
     has_unsaved_changes,
-    work_root,
     current_file
 )
 
@@ -162,11 +165,31 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     def open_workfile(self, filepath):
         return open_file(filepath)
 
+    def open_workfile_options(self, **options):
+        """Open workfiles with additional `cmds.file` flags in this context.
+
+        The options apply to every workfile open done through the host,
+        including 'open_workfile_with_context', so the context change and
+        workfile events are triggered as usual.
+
+        Example:
+            >>> host = registered_host()
+            >>> with host.open_workfile_options(loadReferenceDepth="none"):
+            ...     host.open_workfile_with_context(
+            ...         filepath, folder_entity, task_entity
+            ...     )
+
+        Args:
+            **options: Flags passed to `cmds.file` on workfile open.
+
+        Returns:
+            ContextManager: Applies the options while it is active.
+
+        """
+        return open_file_options(**options)
+
     def save_workfile(self, filepath=None):
         return save_file(filepath)
-
-    def work_root(self, session):
-        return work_root(session)
 
     def get_current_workfile(self):
         return current_file()
@@ -229,6 +252,54 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         if int(cmds.about(version=True)) >= 2027 and isinstance(encoded, bytes):
             encoded = encoded.decode("utf-8")
         return cmds.fileInfo(self.get_context_key(), encoded)
+
+    def _after_context_change(self, context_change_data: ContextChangeData):
+        """Set the Maya workspace to the work directory of the new context.
+
+        On workfile open or save, `AYON_WORKDIR` is set to the workfile's
+        directory, so that is used. For other context changes it still points
+        to the previous context's workdir, so the workdir is computed from the
+        new context instead.
+
+        Args:
+            context_change_data (ContextChangeData): Object with information
+                about context change.
+
+        """
+        super()._after_context_change(context_change_data)
+
+        if lib.IS_HEADLESS:
+            return
+
+        if context_change_data.reason in (
+            ContextChangeReason.workfile_open,
+            ContextChangeReason.workfile_save,
+        ):
+            workdir = os.environ["AYON_WORKDIR"]
+        else:
+            workdir = str(get_workdir(
+                context_change_data.project_entity,
+                context_change_data.folder_entity,
+                context_change_data.task_entity,
+                host_name=self.name,
+                anatomy=context_change_data.anatomy,
+            ))
+        if not os.path.exists(workdir):
+            self.log.warning(
+                "Can't set project for new context because path does not "
+                "exist: %s", workdir
+            )
+            return
+
+        self.log.info(
+            "Updating Maya workspace for context change to %s", workdir
+        )
+        _set_project(workdir)
+
+        # Set Maya fileDialog's start-dir to /scenes
+        frule_scene = cmds.workspace(fileRuleEntry="scene")
+        cmds.optionVar(stringValue=("browserLocationmayaBinaryscene",
+                                    workdir + "/" + frule_scene))
 
     def _register_callbacks(self):
         for handler, event in self._op_events.copy().items():
@@ -329,14 +400,19 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             trigger_on_app_launch()
 
 
-def _set_project():
-    """Sets the maya project to the current Session's work directory.
+def _set_project(workdir=None):
+    """Sets the maya project to the given work directory.
+
+    Args:
+        workdir (Optional[str]): Work directory to set as Maya workspace.
+            Defaults to the `AYON_WORKDIR` environment variable.
 
     Returns:
         None
 
     """
-    workdir = os.getenv("AYON_WORKDIR")
+    if workdir is None:
+        workdir = os.getenv("AYON_WORKDIR")
 
     try:
         os.makedirs(workdir)
@@ -760,7 +836,8 @@ def on_save():
     """Automatically add IDs to new nodes
 
     Any transform of a mesh, without an existing ID, is given one
-    automatically on file save.
+    automatically on file save. This is skipped when the `cbId` workflow
+    is set to "off" in project settings.
     """
     log.info("Running callback on save..")
 
@@ -770,11 +847,12 @@ def on_save():
     # remove lockfile if users jumps over from one scene to another
     _remove_workfile_lock()
 
-    # Generate ids of the current context on nodes in the scene
-    nodes = lib.get_id_required_nodes(referenced_nodes=False,
-                                      existing_ids=False)
-    for node, new_id in lib.generate_ids(nodes):
-        lib.set_id(node, new_id, overwrite=False)
+    if lib.get_cbid_workflow() != lib.CbIdWorkflow.OFF:
+        # Generate ids of the current context on nodes in the scene
+        nodes = lib.get_id_required_nodes(referenced_nodes=False,
+                                          existing_ids=False)
+        for node, new_id in lib.generate_ids(nodes):
+            lib.set_id(node, new_id, overwrite=False)
 
     # We are now starting the actual save directly
     global _about_to_save
@@ -856,24 +934,8 @@ def on_new():
 
 
 def on_task_changed():
-    """Wrapped function of app initialize and maya's on task changed"""
-    # Run
+    """Update the menu label and prompt to reset context settings on save."""
     menu.update_menu_task_label()
-
-    workdir = os.getenv("AYON_WORKDIR")
-    if os.path.exists(workdir):
-        log.info("Updating Maya workspace for task change to %s", workdir)
-        _set_project()
-
-        # Set Maya fileDialog's start-dir to /scenes
-        frule_scene = cmds.workspace(fileRuleEntry="scene")
-        cmds.optionVar(stringValue=("browserLocationmayaBinaryscene",
-                                    workdir + "/" + frule_scene))
-
-    else:
-        log.warning((
-            "Can't set project for new context because path does not exist: {}"
-        ).format(workdir))
 
     global _about_to_save
     if not lib.IS_HEADLESS and _about_to_save:

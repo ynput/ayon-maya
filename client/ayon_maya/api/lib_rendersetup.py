@@ -11,9 +11,9 @@ from maya import cmds
 import maya.api.OpenMaya as om
 import logging
 
-import maya.app.renderSetup.model.utils as utils
 from maya.app.renderSetup.model import renderSetup
 from maya.app.renderSetup.model.override import (
+    Override,
     AbsOverride,
     RelOverride,
     UniqueOverride
@@ -302,7 +302,7 @@ def get_attr_overrides(node_attr, layer,
     # Iterate over the overrides in reverse so we get the last
     # overrides first and can "break" whenever an absolute
     # override is reached
-    layer_overrides = list(utils.getOverridesRecursive(rs_layer))
+    layer_overrides = list(iter_layer_overrides(rs_layer))
     for layer_override in reversed(layer_overrides):
 
         if skip_disabled and not layer_override.isEnabled():
@@ -350,6 +350,44 @@ def get_attr_overrides(node_attr, layer,
             break
 
     return reversed(plug_overrides)
+
+
+def iter_layer_overrides(layer):
+    """Iterate layer overrides in order of priority (lowest first).
+
+    Note: We cannot use `maya.app.renderSetup.model.utils.getOverridesRecursive`
+        here because it traverses via `getChildren()` which, on a RenderLayer
+        (unlike on a Group or Collection), only returns collections. That means
+        any overrides living inside groups would be silently skipped.
+        Instead, we use `getContainers()` on the layer which returns both
+        collections and groups, interleaved in their actual priority order.
+        From there on, `getChildren()` on groups/collections correctly
+        returns nested items.
+
+    Args:
+        layer (RenderLayer): RenderLayer to iterate the overrides for
+
+    Yields:
+        Override: Each override object found in the layer hierarchy.
+    """
+    if hasattr(layer, "getContainers"):
+        children = layer.getContainers()
+    else:
+        children = layer.getChildren()
+
+    # Use a stack in reverse so that popping preserves the priority order
+    stack = list(reversed(children))
+    while stack:
+        obj = stack.pop()
+        if isinstance(obj, Override):
+            yield obj
+            continue
+
+        # Skip disabled groups/collections as their overrides are not active
+        if hasattr(obj, "isEnabled") and not obj.isEnabled():
+            continue
+
+        stack.extend(reversed(obj.getChildren()))
 
 
 def get_shader_in_layer(node, layer):
