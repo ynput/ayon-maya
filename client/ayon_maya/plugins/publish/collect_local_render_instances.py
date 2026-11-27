@@ -17,8 +17,7 @@ class CollectLocalRenderInstances(plugin.MayaInstancePlugin):
 
     transfer_keys = {
         "creator_attributes",
-        "publish_attributes",
-        "transientData"
+        "publish_attributes"
     }
 
     def process(self, instance):
@@ -47,7 +46,7 @@ class CollectLocalRenderInstances(plugin.MayaInstancePlugin):
             skeleton=skeleton,
             aov_filter={"maya": [".*"]},  # allow all as reviewables
             skip_integration_repre_list=[],
-            do_not_add_review=False,
+            do_not_add_review=not instance.data.get("review", False),
         )
 
         # Create instances for each AOV

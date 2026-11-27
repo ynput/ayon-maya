@@ -10,7 +10,8 @@ from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateNodeIdsUnique(plugin.MayaInstancePlugin):
+class ValidateNodeIdsUnique(plugin.CbIdValidatorMixin,
+                            plugin.MayaInstancePlugin):
     """Validate the nodes in the instance have a unique Colorbleed Id
 
     Here we ensure that what has been added to the instance is unique
@@ -25,13 +26,6 @@ class ValidateNodeIdsUnique(plugin.MayaInstancePlugin):
 
     actions = [ayon_maya.api.action.SelectInvalidAction,
                ayon_maya.api.action.GenerateUUIDsOnInvalidAction]
-
-    @classmethod
-    def apply_settings(cls, project_settings):
-        # Disable plug-in if cbId workflow is disabled
-        if not project_settings["maya"].get("use_cbid_workflow", True):
-            cls.enabled = False
-            return
 
     def process(self, instance):
         """Process all meshes"""

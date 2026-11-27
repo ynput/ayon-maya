@@ -547,6 +547,22 @@ class RenderProductsArnold(ARenderProducts):
 
         return multipart
 
+    def _get_layer_data(self):
+        """Override to normalize the Arnold output extension.
+
+        Maya reports the deep EXR format as ``deepexr`` through
+        ``defaultRenderGlobals.imfPluginKey`` while Arnold writes ``.exr``
+        files. Normalize the extension so expected file names match the
+        rendered files.
+        """
+        layer_data = super()._get_layer_data()
+        default_ext = layer_data.defaultExt
+        if default_ext and default_ext.lower() in {"deepexr", "jpeg"}:
+            layer_data.defaultExt = self.aiDriverExtension[
+                default_ext.lower()
+            ]
+        return layer_data
+
     def _get_aov_multipart(self, aov_driver=None):
         """Return whether AOVs are rendered as multipart files."""
         # Arnold AOVs are always rendered as multipart files
